@@ -1,17 +1,14 @@
+import numpy as np
+import math
+import pydot
+import torch
+
 from models.modules.SlidingWindow import SlidingWindow
 from models.modules.Conv import Conv
 from models.modules.Fork import Fork
 from models.modules.Accum import Accum
 from models.modules.Glue import Glue
 from models.layers.Layer import Layer
-
-import numpy as np
-import math
-import tools.third_party.lmdb_io
-import tools.third_party.prototxt
-import tempfile
-import caffe
-import pydot
 
 class ConvolutionLayer(Layer):
     def __init__(
@@ -108,36 +105,8 @@ class ConvolutionLayer(Layer):
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
 
-    """
-        return {
-            'type'          : 'CONVOLUTION',
-            'buffer_depth'  : self.buffer_depth,
-            'rows_in'       : self.rows_in(),
-            'cols_in'       : self.cols_in(),
-            'channels_in'   : self.channels_in(),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out(),
-            'filters'       : self.filters,
-            'kernel_size'   : self.k_size,
-            'stride'        : self.stride,
-            'groups'        : self.groups,
-            'pad'           : self.pad,
-            'pad_top'       : self.pad_top,
-            'pad_right'     : self.pad_right,
-            'pad_bottom'    : self.pad_bottom,
-            'pad_left'      : self.pad_left,
-            'coarse_in'     : self.coarse_in,
-            'coarse_out'    : self.coarse_out,
-            'fine'          : self.fine,
-            'size_in'       : int(self.rows*self.cols*self.channels),
-            'size_out'      : int(self.rows_out()*self.cols_out()*self.channels_out()),
-            'wr_factor'     : wr_factor
-        }
-    """
-
     ## UPDATE MODULES ##
-    def update(self): # TODO: update all parameters
+    def update(self): 
         # sliding window
         self.modules['sliding_window'].rows     = self.rows_in()
         self.modules['sliding_window'].cols     = self.cols_in()
@@ -167,7 +136,7 @@ class ConvolutionLayer(Layer):
         self.modules['glue'].coarse_out = self.coarse_out
 
 
-    ### RATES ### TODO
+    ### RATES ### 
     def rates_graph(self):
         rates_graph = np.zeros( shape=(5,6) , dtype=float )
         # sliding_window
@@ -259,44 +228,6 @@ class ConvolutionLayer(Layer):
                       glue_rsc['DSP']
         }
 
-    """
-    def static_power(self):
-
-        static_power = 0
-
-        static_power += self.coarse_in*self.modules['sliding_window'].static_power()
-        static_power += self.coarse_in*self.modules['fork'].static_power()
-        static_power += self.coarse_in*self.coarse_out*self.modules['conv'].static_power()
-        if self.channels != 1:
-            static_power += self.coarse_in*self.coarse_out*self.modules['accum'].static_power()
-        if self.channels != 1:
-            static_power += self.modules['glue'].static_power()
-
-        # Total
-        return static_power
-
-
-    def dynamic_power(self, freq, rate): # TODO: get models
-
-        freq = freq/1000
-        dynamic_power = 0
-
-        dynamic_power += self.coarse_in*self.modules['sliding_window'].dynamic_power(freq,rate,self.sa,self.sa_out)
-        dynamic_power += self.coarse_in*self.modules['fork'].dynamic_power(freq,rate,self.sa,self.sa_out)
-        dynamic_power += self.coarse_in*self.coarse_out*self.modules['conv'].dynamic_power(freq,rate,self.sa,self.sa_out)
-
-        # update rate
-        rate = rate*self.fine/float(self.k_size*self.k_size)
-
-        if self.channels != 1:
-            dynamic_power += self.coarse_in*self.coarse_out*self.modules['accum'].dynamic_power(freq,rate,self.sa,self.sa_out)
-        if self.channels != 1:
-            dynamic_power += self.modules['glue'].dynamic_power(freq,rate,self.sa,self.sa_out)
-
-        # Total
-        return dynamic_power
-    """
-
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
@@ -334,58 +265,18 @@ class ConvolutionLayer(Layer):
 
         assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
 
-        # create Caffe Layer
-        net = caffe.NetSpec()
+        # instantiate convolution layer
+        convolution_layer = torch.nn.Conv2d(self.channels, self.filters, self.k_size, 
+                stride=self.stride, padding=self.pad, groups=self.groups)
 
-        lmdb_path = '/tmp/lmdb'
-        lmdb = tools.third_party.lmdb_io.LMDB(lmdb_path)
+        # update weights
+        convolution_layer.weight = torch.nn.Parameter(torch.from_numpy(weights))
+        
+        # update bias
+        convolution_layer.bias = torch.nn.Parameter(torch.from_numpy(bias))
+        
+        # return output featuremap
+        data = np.moveaxis(data, -1, 0)
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        return convolution_layer(torch.from_numpy(data)).detach().numpy()
 
-        write_images = [(np.random.rand(self.rows, self.cols, self.channels)*255).astype(np.uint8)]*batch_size
-        write_labels = [0]*batch_size
-        lmdb.write(write_images,write_labels)
-
-        # create inputs
-        net.data, _ = caffe.layers.Data(
-            batch_size = batch_size,
-            backend = caffe.params.Data.LMDB,
-            source = lmdb_path,
-            transform_param = dict(scale = 1./255),
-            ntop = 2)
-
-        net.conv = caffe.layers.Convolution(
-            net.data,
-            kernel_size=self.k_size,
-            stride=self.stride,
-            group=self.groups,
-            pad=self.pad,
-            num_output=self.filters,
-            weight_filler=dict(type='xavier')
-        )
-        #print(net.to_proto())
-
-        train_prototxt = tempfile.NamedTemporaryFile(prefix='train_',suffix='.prototxt')
-        test_prototxt  = tempfile.NamedTemporaryFile(prefix='test_',suffix='.prototxt')
-
-        # write train file
-        train_prototxt.write(str(net.to_proto()).encode('utf-8'))
-        train_prototxt.seek(0)
-
-        # convert to deploy prototxt
-        tools.third_party.prototxt.train2deploy(train_prototxt.name,[batch_size,self.channels,self.rows,self.cols],test_prototxt.name)
-
-        # Load network
-        net = caffe.Net(test_prototxt.name,caffe.TEST)
-
-        # Close temporary files
-        train_prototxt.close()
-        test_prototxt.close()
-
-        # load network inputs
-        net.blobs['data'].data[...][0]  = np.moveaxis(data, -1, 0)
-        net.params['conv'][0].data[...] = weights
-        net.params['conv'][1].data[...] = bias
-
-        # run network
-        net.forward()
-
-        return net.blobs['conv'].data[0]

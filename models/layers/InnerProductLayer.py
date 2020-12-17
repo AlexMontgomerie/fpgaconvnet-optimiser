@@ -7,11 +7,8 @@ from models.layers.Layer import Layer
 
 import numpy as np
 import math
-import tools.third_party.lmdb_io 
-import tools.third_party.prototxt 
-import tempfile
-import caffe
 import pydot
+import torch
 
 class InnerProductLayer(Layer):
     def __init__(
@@ -260,6 +257,24 @@ class InnerProductLayer(Layer):
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
         assert weights.shape[1] == self.rows*self.cols*self.channels, "ERROR (weights): invalid channel dimension"
 
+        
+        # instantiate convolution layer
+        inner_product_layer = torch.nn.Linear(self.channels*self.rows*self.cols, self.filters, bias=False)
+        
+        # update weights
+        inner_product_layer.weight = torch.nn.Parameter(torch.from_numpy(weights))
+        
+        # update bias
+        inner_product_layer.bias = torch.nn.Parameter(torch.from_numpy(bias))
+        
+        # return output featuremap
+        data = np.moveaxis(data, -1, 0)
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        return inner_product_layer(torch.from_numpy(data)).detach().numpy()
+
+
+
+        """
         # assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
 
         # create Caffe Layer
@@ -313,4 +328,4 @@ class InnerProductLayer(Layer):
         net.forward()
 
         return net.blobs['inner_product'].data[0]
-
+        """

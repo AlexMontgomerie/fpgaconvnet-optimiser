@@ -12,17 +12,10 @@ import tools.graphs as graphs
 import tools.onnx_helper as onnx_helper
 
 from models.layers.BatchNormLayer       import BatchNormLayer
-from models.layers.ConcatLayer          import ConcatLayer
 from models.layers.ConvolutionLayer     import ConvolutionLayer
-from models.layers.EltwiseLayer         import EltwiseLayer
 from models.layers.InnerProductLayer    import InnerProductLayer
-from models.layers.LRNLayer             import LRNLayer
 from models.layers.PoolingLayer         import PoolingLayer
 from models.layers.ReLULayer            import ReLULayer
-from models.layers.SigmoidLayer         import SigmoidLayer
-from models.layers.SoftMaxLayer         import SoftMaxLayer
-from models.layers.ScaleLayer           import ScaleLayer
-from models.layers.SplitLayer           import SplitLayer
 
 from tools.layer_enum import LAYER_TYPE
 

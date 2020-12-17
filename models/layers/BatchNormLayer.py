@@ -3,10 +3,7 @@ from models.layers.Layer import Layer
 
 import numpy as np
 import math
-import tools.third_party.lmdb_io 
-import tools.third_party.prototxt 
 import tempfile
-import caffe
 import pydot
 
 class BatchNormLayer(Layer):
@@ -57,6 +54,7 @@ class BatchNormLayer(Layer):
    
     def functional_model(self,data,gamma,beta,batch_size=1):
 
+        
         assert data.shape[0] == self.rows    , "ERROR (data): invalid row dimension"
         assert data.shape[1] == self.cols    , "ERROR (data): invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR (data): invalid channel dimension"
@@ -64,6 +62,17 @@ class BatchNormLayer(Layer):
         assert gamma.shape[0] == self.channels , "ERROR (weights): invalid filter dimension"
         assert beta.shape[0]  == self.channels , "ERROR (weights): invalid filter dimension"
 
+        # instantiate batch norm layer
+        batch_norm_layer = torch.nn.BatchNorm2d(self.channels, track_running_stats=False) 
+
+        # return output featuremap
+        data = np.moveaxis(data, -1, 0)
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        return batch_norm_layer(torch.from_numpy(data))
+
+
+        
+        """
         # create Caffe Layer
         net = caffe.NetSpec()
 
@@ -112,5 +121,6 @@ class BatchNormLayer(Layer):
         net.forward()
 
         return net.blobs['scale'].data[0], net.params['batch_norm'][0].data, net.params['batch_norm'][1].data
- 
+        """
+
 
