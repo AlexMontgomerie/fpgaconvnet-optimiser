@@ -115,13 +115,6 @@ def add_hardware(model, graph):
         # check if node in graph
         if not name in graph.nodes():
             continue
-        # Concat Layer
-        if graph.nodes[name]['type'] == LAYER_TYPE.Concat:
-            n_input = len(layer.bottom)
-            graph.nodes[name]['hw'] = ConcatLayer([[0]*n_input,0,0],
-                n_input
-            )
-            continue
         # Convolution layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Convolution:
             # get number of filters
@@ -156,10 +149,6 @@ def add_hardware(model, graph):
                 filters
             )
             continue
-        # LRN Layer
-        if graph.nodes[name]['type'] == LAYER_TYPE.LRN:
-            graph.nodes[name]['hw'] = LRNLayer([0,0,0])
-            continue
         # Pooling layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Pooling:
             # get node attributes
@@ -181,27 +170,9 @@ def add_hardware(model, graph):
             # create relu layer hardware
             graph.nodes[name]['hw'] = ReLULayer([0,0,0])
             continue
-        # Sigmoid Layer
-        if graph.nodes[name]['type'] == LAYER_TYPE.Sigmoid:
-            graph.nodes[name]['hw'] = SigmoidLayer([0,0,0])
-            continue
-        # SoftMax Layer
-        if graph.nodes[name]['type'] == LAYER_TYPE.Softmax:
-            graph.nodes[name]['hw'] = SoftMaxLayer([0,0,0])
-            continue
-        # Eltwise Layer
-        if graph.nodes[name]['type'] == LAYER_TYPE.Eltwise:
-            #n_input = len(layer.bottom)
-            n_input = 2
-            graph.nodes[name]['hw'] = EltwiseLayer([0,0,0],n_input)
-            continue
         # BatchNorm Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
             graph.nodes[name]['hw'] = BatchNormLayer([0,0,0])
-            continue
-        # Scale Layer
-        if graph.nodes[name]['type'] == LAYER_TYPE.Scale:
-            graph.nodes[name]['hw'] = ScaleLayer([0,0,0])
             continue
         #raise NameError
         print(name,graph.nodes[name]['type'])
@@ -265,35 +236,5 @@ def parse_net(filepath,view=True):
     # add layer dimensions
     add_dimensions(model, graph)
 
-    return model, graph
+    return graph
 
-if __name__=="__main__":
-    pass
-    #net = parse_net("data/models/resnet.prototxt")
-    # lenet:
-    #net = parse_net("data/models/lenet.onnx")
-    # alexnet: 
-    net = parse_net("data/models/alexnet.onnx")
-    # vgg: 
-    #net = parse_net("data/models/vgg16.onnx")
-    # vgg batchnorm:
-    #net = parse_net("data/models/vgg16bn.onnx")
-    # mobilenetv2: 
-    #net = parse_net("data/models/mobilenetv1.onnx")
-    #net = parse_net("data/models/alexnet.prototxt")
-    #net = parse_net("data/models/googlenet_short.prototxt")
-    #net = parse_net("data/models/inception_test.prototxt")
-    #net = parse_net("data/models/googlenet.prototxt")
-    #net = parse_net("data/models/mobilenet.prototxt")
-    #net = parse_net("data/models/vgg16.prototxt")
-    #net = parse_net("data/models/multipath.prototxt")
-    #net = parse_net("data/models/nin.prototxt")
-    #net = parse_net("data/models/lenet.prototxt")
-
-    #net = parse_net("data/models/resnet50.prototxt")
-    #net = parse_net("data/models/resnet101.prototxt")
-    #net = parse_net("data/models/vgg16.prototxt")
-    #net = parse_net("data/models/inceptionv4.prototxt")
-    #net = parse_net("data/models/yolov3.prototxt")
-    #net = parse_net("data/models/unet.prototxt")
-    #print(net)

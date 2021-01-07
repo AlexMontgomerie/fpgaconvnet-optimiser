@@ -41,3 +41,5 @@ host/fpgaconvnet_bsp/ps7_cortexa9_0
 onnx/
 
 include/system.hpp
+
+examples/

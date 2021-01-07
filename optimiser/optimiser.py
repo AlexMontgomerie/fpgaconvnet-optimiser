@@ -4,7 +4,7 @@ import copy
 import random
 import math
 
-from models.Network import Network
+from models.network.Network import Network
 
 LATENCY   =0
 THROUGHPUT=1

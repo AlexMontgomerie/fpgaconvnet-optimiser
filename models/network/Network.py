@@ -34,7 +34,7 @@ class Network():
         self.batch_size = batch_size
  
         # load network
-        self.model, self.graph = parser.parse_net(network_path, view=False)
+        self.graph = parser.parse_net(network_path, view=False)
 
         # node and edge lists
         self.node_list = list(self.graph.nodes())
@@ -46,25 +46,6 @@ class Network():
 
         # partitions
         self.partitions = [Partition(copy.deepcopy(self.graph))]
-        """
-        self.partitions = [{
-            'input_nodes'   : graphs.get_input_nodes(self.graph),
-            'output_nodes'  : graphs.get_output_nodes(self.graph),
-            'graph'         : copy.deepcopy(self.graph),
-            'nodes'         : self.node_list,
-            'edges'         : self.edge_list,
-            'ports_in'      : 1,
-            'ports_out'     : 1,
-            'streams_in'    : 1,
-            'streams_out'   : 1,
-            'size_in'       : 0,
-            'size_out'      : 0,
-            'size_wr'       : 0,
-            'batch_size'    : int(batch_size),
-            'wr_layer'      : None,
-            'wr_factor'     : 1
-        }]
-        """
 
         # update wr layer
         self.partitions[0].wr_layer = self.get_wr_layer(0)
@@ -129,9 +110,6 @@ class Network():
     from transforms.partition import apply_random_partition
 
     # import reporting functions
-    from models.network.report import get_partition_colours
-    from models.network.report import layer_interval_plot
-    from models.network.report import partition_interval_plot
     from models.network.report import create_report
 
     # import scheduling functions
