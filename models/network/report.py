@@ -51,19 +51,19 @@ def create_markdown_report(self):
     
     partition_info = ""
     for i in range(len(self.partitions)):
-        resource_usage = self.get_resource_usage(i)
-        latency = self.get_latency_partition(i)
+        resource_usage = self.partitions[i].get_resource_usage()
+        latency = self.partitions[i].get_latency(self.platform["freq"])
         bram = resource_usage['BRAM'] 
         dsp  = resource_usage['DSP'] 
         lut  = resource_usage['LUT'] 
         ff   = resource_usage['FF'] 
-        wr_factor = self.partitions[i]['wr_factor']
+        wr_factor = self.partitions[i].wr_factor
         partition_info += f"| {i} | {wr_factor} | {latency} | {bram} | {dsp} | {lut} | {ff} |\n"
 
     layer_info = ""
     for i in range(len(self.partitions)):
-        for node in self.partitions[i]['graph'].nodes():
-            hw = self.partitions[i]['graph'].nodes[node]['hw']
+        for node in self.partitions[i].graph.nodes():
+            hw = self.partitions[i].graph.nodes[node]['hw']
             rsc = hw.resource()
             bram = rsc['BRAM'] 
             dsp  = rsc['DSP'] 

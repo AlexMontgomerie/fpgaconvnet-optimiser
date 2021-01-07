@@ -6,20 +6,20 @@ from tools.layer_enum import LAYER_TYPE
 def get_partition_input_dependence(self, partition_index):
     # find input edges
     nodes_in = []
-    for input_node in self.partitions[partition_index]['input_nodes']:
+    for input_node in self.partitions[partition_index].input_nodes:
         # get first node that's in graph
         while not input_node in self.graph:
-            input_node = graphs.get_next_nodes(self.partitions[partition_index]['graph'], input_node)[0]
+            input_node = graphs.get_next_nodes(self.partitions[partition_index].graph, input_node)[0]
         nodes_in.extend(graphs.get_prev_nodes(self.graph,input_node))
     # find partitions connecting
     partitions_in = []
     for node in nodes_in:
         for i in range(len(self.partitions)):
             # iterate over output nodes
-            for output_node in self.partitions[i]['output_nodes']:
+            for output_node in self.partitions[i].output_nodes:
                 # find the first output node thats on graph
                 while not output_node in self.graph:
-                    output_node = graphs.get_prev_nodes(self.partitions[i]['graph'], output_node)[0]
+                    output_node = graphs.get_prev_nodes(self.partitions[i].graph, output_node)[0]
                 if node == output_node:
                     partitions_in.append(i)
     if not partitions_in:
@@ -30,20 +30,20 @@ def get_partition_input_dependence(self, partition_index):
 def get_partition_output_dependence(self, partition_index):
     # find output edges
     nodes_out = []
-    for output_node in self.partitions[partition_index]['output_nodes']:
+    for output_node in self.partitions[partition_index].output_nodes:
         # get first node that's in graph
         while not output_node in self.graph:
-            output_node = graphs.get_prev_nodes(self.partitions[partition_index]['graph'], output_node)[0]
+            output_node = graphs.get_prev_nodes(self.partitions[partition_index].graph, output_node)[0]
         nodes_out.extend(graphs.get_next_nodes(self.graph,output_node))
     # find partitions connecting
     partitions_out = []
     for node in nodes_out:
         for i in range(len(self.partitions)):
             # iterate over input nodes
-            for input_node in self.partitions[i]['input_nodes']:
+            for input_node in self.partitions[i].input_nodes:
                 # find the first output node thats on graph
                 while not input_node in self.graph:
-                    input_node = graphs.get_next_nodes(self.partitions[i]['graph'], input_node)[0]
+                    input_node = graphs.get_next_nodes(self.partitions[i].graph, input_node)[0]
                 if node == input_node:
                     partitions_out.append(i)
     if not partitions_out:
@@ -61,7 +61,7 @@ def get_partition_order(self): # may need to update for
         ## iterate over partitions
         for i in range(len(self.partitions)):
             ## check if node exists in partitions graph
-            if node in list(self.partitions[i]['graph'].nodes):
+            if node in list(self.partitions[i].graph.nodes):
                 partition_occurence.append(i)
         ## return first partition node occurs in
         return partition_occurence[0]
@@ -79,9 +79,9 @@ def get_partition_order(self): # may need to update for
         nodes_next = []
         # iterate over partitions in current iteration
         for i in partition_order_iter:
-            for node_out in graphs.get_output_nodes(self.partitions[i]['graph']):
+            for node_out in graphs.get_output_nodes(self.partitions[i].graph):
                 while not node_out in self.graph:
-                    node_out = graphs.get_prev_nodes(self.partitions[i]['graph'], node_out)[0]
+                    node_out = graphs.get_prev_nodes(self.partitions[i].graph, node_out)[0]
                 for node_next in graphs.get_next_nodes(self.graph, node_out):
                     nodes_next.append(node_next)
         nodes = nodes_next
@@ -147,11 +147,11 @@ def get_scheduler(self):
     schedule = []
     for partition_index in partition_order:
         ## input and output nodes
-        input_node  = self.partitions[partition_index]['input_nodes'][0]
-        output_node = self.partitions[partition_index]['output_nodes'][0]
+        input_node  = self.partitions[partition_index].input_nodes[0]
+        output_node = self.partitions[partition_index].output_nodes[0]
         ## number of ports
-        ports_in    = self.partitions[partition_index]['ports_in']
-        ports_out   = self.partitions[partition_index]['ports_out']
+        ports_in    = self.partitions[partition_index].ports_in
+        ports_out   = self.partitions[partition_index].ports_out
         ports_wr    = 1
         ## input port addresses map
         input_base_addr  = self.get_input_base_addr(partition_order, partition_index)
@@ -160,15 +160,15 @@ def get_scheduler(self):
         input_dependence    = self.get_partition_input_dependence(partition_index)[0]
         output_dependence   = self.get_partition_output_dependence(partition_index)[0]
         ## dimensions 
-        batch_size  = self.partitions[partition_index]['batch_size']
-        input_size  = self.partitions[partition_index]['graph'].nodes[input_node]['hw'].workload_in(0)
-        output_size = self.partitions[partition_index]['graph'].nodes[output_node]['hw'].workload_out(0)
+        batch_size  = self.partitions[partition_index].batch_size
+        input_size  = self.partitions[partition_index].graph.nodes[input_node]['hw'].workload_in(0)
+        output_size = self.partitions[partition_index].graph.nodes[output_node]['hw'].workload_out(0)
         ## weights reloading variables
-        wr_factor   = self.partitions[partition_index]['wr_factor']
-        if self.partitions[partition_index]['wr_layer']:
+        wr_factor   = self.partitions[partition_index].wr_factor
+        if self.partitions[partition_index].wr_layer:
             ## get size of weights
-            wr_layer = self.partitions[partition_index]['wr_layer']
-            weights_size = self.partitions[partition_index]['graph'].nodes[wr_layer]['hw'].get_parameters_size()['weights']
+            wr_layer = self.partitions[partition_index].wr_layer
+            weights_size = self.partitions[partition_index].graph.nodes[wr_layer]['hw'].get_parameters_size()['weights']
         else:
             ## set size of weights to zero
             weights_size = 0

@@ -2,9 +2,8 @@ import numpy as np
 import os
 import json
 import pydot
-import math
 import copy
-import random
+import math
 
 import tools.parser as parser
 import tools.graphs as graphs
@@ -12,7 +11,7 @@ import tools.matrix as matrix
 
 import transforms.helper as helper
 
-from models.layers.SqueezeLayer import SqueezeLayer
+from models.partition.Partition import Partition
 
 from tools.layer_enum import LAYER_TYPE
 
@@ -37,9 +36,6 @@ class Network():
         # load network
         self.model, self.graph = parser.parse_net(network_path, view=False)
 
-        # update model coefficients
-        self.update_coefficients()
-
         # node and edge lists
         self.node_list = list(self.graph.nodes())
         self.edge_list = list(self.graph.edges())
@@ -49,6 +45,8 @@ class Network():
         self.workload_matrix    = matrix.get_workload_matrix(self.graph)
 
         # partitions
+        self.partitions = [Partition(copy.deepcopy(self.graph))]
+        """
         self.partitions = [{
             'input_nodes'   : graphs.get_input_nodes(self.graph),
             'output_nodes'  : graphs.get_output_nodes(self.graph),
@@ -66,9 +64,10 @@ class Network():
             'wr_layer'      : None,
             'wr_factor'     : 1
         }]
-        
+        """
+
         # update wr layer
-        self.partitions[0]['wr_layer'] = self.get_wr_layer(0)
+        self.partitions[0].wr_layer = self.get_wr_layer(0)
     
         # platform
         self.platform = {
@@ -145,36 +144,9 @@ class Network():
     from models.network.scheduler import get_schedule_csv
     from models.network.scheduler import check_scheduler
 
-    # auxiliary layer functions
-    from models.network.auxiliary import add_squeeze
-    from models.network.auxiliary import remove_squeeze
-    from models.network.auxiliary import fix_split
-    from models.network.auxiliary import fix_concat
-    from models.network.auxiliary import remove_redundant_split
-    from models.network.auxiliary import remove_redundant_concat
-    from models.network.auxiliary import add_buffer
-    from models.network.auxiliary import remove_buffer
-
     # update
     from models.network.update import update_partitions
-    from models.network.update import update_modules
-    from models.network.update import update_modules_partition
-    from models.network.update import update_coefficients
     from models.network.update import update_platform
-    from models.network.update import update_batch_size
-
-    # metrics
-    from models.network.metrics import get_pipeline_depth
-    from models.network.metrics import get_interval
-    from models.network.metrics import get_latency_partition
-    from models.network.metrics import get_latency
-    from models.network.metrics import get_throughput
-
-    # usage
-    from models.network.usage import get_resource_usage
-    from models.network.usage import get_power_average_partition
-    from models.network.usage import get_power_average
-    from models.network.usage import get_memory_usage_estimate
 
     # represent
     from models.network.represent import get_model_input_node 
@@ -188,132 +160,45 @@ class Network():
     from models.network.validate import check_streams
     from models.network.validate import check_partitions
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    NETWORK CHECK FUNCTIONS    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        check_ports : 
-
-        check_resources :
-
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     """
 
     """
-    def check_ports(self):
-        # check each partition
-        for p in self.partitions:
-            # verify that the number of input ports are not exceeded
-            if len(graphs.get_nodes_in(p['graph'])) > self.platform['ports']:
-                return False
-            if len(graphs.get_nodes_out(p['graph'])) > self.platform['ports']:
-                return False
-        return True
 
-    def check_resources(self):
-        # iterate over partitions
-        for partition_index in range(len(self.partitions)):
-            # get the resource usage for the platform
-            partition_resource_usage = self.get_resource_usage(partition_index)
-            #assert partition_resource_usage['FF']   <= (self.platform['constraints']['FF'])
-            #assert partition_resource_usage['LUT']  <= (self.platform['constraints']['LUT'])
-            assert partition_resource_usage['DSP']  <= (self.rsc_allocation*self.platform['constraints']['DSP']) , "ERROR: DSP usage exceeded"
-            assert partition_resource_usage['BRAM'] <= (self.rsc_allocation*self.platform['constraints']['BRAM']), "ERROR: BRAM usage exceeded"
+    def get_memory_usage_estimate(self):
 
-    def check_workload(self):
-        workload_total = np.zeros( shape=( len(self.edge_list),len(self.node_list) ) , dtype=float )
-        # iterate over partitions
-        for partition_index in range(len(self.partitions)):
-            # get parttion workload matrix
-            graph     = self.partitions[partition_index]['graph']
-            layers    = self.partitions[partition_index]['layers']
-            wr_factor = self.partitions[partition_index]['wr_factor']
-            # get parttion workload matrix
-            workload_total += matrix.get_workload_matrix(graph,layers,node_list=self.node_list,edge_list=self.edge_list)*wr_factor
-
-    def check_partitions(self):
-        # iterate over partitions
-        for p in self.partitions:
-            pass
-    """
-
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    REPRESENTATION 
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-        save_net : 
+        # for sequential networks, our worst-case memory usage is
+        # going to be both the largest input and output featuremap pair
         
-        visualise : 
+        # get the largest input featuremap size
+        max_input_size = 0
+        max_output_size = 0
+        for partition in self.partitions:
+            input_node  = partition.input_nodes[0]
+            output_node = partition.output_nodes[0]
+            partition_input_size  = partition.graph.nodes[input_node]['hw'].workload_in(0)*partition.batch_size
+            partition_output_size = partition.graph.nodes[output_node]['hw'].workload_out(0)*partition.batch_size*partition.wr_factor
+            if partition_input_size > max_input_size:
+                max_input_size = partition_input_size
+            if partition_output_size > max_output_size:
+                max_output_size = partition_output_size
 
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        return math.ceil(((max_input_size + max_output_size)*self.data_width)/8)
+
     """
 
     """
-    def save_all_partitions(self,filepath): # TODO: update
 
-        info = [None]*len(self.partitions)
-        for i in range(len(self.partitions)):
-            # get layer info from nodes
-            graph_out = graphs.to_json(self.partitions[i]['graph']) 
-            layer_info_out = {}
-            for node in graphs.ordered_node_list(self.partitions[i]['graph']):
-                layer_info_out[node.replace("/","_")]   = self.partitions[i]['graph'].nodes[node]['hw'].layer_info()
-            # information for partition
-            #print(self.partitions[i])
-            input_node  = self.partitions[i]['input_nodes'][0]
-            output_node = self.partitions[i]['output_nodes'][0]
-            info[i] = {
-                'partition_info': {
-                    'ports'         : 1, # TODO: be able to change ports
-                    'streams_in'    : self.partitions[i]['graph'].nodes[input_node]['hw'].coarse_in, 
-                    'streams_out'   : self.partitions[i]['graph'].nodes[output_node]['hw'].coarse_out, 
-                    'input_node'    : input_node,
-                    'output_node'   : output_node,
-                    'batch_size'    : self.partitions[i]['batch_size'],
-                    'weights_reloading_factor'  : self.partitions[i]['wr_factor'],
-                    'weights_reloading_layer'   : self.partitions[i]['wr_layer'] 
-                },
-                'graph'         : graph_out,
-                'layer_info'    : layer_info_out
-            }
-        # save node_info
-        with open(os.path.join(filepath,self.name+'.json'),'w') as f:
-            json.dump(info,f,indent=4)
+    def get_latency(self):
+        latency = 0
+        # iterate over partitions:
+        for partition in self.partitions:
+            # accumulate latency for each partition
+            latency += partition.get_latency(self.platform["freq"])
+        # return the total latency as well as reconfiguration time
+        return latency + (len(self.partitions)-1)*self.platform["reconf_time"]
 
-    # TODO: 
-    def visualise(self,partition_index):
-        g = pydot.Dot(graph_type='digraph')
-        # add clusters
-        edge_labels = {}
-        for node in self.partitions[partition_index]['graph']:
-            cluster, label_in, label_out = self.node_info[node]['hw'].visualise(node)
-            edge_labels[node] = {
-                "label_in"      : label_in,
-                "label_out"     : label_out
-            }
-            g.add_subgraph(cluster)
-        # create edges
-        for node in self.partitions[partition_index]['graph']:
-            label_out = edge_labels[node]['label_out']
-            for edge in self.partitions[partition_index]['graph'][node]:
-                label_in = edge_labels[edge]['label_in']
-                for i in range(self.node_info[node]['hw'].coarse_out):
-                    g.add_edge(pydot.Edge( "_".join([label_out,str(i)]) , "_".join([label_in,str(i)]) ))
-        # save graph
-        g.write_png('outputs/images/'+self.name+'_module_level.png')
-    """
+    def get_throughput(self):
+        # return the frames per second
+        return float(self.batch_size)/self.get_latency()
 
-if __name__=="__main__":
-    #net = Network('lenet_test',"data/models/lenet_short.prototxt")
-    net = Network('lenet_test',"data/models/multipath.prototxt")
-    #net.node_info['conv1']['hw'].coarse_out = 2
-    net.node_info['a_split']['hw'].coarse_out = 2
-    net.add_squeeze()
-    print(net.partitions[0]['graph'])
-    net.remove_squeeze()
-    print(net.partitions[0]['graph'])
-    net.add_squeeze()
-    print(net.partitions[0]['graph'])
 

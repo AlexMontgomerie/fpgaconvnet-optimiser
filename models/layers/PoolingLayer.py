@@ -1,14 +1,11 @@
+import torch
+import math
+import numpy as np
+import pydot
+
 from models.modules.SlidingWindow import SlidingWindow
 from models.modules.Pool import Pool
 from models.layers.Layer import Layer
-
-import math
-import numpy as np
-import tools.third_party.lmdb_io
-import tools.third_party.prototxt
-import tempfile
-import caffe
-import pydot
 
 class PoolingLayer(Layer):
     def __init__(
@@ -199,55 +196,11 @@ class PoolingLayer(Layer):
         assert data.shape[1] == self.cols    , "ERROR (data): invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR (data): invalid channel dimension"
 
-        # create Caffe Layer
-        net = caffe.NetSpec()
+        # instantiate pooling layer
+        pooling_layer = torch.nn.MaxPool2d(self.k_size, stride=self.stride, padding=self.pad)
+        
+        # return output featuremap
+        data = np.moveaxis(data, -1, 0)
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        return pooling_layer(torch.from_numpy(data)).detach().numpy()
 
-        #lmdb_path = 'outputs/lmdb'
-        lmdb_path = '/tmp/lmdb'
-        lmdb = tools.third_party.lmdb_io.LMDB(lmdb_path)
-
-        write_images = [(np.random.rand(self.rows, self.cols, self.channels)*255).astype(np.uint8)]*batch_size
-        write_labels = [0]*batch_size
-        lmdb.write(write_images,write_labels)
-
-        # create inputs
-        net.data, _ = caffe.layers.Data(
-            batch_size = batch_size,
-            backend = caffe.params.Data.LMDB,
-            source = lmdb_path,
-            transform_param = dict(scale = 1./255),
-            ntop = 2)
-
-        net.pool = caffe.layers.Pooling(
-            net.data,
-            pool = caffe.params.Pooling.MAX if self.pool_type == 'max' else caffe.params.Pooling.AVG,
-            kernel_size=self.k_size,
-            stride=self.stride,
-            pad=self.pad
-        )
-        #print(net.to_proto())
-
-        train_prototxt = tempfile.NamedTemporaryFile(prefix='train_',suffix='.prototxt')
-        test_prototxt  = tempfile.NamedTemporaryFile(prefix='test_',suffix='.prototxt')
-
-        # write train file
-        train_prototxt.write(str(net.to_proto()).encode('utf-8'))
-        train_prototxt.seek(0)
-
-        # convert to deploy prototxt
-        tools.third_party.prototxt.train2deploy(train_prototxt.name,[batch_size,self.channels,self.rows,self.cols],test_prototxt.name)
-
-        # Load network
-        net = caffe.Net(test_prototxt.name,caffe.TEST)
-
-        # Close temporary files
-        train_prototxt.close()
-        test_prototxt.close()
-
-        # load network inputs
-        net.blobs['data'].data[...][0]  = np.moveaxis(data, -1, 0)
-
-        # run network
-        net.forward()
-
-        return net.blobs['pool'].data[0]

@@ -9,15 +9,15 @@ import math
 
 def check_parallel_block(self,partition_index):
     # check the input and output nodes
-    input_node  = graphs.get_input_nodes(self.partitions[partition_index]['graph'])[0]
-    output_node = graphs.get_output_nodes(self.partitions[partition_index]['graph'])[0]
+    input_node  = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
+    output_node = graphs.get_output_nodes(self.partitions[partition_index].graph)[0]
     # check if not a parallel block
-    if not ((self.partitions[partition_index]['graph'].nodes[input_node]['type'] == LAYER_TYPE.Split) and \
-            (self.partitions[partition_index]['graph'].nodes[output_node]['type'] == LAYER_TYPE.Concat)):
+    if not ((self.partitions[partition_index].graph.nodes[input_node]['type'] == LAYER_TYPE.Split) and \
+            (self.partitions[partition_index].graph.nodes[output_node]['type'] == LAYER_TYPE.Concat)):
         return False 
     # check the number of split and concat nodes
-    n_split  = len(get_all_layers(self.partitions[partition_index]['graph'],LAYER_TYPE.Split))
-    n_concat = len(get_all_layers(self.partitions[partition_index]['graph'],LAYER_TYPE.Concat))
+    n_split  = len(get_all_layers(self.partitions[partition_index].graph,LAYER_TYPE.Split))
+    n_concat = len(get_all_layers(self.partitions[partition_index].graph,LAYER_TYPE.Concat))
     # break if there's too many parallel blocks
     if (n_split > 1) or (n_concat > 1):
         return False
@@ -28,25 +28,25 @@ def get_all_horizontal_splits(self,partition_index):
     # function to iterate over graph
     def _iterate_graph(edge_list,input_node,in_parallel_block):
         # check if end
-        if self.partitions[partition_index]['graph'].out_degree(input_node) == 0:
+        if self.partitions[partition_index].graph.out_degree(input_node) == 0:
             return edge_list
         # next node
-        next_node = graphs.get_next_nodes(self.partitions[partition_index]['graph'],input_node)[0]
+        next_node = graphs.get_next_nodes(self.partitions[partition_index].graph,input_node)[0]
         # check if exiting parallel block
-        if self.partitions[partition_index]['graph'].in_degree(input_node) > 1: 
+        if self.partitions[partition_index].graph.in_degree(input_node) > 1: 
             in_parallel_block = False
         # check if entering parallel block
-        if self.partitions[partition_index]['graph'].out_degree(input_node) > 1: 
+        if self.partitions[partition_index].graph.out_degree(input_node) > 1: 
             return _iterate_graph(edge_list,next_node,True) 
         # skip node - concat partition
-        if self.partitions[partition_index]['graph'].in_degree(next_node) > 1: 
+        if self.partitions[partition_index].graph.in_degree(next_node) > 1: 
             return _iterate_graph(edge_list,next_node,in_parallel_block) 
         # append to partition list
         if not in_parallel_block:
             edge_list.append((input_node,next_node))
         return _iterate_graph(edge_list,next_node,in_parallel_block) 
     # iterate over graph from start node
-    input_node = graphs.get_input_nodes(self.partitions[partition_index]['graph'])[0]
+    input_node = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
     return _iterate_graph([],input_node,False) # TODO: assuming only one input
 
 def get_all_vertical_splits(self,partition_index): # TODO: improve to get all possible combinations
@@ -54,8 +54,8 @@ def get_all_vertical_splits(self,partition_index): # TODO: improve to get all po
     if not self.check_parallel_block(partition_index):
         return None
     vertical_splits = []
-    input_node = graphs.get_input_nodes(self.partitions[partition_index]['graph'])[0]
-    split_nodes = graphs.get_next_nodes(self.partitions[partition_index]['graph'],input_node)
+    input_node = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
+    split_nodes = graphs.get_next_nodes(self.partitions[partition_index].graph,input_node)
     subsets = [v for a in range(len(split_nodes)) for v in combinations(split_nodes, a)]
     for i in range(1,math.ceil(len(subsets)/2)):
         vertical_splits.append([list(chain(subsets[i])), [e for e in split_nodes if e not in subsets[i]]])
@@ -65,39 +65,39 @@ def get_all_horizontal_merges(self,partition_index):
     # partition pairs
     partition_pairs = [(),()]
     # get the next node
-    output_node = graphs.get_output_nodes(self.partitions[partition_index]['graph'])[0]
+    output_node = graphs.get_output_nodes(self.partitions[partition_index].graph)[0]
     def _find_next_partition():
         if self.graph.out_degree(output_node) > 0:
             next_node = graphs.get_next_nodes(self.graph,output_node)[0] 
             # find the partition pair for the output 
             for i in range(len(self.partitions)):
-                if next_node in graphs.get_input_nodes(self.partitions[i]['graph']):
+                if next_node in graphs.get_input_nodes(self.partitions[i].graph):
                     # check that this is a complete block if it's a split
-                    if self.partitions[i]['graph'].out_degree(next_node) == self.graph.out_degree(next_node):
+                    if self.partitions[i].graph.out_degree(next_node) == self.graph.out_degree(next_node):
                         partition_pairs[0] = (partition_index,i)
     
     # check that if it's a concat layer, it's complete
     if self.graph.in_degree(output_node) > 1:
-        if self.partitions[partition_index]['graph'].in_degree(output_node) == self.graph.in_degree(output_node):
+        if self.partitions[partition_index].graph.in_degree(output_node) == self.graph.in_degree(output_node):
             _find_next_partition()
     else:
         _find_next_partition()
 
     # get the previous node
-    input_node = graphs.get_input_nodes(self.partitions[partition_index]['graph'])[0]
+    input_node = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
     def _find_prev_partition():
         if self.graph.in_degree(input_node) > 0:
             prev_node = graphs.get_prev_nodes(self.graph,input_node)[0] 
             # find the partition pair for the input
             for i in range(len(self.partitions)):
-                if prev_node in graphs.get_output_nodes(self.partitions[i]['graph']):
+                if prev_node in graphs.get_output_nodes(self.partitions[i].graph):
                     # check that this is a complete block
-                    if self.partitions[i]['graph'].in_degree(prev_node) == self.graph.in_degree(prev_node):
+                    if self.partitions[i].graph.in_degree(prev_node) == self.graph.in_degree(prev_node):
                         partition_pairs[1] = (i,partition_index)
 
     # check that if it's a split layer, it's complete
     if self.graph.out_degree(input_node) > 1:
-        if self.partitions[partition_index]['graph'].out_degree(input_node) == self.graph.out_degree(input_node):
+        if self.partitions[partition_index].graph.out_degree(input_node) == self.graph.out_degree(input_node):
             _find_prev_partition()
     else: 
         _find_prev_partition()
@@ -111,13 +111,13 @@ def get_all_vertical_merges(self,partition_index):
     # partition pairs
     partition_pairs = []
     # get input and output node
-    input_node  = graphs.get_input_nodes(self.partitions[partition_index]['graph'])[0]
-    output_node = graphs.get_output_nodes(self.partitions[partition_index]['graph'])[0]
+    input_node  = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
+    output_node = graphs.get_output_nodes(self.partitions[partition_index].graph)[0]
     # find partitions with the same input,output pairs
     for i in range(len(self.partitions)):
         if partition_index == i:
             continue
-        if (self.partitions[i]['input_nodes'][0] == input_node) and (self.partitions[i]['output_nodes'][0] == output_node):
+        if (self.partitions[i].input_nodes[0] == input_node) and (self.partitions[i].output_nodes[0] == output_node):
             partition_pairs.append((i,partition_index))
     return partition_pairs
 
@@ -125,30 +125,30 @@ def split_horizontal(self, partition_index, edge):
     # create a new partition
     self.partitions.insert(partition_index,copy.deepcopy(self.partitions[partition_index]))
     # split graph
-    partition_graphs = graphs.split_graph_horizontal(self.partitions[partition_index]['graph'],edge)
-    self.partitions[partition_index]['graph']   = partition_graphs[0]
-    self.partitions[partition_index+1]['graph'] = partition_graphs[1]
+    partition_graphs = graphs.split_graph_horizontal(self.partitions[partition_index].graph,edge)
+    self.partitions[partition_index].graph   = partition_graphs[0]
+    self.partitions[partition_index+1].graph = partition_graphs[1]
     # find the wr partition
-    wr_layer  = self.partitions[partition_index]['wr_layer']
-    wr_factor = self.partitions[partition_index]['wr_factor']
+    wr_layer  = self.partitions[partition_index].wr_layer
+    wr_factor = self.partitions[partition_index].wr_factor
     ## apply to correct partition
     if wr_layer in partition_graphs[0]:
-        self.partitions[partition_index]['wr_layer']    = wr_layer
-        self.partitions[partition_index]['wr_factor']   = wr_factor
+        self.partitions[partition_index].wr_layer    = wr_layer
+        self.partitions[partition_index].wr_factor   = wr_factor
         self.apply_max_weights_reloading(partition_index+1)
     else:
-        self.partitions[partition_index]['wr_layer']    = self.get_wr_layer(partition_index)
-        self.partitions[partition_index]['wr_factor']   = 1 
-        self.partitions[partition_index+1]['wr_layer']  = wr_layer
-        self.partitions[partition_index+1]['wr_factor'] = wr_factor
+        self.partitions[partition_index].wr_layer    = self.get_wr_layer(partition_index)
+        self.partitions[partition_index].wr_factor   = 1 
+        self.partitions[partition_index+1].wr_layer  = wr_layer
+        self.partitions[partition_index+1].wr_factor = wr_factor
 
 def split_vertical(self, partition_index, nodes):
     # create a new partition
     self.partitions.insert(partition_index,copy.deepcopy(self.partitions[partition_index]))
     # split the graph
-    partition_graphs = graphs.split_graph_vertical(self.partitions[partition_index]['graph'],nodes)
-    self.partitions[partition_index]['graph']   = partition_graphs[0]
-    self.partitions[partition_index+1]['graph'] = partition_graphs[1]
+    partition_graphs = graphs.split_graph_vertical(self.partitions[partition_index].graph,nodes)
+    self.partitions[partition_index].graph   = partition_graphs[0]
+    self.partitions[partition_index+1].graph = partition_graphs[1]
     # reset weights reloading
     self.apply_max_weights_reloading(partition_index)
     self.apply_max_weights_reloading(partition_index+1)
@@ -156,20 +156,20 @@ def split_vertical(self, partition_index, nodes):
 def merge_horizontal(self,partition_index_a,partition_index_b):
     partition_index = partition_index_a
     # merge graphs
-    graph = graphs.merge_graphs_horizontal(self.partitions[partition_index_a]['graph'],self.partitions[partition_index_b]['graph'])
-    self.partitions[partition_index]['graph'] = graph
+    graph = graphs.merge_graphs_horizontal(self.partitions[partition_index_a].graph,self.partitions[partition_index_b].graph)
+    self.partitions[partition_index].graph = graph
     # keep weights reloading of last layer
-    self.partitions[partition_index]['wr_layer']  = self.partitions[partition_index_b]['wr_layer'] 
-    self.partitions[partition_index]['wr_factor'] = self.partitions[partition_index_b]['wr_factor'] 
+    self.partitions[partition_index].wr_layer  = self.partitions[partition_index_b].wr_layer 
+    self.partitions[partition_index].wr_factor = self.partitions[partition_index_b].wr_factor 
     # remove last partition
     del self.partitions[partition_index_b]
 
 def merge_vertical(self, partition_index_a, partition_index_b):
     partition_index = partition_index_a
     # merge graphs
-    graph = graphs.merge_graphs_vertical(self.partitions[partition_index_a]['graph'],self.partitions[partition_index_b]['graph'])
+    graph = graphs.merge_graphs_vertical(self.partitions[partition_index_a].graph,self.partitions[partition_index_b].graph)
     # update graphs
-    self.partitions[partition_index]['graph'] = graph
+    self.partitions[partition_index].graph = graph
     # remove weights reloading
     self.apply_max_weights_reloading(partition_index)
     # remove last partition

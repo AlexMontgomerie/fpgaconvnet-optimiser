@@ -31,9 +31,6 @@ if __name__ == "__main__":
     net = Improve(args.name,args.model_path)
     net.DEBUG = True
 
-    # get coefficients for models
-    net.update_coefficients()
-
     # get platform
     with open(args.platform_path,'r') as f:
         platform = json.load(f)

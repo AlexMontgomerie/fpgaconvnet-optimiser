@@ -40,7 +40,7 @@ class Improve(Optimiser):
         # cost 
         cost = self.get_cost()
         # Resources
-        resources = [ self.get_resource_usage(i) for i in range(len(self.partitions)) ]
+        resources = [ partition.get_resource_usage() for partition in self.partitions ]
         BRAM = max([ resource['BRAM'] for resource in resources ])
         DSP  = max([ resource['DSP']  for resource in resources ])
         LUT  = max([ resource['LUT']  for resource in resources ])
@@ -108,20 +108,20 @@ class Improve(Optimiser):
 
                 # remove all auxiliary layers
                 for i in range(len(self.partitions)):
-                    self.remove_squeeze(i)
+                    self.partitions[i].remove_squeeze()
 
                 # Apply a transform
                 ## Choose a random transform
                 transform = random.choice(self.transforms)
 
                 ## Choose slowest partition
-                partition_latencys = [ self.get_latency_partition(i) for i in range(len(self.partitions)) ]
+                partition_latencys = [ partition.get_latency(self.platform["freq"]) for partition in self.partitions ]
                 partition_index    = np.random.choice(np.arange(len(self.partitions)), 1, p=(partition_latencys/sum(partition_latencys)))[0]
 
                 ## Choose slowest node in partition
-                node_latencys = np.array([ self.partitions[partition_index]['graph'].nodes[layer]['hw'].get_latency() \
-                        for layer in self.partitions[partition_index]['graph'].nodes() ])
-                node = np.random.choice(list(self.partitions[partition_index]['graph'].nodes()), 1, p=(node_latencys/sum(node_latencys)))[0]
+                node_latencys = np.array([ self.partitions[partition_index].graph.nodes[layer]['hw'].get_latency() \
+                        for layer in self.partitions[partition_index].graph.nodes() ])
+                node = np.random.choice(list(self.partitions[partition_index].graph.nodes()), 1, p=(node_latencys/sum(node_latencys)))[0]
                 
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)

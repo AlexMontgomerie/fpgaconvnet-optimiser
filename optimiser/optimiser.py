@@ -52,7 +52,6 @@ class Optimiser(Network):
     def check_constraints(self):
         assert self.get_latency()       <=  self.constraints['latency']  , "ERROR : (constraint violation) Latency constraint exceeded"
         assert self.get_throughput()    >= self.constraints['throughput'], "ERROR : (constraint violation) Throughput constraint exceeded"
-        assert self.get_power_average() <= self.constraints['power']     , "ERROR : (constraint violation) Power constraint exceeded"
 
     """    
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -69,7 +68,7 @@ class Optimiser(Network):
 
         # choose random node in partition if given
         if node == None:
-            node = random.choice([*self.partitions[partition_index]['graph']])
+            node = random.choice([*self.partitions[partition_index].graph])
 
         # Apply a random transform
         ## Coarse transform (node_info transform)

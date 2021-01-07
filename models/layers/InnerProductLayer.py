@@ -268,10 +268,9 @@ class InnerProductLayer(Layer):
         inner_product_layer.bias = torch.nn.Parameter(torch.from_numpy(bias))
         
         # return output featuremap
-        data = np.moveaxis(data, -1, 0)
+        data = np.moveaxis(data, -1, 0).flatten()
         data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
         return inner_product_layer(torch.from_numpy(data)).detach().numpy()
-
 
 
         """
