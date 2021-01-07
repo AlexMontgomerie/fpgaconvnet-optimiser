@@ -54,7 +54,7 @@ if __name__ == "__main__":
         net.apply_max_weights_reloading(partition_index)
 
     # run optimiser
-    net.run_optimiser()
+    #net.run_optimiser()
 
     # update all partitions
     net.update_partitions()
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     #net.partition_interval_plot()
 
     # create report
-    net.create_markdown_report()
+    net.create_report(os.path.join(args.output_path,"report.json"))
 
     # save all partitions
     net.save_all_partitions(args.output_path)

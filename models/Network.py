@@ -132,7 +132,7 @@ class Network():
     from models.network.report import get_partition_colours
     from models.network.report import layer_interval_plot
     from models.network.report import partition_interval_plot
-    from models.network.report import create_markdown_report 
+    from models.network.report import create_report
 
     # import scheduling functions
     from models.network.scheduler import get_partition_order
