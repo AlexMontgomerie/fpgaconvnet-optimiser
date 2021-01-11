@@ -18,16 +18,16 @@ def update_partitions(self):
         self.partitions[partition_index].remove_squeeze()
         
         ## fix weights reloading in each partition
-        self.fix_weights_reloading(partition_index)
+        #self.fix_weights_reloading(partition_index)
         
         ## apply weights reloading
-        self.apply_weights_reloading_transform(partition_index)
+        #self.apply_weights_reloading_transform(partition_index)
         
         ## update all modules again
         self.partitions[partition_index].update_modules()
        
         ## fix coarse in for all layers
-        self.fix_coarse_partition(partition_index)
+        self.partitions[partition_index].fix_coarse()
 
         ## update all modules again
         self.partitions[partition_index].update_modules()

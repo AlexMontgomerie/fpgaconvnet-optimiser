@@ -47,9 +47,6 @@ class Network():
         # partitions
         self.partitions = [Partition(copy.deepcopy(self.graph))]
 
-        # update wr layer
-        self.partitions[0].wr_layer = self.get_wr_layer(0)
-    
         # platform
         self.platform = {
             'name'          : 'platform',
@@ -71,26 +68,10 @@ class Network():
         self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
         self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
  
+        # update partitions
+        self.update_partitions()
+    
     # import transforms
-    ## fine transform
-    from transforms.fine import apply_random_fine_layer 
-    from transforms.fine import apply_complete_fine_partition 
-    from transforms.fine import apply_complete_fine 
-
-    ## weights reloading transform
-    from transforms.weights_reloading import get_wr_layer
-    from transforms.weights_reloading import get_weights_reloading_factors
-    from transforms.weights_reloading import apply_random_weights_reloading 
-    from transforms.weights_reloading import apply_max_weights_reloading 
-    from transforms.weights_reloading import fix_weights_reloading
-    from transforms.weights_reloading import apply_weights_reloading_transform 
-
-    ## coarse transform
-    from transforms.coarse import apply_random_coarse_layer
-    from transforms.coarse import apply_max_coarse
-    from transforms.coarse import apply_max_coarse_layer
-    from transforms.coarse import fix_coarse_partition
-
     ## partitioning transform
     from transforms.partition import check_parallel_block
     from transforms.partition import get_all_horizontal_splits

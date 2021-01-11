@@ -217,7 +217,6 @@ class Layer:
 
     def load_coef(self):
         for module in self.modules:
-            print(module)
             self.modules[module].load_coef("coefficients/{}_rsc_coef.npy".format(module))
 
     def update(self):

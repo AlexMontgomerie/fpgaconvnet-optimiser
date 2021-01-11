@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import json
 import copy
@@ -87,18 +88,21 @@ class SimulatedAnnealing(Optimiser):
          
         # Cooling Loop
         while self.T_min < self.T:
+            
+            # update partitions
+            self.update_partitions()
+
+            # get the current cost
+            cost = self.get_cost()
+            
+            # Save previous iteration
+            partitions = copy.deepcopy(self.partitions)
 
             # several iterations per cool down
             for _ in range(self.iterations):
 
                 # update partitions
                 self.update_partitions()
-
-                # get the current cost
-                cost = self.get_cost()
-            
-                # Save previous iteration
-                partitions = copy.deepcopy(self.partitions)
 
                 # remove all auxiliary layers
                 for i in range(len(self.partitions)):

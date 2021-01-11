@@ -1,0 +1,17 @@
+{
+  "name" : "zedboard",
+  "DSP_max"  : 220,
+  "BRAM_max" : 280,
+  "FF_max"   : 106400,
+  "LUT_max"  : 53200,
+  "DSP"  : 0,
+  "BRAM" : 32,
+  "FF"   : 7801,
+  "LUT"  : 6262,
+  "freq"          : 100000000,
+  "reconf_time"   : 0.08255,
+  "mem_bandwidth" : 16,
+  "mem_capacity"  : 512000000,
+  "ports"         : 4,
+  "port_width"    : 64
+}

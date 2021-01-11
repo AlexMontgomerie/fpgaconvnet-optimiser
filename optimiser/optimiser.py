@@ -73,18 +73,18 @@ class Optimiser(Network):
         # Apply a random transform
         ## Coarse transform (node_info transform)
         if transform == 'coarse':
-            self.apply_random_coarse_layer(partition_index, node)
+            self.partitions[partition_index].apply_random_coarse_layer(node)
             return
 
         ## Fine transform (node_info transform)
         if transform == 'fine':
-            self.apply_random_fine_layer(partition_index,node)
+            self.partitions[partition_index].apply_random_fine_layer(node)
             return
 
         ## Weights-Reloading transform (partition transform)
         if transform == 'weights_reloading':
             ### apply random weights reloading
-            self.apply_random_weights_reloading(partition_index)
+            self.partitions[partition_index].apply_random_weights_reloading()
             return
 
         ## Partition transform (partition transform)

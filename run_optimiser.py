@@ -1,4 +1,5 @@
 import os
+import yaml
 import json
 import argparse
 import shutil
@@ -25,6 +26,8 @@ if __name__ == "__main__":
         help='network transforms')
     parser.add_argument('--optimiser',choices=['simulated_annealing','improve'],default='improve',
         help='Optimiser strategy')
+    parser.add_argument('--optimiser_config_path',metavar='PATH',
+        help='Configuration file (.yml) for optimiser')
 
     args = parser.parse_args()
 
@@ -33,7 +36,30 @@ if __name__ == "__main__":
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
     # load network
-    net = Improve(args.name,args.model_path)
+    if args.optimiser == "improve":
+        # load config file
+        with open(args.optimiser_config_path,"r") as f:
+            optimiser_config = yaml.load(f)
+        # create network
+        net = Improve(args.name,args.model_path,
+                T=float(optimiser_config["annealing"]["T"]),
+                T_min=float(optimiser_config["annealing"]["T_min"]),
+                k=float(optimiser_config["annealing"]["k"]),
+                cool=float(optimiser_config["annealing"]["cool"]),
+                iterations=int(optimiser_config["annealing"]["iterations"]))
+    elif args.optimiser == "simulated_annealing":
+        # load config file
+        with open(args.optimiser_config_path,"r") as f:
+            optimiser_config = yaml.load(f)
+        # create network
+        net = SimulatedAnnealing(args.name,args.model_path,
+                T=float(optimiser_config["annealing"]["T"]),
+                T_min=float(optimiser_config["annealing"]["T_min"]),
+                k=float(optimiser_config["annealing"]["k"]),
+                cool=float(optimiser_config["annealing"]["cool"]),
+                iterations=int(optimiser_config["annealing"]["iterations"]))
+    
+    # turn on debugging
     net.DEBUG = True
 
     # get platform
@@ -60,7 +86,7 @@ if __name__ == "__main__":
     net.split_complete()
     ## apply complete max weights reloading
     for partition_index in range(len(net.partitions)):
-        net.apply_max_weights_reloading(partition_index)
+        net.partitions[partition_index].apply_max_weights_reloading()
 
     # run optimiser
     net.run_optimiser()

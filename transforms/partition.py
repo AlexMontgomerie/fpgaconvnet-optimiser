@@ -122,56 +122,53 @@ def get_all_vertical_merges(self,partition_index):
     return partition_pairs
 
 def split_horizontal(self, partition_index, edge):
+    # remove weights reloading transform
+    self.partitions[partition_index].remove_weights_reloading_transform()
     # create a new partition
     self.partitions.insert(partition_index,copy.deepcopy(self.partitions[partition_index]))
     # split graph
     partition_graphs = graphs.split_graph_horizontal(self.partitions[partition_index].graph,edge)
     self.partitions[partition_index].graph   = partition_graphs[0]
     self.partitions[partition_index+1].graph = partition_graphs[1]
-    # find the wr partition
-    wr_layer  = self.partitions[partition_index].wr_layer
-    wr_factor = self.partitions[partition_index].wr_factor
-    ## apply to correct partition
-    if wr_layer in partition_graphs[0]:
-        self.partitions[partition_index].wr_layer    = wr_layer
-        self.partitions[partition_index].wr_factor   = wr_factor
-        self.apply_max_weights_reloading(partition_index+1)
-    else:
-        self.partitions[partition_index].wr_layer    = self.get_wr_layer(partition_index)
-        self.partitions[partition_index].wr_factor   = 1 
-        self.partitions[partition_index+1].wr_layer  = wr_layer
-        self.partitions[partition_index+1].wr_factor = wr_factor
+    # apply max weights reloading to both
+    self.partitions[partition_index].apply_max_weights_reloading()
+    self.partitions[partition_index+1].apply_max_weights_reloading()
 
 def split_vertical(self, partition_index, nodes):
-    # create a new partition
+    # remove weights reloading transform
+    self.partitions[partition_index].remove_weights_reloading_transform()
+     # create a new partition
     self.partitions.insert(partition_index,copy.deepcopy(self.partitions[partition_index]))
     # split the graph
     partition_graphs = graphs.split_graph_vertical(self.partitions[partition_index].graph,nodes)
     self.partitions[partition_index].graph   = partition_graphs[0]
     self.partitions[partition_index+1].graph = partition_graphs[1]
-    # reset weights reloading
-    self.apply_max_weights_reloading(partition_index)
-    self.apply_max_weights_reloading(partition_index+1)
+    # apply max weights reloading to both
+    self.partitions[partition_index].apply_max_weights_reloading()
+    self.partitions[partition_index+1].apply_max_weights_reloading()
 
 def merge_horizontal(self,partition_index_a,partition_index_b):
-    partition_index = partition_index_a
+    # remove weights reloading transform
+    self.partitions[partition_index_a].remove_weights_reloading_transform()
+    self.partitions[partition_index_b].remove_weights_reloading_transform()
     # merge graphs
     graph = graphs.merge_graphs_horizontal(self.partitions[partition_index_a].graph,self.partitions[partition_index_b].graph)
-    self.partitions[partition_index].graph = graph
-    # keep weights reloading of last layer
-    self.partitions[partition_index].wr_layer  = self.partitions[partition_index_b].wr_layer 
-    self.partitions[partition_index].wr_factor = self.partitions[partition_index_b].wr_factor 
+    self.partitions[partition_index_a].graph = graph
+    # apply max weights reloading
+    self.partitions[partition_index_a].apply_max_weights_reloading()
     # remove last partition
     del self.partitions[partition_index_b]
 
 def merge_vertical(self, partition_index_a, partition_index_b):
-    partition_index = partition_index_a
+    # remove weights reloading transform
+    self.partitions[partition_index_a].remove_weights_reloading_transform()
+    self.partitions[partition_index_b].remove_weights_reloading_transform()
     # merge graphs
     graph = graphs.merge_graphs_vertical(self.partitions[partition_index_a].graph,self.partitions[partition_index_b].graph)
     # update graphs
-    self.partitions[partition_index].graph = graph
+    self.partitions[partition_index_a].graph = graph
     # remove weights reloading
-    self.apply_max_weights_reloading(partition_index)
+    self.partitions[partition_index_a].apply_max_weights_reloading()
     # remove last partition
     del self.partitions[partition_index_b]
 

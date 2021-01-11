@@ -51,6 +51,7 @@ dependencies:
   - torchvision=0.4.2=cuda100py36hecfc37a_0
   - wheel=0.36.2=pyhd3eb1b0_0
   - xz=5.2.5=h7b6447c_0
+  - yaml=0.2.5=h7b6447c_0
   - zlib=1.2.11=h7b6447c_3
   - zstd=1.4.5=h9ceee32_0
   - pip:

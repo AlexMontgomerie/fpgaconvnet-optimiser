@@ -1,0 +1,13 @@
+{
+  "name" : "zc706",
+  "DSP"  : 900,
+  "BRAM" : 1090,
+  "FF"   : 437200,
+  "LUT"  : 218600,
+  "freq"          : 150000000,
+  "reconf_time"   : 0.08255,
+  "mem_bandwidth" : 16,
+  "mem_capacity"  : 1024000000,
+  "ports"         : 2,
+  "port_width"    : 64
+}

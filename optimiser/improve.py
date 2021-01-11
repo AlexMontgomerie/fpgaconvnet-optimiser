@@ -14,7 +14,7 @@ THROUGHPUT=1
 START_LOOP=1000
 
 class Improve(Optimiser):
-    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10):
+    def __init__(self,name,network_path,T=10.0,k=0.0001,T_min=0.0001,cool=0.95,iterations=50):
 
         # Initialise Network
         Optimiser.__init__(self,name,network_path)
@@ -89,18 +89,21 @@ class Improve(Optimiser):
  
         # Cooling Loop
         while self.T_min < self.T:
+            
+            # update partitions
+            self.update_partitions()
+
+            # get the current cost
+            cost = self.get_cost()
+
+            # Save previous iteration
+            partitions = copy.deepcopy(self.partitions)
 
             # several iterations per cool down
             for _ in range(self.iterations):
                 
                 # update partitions
                 self.update_partitions()
-
-                # get the current cost
-                cost = self.get_cost()
-            
-                # Save previous iteration
-                partitions = copy.deepcopy(self.partitions)
 
                 # remove all auxiliary layers
                 for i in range(len(self.partitions)):

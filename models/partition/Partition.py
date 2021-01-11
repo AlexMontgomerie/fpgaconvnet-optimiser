@@ -23,7 +23,7 @@ class Partition():
         self.streams_out = streams_out
 
         ## weights reloading
-        self.wr_layer   = ""
+        self.wr_layer   = self.get_wr_layer()
         self.wr_factor  = wr_factor 
 
         ## featuremap size
@@ -51,14 +51,35 @@ class Partition():
         #self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
         #self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
 
+
+    ## fine transform
+    from transforms.fine import apply_random_fine_layer 
+    from transforms.fine import apply_complete_fine 
+
+    ## weights reloading transform
+    from transforms.weights_reloading import get_wr_layer
+    from transforms.weights_reloading import get_weights_reloading_factors
+    from transforms.weights_reloading import apply_random_weights_reloading 
+    from transforms.weights_reloading import apply_max_weights_reloading 
+    from transforms.weights_reloading import remove_weights_reloading_transform 
+    from transforms.weights_reloading import apply_weights_reloading_transform 
+
+    ## coarse transform
+    from transforms.coarse import apply_random_coarse_layer
+    from transforms.coarse import apply_max_coarse
+    from transforms.coarse import apply_max_coarse_layer
+    from transforms.coarse import fix_coarse
+
     # auxiliary layer functions
     from models.partition.auxiliary import add_squeeze
     from models.partition.auxiliary import remove_squeeze
 
+    # metrics
     from models.partition.metrics import get_pipeline_depth
     from models.partition.metrics import get_interval
     from models.partition.metrics import get_latency
-
+    
+    # update
     from models.partition.update import update_modules
     from models.partition.update import update_coefficients
 

@@ -16,4 +16,3 @@ outputs/
 data/inputs/
 data/weights/
 onnx/
-examples/

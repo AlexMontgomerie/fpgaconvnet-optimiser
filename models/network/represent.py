@@ -36,7 +36,7 @@ def save_all_partitions(self,filepath): # TODO: update
         partition.output_node = self.get_model_output_node(i) #self.partitions[i]['output_nodes'][0]
         partition.batch_size  = self.partitions[i].batch_size
         partition.weights_reloading_factor = self.partitions[i].wr_factor
-        partition.weights_reloading_layer  = self.partitions[i].wr_layer
+        partition.weights_reloading_layer  = str(self.partitions[i].wr_layer)
         # add all layers (in order)
         for node in graphs.ordered_node_list(self.partitions[i].graph):
             # create layer

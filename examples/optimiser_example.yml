@@ -1,0 +1,11 @@
+probabilities:
+    coarse: 0.25
+    fine: 0.25
+    weights_reloading: 0.25
+    partition: 0.25
+annealing:
+    T: 10.0
+    T_min: 0.00001
+    k: 0.1
+    cool: 0.97
+    iterations: 50
