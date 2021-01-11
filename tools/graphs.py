@@ -81,11 +81,6 @@ def view_graph(graph,filepath):
     g = pydot.Dot(graph_type='digraph')
     g.set_node_defaults(shape='record')
     for node in graph:
-        #if graph.nodes[node]['type'] == 'Input':
-        #    node_type = 'INPUT'
-        #    rows      = graph.nodes[node]['rows']
-        #    cols      = graph.nodes[node]['cols']
-        #    channels  = graph.nodes[node]['channels']
         if graph.nodes[node]['type'] == LAYER_TYPE.Concat:
             layer_info = graph.nodes[node]['hw'].layer_info()
             node_type  = layer_info['type']            
@@ -109,88 +104,3 @@ def view_graph(graph,filepath):
             #g.add_edge(pydot.Edge(node,edge,splines="ortho"))
             g.add_edge(pydot.Edge(node,edge,splines="line"))
     g.write_png('outputs/images/'+name+'.png')
-
-
-###########################################
-
-
-"""
-def check_graphs_equivalent(graph_a,graph_b):
-    # check all nodes there
-    node_list_a = get_node_list(graph_a) 
-    node_list_b = get_node_list(graph_b) 
-    if not set(node_list_a) == set(node_list_b):
-        return False
-    # check all edges there
-    edge_list_a = get_edge_list(graph_a) 
-    edge_list_b = get_edge_list(graph_b) 
-    if not set(edge_list_a) == set(edge_list_b):
-        return False
-    return True
-
-def split_graph_horizontal(graph,edge):
-    graph_a = {}
-    graph_b = {}
-    nodes_before = get_nodes_before(graph,edge[0])
-    nodes_after  = get_nodes_after(graph,edge[0])
-    # add all nodes before to graph a
-    for node in nodes_before:
-        graph_a[node] = graph[node]
-    # add final node of graph a
-    graph_a[edge[0]] = []
-    # add all nodes after to graph a
-    for node in nodes_after:
-        graph_b[node] = graph[node]
-    # return both graphs
-    return graph_a, graph_b
-
-def split_graph_vertical(graph,nodes):
-    input_node  = get_first_node(graph)
-    output_node = get_last_node(graph)
-    graph_a = { input_node : nodes[0] }
-    graph_b = { input_node : nodes[1] }
-    # iterative function
-    def _iterate_graph(graph_ref,graph_new,node):
-        graph_new[node] = graph_ref[node]
-        if graph_ref[node]:
-            return _iterate_graph(graph_ref,graph_new,graph_ref[node][0])
-    # iterate for each graph
-    for branch in graph_a[input_node]:
-        _iterate_graph(graph,graph_a,branch)
-    for branch in graph_b[input_node]:
-        _iterate_graph(graph,graph_b,branch)
-    del graph_a[output_node]
-    del graph_b[output_node]
-    graph_a[output_node] = []
-    graph_b[output_node] = []
-    return graph_a, graph_b
-
-def merge_graphs_horizontal(graph_a,graph_b):
-    # get the connecting edge
-    node_from = get_last_node(graph_a)
-    node_to   = get_first_node(graph_b)
-    # return the combined graph with the updated edge
-    graph_a[node_from] = [node_to]
-    graph_a.update(graph_b)
-    return graph_a   
-
-def merge_graphs_vertical(graph_a,graph_b):
-    # update input edge 
-    input_node = get_first_node(graph_a)
-    graph_b[input_node].extend(graph_a[input_node])
-    # update graphs
-    graph_a.update(graph_b)
-    return graph_a
-
-def add_node(graph,start_node,new_node,end_node):
-    graph[start_node].append(new_node)
-    graph[start_node].remove(end_node)
-    graph[new_node] = [end_node]
-
-def remove_node(graph,start_node,old_node,end_node):
-    graph[start_node].append(end_node)
-    graph[start_node].remove(old_node)
-    del graph[old_node]
-
-"""
-

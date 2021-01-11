@@ -236,5 +236,5 @@ def parse_net(filepath,view=True):
     # add layer dimensions
     add_dimensions(model, graph)
 
-    return graph
+    return model, graph
 

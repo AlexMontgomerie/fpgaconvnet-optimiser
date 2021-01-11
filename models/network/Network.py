@@ -34,7 +34,7 @@ class Network():
         self.batch_size = batch_size
  
         # load network
-        self.graph = parser.parse_net(network_path, view=False)
+        self.model, self.graph = parser.parse_net(network_path, view=False)
 
         # node and edge lists
         self.node_list = list(self.graph.nodes())

@@ -43,25 +43,6 @@ class ReLULayer(Layer):
         parameters.coarse_out   = self.coarse_out
         parameters.coarse       = self.coarse_out
 
-    """
-    def layer_info(self):
-        return {
-            'type'          : 'RELU',
-            'buffer_depth'  : self.buffer_depth,
-            'rows'          : self.rows,
-            'cols'          : self.cols,
-            'channels'      : self.channels,
-            'coarse'        : self.coarse_in,
-            'coarse_in'     : self.coarse_in,
-            'coarse_out'    : self.coarse_out,
-            'size_in'       : int(self.rows*self.cols*self.channels),
-            'size_out'      : int(self.rows_out()*self.cols_out()*self.channels_out()),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
-    """
-
     ## UPDATE MODULES ##
     def update(self):
         self.modules['relu'].rows     = self.rows_in()

@@ -20,6 +20,11 @@ if __name__ == "__main__":
         help='Batch size')
     parser.add_argument('--objective',choices=['throughput','latency'],required=True,
         help='Optimiser objective')
+    parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition'],
+        default=['fine','coarse','weights_reloading','partition'],
+        help='network transforms')
+    parser.add_argument('--optimiser',choices=['simulated_annealing','improve'],default='improve',
+        help='Optimiser strategy')
 
     args = parser.parse_args()
 
@@ -35,26 +40,30 @@ if __name__ == "__main__":
     with open(args.platform_path,'r') as f:
         platform = json.load(f)
 
-    #net.load_platform(args.platform_path)
+    # update platform information
     net.update_platform(args.platform_path)
 
-    net.transforms = ['fine','coarse','weights_reloading','partition']
-    net.transforms = ['fine','coarse','weights_reloading']
-    net.objective  = 1 
+    # specify optimiser objective
+    if args.objective == "throughput":
+        net.objective  = 1 
+    if args.objective == "latency":
+        net.objective  = 0
+
+    # specify batch size
     net.batch_size = args.batch_size
 
-    # apply complete fine
-    net.apply_complete_fine()
+    # specify available transforms
+    net.transforms = args.transforms
 
     # initialize graph
     ## completely partition graph
-    #net.split_complete()
-    # apply complete max weights reloading
+    net.split_complete()
+    ## apply complete max weights reloading
     for partition_index in range(len(net.partitions)):
         net.apply_max_weights_reloading(partition_index)
 
     # run optimiser
-    #net.run_optimiser()
+    net.run_optimiser()
 
     # update all partitions
     net.update_partitions()
@@ -63,13 +72,6 @@ if __name__ == "__main__":
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
 
-    print("mem usage:  ",net.get_memory_usage_estimate())
-    print("batch size: ",net.batch_size)
-
-    # create plots
-    #net.layer_interval_plot()
-    #net.partition_interval_plot()
-
     # create report
     net.create_report(os.path.join(args.output_path,"report.json"))
 
@@ -77,5 +79,4 @@ if __name__ == "__main__":
     net.save_all_partitions(args.output_path)
     
     # create scheduler
-    #schedule = net.get_scheduler()
     net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))

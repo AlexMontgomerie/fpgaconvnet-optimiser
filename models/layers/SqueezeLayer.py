@@ -32,21 +32,3 @@ class SqueezeLayer(Layer):
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
 
-    """
-    def layer_info(self):
-        return {
-            'type'          : 'SQUEEZE',
-            'buffer_depth'  : self.buffer_depth,
-            'rows'          : self.rows,
-            'cols'          : self.cols,
-            'channels'      : self.channels,
-            'coarse_in'     : self.coarse_in,
-            'coarse_out'    : self.coarse_out,
-            'size_in'       : int(self.rows*self.cols*self.channels),
-            'size_out'      : int(self.rows_out()*self.cols_out()*self.channels_out()),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
-    """
-

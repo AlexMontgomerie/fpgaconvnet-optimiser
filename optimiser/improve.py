@@ -10,21 +10,21 @@ from operator import itemgetter
 
 LATENCY   =0
 THROUGHPUT=1
-POWER     =2
 
 START_LOOP=1000
 
 class Improve(Optimiser):
-    def __init__(self,name,network_path):
+    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10):
+
         # Initialise Network
         Optimiser.__init__(self,name,network_path)
 
         # Simulate Annealing Variables
-        self.T          = 10.0
-        self.k          = 0.001
-        self.T_min      = 0.0001
-        self.cool       = 0.97
-        self.iterations = 10
+        self.T          = T
+        self.k          = k
+        self.T_min      = T_min
+        self.cool       = cool
+        self.iterations = iterations
 
     """    
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,7 +35,7 @@ class Improve(Optimiser):
 
     def optimiser_status(self):
         # objective
-        objectives = [ 'latency', 'throughput','power']
+        objectives = ['latency','throughput']
         objective  = objectives[self.objective]
         # cost 
         cost = self.get_cost()
@@ -64,9 +64,7 @@ class Improve(Optimiser):
             self.check_constraints()
             start = True
         except AssertionError as error:
-            print("ERROR: Exceeds resource usage")
-            #print(error)
-            #return
+            print("ERROR: Exceeds resource usage (trying to find valid starting point)")
         
         # Attempt to find a good starting point
         if not start:
@@ -87,7 +85,6 @@ class Improve(Optimiser):
             self.check_constraints()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
-            #print(error)
             return
  
         # Cooling Loop
@@ -95,8 +92,7 @@ class Improve(Optimiser):
 
             # several iterations per cool down
             for _ in range(self.iterations):
-                #print(self.partitions)
-
+                
                 # update partitions
                 self.update_partitions()
 
@@ -129,24 +125,23 @@ class Improve(Optimiser):
                 ## Update partitions
                 self.update_partitions()
 
-                # Check resources
-                try: 
-                    #self.check_ports() # TODO
-                    self.check_resources()
-                    self.check_constraints()
-                except AssertionError:
-                    # revert to previous state
-                    self.partitions = partitions
-                    continue
+            # Check resources
+            try: 
+                self.check_resources()
+                self.check_constraints()
+            except AssertionError:
+                # revert to previous state
+                self.partitions = partitions
+                continue
 
-                # Simulated annealing descision
-                if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
-                    # revert to previous state
-                    self.partitions = partitions
+            # Simulated annealing descision
+            if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
+                # revert to previous state
+                self.partitions = partitions
 
-                # update cost
-                if self.DEBUG:
-                    self.optimiser_status()
+            # update cost
+            if self.DEBUG:
+                self.optimiser_status()
 
             # reduce temperature
             self.T *= self.cool

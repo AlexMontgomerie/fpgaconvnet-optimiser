@@ -25,7 +25,7 @@ class PoolingLayer(Layer):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
 
         # update flags
-        self.flags['transformable']     = True
+        self.flags['transformable'] = True
 
         self.k_size     = k_size
         self.stride     = stride
@@ -81,35 +81,7 @@ class PoolingLayer(Layer):
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
-
   
-    """
-    return {
-            'type'          : 'POOLING',
-            'buffer_depth'  : self.buffer_depth,
-            'rows'          : self.rows,
-            'cols'          : self.cols,
-            'channels'      : self.channels,
-            'kernel_size'   : self.k_size,
-            'stride'        : self.stride,
-            'pad'           : self.pad,
-            'pad_top'       : self.pad_top,
-            'pad_right'     : self.pad_right,
-            'pad_bottom'    : self.pad_bottom,
-            'pad_left'      : self.pad_left,
-            'coarse'        : self.coarse_in,
-            'coarse_in'     : self.coarse_in,
-            'coarse_out'    : self.coarse_out,
-            'fine'          : self.fine,
-            'pool_type'     : self.pool_type,
-            'size_in'       : int(self.rows*self.cols*self.channels),
-            'size_out'      : int(self.rows_out()*self.cols_out()*self.channels_out()),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-    }   
-    """
-
     ## UPDATE MODULES ##
     def update(self):
         # sliding window
@@ -153,31 +125,6 @@ class PoolingLayer(Layer):
                       pool_rsc['DSP']*self.coarse_in
         }
 
-    """
-    def static_power(self):
-
-        static_power = 0
-
-        static_power += self.coarse_in*self.modules['sliding_window'].static_power()
-        static_power += self.coarse_in*self.modules['pool'].static_power()
-
-        # Total
-        return static_power
-
-
-    def dynamic_power(self, freq, rate):
-
-        freq = freq/1000
-        dynamic_power = 0
-
-        dynamic_power += self.coarse_in*self.modules['sliding_window'].dynamic_power(freq,rate,self.sa,self.sa_out)
-        dynamic_power += self.coarse_in*self.modules['pool'].dynamic_power(freq,rate,self.sa,self.sa_out)
-
-        # Total
-        return dynamic_power
-
-    """
-    
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
@@ -203,4 +150,3 @@ class PoolingLayer(Layer):
         data = np.moveaxis(data, -1, 0)
         data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
         return pooling_layer(torch.from_numpy(data)).detach().numpy()
-

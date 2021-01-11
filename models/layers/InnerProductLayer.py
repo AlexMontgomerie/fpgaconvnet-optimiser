@@ -79,27 +79,6 @@ class InnerProductLayer(Layer):
         parameters.coarse_out   = self.coarse_out
         parameters.filters      = self.filters
 
-        """
-        return {
-            'type'          : 'INNER_PRODUCT',
-            'buffer_depth'  : self.buffer_depth,
-            'rows'          : self.rows,
-            'cols'          : self.cols,
-            'channels'      : self.channels,
-            'kernel_size'   : 1,
-            'fine'          : 1,
-            'filters'       : self.filters,
-            'coarse_in'     : self.coarse_in,
-            'coarse_out'    : self.coarse_out,
-            'size_in'       : int(self.rows*self.cols*self.channels),
-            'size_out'      : int(self.rows_out()*self.cols_out()*self.channels_out()),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out(),
-            'wr_factor'     : wr_factor
-        }
-        """
-
     ## UPDATE MODULES ##
     def update(self): # TODO: update all parameters
         # fork
@@ -190,44 +169,6 @@ class InnerProductLayer(Layer):
                       glue_rsc['DSP']
         }
 
-    """
-    def static_power(self):
-
-        static_power = 0
-
-        static_power += self.coarse_in*self.modules['sliding_window'].static_power()
-        static_power += self.coarse_in*self.modules['fork'].static_power()
-        static_power += self.coarse_in*self.coarse_out*self.modules['conv'].static_power()
-        if self.channels != 1:
-            static_power += self.coarse_in*self.coarse_out*self.modules['accum'].static_power()
-        if self.channels != 1:
-            static_power += self.modules['glue'].static_power()
-
-        # Total
-        return static_power
-
-
-    def dynamic_power(self, freq, rate): # TODO: get models
-
-        freq = freq/1000
-        dynamic_power = 0
-
-        dynamic_power += self.coarse_in*self.modules['sliding_window'].dynamic_power(freq,rate,self.sa,self.sa_out)
-        dynamic_power += self.coarse_in*self.modules['fork'].dynamic_power(freq,rate,self.sa,self.sa_out)
-        dynamic_power += self.coarse_in*self.coarse_out*self.modules['conv'].dynamic_power(freq,rate,self.sa,self.sa_out)
-
-        # update rate
-        rate = rate*self.fine/float(self.k_size*self.k_size)
-
-        if self.channels != 1:
-            dynamic_power += self.coarse_in*self.coarse_out*self.modules['accum'].dynamic_power(freq,rate,self.sa,self.sa_out)
-        if self.channels != 1:
-            dynamic_power += self.modules['glue'].dynamic_power(freq,rate,self.sa,self.sa_out)
-
-        # Total
-        return dynamic_power
-    """
-
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
@@ -272,59 +213,3 @@ class InnerProductLayer(Layer):
         data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
         return inner_product_layer(torch.from_numpy(data)).detach().numpy()
 
-
-        """
-        # assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
-
-        # create Caffe Layer
-        net = caffe.NetSpec()
-
-        lmdb_path = '/tmp/lmdb'
-        lmdb = tools.third_party.lmdb_io.LMDB(lmdb_path)
-
-        write_images = [(np.random.rand(self.rows , self.cols , self.channels)*255).astype(np.uint8)]*batch_size
-        write_labels = [0]*batch_size
-        lmdb.write(write_images,write_labels)
-
-        # create inputs
-        net.data, _ = caffe.layers.Data(
-            batch_size = batch_size,
-            backend = caffe.params.Data.LMDB,
-            source = lmdb_path,
-            transform_param = dict(scale = 1./255),
-            ntop = 2)
-
-        net.inner_product = caffe.layers.InnerProduct(
-            net.data,
-            num_output=self.filters,
-            weight_filler=dict(type='xavier')
-        )
-        #print(net.to_proto())
-
-        train_prototxt = tempfile.NamedTemporaryFile(prefix='train_',suffix='.prototxt')
-        test_prototxt  = tempfile.NamedTemporaryFile(prefix='test_' ,suffix='.prototxt')
-
-        # write train file
-        train_prototxt.write(str(net.to_proto()).encode('utf-8'))
-        train_prototxt.seek(0)
-
-        # convert to deploy prototxt       
-        tools.third_party.prototxt.train2deploy(train_prototxt.name,[batch_size,self.channels,self.rows,self.cols],test_prototxt.name)
-
-        # Load network
-        net = caffe.Net(test_prototxt.name,caffe.TEST)
-
-        # Close temporary files
-        train_prototxt.close()
-        test_prototxt.close()
-
-        # load network inputs
-        net.blobs['data'].data[...][0]  = np.moveaxis(data, -1, 0)
-        net.params['inner_product'][0].data[...] = weights
-        net.params['inner_product'][1].data[...] = np.zeros([self.filters]) 
-
-        # run network
-        net.forward()
-
-        return net.blobs['inner_product'].data[0]
-        """

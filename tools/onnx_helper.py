@@ -119,10 +119,8 @@ def add_input_from_initializer(model : onnx.ModelProto):
 
 def load(filepath):
     model = onnx.load(filepath)
-    #print(model.graph.input)
     onnx.checker.check_model(model)
     model = onnx.shape_inference.infer_shapes(model)
-    #model = version_converter.convert_version(model, 12)
     model = onnx.utils.polish_model(model)
     passes = ["extract_constant_to_initializer", "eliminate_unused_initializer","fuse_bn_into_conv"]
     model = optimizer.optimize(model, passes=passes)

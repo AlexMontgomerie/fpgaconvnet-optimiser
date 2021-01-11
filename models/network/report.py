@@ -9,6 +9,7 @@ def create_report(self, output_path):
         "total_iterations" : 0, # TODO
         "platform" : self.platform,
         "network" : {
+            "memory_usage" : self.get_memory_usage_estimate(),
             "performance" : {
                 "latency" : self.get_latency(),
                 "throughput" : self.get_throughput()
@@ -29,6 +30,7 @@ def create_report(self, output_path):
         # add partition information
         report["partitions"][i] = {
             "partition_index" : i,
+            "batch_size" : self.partitions[i].batch_size,
             "num_layers" : len(self.partitions[i].graph.nodes()),
             "latency" : latency,
             "weights_reloading_factor" : self.partitions[i].wr_factor,
