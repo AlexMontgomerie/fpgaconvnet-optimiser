@@ -36,9 +36,7 @@ class Module:
             'channels_out'  : self.channels_out()
         }
 
-    def load_coef(self,static_coef_path,dynamic_coef_path,rsc_coef_path):
-        self.static_coef  = np.load(static_coef_path) 
-        self.dynamic_coef = np.load(dynamic_coef_path) 
+    def load_coef(self,rsc_coef_path):
         self.rsc_coef     = np.load(rsc_coef_path) 
 
     """    

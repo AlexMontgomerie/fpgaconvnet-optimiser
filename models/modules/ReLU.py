@@ -24,7 +24,7 @@ class ReLU(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def load_coef(self,static_coef_path,dynamic_coef_path,rsc_coef_path):
+    def load_coef(self,rsc_coef_path):
         pass
 
     def rsc(self):

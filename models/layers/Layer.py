@@ -217,11 +217,8 @@ class Layer:
 
     def load_coef(self):
         for module in self.modules:
-            self.modules[module].load_coef(
-                os.path.join(os.getenv("FPGACONVNET_ROOT"),"data/model_coefficients/{}_static_coef.npy".format(module)),
-                os.path.join(os.getenv("FPGACONVNET_ROOT"),"data/model_coefficients/{}_dynamic_coef.npy".format(module)),
-                os.path.join(os.getenv("FPGACONVNET_ROOT"),"data/model_coefficients/{}_rsc_coef.npy".format(module)),
-            )
+            print(module)
+            self.modules[module].load_coef("coefficients/{}_rsc_coef.npy".format(module))
 
     def update(self):
         pass
