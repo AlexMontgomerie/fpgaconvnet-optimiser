@@ -10,7 +10,6 @@ data/
 **.bin
 **.csv
 **.yaml
-**.yml
 rpt/
 
 outputs/
