@@ -1,3 +1,4 @@
+import pydot
 import numpy as np
 import proto.fpgaconvnet_pb2 as fpgaconvnet_pb2 
 from google.protobuf.json_format import MessageToDict

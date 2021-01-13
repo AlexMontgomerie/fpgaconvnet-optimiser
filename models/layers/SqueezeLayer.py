@@ -1,5 +1,6 @@
 from models.layers.Layer import Layer
 
+import pydot
 import numpy as np
 
 class SqueezeLayer(Layer):
@@ -31,4 +32,18 @@ class SqueezeLayer(Layer):
         parameters.channels_out = self.channels_out()
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
+
+    def visualise(self,name):
+        cluster = pydot.Cluster(name,label=name)
+    
+        # add squeeze module
+        cluster.add_node(pydot.Node( "_".join([name,"squeeze"]), label="squeeze" ))
+
+        # get nodes in and out
+        nodes_in  = [ "_".join([name,"squeeze"]) for i in range(self.coarse_in) ]
+        nodes_out = [ "_".join([name,"squeeze"]) for i in range(self.coarse_out) ]
+
+        # return module
+        return cluster, nodes_in, nodes_out
+
 

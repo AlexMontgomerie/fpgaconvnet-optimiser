@@ -55,7 +55,11 @@ class ReLULayer(Layer):
         for i in range(self.coarse_in):
             cluster.add_node(pydot.Node( "_".join([name,"relu",str(i)]), label="relu" ))
 
-        return cluster, "_".join([name,"relu"]), "_".join([name,"relu"])
+        # get nodes in and out
+        nodes_in  = [ "_".join([name,"relu",str(i)]) for i in range(self.coarse_in) ]
+        nodes_out = [ "_".join([name,"relu",str(i)]) for i in range(self.coarse_out) ]
+
+        return cluster, nodes_in, nodes_out
 
     def functional_model(self,data,batch_size=1):
 

@@ -160,4 +160,11 @@ class Network():
         # return the frames per second
         return float(self.batch_size)/self.get_latency()
 
+    def visualise(self, output_path):
+        g = pydot.Dot(graph_type='digraph')
+        for partition in self.partitions:
+            partition_cluster = partition.visualise(self.partitions.index(partition))
+            g.add_subgraph(partition_cluster)
+        # save graph
+        g.write_png(output_path)
 

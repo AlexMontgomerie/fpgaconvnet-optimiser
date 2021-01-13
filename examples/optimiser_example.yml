@@ -1,8 +1,19 @@
-probabilities:
-    coarse: 0.25
-    fine: 0.25
-    weights_reloading: 0.25
-    partition: 0.25
+transforms:
+    fine:
+        apply_transform: true
+        probability: 0.25
+        start_complete: false
+    coarse:
+        apply_transform: true
+        probability: 0.25
+    weights_reloading:
+        apply_transform: true
+        probability: 0.25
+        start_max: true
+    partition:
+        apply_transform: true
+        probability: 0.25
+        start_complete: true
 annealing:
     T: 10.0
     T_min: 0.00001

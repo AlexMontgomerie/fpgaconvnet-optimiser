@@ -37,7 +37,7 @@ python -m run_optimiser --name vgg16 \
     --objective throughput \
     --transforms fine weights_reloading coarse partition \
     --optimiser simulated_annealing \
-    --optimiser_config_path examples/optimiser_example.yml \
+    --optimiser_config_path examples/optimiser_example.yml 
 ```
 
 This will generate the following files:
@@ -45,6 +45,7 @@ This will generate the following files:
 - `(output_path)/(name).prototxt`: Hardware topology description for backend
 - `(output_path)/report.json`: A report file containing estimations of usage and performance
 - `(output_path)/scheduler.csv`: A schedule for running partitions as well as information for memory management
+- `(output_path)/topology.png`: Visualisation of the hardware topology
 
 These files in the output directory can be used with [fpgaConvNet HLS](https://github.com/AlexMontgomerie/fpgaconvnet-hls) to generate the actual hardware and run on the board.
 

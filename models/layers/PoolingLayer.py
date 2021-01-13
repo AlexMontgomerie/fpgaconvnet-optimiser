@@ -135,7 +135,11 @@ class PoolingLayer(Layer):
             cluster.add_node(pydot.Node( "_".join([name,"pool",str(i)]), label="pool" ))
             cluster.add_edge(pydot.Edge( "_".join([name,"sw",str(i)]) , "_".join([name,"pool",str(i)]) ))
 
-        return cluster, "_".join([name,"sw"]), "_".join([name,"pool"])
+        # get nodes in and out
+        nodes_in  = [ "_".join([name,"sw",str(i)]) for i in range(self.coarse_in) ]
+        nodes_out = [ "_".join([name,"pool",str(i)]) for i in range(self.coarse_out) ]
+
+        return cluster, nodes_in, nodes_out
 
     def functional_model(self,data,batch_size=1):
 

@@ -250,7 +250,11 @@ class ConvolutionLayer(Layer):
                 cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(i),str(j)]), "_".join([name,"accum",str(i),str(j)]) ))
                 cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(i),str(j)]), "_".join([name,"glue",str(j)]) ))
 
-        return cluster, "_".join([name,"sw"]), "_".join([name,"glue"])
+        # get nodes in and out
+        nodes_in  = [ "_".join([name,"sw",str(i)]) for i in range(self.coarse_in) ]
+        nodes_out = [ "_".join([name,"glue",str(i)]) for i in range(self.coarse_out) ]
+
+        return cluster, nodes_in, nodes_out
 
     def functional_model(self,data,weights,bias,batch_size=1):
 

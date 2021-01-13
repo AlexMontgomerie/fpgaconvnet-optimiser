@@ -35,11 +35,12 @@ if __name__ == "__main__":
     shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
+    # load optimiser config
+    with open(args.optimiser_config_path,"r") as f:
+        optimiser_config = yaml.load(f)
+    
     # load network
     if args.optimiser == "improve":
-        # load config file
-        with open(args.optimiser_config_path,"r") as f:
-            optimiser_config = yaml.load(f)
         # create network
         net = Improve(args.name,args.model_path,
                 T=float(optimiser_config["annealing"]["T"]),
@@ -48,9 +49,6 @@ if __name__ == "__main__":
                 cool=float(optimiser_config["annealing"]["cool"]),
                 iterations=int(optimiser_config["annealing"]["iterations"]))
     elif args.optimiser == "simulated_annealing":
-        # load config file
-        with open(args.optimiser_config_path,"r") as f:
-            optimiser_config = yaml.load(f)
         # create network
         net = SimulatedAnnealing(args.name,args.model_path,
                 T=float(optimiser_config["annealing"]["T"]),
@@ -82,14 +80,18 @@ if __name__ == "__main__":
     net.transforms = args.transforms
 
     # initialize graph
+
     ## completely partition graph
-    net.split_complete()
+    if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
+        net.split_complete()
+    
     ## apply complete max weights reloading
-    for partition_index in range(len(net.partitions)):
-        net.partitions[partition_index].apply_max_weights_reloading()
+    if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
+        for partition_index in range(len(net.partitions)):
+            net.partitions[partition_index].apply_max_weights_reloading()
 
     # run optimiser
-    net.run_optimiser()
+    #net.run_optimiser()
 
     # update all partitions
     net.update_partitions()
@@ -97,6 +99,9 @@ if __name__ == "__main__":
     # find the best batch_size
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
+
+    # visualise network
+    net.visualise(os.path.join(args.output_path,"topology.png"))
 
     # create report
     net.create_report(os.path.join(args.output_path,"report.json"))

@@ -1,3 +1,6 @@
+import pydot
+import tools.graphs as graphs
+
 class Partition():
 
     def __init__(
@@ -103,3 +106,21 @@ class Partition():
         # return resource usage for partition
         return resource_usage
 
+    def visualise(self, partition_index):
+        cluster = pydot.Cluster(str(partition_index),label=f"partition: {partition_index}")
+        # add clusters
+        edge_labels = {}
+        for node in self.graph:
+            node_cluster, nodes_in, nodes_out = self.graph.nodes[node]['hw'].visualise(node)
+            edge_labels[node] = {
+                "nodes_in"  : nodes_in,
+                "nodes_out" : nodes_out
+            }
+            cluster.add_subgraph(node_cluster)
+        # create edges
+        for node in self.graph:
+            for edge in graphs.get_next_nodes(self.graph,node):
+                for i in range(self.graph.nodes[node]['hw'].coarse_out):
+                    cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i] ,edge_labels[edge]["nodes_in"][i]))
+        # return cluster
+        return cluster
