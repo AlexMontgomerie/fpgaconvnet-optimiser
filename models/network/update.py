@@ -13,7 +13,7 @@ def update_partitions(self):
 
         ## update all modules again
         self.partitions[partition_index].update_modules()
-        
+       
         ## remove auxiliary layers
         self.partitions[partition_index].remove_squeeze()
         

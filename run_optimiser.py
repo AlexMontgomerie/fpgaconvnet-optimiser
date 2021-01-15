@@ -3,6 +3,8 @@ import yaml
 import json
 import argparse
 import shutil
+import random
+import numpy as np
 
 from optimiser.simulated_annealing import SimulatedAnnealing
 from optimiser.improve import Improve
@@ -28,8 +30,14 @@ if __name__ == "__main__":
         help='Optimiser strategy')
     parser.add_argument('--optimiser_config_path',metavar='PATH',
         help='Configuration file (.yml) for optimiser')
+    parser.add_argument('--seed',metavar='N',type=int,default=1234567890,
+        help='Seed for the optimiser run')
 
     args = parser.parse_args()
+
+    # setup seed
+    random.seed(args.seed)
+    np.random.seed(args.seed)
 
     # copy input files to the output path
     shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
@@ -83,6 +91,7 @@ if __name__ == "__main__":
 
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
+        print("here")
         net.split_complete()
     
     ## apply complete max weights reloading
@@ -91,7 +100,7 @@ if __name__ == "__main__":
             net.partitions[partition_index].apply_max_weights_reloading()
 
     # run optimiser
-    #net.run_optimiser()
+    net.run_optimiser()
 
     # update all partitions
     net.update_partitions()
