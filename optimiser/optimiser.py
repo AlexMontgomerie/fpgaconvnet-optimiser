@@ -90,6 +90,8 @@ class Optimiser(Network):
         ## Partition transform (partition transform)
         if transform == 'partition':
             ### apply random partition
+            # remove squeeze layers prior to partitioning
+            self.partitions[partition_index].remove_squeeze()
             self.apply_random_partition(partition_index)
             return
 
