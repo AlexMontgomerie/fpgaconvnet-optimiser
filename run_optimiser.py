@@ -40,6 +40,9 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
 
     # copy input files to the output path
+    if not os.path.exists(args.output_path):
+        os.makedirs(args.output_path)
+
     shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
