@@ -1,3 +1,7 @@
+"""
+Defines how the graph is split into subgraphs of the model for different reconfigurable components. 
+"""
+
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 from fpgaconvnet_optimiser.transforms.helper import get_all_layers
 from itertools import combinations, chain

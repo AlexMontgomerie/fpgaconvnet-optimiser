@@ -1,3 +1,7 @@
+"""
+These are the basic building blocks of the accelerator.
+"""
+
 from .Module import Module
 from .Accum import Accum
 from .BatchNorm import BatchNorm

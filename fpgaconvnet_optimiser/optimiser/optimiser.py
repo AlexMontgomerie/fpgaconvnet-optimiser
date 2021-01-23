@@ -11,7 +11,30 @@ THROUGHPUT=1
 POWER     =2
 
 class Optimiser(Network):
+    """
+    Base class for all optimisation strategies. This inherits the `Network` class. 
+    """
+
     def __init__(self,name,network_path):
+        """
+        Parameters
+        ----------
+        name: str
+            name of network
+        network_path: str
+            path to network model .onnx file
+
+
+        Attributes
+        ----------
+        objective: int
+            Objective for the optimiser. One of `LATENCY`, `THROUGHPUT` and `POWER`.
+        constraints: dict 
+            dictionary containing constraints for `latency`, `throughput` and `power`.
+        transforms: list
+            list of transforms that can be applied to the network. Allowed transforms
+            are `['coarse','fine','partition','weights_reloading']`
+        """
         # Initialise Network
         Network.__init__(self,name,network_path)
 
@@ -24,14 +47,20 @@ class Optimiser(Network):
 
         self.transforms = ['coarse','fine','partition','weights_reloading']
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    METRICS    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def get_cost(self):
+        """
+        calculates the cost function of the optimisation strategy at it's current state. 
+        This cost is based on the objective of the optimiser. There are three objectives
+        that can be chosen: 
+        
+        - `LATENCY (0)`
+        - `THROUGHPUT (1)`
+        - `POWER (2)`
+
+        Returns: 
+        --------
+        float
+        """
         # Latency objective
         if   self.objective == LATENCY:
             return self.get_latency()
@@ -42,25 +71,37 @@ class Optimiser(Network):
         elif self.objective == POWER:
             return self.get_power_average()    
     
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    CONSTRAINTS    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def check_constraints(self):
-        assert self.get_latency()       <=  self.constraints['latency']  , "ERROR : (constraint violation) Latency constraint exceeded"
+        """
+        function to check the performance constraints of the network. Checks
+        `latency` and `throughput`.
+
+        Raises
+        ------
+        AssertionError
+            If not within performance constraints
+        """
+        assert self.get_latency()       <= self.constraints['latency']  , "ERROR : (constraint violation) Latency constraint exceeded"
         assert self.get_throughput()    >= self.constraints['throughput'], "ERROR : (constraint violation) Throughput constraint exceeded"
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    TRANSFORMS
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def apply_transform(self, transform, partition_index=None, node=None):
+        """
+        function to apply chosen transform to the network. Partition index
+        and node can be specified. If not, a random partition and node is 
+        chosen.
+
+        Parameters
+        ----------
+        transform: str
+            string corresponding to chosen transform. Must be within the
+            following `["coarse","fine","weights_reloading","partition"]`
+        partition_index: int default: None
+            index for partition to apply transform. Must be within
+            `len(self.partitions)`
+        node: str
+            name of node to apply transform. Must be within
+            `self.partitions[partition_index].graph`
+        """
 
         # choose random partition index if not given
         if partition_index == None:
@@ -95,14 +136,10 @@ class Optimiser(Network):
             self.apply_random_partition(partition_index)
             return
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    OPTIMISER
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def optimiser_status(self):
+        """
+        prints out the current status of the optimiser.
+        """
         # objective
         objectives = [ 'latency', 'throughput','power']
         objective  = objectives[self.objective]
@@ -118,6 +155,12 @@ class Optimiser(Network):
             cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\r')
 
     def get_optimal_batch_size(self):
+        """
+        gets an approximation of the optimal (largest) batch size for throughput-based 
+        applications. This is dependant on the platform's memory capacity. Updates the
+        `self.batch_size` variable. 
+        """
+ 
         # change the batch size to zero
         self.batch_size = 1
         # update each partitions batch size
@@ -129,4 +172,7 @@ class Optimiser(Network):
         self.update_batch_size()
 
     def run_optimiser(self, log=True):
+        """
+        template for running the optimiser.
+        """
         pass

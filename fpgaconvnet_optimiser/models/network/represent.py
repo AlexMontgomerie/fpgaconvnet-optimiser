@@ -42,7 +42,7 @@ def save_all_partitions(self,filepath): # TODO: update
             # create layer
             layer = partition.layers.add()
             layer.name = node.replace("/","_")
-            layer.type = tools.layer_enum.to_proto_layer_type(self.partitions[i].graph.nodes[node]['type'])
+            layer.type = fpgaconvnet_optimiser.tools.layer_enum.to_proto_layer_type(self.partitions[i].graph.nodes[node]['type'])
             # add stream(s) in
             stream_in  = layer.streams_in.add()
             prev_nodes = graphs.get_prev_nodes(self.partitions[i].graph, node)

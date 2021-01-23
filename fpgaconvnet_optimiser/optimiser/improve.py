@@ -14,6 +14,10 @@ THROUGHPUT=1
 START_LOOP=1000
 
 class Improve(Optimiser):
+    """
+    Chooses the hardware component causing a bottleneck and performs the same decision as simulated annealing
+    """
+
     def __init__(self,name,network_path,T=10.0,k=0.0001,T_min=0.0001,cool=0.95,iterations=50):
 
         # Initialise Network

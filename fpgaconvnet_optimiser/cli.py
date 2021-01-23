@@ -1,3 +1,7 @@
+"""
+A command line interface for running the optimiser for given networks
+"""
+
 import os
 import yaml
 import json
@@ -9,7 +13,7 @@ import numpy as np
 from fpgaconvnet_optimiser.optimiser.simulated_annealing import SimulatedAnnealing
 from fpgaconvnet_optimiser.optimiser.improve import Improve
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Optimiser Script")
     parser.add_argument('-n','--name',metavar='PATH',required=True,
         help='network name')

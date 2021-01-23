@@ -11,7 +11,8 @@ setuptools.setup(
     description="Optimiser for mapping convolutional neural network models to FPGA platforms.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/alexmontgomerie/fpgaconvnet-optimiser",
+    url="https://github.com/AlexMontgomerie/fpgaconvnet-optimiser",
+    include_package_data=True,
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",

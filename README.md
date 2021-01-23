@@ -29,8 +29,8 @@ The main tool is the optimisation script which generates an optimised hardware t
 To use the optimiser, an example of running it using the `run_optimiser.py` script for VGG16 is as follows:
 
 ```Shell
-python -m run_optimiser --name vgg16 \
-    --model_path examples/models/vgg16bn.onnx \
+python -m fpgaconvnet_optimiser --name vgg16 \
+    --model_path examples/models/vgg16.onnx \
     --platform_path examples/platforms/zc706.json \
     --output_path outputs/vgg16 \
     --batch_size 256 \

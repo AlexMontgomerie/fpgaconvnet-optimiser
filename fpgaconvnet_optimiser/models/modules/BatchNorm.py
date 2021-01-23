@@ -1,3 +1,6 @@
+"""
+.. figure:: ../../../figures/batch_norm_diagram.png
+"""
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math

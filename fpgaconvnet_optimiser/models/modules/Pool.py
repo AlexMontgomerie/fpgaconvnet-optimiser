@@ -1,3 +1,7 @@
+"""
+.. figure:: ../../../figures/pool_max_diagram.png
+"""
+
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math

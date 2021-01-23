@@ -13,8 +13,8 @@ data/
 rpt/
 
 outputs/
-data/inputs/
-data/weights/
 onnx/
 
 .eggs/
+
+docs/fpgaconvnet_optimiser/

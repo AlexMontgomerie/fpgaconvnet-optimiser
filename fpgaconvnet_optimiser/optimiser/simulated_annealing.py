@@ -13,6 +13,10 @@ THROUGHPUT=1
 START_LOOP=1000
 
 class SimulatedAnnealing(Optimiser):
+    """
+Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
+    """
+    
     def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10):
 
         # Initialise Network
@@ -24,13 +28,6 @@ class SimulatedAnnealing(Optimiser):
         self.T_min      = T_min
         self.cool       = cool
         self.iterations = iterations
-
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    OPTIMISER
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
 
     def optimiser_status(self):
         # objective

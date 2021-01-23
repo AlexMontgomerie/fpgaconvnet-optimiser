@@ -1,3 +1,7 @@
+"""
+Reduces on-chip memory usage by creating partial featuremaps across partition iterations
+"""
+
 import copy
 import random
 

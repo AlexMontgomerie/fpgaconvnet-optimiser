@@ -1,3 +1,7 @@
+"""
+.. figure:: ../../../figures/accum_diagram.png
+"""
+
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
@@ -16,13 +20,6 @@ class Accum(Module):
         # init variables
         self.filters = filters
         self.groups  = groups
-
-    def dynamic_model(self, freq, rate, sa_in, sa_out):
-        return [
-            self.data_width*freq,
-            self.data_width*sa*freq*rate,
-            self.data_width*sa*freq*rate/float(self.channels),
-        ]
 
     def utilisation_model(self):
         return [
@@ -72,10 +69,6 @@ class Accum(Module):
           "DSP"  : 0,
           "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
-
-    '''
-    FUNCTIONAL MODEL
-    '''
 
     def functional_model(self,data):
         # check input dimensionality

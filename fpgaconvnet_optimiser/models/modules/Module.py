@@ -1,12 +1,50 @@
 '''
-Template for any module
+Base class for all hardware module models.
 '''
 
 import numpy as np
 import copy
 
 class Module:
+    """
+    modules are the fundamental building block for the hardware 
+    framework. In this base class, performance and resource model
+    templates are included, as well as a template for functional 
+    models. All modules are derived from this base class and contain
+    the same methods. 
+
+    .. note::
+        The model expects that the module is run for a single three 
+        dimensional featuremap. For intermediate modules within a layer, 
+        they may not be operating on a three dimensional tensor, and 
+        so the `rows`, `cols` and `channels` attributes are representative
+        of the tensor if it was flattened to three dimensions.
+    """
     def __init__(self,dim,data_width=16):
+        """
+        Parameters
+        ----------
+        dim: list
+            dimensions of the input featuremap. Should contain
+            `channels`, `rows`, `cols` in that order.
+        data_width: int, default: 16
+            bitwidth of featuremap pixels 
+
+        Attributes
+        ----------
+        rows: int
+            row dimension of input featuremap
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
+        data_width: int
+            bitwidth of featuremap pixels 
+        rsc_coef: list
+            list of resource model coefficients. Corresponds
+            to `LUT`, `BRAM`, `DSP` and `FF` resources in 
+            that order.
+        """
         # init variables
         self.rows       = dim[1]
         self.cols       = dim[2]
@@ -19,13 +57,11 @@ class Module:
         self.dynamic_coef = [ 0 ]
         self.rsc_coef     = [ 0,0,0,0 ]
 
-    def dynamic_model(self, freq, rate, sa_in, sa_out):
-        return [0]
-
-    def utilisation_model(self):
-        return [0]
-
     def module_info(self):
+        """
+        creates a dictionary containing information and
+        parameters for the module. 
+        """
         return {
             'type'      : self.__class__.__name__.upper(),
             'rows'      : self.rows_in(),
@@ -37,82 +73,143 @@ class Module:
         }
 
     def load_coef(self,rsc_coef_path):
+        """
+        loads coefficients of the module's resource 
+        and power models.
+
+        Parameters
+        ----------
+        rsc_coef_path: str
+            path to `.npy` file containing resource
+            model coefficients.
+        """
         self.rsc_coef     = np.load(rsc_coef_path) 
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    DIMENSIONS    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
+    def utilisation_model(self):
+        """
+        Returns
+        -------
+        list
+            utilisation of resources model. Defaults
+            to zero resources.
+        """
+ 
+        return [0]
+
 
     def rows_in(self):
+        """
+        Returns
+        -------
+        int
+            row dimension of the input featuremap
+        """
         return self.rows
 
     def cols_in(self):
+        """
+        Returns
+        -------
+        int
+            column dimension of the input featuremap
+        """
         return self.cols
 
     def channels_in(self):
+        """
+        Returns
+        -------
+        int
+            channel dimension of the input featuremap
+        """
         return self.channels
 
     def rows_out(self):
+        """
+        Returns
+        -------
+        int
+            row dimension of the output featuremap
+        """
         return self.rows
 
     def cols_out(self):
+        """
+        Returns
+        -------
+        int
+            column dimension of the output featuremap
+        """
         return self.cols
 
     def channels_out(self):
+        """
+        Returns
+        -------
+        int
+            channel dimension of the output featuremap
+        """
         return self.channels
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RATES    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def rate_in(self):
+        """
+        Returns
+        -------
+        float 
+            rate of words into module. As a fraction of a
+            clock cycle.
+
+            default is 1.0
+        """
         return 1.0
 
     def rate_out(self):
+        """
+        Returns
+        -------
+        float 
+            rate of words out of the module. As a fraction 
+            of a clock cycle.
+
+            default is 1.0
+        """
         return 1.0
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    METRICS    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def get_latency(self):
+        """
+        Returns
+        -------
+        int 
+            calculates the number of clock cycles latency 
+            it takes for the module to process a featuremap.
+            First latency in and latency out is calculated, 
+            then the latency of the module is the largest of
+            the two.
+        """
         latency_in  = int((self.rows_in() *self.cols_in() *self.channels_in() )/self.rate_in() )
         latency_out = int((self.rows_out()*self.cols_out()*self.channels_out())/self.rate_out())
         return max(latency_in,latency_out)
 
     def pipeline_depth(self):
+        """
+        Returns
+        -------
+        int 
+           depth of the pipeline for the module in clock
+           cycles.
+
+           default is 0.
+        """
         return 0 
 
-    def wait_depth(self):
-        return 0
-
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    USAGE 
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-    
-    def static_power(self):
-        return np.dot(self.utilisation_model(), self.static_coef)
-
-    def dynamic_power(self,freq,rate,sa,sa_out):
-        return np.dot(
-            self.dynamic_model(freq,rate,sa,sa_out), 
-            self.dynamic_coef)
-
     def rsc(self):
+        """
+        Returns
+        -------
+        dict 
+            estimated resource usage of the module. Uses the
+            resource coefficients for the estimate.
+        """
         return {
           "LUT"  : int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : int(np.dot(self.utilisation_model(), self.rsc_coef[1])),
@@ -120,3 +217,13 @@ class Module:
           "FF"   : int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 
+    def functional_model(self,data):
+        """
+        functional model of the module. Used for verification
+        of hardware modules.
+        
+        Returns
+        -------
+        np.array 
+        """
+        return data

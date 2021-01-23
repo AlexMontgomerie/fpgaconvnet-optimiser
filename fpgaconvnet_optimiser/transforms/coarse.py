@@ -1,3 +1,14 @@
+"""
+Input and output channel dimension parallelism of Layers. For a convolution layer, this is how filters are run in parallel
+
+.. note::
+    The `coarse_in` and `coarse_out` variables are limited to factors of `channels_in()` and `channels_out()`
+
+.. note::
+    For all layers except for `fpgaconvnet_optimser.models.layers.ConvolutionLayer`, `fpgaconvnet_optimser.models.layers.InnerProductLayer` and `fpgaconvnet_optimser.models.layers.SqueezeLayer` must have identical `coarse_in` and `coarse_out`
+
+"""
+
 import random
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
