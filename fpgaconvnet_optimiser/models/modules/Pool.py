@@ -1,4 +1,7 @@
 """
+This module performs the max pooling function 
+across a kernel-size window of the feature map.
+
 .. figure:: ../../../figures/pool_max_diagram.png
 """
 

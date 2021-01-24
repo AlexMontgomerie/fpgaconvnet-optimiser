@@ -27,8 +27,6 @@ class Module:
         dim: list
             dimensions of the input featuremap. Should contain
             `channels`, `rows`, `cols` in that order.
-        data_width: int, default: 16
-            bitwidth of featuremap pixels 
 
         Attributes
         ----------

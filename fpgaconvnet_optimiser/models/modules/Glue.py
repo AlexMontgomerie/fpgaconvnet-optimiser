@@ -1,4 +1,8 @@
 """
+The Glue module is used to combine streams 
+used for channel parallelism in the 
+Convolution layer together. 
+
 .. figure:: ../../../figures/glue_diagram.png
 """
 

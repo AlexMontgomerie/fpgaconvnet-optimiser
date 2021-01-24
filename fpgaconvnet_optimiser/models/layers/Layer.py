@@ -1,3 +1,7 @@
+"""
+
+"""
+
 import pydot
 import numpy as np
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2 
@@ -7,6 +11,9 @@ import os
 import math
 
 class Layer:
+    """
+    Base class for all layer models.
+    """
     def __init__(
             self,
             dim,
@@ -14,7 +21,35 @@ class Layer:
             coarse_out,
             data_width
         ):
+        """
+        Parameters
+        ----------
+        dim: list
+            dimensions of the input featuremap. Should contain
+            `channels`, `rows`, `cols` in that order.
 
+        Attributes
+        ----------
+        buffer_depth: int, default: 0
+            depth of incoming fifo buffers for each stream in.
+        rows: int
+            row dimension of input featuremap
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
+        coarse_in: int
+            number of parallel streams into the layer.    
+        coarse_out: int
+            number of parallel streams out of the layer.
+        data_width: int
+            bitwidth of featuremap pixels 
+        modules: dict
+            dictionary of `module` instances that make 
+            up the layer. These modules are used for the
+            resource and performance models of the layer.
+        """
+        
         # flags
         self.flags = {
             "multi_input"       : False,
@@ -41,124 +76,184 @@ class Layer:
         # init modules
         self.modules = {}
 
-        # completion
-        self.completion_in  = 1.0 
-        self.completion_out = 1.0 
-
-        # switching activity
-        self.sa     = 0.5
-        self.sa_out = 0.5
-
         # power and resource model coefficients
         self.static_coef  = {}
         self.dynamic_coef = {}
         self.rsc_coef     = {}
 
-
-    """
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    DIMENSIONS
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def rows_in(self):
+        """
+        Returns
+        -------
+        int
+            row dimension of the input featuremap
+        """
         return self.rows
 
     def cols_in(self):
+        """
+        Returns
+        -------
+        int
+            column dimension of the input featuremap
+        """
         return self.cols
 
     def channels_in(self):
+        """
+        Returns
+        -------
+        int
+            channel dimension of the input featuremap
+        """
         return self.channels
 
     def rows_out(self):
+        """
+        Returns
+        -------
+        int
+            row dimension of the output featuremap
+        """
         return self.rows_in()
 
     def cols_out(self):
+        """
+        Returns
+        -------
+        int
+            column dimension of the output featuremap
+        """
         return self.cols_in()
 
     def channels_out(self):
+        """
+        Returns
+        -------
+        int
+            channel dimension of the output featuremap
+        """
         return self.channels_in()
 
-    """
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RATES
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
+    def rate_in(self,index):
+        """
+        Parameters
+        ----------
+        index: int
+            index of port into layer
 
-    def rate_in(self, index):
-        return 1
+        Returns
+        -------
+        float 
+            rate of words into layer. As a fraction of a
+            clock cycle.
 
-    def rate_out(self, index):
-        return 1
+            default is 1.0
+        """
+        return 1.0
 
-    """
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    STREAMS
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
+    def rate_out(self,index):
+        """
+        Parameters
+        ----------
+        index: int
+            index of port into layer
+
+        Returns
+        -------
+        float 
+            rate of words out of the layer. As a fraction 
+            of a clock cycle.
+
+            default is 1.0
+        """
+        return 1.0
 
     def streams_in(self):
+        """
+        Returns
+        -------
+        int 
+            number of parallel streams into the layer.
+        """
         return self.coarse_in
 
     def streams_out(self):
+        """
+        Returns
+        -------
+        int 
+            number of parallel streams out of the layer.
+        """
         return self.coarse_out
 
-    """
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    WORKLOAD
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def workload_in(self, index):
+        """
+        Parameters
+        ----------
+        index: int
+            index of port into layer
+
+        Returns
+        -------
+        int 
+            workload into layer from port `index` for a single
+            featuremap. This is calculated by 
+            `rows_in()*cols_in()*channels_in()`.
+        """
         return self.rows_in()  * self.cols_in()  * self.channels_in()
         
     def workload_out(self, index):
+        """
+        Parameters
+        ----------
+        index: int
+            index of port out of layer
+
+        Returns
+        -------
+        int 
+            workload out of layer from port `index` for a 
+            single featuremap. This is calculated by 
+            `rows_out()*cols_out()*channels_out()`.
+        """
         return self.rows_out() * self.cols_out() * self.channels_out()
 
-    """
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    SIZE
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def size_in(self):
+        """
+        Returns
+        -------
+        int 
+            workload in per stream.
+        """
         return self.rows_in()  * self.cols_in()  * int( self.channels_in() / self.coarse_in )
         
     def size_out(self):
+        """
+        Returns
+        -------
+        int 
+            workload out per stream.
+        """
         return self.rows_out() * self.cols_out() * int( self.channels_out() / self.coarse_out )
 
-    """
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    WIDTH
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def width_in(self):
+        """
+        Returns
+        -------
+        int 
+            data width in
+        """
         return self.data_width
     
     def width_out(self):
+        """
+        Returns
+        -------
+        int 
+            data width out
+        """ 
         return self.data_width
-
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    METRICS    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
 
     def get_latency(self):
         latency_in  = abs(self.workload_in(0) /(self.rate_in(0) *self.streams_in() ))
@@ -170,13 +265,6 @@ class Layer:
 
     def wait_depth(self):
         return sum([ self.modules[module].wait_depth() for module in self.modules ])
-
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    USAGE 
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
 
     def resource(self):
         return {
@@ -195,26 +283,11 @@ class Layer:
     def power(self,freq,rate):
         return self.static_power() + self.dynamic_power(freq,rate)
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    CONSTRAINTS    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def get_coarse_in_feasible(self,wr_factor=1):
         return self.get_factors(int(self.channels_in()/wr_factor))
 
     def get_coarse_out_feasible(self,wr_factor=1):
         return self.get_factors(int(self.channels_out()/wr_factor))
-
-
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    COEFFICIENTS    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
 
     def load_coef(self):
         for module in self.modules:
@@ -222,13 +295,6 @@ class Layer:
 
     def update(self):
         pass
-
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    REPRESENTATION 
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
 
     def layer_info(self):
         return {
@@ -259,22 +325,8 @@ class Layer:
 
         return cluster, "_".join([name,"edge"]), "_".join([name,"edge"])
 
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    FUNCTIONAL MODEL 
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
     def functional_model(self,data,batch_size=1): # TODO: just leave empty
         return 
-
-    """    
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    HELPER FUNCTIONS
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
 
     def balance_module_rates(self,rate_graph):
 

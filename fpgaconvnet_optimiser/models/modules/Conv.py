@@ -1,4 +1,11 @@
 """
+The convolution module computes the dot product
+between the feature map windows and the coefficients
+of the convolution module. This module has a tunable
+degree of parallelism across the kernel dot product,
+affecting the throughput and number of ports of the
+on-chip weights storage.
+
 .. figure:: ../../../figures/conv_diagram.png
 """
 
@@ -7,6 +14,9 @@ import numpy as np
 import math
 
 class Conv(Module):
+    """
+    Conv hardware model class.
+    """
     def __init__(
             self,
             dim,
@@ -16,6 +26,33 @@ class Conv(Module):
             groups,
             data_width=16
         ):
+        """
+        Parameters
+        ----------
+        dim: list
+            dimensions of the input featuremap. Should contain
+            `channels`, `rows`, `cols` in that order.
+
+        Attributes
+        ----------
+        filters: int
+            output channel dimension of the featuremap.
+        fine: int
+            
+        rows: int
+            row dimension of input featuremap
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
+        data_width: int
+            bitwidth of featuremap pixels (default is 16) 
+        rsc_coef: list
+            list of resource model coefficients. Corresponds
+            to `LUT`, `BRAM`, `DSP` and `FF` resources in 
+            that order.
+        """
+ 
         # init module
         Module.__init__(self,dim,data_width)
 

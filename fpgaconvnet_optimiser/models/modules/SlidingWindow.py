@@ -1,4 +1,11 @@
 """
+The Sliding Window module creates sequential windows of the
+incoming feature map. This module allows for efficient use 
+of the on-chip memory compared to full featuremap caching, 
+with only the required number of pixels buffered. This 
+stream of feature map windows is used for the convolution 
+and pooling functions. 
+
 .. figure:: ../../../figures/sliding_window_diagram.png
 """
 
@@ -7,6 +14,9 @@ import numpy as np
 import math
 
 class SlidingWindow(Module):
+    """
+    Sliding window hardware model class.
+    """
     def __init__(
             self,
             dim,
@@ -18,6 +28,40 @@ class SlidingWindow(Module):
             pad_left,
             data_width=16
         ):
+        """
+        Parameters
+        ----------
+        dim: list
+            dimensions of the input featuremap. Should contain
+            `channels`, `rows`, `cols` in that order.
+
+        Attributes
+        ----------
+        k_size: int
+            kernel size of the convolution layer.
+        stride: int
+            both row and column stride of the convolution layer.
+        pad_top: int 
+            zero padding for the top of the featuremap.
+        pad_right: int
+            zero padding for the right of the featuremap.
+        pad_bottom: int 
+            zero padding for the bottom of the featuremap.
+        pad_left: int 
+            zero padding for the left of the featuremap.
+        rows: int
+            row dimension of input featuremap
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
+        data_width: int
+            bitwidth of featuremap pixels (default is 16) 
+        rsc_coef: list
+            list of resource model coefficients. Corresponds
+            to `LUT`, `BRAM`, `DSP` and `FF` resources in 
+            that order.
+        """
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -28,15 +72,6 @@ class SlidingWindow(Module):
         self.pad_right  = pad_right
         self.pad_bottom = pad_bottom
         self.pad_left   = pad_left
-
-    def dynamic_model(self, freq, rate, sa_in, sa_out):
-        return [
-            self.data_width*freq,
-            self.data_width*self.sa_in*freq*rate,
-            self.data_width*self.sa_in*freq*rate*self.k_size*self.k_size,
-            self.data_width*self.sa_in*freq*rate*(self.k_size-1),
-            self.data_width*self.sa_in*freq*rate*self.k_size*self.k_size*self.rows_out()*self.cols_out()/float(self.rows*self.cols),
-        ]
 
     def utilisation_model(self):
         return [
@@ -63,6 +98,14 @@ class SlidingWindow(Module):
         return (self.cols+self.pad_left+self.pad_right)*(self.channels)*(self.k_size-1)+self.channels*self.k_size*(self.k_size-1)
 
     def wait_depth(self):
+        """
+        Number of cycles delay before the first pixel is
+        consumed by the module from the start signal.
+
+        Returns
+        -------
+        int
+        """
         return (self.pad_bottom*self.channels*self.cols+self.pad_left*self.channels+1)
 
     def module_info(self):
@@ -84,6 +127,16 @@ class SlidingWindow(Module):
 
 
     def rsc(self):
+        """
+        the main resources are from the line and frame buffers.
+        These use `BRAM` fifos. 
+
+        Returns
+        -------
+        dict 
+            estimated resource usage of the module. Uses the
+            resource coefficients for the estimate.
+        """
         # streams
         #if self.channels > 1: 
         bram_line_buffer = (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000)
@@ -95,10 +148,6 @@ class SlidingWindow(Module):
           "DSP"  : 0,
           "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
-
-    '''
-    FUNCTIONAL MODEL
-    '''
 
     def functional_model(self, data):
         # check input dimensionality

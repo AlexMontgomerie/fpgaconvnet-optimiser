@@ -1,4 +1,10 @@
 """
+The Fork module provides functionality for 
+parallelism within layers. By duplicating the 
+streams, it can be used for exploiting 
+parallelism across filters in the Convolution 
+layers.
+
 .. figure:: ../../../figures/fork_diagram.png
 """
 

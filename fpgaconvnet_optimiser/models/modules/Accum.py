@@ -1,4 +1,12 @@
 """
+The purpose of the accumulation (Accum) module is 
+to perform the channel-wise accumulation of the 
+dot product result from the output of the 
+convolution (Conv) module.  As the data is coming
+into the module filter-first, the separate filter 
+accumulations are buffered until they complete 
+their accumulation across channels.
+
 .. figure:: ../../../figures/accum_diagram.png
 """
 
