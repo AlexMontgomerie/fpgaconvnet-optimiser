@@ -28,27 +28,30 @@ class Layer:
         """
         Parameters
         ----------
-        dim: list
-            dimensions of the input featuremap. Should contain
-            `channels`, `rows`, `cols` in that order.
+        rows: list int
+            row dimension of input featuremap
+        cols: list int
+            column dimension of input featuremap
+        channels: list int
+            channel dimension of input featuremap
 
         Attributes
         ----------
         buffer_depth: int, default: 0
             depth of incoming fifo buffers for each stream in.
-        rows: int
+        rows: list int
             row dimension of input featuremap
-        cols: int
+        cols: list int
             column dimension of input featuremap
-        channels: int
+        channels: list int
             channel dimension of input featuremap
         ports_in: int
             number of ports into the layer
         ports_out: int
             number of ports out of the layer
-        coarse_in: int
+        coarse_in: list int
             number of parallel streams per port into the layer.    
-        coarse_out: int
+        coarse_out: list int
             number of parallel streams per port out of the layer.
         data_width: int
             bitwidth of featuremap pixels 
