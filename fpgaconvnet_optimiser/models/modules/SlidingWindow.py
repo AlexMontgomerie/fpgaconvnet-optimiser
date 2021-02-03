@@ -19,7 +19,9 @@ class SlidingWindow(Module):
     """
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             k_size,
             stride,
             pad_top,
@@ -31,9 +33,13 @@ class SlidingWindow(Module):
         """
         Parameters
         ----------
-        dim: list
-            dimensions of the input featuremap. Should contain
-            `channels`, `rows`, `cols` in that order.
+        rows: int
+            row dimension of the input feature map
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
+       
 
         Attributes
         ----------
@@ -63,7 +69,7 @@ class SlidingWindow(Module):
             that order.
         """
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self, rows, cols, channels, data_width)
 
         # init variables
         self.k_size = k_size

@@ -13,14 +13,16 @@ import math
 class Glue(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             filters,
             coarse_in,
             coarse_out,
             data_width=16
         ):
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.filters    = filters

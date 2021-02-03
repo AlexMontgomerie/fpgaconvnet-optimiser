@@ -15,13 +15,15 @@ import math
 class Fork(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             k_size,
             coarse,
             data_width=16
         ):
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.k_size = k_size

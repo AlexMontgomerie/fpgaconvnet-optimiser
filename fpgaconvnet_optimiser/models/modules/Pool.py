@@ -12,13 +12,15 @@ import math
 class Pool(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             k_size=1,
             pool_type='max',
             data_width=16
         ):
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self, rows, cols, channels, data_width)
 
         # init variables
         self.k_size    = k_size

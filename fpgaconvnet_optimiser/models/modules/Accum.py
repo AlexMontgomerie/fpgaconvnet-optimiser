@@ -17,13 +17,15 @@ import math
 class Accum(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             filters,
             groups,
             data_width=32
         ):
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.filters = filters
