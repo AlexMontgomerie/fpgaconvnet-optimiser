@@ -16,14 +16,14 @@ class Layer:
     """
     def __init__(
             self,
-            rows: list[int],
-            cols: list[int],
-            channels: list[int],
-            coarse_in: list[int],
-            coarse_out: list[int],
+            rows,
+            cols,
+            channels,
+            coarse_in,
+            coarse_out,
             ports_in=1,
             ports_out=1,
-            data_width
+            data_width=16
         ):
         """
         Parameters
