@@ -24,9 +24,12 @@ class Module:
         """
         Parameters
         ----------
-        dim: list
-            dimensions of the input featuremap. Should contain
-            `channels`, `rows`, `cols` in that order.
+        rows: int
+            row dimension of the input feature map
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
 
         Attributes
         ----------
@@ -44,9 +47,9 @@ class Module:
             that order.
         """
         # init variables
-        self.rows       = dim[1]
-        self.cols       = dim[2]
-        self.channels   = dim[0]
+        self.rows       = rows
+        self.cols       = cols
+        self.channels   = channels
 
         self.data_width = data_width
 

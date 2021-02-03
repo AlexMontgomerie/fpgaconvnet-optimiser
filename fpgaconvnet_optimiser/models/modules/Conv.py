@@ -20,7 +20,9 @@ class Conv(Module):
     """
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             filters,
             fine,
             k_size,
@@ -30,9 +32,12 @@ class Conv(Module):
         """
         Parameters
         ----------
-        dim: list
-            dimensions of the input featuremap. Should contain
-            `channels`, `rows`, `cols` in that order.
+        rows: int
+            row dimension of input featuremap
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
 
         Attributes
         ----------
@@ -55,7 +60,7 @@ class Conv(Module):
         """
  
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.filters = filters
