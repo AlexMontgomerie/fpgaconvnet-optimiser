@@ -80,3 +80,23 @@ def update_platform(self, platform_path):
     self.platform['constraints']['LUT']  = platform['LUT']
     self.platform['constraints']['BRAM'] = platform['BRAM']
 
+
+def update_cluster(self, cluster_path):
+    # get platform
+    with open(cluster_path,'r') as f:
+        cluster = json.load(f)
+
+    for platform in cluster:
+        with open(platform['platform'],'r') as f:
+            platform_specification = json.load(f)
+
+        temp_platform = {}
+        temp_platform['id']                 = copy.deepcopy(platform['id'])
+        temp_platform['connections_in']     = copy.deepcopy(platform['connections_in'])
+        temp_platform['connections_out']    = copy.deepcopy(platform['connections_out'])
+
+        temp_platform['name']               = copy.deepcopy(platform_specification['name']+"_{id:03d}".format(id=temp_platform['id']))
+        temp_platform['specification']      = copy.deepcopy(platform_specification)
+        self.cluster[temp_platform['id']]    = temp_platform
+
+    print(self.cluster)

@@ -21,6 +21,8 @@ def main():
         help='Path to ONNX model')
     parser.add_argument('-p','--platform_path',metavar='PATH',required=True,
         help='Path to platform information')
+    parser.add_argument('-c','--cluster_path',metavar='PATH',required=True,
+        help='Path to cluster information')
     parser.add_argument('-o','--output_path',metavar='PATH',required=True,
         help='Path to output directory')
     parser.add_argument('-b','--batch_size',metavar='N',type=int,default=1,required=False,
@@ -81,7 +83,7 @@ def main():
 
     # update platform information
     net.update_platform(args.platform_path)
-
+    net.update_cluster(args.cluster_path)
     # specify optimiser objective
     if args.objective == "throughput":
         net.objective  = 1 

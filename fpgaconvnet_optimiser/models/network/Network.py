@@ -63,6 +63,7 @@ class Network():
                 'BRAM'  : 0
             }
         }
+        self.cluster = {}
 
         # all types of layers
         self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
@@ -106,6 +107,7 @@ class Network():
     # update
     from fpgaconvnet_optimiser.models.network.update import update_partitions
     from fpgaconvnet_optimiser.models.network.update import update_platform
+    from fpgaconvnet_optimiser.models.network.update import update_cluster
 
     # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node 
@@ -167,4 +169,4 @@ class Network():
             g.add_subgraph(partition_cluster)
         # save graph
         g.write_png(output_path)
-
+        g.write_svg(output_path)

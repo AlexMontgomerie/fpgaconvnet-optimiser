@@ -11,7 +11,7 @@ data/
 **.csv
 **.yaml
 rpt/
-
+build/
 outputs/
 onnx/
 
