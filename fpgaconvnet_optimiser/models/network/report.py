@@ -18,6 +18,10 @@ def create_report(self, output_path):
             "max_resource_usage" : {
                 "BRAM" : max([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ]),
                 "DSP" : max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ])   
+            },
+            "average_resource_usage":{
+                "BRAM" : sum([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ])/len(self.partitions),
+                "DSP" : sum([ partition.get_resource_usage()["DSP"] for partition in self.partitions ])/len(self.partitions)                   
             }
         }
     }
