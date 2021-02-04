@@ -174,7 +174,7 @@ def add_hardware(model, graph):
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
             graph.nodes[name]['hw'] = BatchNormLayer([0,0,0])
             continue
-        #raise NameError
+        raise NameError
         print(name,graph.nodes[name]['type'])
 
 def add_dimensions(model, graph):
@@ -213,14 +213,10 @@ def parse_net(filepath,view=True):
     remove_nodes = []
     for node in graph.nodes:
         if "type" not in graph.nodes[node]:
-            print(node)
             remove_nodes.append(node)
     for node in remove_nodes:
         graph.remove_node(node)
 
-    #graphs.print_graph(graph)
-    print(graph.nodes)
-    
     # remove unnecessary nodes
     filter_node_types(graph, LAYER_TYPE.Dropout)
     filter_node_types(graph, LAYER_TYPE.Transpose)
@@ -235,6 +231,10 @@ def parse_net(filepath,view=True):
 
     # add layer dimensions
     add_dimensions(model, graph)
+
+    # update all layers
+    for node in graph.nodes:
+        graph.nodes[node]['hw'].update()
 
     return model, graph
 
