@@ -1,7 +1,6 @@
 import unittest
 import ddt
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
-import os
 import fpgaconvnet_optimiser.tools.parser as parser
 
 class TestParserLeNet(unittest.TestCase):
