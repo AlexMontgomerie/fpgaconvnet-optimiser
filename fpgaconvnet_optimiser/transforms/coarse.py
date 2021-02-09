@@ -11,6 +11,7 @@ Input and output channel dimension parallelism of Layers. For a convolution laye
 
 import random
 
+import fpgaconvnet_optimiser.tools.graphs as graphs
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
@@ -23,6 +24,9 @@ def apply_random_coarse_layer(self, layer):
     if coarse_type == 'coarse_in':
         # choose random coarse in factor
         coarse_in = random.choice(self.graph.nodes[layer]['hw'].get_coarse_in_feasible())
+        # if input layer, make sure streams aren't too large 
+        if layer in graphs.get_input_nodes(self.graph):
+            coarse_in = min(coarse_in, self.max_streams_in) 
         # update coarse folding for both node info and actual layers 
         self.graph.nodes[layer]['hw'].coarse_in = coarse_in
         # check if transformable layer
@@ -33,26 +37,15 @@ def apply_random_coarse_layer(self, layer):
     if coarse_type == 'coarse_out':
         # choose random coarse out factor
         coarse_out = random.choice(self.graph.nodes[layer]['hw'].get_coarse_out_feasible())
+        # if output layer, make sure streams aren't too large 
+        if layer in graphs.get_output_nodes(self.graph):
+            coarse_out = min(coarse_out, self.max_streams_out) 
         # update coarse folding for both node info and actual layers 
         self.graph.nodes[layer]['hw'].coarse_out = coarse_out
         # check if transformable layer
         if not self.graph.nodes[layer]['type'] in transformable_layers:
             # if not, update both layer info
             self.graph.nodes[layer]['hw'].coarse_in = coarse_out 
-
-def apply_max_coarse(self):
-    # iterate over layers
-    for layer in self.graph.nodes():
-        # apply max coarse to each layer
-        self.apply_max_coarse_layer(partition_index, layer)
-
-def apply_max_coarse_layer(self, layer):
-    # choose max coarse in and out
-    coarse_in  = self.graph.nodes[layer]['hw'].get_coarse_in_feasible()[-1]
-    coarse_out = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()[-1]
-    # update both coarse in and out
-    self.graph.nodes[layer]['hw'].coarse_in  = coarse_in
-    self.graph.nodes[layer]['hw'].coarse_out = coarse_out
 
 def fix_coarse(self):
     # iterate over layers
