@@ -7,31 +7,19 @@ def update_partitions(self):
     # update modules
     for node in self.graph.nodes():
         self.graph.nodes[node]['hw'].update()
-   
+ 
+    # remove all auxiliary layers
+    for partition_index in range(len(self.partitions)):
+
+        ## remove squeeze layer
+        self.partitions[partition_index].remove_squeeze()
+
+    # update coarse in and out of partition to avoid mismatch
+    self.update_coarse_in_out_partition()
+ 
     # update partitions 
     for partition_index in range(len(self.partitions)):
 
-        ## update all modules again
-        self.partitions[partition_index].update_modules()
-       
-        ## remove auxiliary layers
-        self.partitions[partition_index].remove_squeeze()
-        
-        ## fix weights reloading in each partition
-        #self.fix_weights_reloading(partition_index)
-        
-        ## apply weights reloading
-        #self.apply_weights_reloading_transform(partition_index)
-        
-        ## update all modules again
-        self.partitions[partition_index].update_modules()
-       
-        ## fix coarse in for all layers
-        self.partitions[partition_index].fix_coarse()
-
-        ## update all modules again
-        self.partitions[partition_index].update_modules()
- 
         ## add auxiliary layers
         self.partitions[partition_index].add_squeeze()
         
@@ -79,4 +67,16 @@ def update_platform(self, platform_path):
     self.platform['constraints']['DSP']  = platform['DSP']
     self.platform['constraints']['LUT']  = platform['LUT']
     self.platform['constraints']['BRAM'] = platform['BRAM']
+
+def update_coarse_in_out_partition(self):
+    if len(self.partitions) > 1:
+        # iterate over partitions
+        for i in range(1,len(self.partitions)):
+            # get input and output port between partitions
+            input_node  = graphs.get_input_nodes(self.partitions[i].graph)[0] # TODO: support multi-port
+            output_node = graphs.get_output_nodes(self.partitions[i-1].graph)[0] # TODO: support multi-port
+            # update input node's coarse in with previous coarse out
+            self.partitions[i].graph.nodes[input_node]['hw'].update_coarse_in(
+                self.partitions[i-1].graph.nodes[output_node]['hw'].coarse_out 
+            )
 

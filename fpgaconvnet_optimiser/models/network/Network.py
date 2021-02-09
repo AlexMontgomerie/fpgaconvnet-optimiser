@@ -106,6 +106,7 @@ class Network():
     # update
     from fpgaconvnet_optimiser.models.network.update import update_partitions
     from fpgaconvnet_optimiser.models.network.update import update_platform
+    from fpgaconvnet_optimiser.models.network.update import update_coarse_in_out_partition
 
     # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node 

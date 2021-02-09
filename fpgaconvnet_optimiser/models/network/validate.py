@@ -37,12 +37,14 @@ def check_workload(self):
             if node not in self.graph:
                 continue
             # check workload in
-            workload_ref = self.graph.nodes[node]['hw'].workload_in(0)
-            workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_in(0)*wr_factor
+            workload_ref = self.graph.nodes[node]['hw'].workload_in(0)*self.graph.nodes[node]['hw'].streams_in()
+            workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_in(0)*\
+                self.partitions[partition_index].graph.nodes[node]['hw'].streams_in()*wr_factor
             assert workload_actual >= workload_ref, f"({node}) workload in imbalance"
             # check workload out
-            workload_ref = self.graph.nodes[node]['hw'].workload_out(0)
-            workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_out(0)*wr_factor
+            workload_ref = self.graph.nodes[node]['hw'].workload_out(0)*self.graph.nodes[node]['hw'].streams_out()
+            workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_out(0)*\
+                self.partitions[partition_index].graph.nodes[node]['hw'].streams_out()*wr_factor
             assert workload_actual >= workload_ref, f"({node}) workload out imbalance"
 
 def check_streams(self):
