@@ -19,4 +19,15 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+    install_requires=[
+        "networkx==2.5",
+        "numpy==1.19.2",
+        "protobuf==3.14.0",
+        "torch==1.7.1",
+        "pyyaml==5.3.1",
+        "scipy==1.5.2",
+        "torchvision==0.8.2",
+        "onnx==1.8.0",
+        "onnxruntime==1.6.0"
+    ]
 )
