@@ -229,6 +229,8 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.Cast)
     filter_node_types(graph, LAYER_TYPE.Squeeze)
     filter_node_types(graph, LAYER_TYPE.Shape)
+    filter_node_types(graph, LAYER_TYPE.Softmax)
+    filter_node_types(graph, LAYER_TYPE.LRN)
 
     # add hardware to graph
     add_hardware(model, graph)

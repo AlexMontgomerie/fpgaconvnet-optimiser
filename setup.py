@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="fpgaconvnet-optimiser-AlexMontgomerie", # Replace with your own username
-    version="0.0.1",
+    version="0.0.3",
     author="Alex Montgomerie",
     author_email="am9215@ic.ac.uk",
     description="Optimiser for mapping convolutional neural network models to FPGA platforms.",
@@ -27,7 +27,7 @@ setuptools.setup(
         "pyyaml==5.3.1",
         "scipy==1.5.2",
         "torchvision==0.8.2",
-        "onnx==1.8.0",
+        "onnx>=1.8.0",
         "onnxruntime==1.6.0"
     ]
 )
