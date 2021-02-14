@@ -39,8 +39,8 @@ class InnerProductLayer(Layer):
 
         # init modules
         self.modules = {
-            "fork"           : Fork( [self.channels,self.rows,self.cols]    ,1,coarse_out),
-            "conv"           : Conv( [self.channels*self.rows*self.cols,1,1],filters,1,1,1),
+            "fork"           : Fork( [self.channels,self.rows,self.cols]    ,[1,1],coarse_out),
+            "conv"           : Conv( [self.channels*self.rows*self.cols,1,1],filters,1,[1,1],1),
             "accum"          : Accum([self.channels*self.rows*self.cols,1,1],filters,1),
             "glue"           : Glue( [self.channels*self.rows*self.cols,1,1],filters,coarse_in,coarse_out)
         }

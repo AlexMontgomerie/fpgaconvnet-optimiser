@@ -15,10 +15,10 @@ class ConvolutionLayer(Layer):
             self,
             dim,
             filters,
-            k_size      =3,
-            stride      =1,
+            k_size      =[3,3],
+            stride      =[1,1],
             groups      =1,
-            pad         =0,
+            pad         =[0,0,0,0],
             coarse_in   =1,
             coarse_out  =1,
             fine        =1,
@@ -39,11 +39,12 @@ class ConvolutionLayer(Layer):
         self.k_size     = k_size
         self.stride     = stride
         self.groups     = groups
-        self.pad        = pad
-        self.pad_top    = pad - (self.rows - k_size + 2*pad) % stride
-        self.pad_right  = pad - (self.cols - k_size + 2*pad) % stride
-        self.pad_bottom = pad
-        self.pad_left   = pad
+        self.pad_top    = pad[0]
+        self.pad_right  = pad[3]
+        self.pad_bottom = pad[2]
+        self.pad_left   = pad[1]
+        assert(self.pad_top == self.pad_bottom and self.pad_left == self.pad_right)
+        self.pad        = [self.pad_top, self.pad_left] 
         self.fine       = fine
         self.filters    = filters
 
@@ -68,10 +69,10 @@ class ConvolutionLayer(Layer):
         self.sa_out = sa_out
 
     def rows_out(self):
-        return int(math.floor((self.rows_in()-self.k_size+2*self.pad)/self.stride)+1)
+        return int(math.floor((self.rows_in()-self.k_size[0]+self.pad_top+self.pad_bottom)/self.stride[0])+1)
 
     def cols_out(self):
-        return int(math.floor((self.cols_in()-self.k_size+2*self.pad)/self.stride)+1)
+        return int(math.floor((self.cols_in()-self.k_size[1]+self.pad_left+self.pad_right)/self.stride[1])+1)
 
     def channels_out(self):
         return self.filters
@@ -96,10 +97,10 @@ class ConvolutionLayer(Layer):
         parameters.coarse_out   = self.coarse_out
         parameters.fine         = self.fine
         parameters.filters      = self.filters
-        parameters.kernel_size  = self.k_size
-        parameters.stride       = self.stride
+        parameters.kernel_size.extend(self.k_size)
+        parameters.stride.extend(self.stride)
         parameters.groups       = self.groups
-        parameters.pad          = self.pad
+        parameters.pad.extend(self.pad)
         parameters.pad_top      = self.pad_top
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
@@ -169,13 +170,18 @@ class ConvolutionLayer(Layer):
 
     def get_fine_feasible(self):
         #return self.get_factors(int(self.k_size*self.k_size))
-        return [ 1, self.k_size, self.k_size*self.k_size ]
+        if self.k_size[0] != self.k_size[1]:
+            assert(self.k_size[0] == 1 or self.k_size[1] == 1)
+            return [ 1, max(self.k_size[0],self.k_size[1])]
+        else:
+            return [ 1, self.k_size[0], self.k_size[0]*self.k_size[1] ]
+
 
     def get_weights_reloading_feasible(self):
         return self.get_factors(int(self.filters/(self.groups*self.coarse_out)))
 
     def get_parameters_size(self):
-        weights_size = self.channels * int( self.filters / self.groups ) * self.k_size * self.k_size
+        weights_size = self.channels * int( self.filters / self.groups ) * self.k_size[0] * self.k_size[1]
         bias_size = 0
         return {
             "weights"   : weights_size,
@@ -200,7 +206,7 @@ class ConvolutionLayer(Layer):
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # weight usage
-        n_filters = float(self.filters*self.channels*self.k_size*self.k_size)/float(self.fine*self.groups*self.coarse_in*self.coarse_out)
+        n_filters = float(self.filters*self.channels*self.k_size[0]*self.k_size[1])/float(self.fine*self.groups*self.coarse_in*self.coarse_out)
         weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.fine
 
         # Total
@@ -264,8 +270,8 @@ class ConvolutionLayer(Layer):
 
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
         assert weights.shape[1] == int(self.channels/self.groups), "ERROR (weights): invalid channel dimension"
-        assert weights.shape[2] == self.k_size  , "ERROR (weights): invalid kernel dimension"
-        assert weights.shape[3] == self.k_size  , "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[2] == self.k_size[0]  , "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[3] == self.k_size[1]  , "ERROR (weights): invalid kernel dimension"
 
         assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
 

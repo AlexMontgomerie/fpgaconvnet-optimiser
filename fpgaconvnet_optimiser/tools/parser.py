@@ -132,9 +132,9 @@ def add_hardware(model, graph):
             graph.nodes[name]['hw'] = ConvolutionLayer([0,0,0],
                 #layer.convolution_param.num_output,
                 filters,
-                k_size =attr["kernel_shape"][0],
-                stride =attr["strides"][0],
-                pad    =attr["pads"][0],
+                k_size =attr["kernel_shape"],
+                stride =attr["strides"],
+                pad    =attr["pads"],
                 groups =attr["group"]
             )
             continue
@@ -160,9 +160,9 @@ def add_hardware(model, graph):
             # create pooling layer hardware
             graph.nodes[name]['hw'] = PoolingLayer([0,0,0],
                 pool_type = 'max', # TODO: change so that it does AVG also
-                k_size =attr["kernel_shape"][0],
-                stride =attr["strides"][0],
-                pad    =attr["pads"][0]
+                k_size =attr["kernel_shape"],
+                stride =attr["strides"],
+                pad    =attr["pads"],
             )
             continue
         # ReLU Layer

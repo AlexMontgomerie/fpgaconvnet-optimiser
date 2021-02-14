@@ -255,10 +255,16 @@ class Layer:
         """ 
         return self.data_width
 
-    def get_latency(self):
+    def get_latency_in(self):
         latency_in  = abs(self.workload_in(0) /(self.rate_in(0) *self.streams_in() ))
+        return latency_in
+
+    def get_latency_out(self):
         latency_out = abs(self.workload_out(0)/(self.rate_out(0)*self.streams_out()))
-        return max(latency_in,latency_out)
+        return latency_out
+
+    def get_latency(self):
+        return max(self.get_latency_in(), self.get_latency_out())
 
     def pipeline_depth(self):
         return sum([ self.modules[module].pipeline_depth() for module in self.modules ])

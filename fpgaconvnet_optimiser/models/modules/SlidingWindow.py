@@ -77,16 +77,16 @@ class SlidingWindow(Module):
         return [
             1,
             self.data_width,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*(self.k_size-1)*self.cols*self.channels,
-            self.data_width*self.k_size*self.k_size*self.channels
+            self.data_width*self.k_size[0]*self.k_size[1],
+            self.data_width*(self.k_size[0]-1)*self.cols*self.channels,
+            self.data_width*self.k_size[0]*self.k_size[1]*self.channels
         ]
 
     def rows_out(self):
-        return int((self.rows_in()-self.k_size+self.pad_top+self.pad_bottom)/self.stride+1)
+        return int((self.rows_in()-self.k_size[0]+self.pad_top+self.pad_bottom)/self.stride[0]+1)
 
     def cols_out(self):
-        return int((self.cols_in()-self.k_size+self.pad_left+self.pad_right)/self.stride+1)
+        return int((self.cols_in()-self.k_size[1]+self.pad_left+self.pad_right)/self.stride[1]+1)
 
     def rate_in(self):
         return 1.0 # TODO: maybe need to reduce for padding effect
@@ -95,7 +95,7 @@ class SlidingWindow(Module):
         return (self.rows_out()*self.cols_out())/float(self.rows*self.cols)
 
     def pipeline_depth(self):
-        return (self.cols+self.pad_left+self.pad_right)*(self.channels)*(self.k_size-1)+self.channels*self.k_size*(self.k_size-1)
+        return (self.cols+self.pad_left+self.pad_right)*(self.channels)*(self.k_size[0]-1)+self.channels*self.k_size[0]*(self.k_size[1]-1)
 
     def wait_depth(self):
         """
@@ -139,9 +139,9 @@ class SlidingWindow(Module):
         """
         # streams
         #if self.channels > 1: 
-        bram_line_buffer = (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000)
+        bram_line_buffer = (self.k_size[0]-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000)
         #if self.channels*self.data_width >= 512:
-        bram_frame_buffer = self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000)
+        bram_frame_buffer = self.k_size[0]*(self.k_size[1]-1)*math.ceil( ((self.channels+1)*self.data_width)/18000)
         return {
           "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : bram_line_buffer+bram_frame_buffer,
@@ -184,14 +184,14 @@ class SlidingWindow(Module):
             self.rows_out(),
             self.cols_out(),
             self.channels,
-            self.k_size,
-            self.k_size),dtype=float)
+            self.k_size[0],
+            self.k_size[1]),dtype=float)
 
         for index,_ in np.ndenumerate(out):
             out[index] = data_padded[
                           index[0],
-                          index[1]*self.stride+index[4],
-                          index[2]*self.stride+index[5],
+                          index[1]*self.stride[0]+index[4],
+                          index[2]*self.stride[1]+index[5],
                           index[3]]
 
         return out

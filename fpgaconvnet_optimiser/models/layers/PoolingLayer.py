@@ -12,9 +12,9 @@ class PoolingLayer(Layer):
             self,
             dim,
             pool_type   ='max',
-            k_size      =2,
-            stride      =2,
-            pad         =0,
+            k_size      =[2,2],
+            stride      =[2,2],
+            pad         =[0,0,0,0],
             coarse_in   =1,
             coarse_out  =1,
             fine        =1,
@@ -29,16 +29,17 @@ class PoolingLayer(Layer):
 
         self.k_size     = k_size
         self.stride     = stride
-        self.pad        = pad
-        self.pad_top    = pad + (self.rows - k_size + 2*pad) % stride
-        self.pad_right  = pad + (self.cols - k_size + 2*pad) % stride
-        self.pad_bottom = pad
-        self.pad_left   = pad
+        self.pad_top    = pad[0]
+        self.pad_right  = pad[3]
+        self.pad_bottom = pad[2]
+        self.pad_left   = pad[1]
+        assert(self.pad_top == self.pad_bottom and self.pad_left == self.pad_right)
+        self.pad        = [self.pad_top, self.pad_left] 
         self.fine       = fine
         self.pool_type  = pool_type
  
         if pool_type == 'max':
-            self.fine = self.k_size * self.k_size
+            self.fine = self.k_size[0] * self.k_size[1]
 
         # init modules
         self.modules = {
@@ -49,8 +50,8 @@ class PoolingLayer(Layer):
         #self.load_coef()
 
         # rows and cols out
-        self.rows_out = lambda : int(math.ceil((self.rows_in()-self.k_size+2*self.pad)/self.stride)+1)
-        self.cols_out = lambda : int(math.ceil((self.cols_in()-self.k_size+2*self.pad)/self.stride)+1)
+        self.rows_out = lambda : int(math.ceil((self.rows_in()-self.k_size[0]+self.pad_top+self.pad_bottom)/self.stride[0])+1)
+        self.cols_out = lambda : int(math.ceil((self.cols_in()-self.k_size[1]+self.pad_left+self.pad_right)/self.stride[1])+1)
 
         # rates
         self.rate_in  = lambda i : abs(self.balance_module_rates(self.rates_graph())[0,0])
@@ -74,9 +75,9 @@ class PoolingLayer(Layer):
         parameters.coarse       = self.coarse_in
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
-        parameters.kernel_size  = self.k_size
-        parameters.stride       = self.stride
-        parameters.pad          = self.pad
+        parameters.kernel_size.extend(self.k_size)
+        parameters.stride.extend(self.stride)
+        parameters.pad.extend(self.pad)
         parameters.pad_top      = self.pad_top
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom

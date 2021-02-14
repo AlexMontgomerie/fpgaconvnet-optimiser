@@ -30,29 +30,29 @@ class Fork(Module):
         # dynamic power model
         self.dynamic_model = lambda freq, rate, sa_in, sa_out : [
             self.data_width*freq,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size*self.coarse
+            self.data_width*sa_in*freq*rate*self.k_size[0]*self.k_size[1],
+            self.data_width*sa_in*freq*rate*self.k_size[0]*self.k_size[1]*self.coarse
         ]
  
         # utilisation model
         self.utilisation_model = lambda : [
             1,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*self.k_size*self.k_size*self.coarse
+            self.data_width*self.k_size[0]*self.k_size[1],
+            self.data_width*self.k_size[0]*self.k_size[1]*self.coarse
         ]
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
             self.data_width*freq,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size*self.coarse
+            self.data_width*sa_in*freq*rate*self.k_size[0]*self.k_size[1],
+            self.data_width*sa_in*freq*rate*self.k_size[0]*self.k_size[1]*self.coarse
         ]
 
     def utilisation_model(self):
         return [
             1,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*self.k_size*self.k_size*self.coarse
+            self.data_width*self.k_size[0]*self.k_size[1],
+            self.data_width*self.k_size[0]*self.k_size[1]*self.coarse
         ]
 
     def module_info(self):
@@ -85,16 +85,16 @@ class Fork(Module):
         assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
         assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.k_size  , "ERROR: invalid column dimension"
-        assert data.shape[4] == self.k_size  , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.k_size[0]  , "ERROR: invalid column dimension"
+        assert data.shape[4] == self.k_size[1]  , "ERROR: invalid column dimension"
 
         out = np.ndarray((
             self.rows,
             self.cols,
             self.channels,
             self.coarse,
-            self.k_size,
-            self.k_size),dtype=float)
+            self.k_size[0],
+            self.k_size[1]),dtype=float)
 
         for index,_ in np.ndenumerate(out):
             out[index] = data[

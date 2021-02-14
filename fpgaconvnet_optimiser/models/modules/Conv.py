@@ -68,14 +68,14 @@ class Conv(Module):
             self.data_width*sa_in*freq*rate*self.fine/float(self.channels),
             self.data_width*sa_in*freq*rate*self.fine,
             self.data_width*sa_out*freq*rate*self.fine,
-            self.data_width*sa_out*freq*rate*self.fine*self.fine/float(self.k_size*self.k_size),
-            self.data_width*sa_out*freq*rate*self.fine/float(self.k_size*self.k_size),
+            self.data_width*sa_out*freq*rate*self.fine*self.fine/float(self.k_size[0]*self.k_size[1]),
+            self.data_width*sa_out*freq*rate*self.fine/float(self.k_size[0]*self.k_size[1]),
         ]
 
     def utilisation_model(self):
         return [
             1,
-            self.data_width*self.k_size*self.k_size,
+            self.data_width*self.k_size[0]*self.k_size[1],
             self.data_width*self.fine,
             self.data_width
         ]
@@ -84,10 +84,10 @@ class Conv(Module):
         return int(self.filters/float(self.groups))
 
     def rate_in(self):
-        return self.fine*self.groups/float(self.k_size*self.k_size*self.filters)
+        return self.fine*self.groups/float(self.k_size[0]*self.k_size[1]*self.filters)
 
     def rate_out(self):
-        return self.fine/float(self.k_size*self.k_size)
+        return self.fine/float(self.k_size[0]*self.k_size[1])
 
     def pipeline_depth(self):
         return self.fine 
@@ -124,13 +124,13 @@ class Conv(Module):
         assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
         assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.k_size  , "ERROR: invalid column dimension"
-        assert data.shape[4] == self.k_size  , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.k_size[0]  , "ERROR: invalid column dimension"
+        assert data.shape[4] == self.k_size[1]  , "ERROR: invalid column dimension"
         # check weight dimensionality
         assert weights.shape[0] == self.channels, "ERROR: invalid channel dimension"
         assert weights.shape[1] == int(self.filters/float(self.groups)) , "ERROR: invalid filter dimension"
-        assert weights.shape[2] == self.k_size  , "ERROR: invalid column dimension"
-        assert weights.shape[3] == self.k_size  , "ERROR: invalid column dimension"
+        assert weights.shape[2] == self.k_size[0]  , "ERROR: invalid column dimension"
+        assert weights.shape[3] == self.k_size[1]  , "ERROR: invalid column dimension"
 
         out = np.zeros((
             self.rows,
@@ -140,8 +140,8 @@ class Conv(Module):
         ),dtype=float)
 
         for index,_ in np.ndenumerate(out):
-            for k1 in range(self.k_size):
-                for k2 in range(self.k_size):
+            for k1 in range(self.k_size[0]):
+                for k2 in range(self.k_size[1]):
                     out[index] += data[
                       index[0],index[1],index[2],k1,k2]*weights[
                       index[2],index[3],k1,k2]

@@ -13,7 +13,7 @@ class Pool(Module):
     def __init__(
             self,
             dim,
-            k_size=1,
+            k_size=[1,1],
             pool_type='max',
             data_width=16
         ):
@@ -27,7 +27,7 @@ class Pool(Module):
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
             self.data_width*freq,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size,
+            self.data_width*sa_in*freq*rate*self.k_size[0]*self.k_size[1],
             self.data_width*sa_in*freq*rate,
         ]
 
@@ -35,7 +35,7 @@ class Pool(Module):
         return [
             1,
             self.data_width,
-            self.data_width*self.k_size*self.k_size,
+            self.data_width*self.k_size[0]*self.k_size[1],
         ]
 
     def module_info(self):
@@ -68,8 +68,8 @@ class Pool(Module):
         assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
         assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.k_size  , "ERROR: invalid column dimension"
-        assert data.shape[4] == self.k_size  , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.k_size[0]  , "ERROR: invalid column dimension"
+        assert data.shape[4] == self.k_size[1]  , "ERROR: invalid column dimension"
 
         out = np.ndarray((
             self.rows,
