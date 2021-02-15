@@ -170,6 +170,8 @@ def _format_attr(attribute):
     for attr in attribute:
         if attr.type == 7: # (INTS) TODO: find enumeration
             attr_out[attr.name] = [ int(i) for i in attr.ints ]
+        elif attr.type == 2: #(INT)
+            attr_out[attr.name] = attr.i
     return attr_out
 
 def _out_dim(model, name):
