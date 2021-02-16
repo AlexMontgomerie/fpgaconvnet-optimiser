@@ -19,7 +19,8 @@ class Layer:
             dim,
             coarse_in,
             coarse_out,
-            data_width
+            data_width,
+            coarse_group=1
         ):
         """
         Parameters
@@ -69,6 +70,7 @@ class Layer:
         # streams
         self.coarse_in  = coarse_in
         self.coarse_out = coarse_out
+        self.coarse_group = coarse_group
 
         # data width
         self.data_width = data_width
@@ -176,7 +178,7 @@ class Layer:
         int 
             number of parallel streams into the layer.
         """
-        return self.coarse_in
+        return self.coarse_in * self.coarse_group
 
     def streams_out(self):
         """
@@ -185,7 +187,7 @@ class Layer:
         int 
             number of parallel streams out of the layer.
         """
-        return self.coarse_out
+        return self.coarse_out * self.coarse_group
 
     def workload_in(self, index):
         """
@@ -226,7 +228,7 @@ class Layer:
         int 
             workload in per stream.
         """
-        return self.rows_in()  * self.cols_in()  * int( self.channels_in() / self.coarse_in )
+        return self.rows_in()  * self.cols_in()  * int( self.channels_in() / (self.coarse_in * self.coarse_group))
         
     def size_out(self):
         """
@@ -235,7 +237,7 @@ class Layer:
         int 
             workload out per stream.
         """
-        return self.rows_out() * self.cols_out() * int( self.channels_out() / self.coarse_out )
+        return self.rows_out() * self.cols_out() * int( self.channels_out() / (self.coarse_out * self.coarse_group))
 
     def width_in(self):
         """
@@ -294,6 +296,9 @@ class Layer:
 
     def get_coarse_out_feasible(self,wr_factor=1):
         return self.get_factors(int(self.channels_out()/wr_factor))
+
+    def get_coarse_group_feasible(self):
+        return [1]
 
     def load_coef(self):
         for module in self.modules:

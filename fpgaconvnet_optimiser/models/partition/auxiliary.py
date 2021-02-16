@@ -29,8 +29,8 @@ def add_squeeze(self):
                         self.graph.nodes[start_node]['hw'].rows_out(),
                         self.graph.nodes[start_node]['hw'].cols_out()
                     ], 
-                    self.graph.nodes[start_node]['hw'].coarse_out,
-                    self.graph.nodes[end_node]['hw'].coarse_in
+                    self.graph.nodes[start_node]['hw'].coarse_out * self.graph.nodes[start_node]['hw'].coarse_group,
+                    self.graph.nodes[end_node]['hw'].coarse_in * self.graph.nodes[end_node]['hw'].coarse_group
                 )
             )
             # add node to graph
@@ -40,7 +40,7 @@ def add_squeeze(self):
 
     # check difference in input streams 
     input_node  = graphs.get_input_nodes(self.graph)[0]
-    if self.streams_in != self.graph.nodes[input_node]['hw'].coarse_in:
+    if self.streams_in != self.graph.nodes[input_node]['hw'].coarse_in * self.graph.nodes[input_node]['hw'].coarse_group:
         # add node to graph
         new_node  = "_".join([input_node,"squeeze"])
         # add node to node info
@@ -52,14 +52,14 @@ def add_squeeze(self):
                     self.graph.nodes[input_node]['hw'].cols_in()
                 ], 
                 self.streams_in,
-                self.graph.nodes[input_node]['hw'].coarse_in
+                self.graph.nodes[input_node]['hw'].coarse_in * self.graph.nodes[input_node]['hw'].coarse_group
             )
         )
         # add edge to graph
         self.graph.add_edge(new_node,input_node)
     # check difference in output streams 
     output_node = graphs.get_output_nodes(self.graph)[0]
-    if self.streams_out != self.graph.nodes[output_node]['hw'].coarse_out:
+    if self.streams_out != self.graph.nodes[output_node]['hw'].coarse_out * self.graph.nodes[output_node]['hw'].coarse_group:
         # add node to graph
         new_node  = "_".join(["squeeze",output_node])
         # add node to node info
@@ -70,7 +70,7 @@ def add_squeeze(self):
                     self.graph.nodes[output_node]['hw'].rows_out(),
                     self.graph.nodes[output_node]['hw'].cols_out()
                 ], 
-                self.graph.nodes[output_node]['hw'].coarse_out,
+                self.graph.nodes[output_node]['hw'].coarse_out * self.graph.nodes[output_node]['hw'].coarse_group,
                 self.streams_out
             )
         )

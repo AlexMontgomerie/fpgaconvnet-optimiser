@@ -17,7 +17,7 @@ transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
 
 def apply_random_coarse_layer(self, layer):
     # choose coarse in or coarse out
-    coarse_type = random.choice(['coarse_in','coarse_out'])
+    coarse_type = random.choice(['coarse_in','coarse_out', 'coarse_group'])
     # apply coarse folding
     ## coarse in
     if coarse_type == 'coarse_in':
@@ -39,6 +39,12 @@ def apply_random_coarse_layer(self, layer):
         if not self.graph.nodes[layer]['type'] in transformable_layers:
             # if not, update both layer info
             self.graph.nodes[layer]['hw'].coarse_in = coarse_out 
+    ## coarse group
+    if coarse_type == 'coarse_group':
+        # choose random coarse group factor
+        coarse_group = random.choice(self.graph.nodes[layer]['hw'].get_coarse_group_feasible())
+        # update coarse folding for both node info and actual layers 
+        self.graph.nodes[layer]['hw'].coarse_group = coarse_group
 
 def apply_max_coarse(self):
     # iterate over layers
@@ -50,9 +56,11 @@ def apply_max_coarse_layer(self, layer):
     # choose max coarse in and out
     coarse_in  = self.graph.nodes[layer]['hw'].get_coarse_in_feasible()[-1]
     coarse_out = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()[-1]
+    coarse_group = self.graph.nodes[layer]['hw'].get_coarse_group_feasible()[-1]
     # update both coarse in and out
     self.graph.nodes[layer]['hw'].coarse_in  = coarse_in
     self.graph.nodes[layer]['hw'].coarse_out = coarse_out
+    self.graph.nodes[layer]['hw'].coarse_group = coarse_group
 
 def fix_coarse(self):
     # iterate over layers
@@ -67,4 +75,9 @@ def fix_coarse(self):
         coarse_out_max = self.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
         if coarse_out > coarse_out_max:
             self.graph.nodes[node]['hw'].coarse_out = coarse_out_max
+        # check if coarse out is greater than max feasible coarse out
+        coarse_group = self.graph.nodes[node]['hw'].coarse_group
+        coarse_group_max = self.graph.nodes[node]['hw'].get_coarse_group_feasible()[-1]
+        if coarse_group > coarse_group_max:
+            self.graph.nodes[node]['hw'].coarse_group = coarse_group_max
             

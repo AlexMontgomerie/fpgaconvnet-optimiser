@@ -21,12 +21,13 @@ class ConvolutionLayer(Layer):
             pad         =[0,0,0,0],
             coarse_in   =1,
             coarse_out  =1,
+            coarse_group = 1,
             fine        =1,
             data_width  =16,
             sa          =0.5,
             sa_out      =0.5
         ):
-        Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
+        Layer.__init__(self,dim,coarse_in,coarse_out,data_width,coarse_group)
 
         # update flags
         self.flags['channel_dependant'] = True
@@ -99,6 +100,7 @@ class ConvolutionLayer(Layer):
         parameters.filters      = self.filters
         parameters.kernel_size.extend(self.k_size)
         parameters.stride.extend(self.stride)
+        parameters.coarse_group = self.coarse_group
         parameters.groups       = self.groups
         parameters.pad.extend(self.pad)
         parameters.pad_top      = self.pad_top
@@ -120,15 +122,16 @@ class ConvolutionLayer(Layer):
         # conv
         self.modules['conv'].rows     = self.rows_out()
         self.modules['conv'].cols     = self.cols_out()
-        self.modules['conv'].channels = int(self.channels/self.coarse_in)
-        self.modules['conv'].filters  = int(self.filters/(self.coarse_out*self.groups))
+        self.modules['conv'].channels = int(self.channels/(self.coarse_in*self.coarse_group))
+        self.modules['conv'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
         self.modules['conv'].fine     = self.fine
+        self.modules['conv'].groups   = self.groups/self.coarse_group
         # accum
         self.modules['accum'].rows     = self.rows_out()
         self.modules['accum'].cols     = self.cols_out()
-        self.modules['accum'].channels = int(self.channels/(self.coarse_in))
-        self.modules['accum'].filters  = int(self.filters/(self.coarse_out))
-        self.modules['accum'].groups   = self.groups
+        self.modules['accum'].channels = int(self.channels/(self.coarse_in*self.coarse_group))
+        self.modules['accum'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
+        self.modules['accum'].groups   = self.groups/self.coarse_group
         # glue
         self.modules['glue'].rows       = self.rows_out()
         self.modules['glue'].cols       = self.cols_out()
@@ -168,6 +171,9 @@ class ConvolutionLayer(Layer):
     def get_coarse_out_feasible(self,wr_factor=1):
         return self.get_factors(int(self.channels_out()/(self.groups*wr_factor)))
 
+    def get_coarse_group_feasible(self):
+        return self.get_factors(int(self.groups))
+
     def get_fine_feasible(self):
         #return self.get_factors(int(self.k_size*self.k_size))
         if self.k_size[0] != self.k_size[1]:
@@ -206,59 +212,65 @@ class ConvolutionLayer(Layer):
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # weight usage
-        n_filters = float(self.filters*self.channels*self.k_size[0]*self.k_size[1])/float(self.fine*self.groups*self.coarse_in*self.coarse_out)
-        weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.fine
+        n_filters = float(self.filters/self.groups*self.channels*self.k_size[0]*self.k_size[1])/float(self.fine*self.coarse_in*self.coarse_out*self.coarse_group)
+        weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.coarse_group*self.fine
 
         # Total
         return {
-            "LUT"  :  sw_rsc['LUT']*self.coarse_in +
-                      fork_rsc['LUT']*self.coarse_in +
-                      conv_rsc['LUT']*self.coarse_in*self.coarse_out +
-                      accum_rsc['LUT']*self.coarse_in*self.coarse_out +
+            "LUT"  :  sw_rsc['LUT']*self.coarse_in*self.coarse_group +
+                      fork_rsc['LUT']*self.coarse_in*self.coarse_group +
+                      conv_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      accum_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
                       glue_rsc['LUT'],
-            "FF"   :  sw_rsc['FF']*self.coarse_in +
-                      fork_rsc['FF']*self.coarse_in +
-                      conv_rsc['FF']*self.coarse_in*self.coarse_out +
-                      accum_rsc['FF']*self.coarse_in*self.coarse_out +
+            "FF"   :  sw_rsc['FF']*self.coarse_in*self.coarse_group +
+                      fork_rsc['FF']*self.coarse_in*self.coarse_group +
+                      conv_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      accum_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
                       glue_rsc['FF'],
-            "BRAM" :  sw_rsc['BRAM']*self.coarse_in +
-                      fork_rsc['BRAM']*self.coarse_in +
-                      conv_rsc['BRAM']*self.coarse_in*self.coarse_out +
-                      accum_rsc['BRAM']*self.coarse_out +
+            "BRAM" :  sw_rsc['BRAM']*self.coarse_in*self.coarse_group +
+                      fork_rsc['BRAM']*self.coarse_in*self.coarse_group +
+                      conv_rsc['BRAM']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      accum_rsc['BRAM']*self.coarse_out*self.coarse_group +
                       glue_rsc['BRAM'] +
                       weights_bram_usage,
-            "DSP" :   sw_rsc['DSP']*self.coarse_in +
-                      fork_rsc['DSP']*self.coarse_in +
-                      conv_rsc['DSP']*self.coarse_in*self.coarse_out +
-                      accum_rsc['DSP']*self.coarse_in*self.coarse_out +
+            "DSP" :   sw_rsc['DSP']*self.coarse_in*self.coarse_group +
+                      fork_rsc['DSP']*self.coarse_in*self.coarse_group +
+                      conv_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      accum_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
                       glue_rsc['DSP']
         }
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
+        nodes_in = []
+        nodes_out = []
 
-        for i in range(self.coarse_in):
-            cluster.add_node(pydot.Node( "_".join([name,"sw",str(i)]), label="sw" ))
+        for g in range(self.coarse_group):
+            for i in range(self.coarse_in):
+                cluster.add_node(pydot.Node( "_".join([name,"sw",str(g*self.coarse_in+i)]), label="sw" ))
 
-        for i in range(self.coarse_in):
-            cluster.add_node(pydot.Node( "_".join([name,"fork",str(i)]), label="fork" ))
-            cluster.add_edge(pydot.Edge( "_".join([name,"sw",str(i)]) , "_".join([name,"fork",str(i)]) ))
+            for i in range(self.coarse_in):
+                cluster.add_node(pydot.Node( "_".join([name,"fork",str(g*self.coarse_in+i)]), label="fork" ))
+                cluster.add_edge(pydot.Edge( "_".join([name,"sw",str(g*self.coarse_in+i)]) , "_".join([name,"fork",str(i)]) ))
 
-        for i in range(self.coarse_in):
+            for i in range(self.coarse_in):
+                for j in range(self.coarse_out):
+                    cluster.add_node(pydot.Node( "_".join([name,"conv",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), label="conv" ))
+                    cluster.add_edge(pydot.Edge( "_".join([name,"fork",str(g*self.coarse_in+i)]) , "_".join([name,"conv",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]) ))
+
+            for i in range(self.coarse_in):
+                for j in range(self.coarse_out):
+                    cluster.add_node(pydot.Node( "_".join([name,"glue",str(g*self.coarse_out+j)]), label="+" ))
+                    cluster.add_node(pydot.Node( "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), label="accum" ))
+                    cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]) ))
+                    cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), "_".join([name,"glue",str(g*self.coarse_out+j)]) ))
+
+            # get nodes in and out
+            for i in range(self.coarse_in):
+                nodes_in.append("_".join([name,"sw",str(g*self.coarse_in+i)]))
+            
             for j in range(self.coarse_out):
-                cluster.add_node(pydot.Node( "_".join([name,"conv",str(i),str(j)]), label="conv" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"fork",str(i)]) , "_".join([name,"conv",str(i),str(j)]) ))
-
-        for i in range(self.coarse_in):
-            for j in range(self.coarse_out):
-                cluster.add_node(pydot.Node( "_".join([name,"glue",str(j)]), label="+" ))
-                cluster.add_node(pydot.Node( "_".join([name,"accum",str(i),str(j)]), label="accum" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(i),str(j)]), "_".join([name,"accum",str(i),str(j)]) ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(i),str(j)]), "_".join([name,"glue",str(j)]) ))
-
-        # get nodes in and out
-        nodes_in  = [ "_".join([name,"sw",str(i)]) for i in range(self.coarse_in) ]
-        nodes_out = [ "_".join([name,"glue",str(i)]) for i in range(self.coarse_out) ]
+                nodes_out.append("_".join([name,"glue",str(g*self.coarse_out+j)]))
 
         return cluster, nodes_in, nodes_out
 
