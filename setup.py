@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="fpgaconvnet-optimiser-AlexMontgomerie", # Replace with your own username
-    version="0.0.4",
+    version="0.0.6",
     author="Alex Montgomerie",
     author_email="am9215@ic.ac.uk",
     description="Optimiser for mapping convolutional neural network models to FPGA platforms.",
@@ -20,14 +20,15 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        "networkx==2.5",
-        "numpy==1.19.2",
-        "protobuf==3.14.0",
-        "torch==1.7.1",
-        "pyyaml==5.3.1",
-        "scipy==1.5.2",
-        "torchvision==0.8.2",
+        "networkx>=2.5",
+        "numpy>=1.19.2",
+        "protobuf>=3.13.0",
+        "torch>=1.7.1",
+        "pyyaml>=5.1.0",
+        "scipy>=1.2.1",
+        "torchvision>=0.8.2",
         "onnx>=1.8.0",
-        "onnxruntime==1.6.0"
+        "onnxruntime>=1.6.0",
+        "graphviz",
     ]
 )

@@ -216,14 +216,10 @@ def parse_net(filepath,view=True):
     remove_nodes = []
     for node in graph.nodes:
         if "type" not in graph.nodes[node]:
-            print(node)
             remove_nodes.append(node)
     for node in remove_nodes:
         graph.remove_node(node)
 
-    #graphs.print_graph(graph)
-    print(graph.nodes)
-    
     # remove unnecessary nodes
     filter_node_types(graph, LAYER_TYPE.Dropout)
     filter_node_types(graph, LAYER_TYPE.Transpose)

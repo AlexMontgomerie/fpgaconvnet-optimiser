@@ -20,6 +20,14 @@ def update_partitions(self):
     # update partitions 
     for partition_index in range(len(self.partitions)):
 
+        ## update streams in and out
+        input_node  = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
+        output_node = graphs.get_output_nodes(self.partitions[partition_index].graph)[0]
+        self.partitions[partition_index].streams_in  = min(self.partitions[partition_index].max_streams_in,
+                self.partitions[partition_index].graph.nodes[input_node]["hw"].coarse_in)
+        self.partitions[partition_index].streams_out = min(self.partitions[partition_index].max_streams_out,
+                self.partitions[partition_index].graph.nodes[output_node]["hw"].coarse_out)
+
         ## add auxiliary layers
         self.partitions[partition_index].add_squeeze()
         

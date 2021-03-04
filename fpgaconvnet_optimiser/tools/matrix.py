@@ -5,6 +5,9 @@ from numpy.linalg import matrix_rank
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
 
+# turn off invalid NaN division
+np.seterr(divide='ignore', invalid='ignore')
+
 def get_node_list_matrix(graph):
     return ['input',*list(graph.nodes()),'output']
 

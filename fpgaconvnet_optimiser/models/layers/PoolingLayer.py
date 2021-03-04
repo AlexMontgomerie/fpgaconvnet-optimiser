@@ -48,17 +48,21 @@ class PoolingLayer(Layer):
         self.update()
         #self.load_coef()
 
-        # rows and cols out
-        self.rows_out = lambda : int(math.ceil((self.rows_in()-self.k_size+2*self.pad)/self.stride)+1)
-        self.cols_out = lambda : int(math.ceil((self.cols_in()-self.k_size+2*self.pad)/self.stride)+1)
-
-        # rates
-        self.rate_in  = lambda i : abs(self.balance_module_rates(self.rates_graph())[0,0])
-        self.rate_out = lambda i : abs(self.balance_module_rates(self.rates_graph())[1,2])
-
         # switching activity
         self.sa     = sa
         self.sa_out = sa_out
+
+    def rows_out(self):
+        return int(math.ceil((self.rows_in()-self.k_size+2*self.pad)/self.stride)+1)
+
+    def cols_out(self):
+        return int(math.ceil((self.cols_in()-self.k_size+2*self.pad)/self.stride)+1)
+
+    def rate_in(self, index):
+        return abs(self.balance_module_rates(self.rates_graph())[0,0])
+    
+    def rate_out(self, index):
+        return abs(self.balance_module_rates(self.rates_graph())[1,2])
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
