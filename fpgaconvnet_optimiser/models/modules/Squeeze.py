@@ -17,6 +17,10 @@ class Squeeze(Module):
         self.coarse_out = coarse_out
         self.coarse_in  = coarse_in
 
+        # load resource coefficients
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/squeeze_rsc_coef.npy"))
+
     def module_info(self):
         return {
             'type'      : self.__class__.__name__.upper(),

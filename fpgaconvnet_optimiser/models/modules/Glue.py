@@ -9,6 +9,7 @@ Convolution layer together.
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
 
 class Glue(Module):
     def __init__(
@@ -26,6 +27,10 @@ class Glue(Module):
         self.filters    = filters
         self.coarse_in  = coarse_in
         self.coarse_out = coarse_out
+
+        # load resource coefficients
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/glue_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [

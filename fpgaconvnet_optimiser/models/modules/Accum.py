@@ -13,6 +13,7 @@ their accumulation across channels.
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
 
 class Accum(Module):
     def __init__(
@@ -28,6 +29,10 @@ class Accum(Module):
         # init variables
         self.filters = filters
         self.groups  = groups
+
+        # load resource coefficients
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/accum_rsc_coef.npy"))
 
     def utilisation_model(self):
         return [
