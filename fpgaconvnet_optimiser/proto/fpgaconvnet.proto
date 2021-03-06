@@ -44,6 +44,7 @@ message layer {
         CONCAT          = 5;
         BATCH_NORM      = 6;
         SPLIT           = 7;
+        COMMUNICATION   = 8;
     }
     
     required layer_type type = 4;
