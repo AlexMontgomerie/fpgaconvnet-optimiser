@@ -113,11 +113,11 @@ class ConvolutionLayer(Layer):
         # sliding window
         self.modules['sliding_window'].rows     = self.rows_in()
         self.modules['sliding_window'].cols     = self.cols_in()
-        self.modules['sliding_window'].channels = int(self.channels/self.coarse_in)
+        self.modules['sliding_window'].channels = int(self.channels/(self.coarse_in*self.coarse_group))
         # fork
         self.modules['fork'].rows     = self.rows_out()
         self.modules['fork'].cols     = self.cols_out()
-        self.modules['fork'].channels = int(self.channels/self.coarse_in)
+        self.modules['fork'].channels = int(self.channels/(self.coarse_in*self.coarse_group))
         self.modules['fork'].coarse   = self.coarse_out
         # conv
         self.modules['conv'].rows     = self.rows_out()
@@ -125,17 +125,17 @@ class ConvolutionLayer(Layer):
         self.modules['conv'].channels = int(self.channels/(self.coarse_in*self.coarse_group))
         self.modules['conv'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
         self.modules['conv'].fine     = self.fine
-        self.modules['conv'].groups   = self.groups/self.coarse_group
+        self.modules['conv'].groups   = int(self.groups/self.coarse_group)
         # accum
         self.modules['accum'].rows     = self.rows_out()
         self.modules['accum'].cols     = self.cols_out()
         self.modules['accum'].channels = int(self.channels/(self.coarse_in*self.coarse_group))
         self.modules['accum'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
-        self.modules['accum'].groups   = self.groups/self.coarse_group
+        self.modules['accum'].groups   = int(self.groups/self.coarse_group)
         # glue
         self.modules['glue'].rows       = self.rows_out()
         self.modules['glue'].cols       = self.cols_out()
-        self.modules['glue'].filters    = self.filters
+        self.modules['glue'].filters    = int(self.filters/self.coarse_group) 
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
 
@@ -206,7 +206,7 @@ class ConvolutionLayer(Layer):
             sw_rsc      = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         if self.coarse_out == 1:
             fork_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if int(self.channels/self.coarse_in) == 1:
+        if int(self.channels/(self.coarse_in*self.coarse_group)) == 1:
             accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         if self.coarse_in == 1:
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
@@ -221,23 +221,23 @@ class ConvolutionLayer(Layer):
                       fork_rsc['LUT']*self.coarse_in*self.coarse_group +
                       conv_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['LUT'],
+                      glue_rsc['LUT']*self.coarse_group,
             "FF"   :  sw_rsc['FF']*self.coarse_in*self.coarse_group +
                       fork_rsc['FF']*self.coarse_in*self.coarse_group +
                       conv_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['FF'],
+                      glue_rsc['FF']*self.coarse_group,
             "BRAM" :  sw_rsc['BRAM']*self.coarse_in*self.coarse_group +
                       fork_rsc['BRAM']*self.coarse_in*self.coarse_group +
                       conv_rsc['BRAM']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['BRAM']*self.coarse_out*self.coarse_group +
-                      glue_rsc['BRAM'] +
+                      glue_rsc['BRAM']*self.coarse_group +
                       weights_bram_usage,
             "DSP" :   sw_rsc['DSP']*self.coarse_in*self.coarse_group +
                       fork_rsc['DSP']*self.coarse_in*self.coarse_group +
                       conv_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['DSP']
+                      glue_rsc['DSP']*self.coarse_group
         }
 
     def visualise(self,name):
