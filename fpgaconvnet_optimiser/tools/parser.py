@@ -16,6 +16,7 @@ from fpgaconvnet_optimiser.models.layers.ConvolutionLayer     import Convolution
 from fpgaconvnet_optimiser.models.layers.InnerProductLayer    import InnerProductLayer
 from fpgaconvnet_optimiser.models.layers.PoolingLayer         import PoolingLayer
 from fpgaconvnet_optimiser.models.layers.ReLULayer            import ReLULayer
+from fpgaconvnet_optimiser.models.layers.CommunicationLayer   import CommunicationLayer
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
@@ -174,6 +175,9 @@ def add_hardware(model, graph):
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
             graph.nodes[name]['hw'] = BatchNormLayer([0,0,0])
             continue
+        if graph.nodes[name]['type'] == LAYER_TYPE.Communication:
+            graph.nodes[name]['hw'] = CommunicationLayer([0,0,0])
+
         #raise NameError
         print(name,graph.nodes[name]['type'])
 
