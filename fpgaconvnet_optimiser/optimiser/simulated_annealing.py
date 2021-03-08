@@ -6,6 +6,7 @@ import random
 import math
 
 from fpgaconvnet_optimiser.optimiser.optimiser import Optimiser
+import fpgaconvnet_optimiser.tools.graphs as graphs
 
 LATENCY   =0
 THROUGHPUT=1
@@ -113,7 +114,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 partition_index = random.randint(0,len(self.partitions)-1)
  
                 ## Choose a random node in partition
-                node = random.choice(list(self.partitions[partition_index].graph))
+                node = random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph))
                 
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)

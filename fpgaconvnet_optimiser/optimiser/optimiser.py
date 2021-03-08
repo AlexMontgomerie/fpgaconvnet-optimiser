@@ -5,6 +5,7 @@ import random
 import math
 
 from fpgaconvnet_optimiser.models.network.Network import Network
+import fpgaconvnet_optimiser.tools.graphs as graphs
 
 LATENCY   =0
 THROUGHPUT=1
@@ -109,7 +110,7 @@ class Optimiser(Network):
 
         # choose random node in partition if given
         if node == None:
-            node = random.choice([*self.partitions[partition_index].graph])
+            node = random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph))
 
         # Apply a random transform
         ## Coarse transform (node_info transform)

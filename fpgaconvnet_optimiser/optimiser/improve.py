@@ -6,6 +6,7 @@ import math
 import sys
 
 from fpgaconvnet_optimiser.optimiser.optimiser import Optimiser
+import fpgaconvnet_optimiser.tools.graphs as graphs
 from operator import itemgetter
 
 LATENCY   =0
@@ -123,9 +124,9 @@ class Improve(Optimiser):
 
                 ## Choose slowest node in partition
                 node_latencys = np.array([ self.partitions[partition_index].graph.nodes[layer]['hw'].get_latency() \
-                        for layer in self.partitions[partition_index].graph.nodes() ])
-                node = np.random.choice(list(self.partitions[partition_index].graph.nodes()), 1, p=(node_latencys/sum(node_latencys)))[0]
-                
+                        for layer in graphs.ordered_node_list(self.partitions[partition_index].graph) ])
+                node = np.random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph), 1, p=(node_latencys/sum(node_latencys)))[0]
+
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)
             
