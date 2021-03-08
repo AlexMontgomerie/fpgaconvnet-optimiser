@@ -9,6 +9,7 @@ from google.protobuf.json_format import MessageToDict
 from functools import reduce
 import os
 import math
+import sys
 
 class Layer:
     """
@@ -71,6 +72,8 @@ class Layer:
         self.coarse_in  = coarse_in
         self.coarse_out = coarse_out
         self.coarse_group = coarse_group
+
+        self.groups = 1
 
         # data width
         self.data_width = data_width
@@ -300,9 +303,27 @@ class Layer:
     def get_coarse_group_feasible(self):
         return [1]
 
+    def update_coarse_in(self, coarse_in):
+        self.coarse_in  = coarse_in
+        self.coarse_out = coarse_in
+
+    def update_coarse_out(self, coarse_out):
+        self.coarse_in  = coarse_out
+        self.coarse_out = coarse_out
+
+    def update_coarse_group(self, coarse_group):
+        self.coarse_group  = coarse_group
+
     def load_coef(self):
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
         for module in self.modules:
-            self.modules[module].load_coef("coefficients/{}_rsc_coef.npy".format(module))
+            self.modules[module].load_coef(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "../../coefficients/{}_rsc_coef.npy".format(module))
+            )
+        os.chdir(work_dir)
 
     def update(self):
         pass

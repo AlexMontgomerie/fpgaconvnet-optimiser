@@ -65,6 +65,12 @@ class InnerProductLayer(Layer):
     def rate_out(self,index):
         return abs(self.balance_module_rates(self.rates_graph())[3,4])
 
+    def update_coarse_in(self, coarse_in):
+        self.coarse_in  = coarse_in
+
+    def update_coarse_out(self, coarse_out):
+        self.coarse_out = coarse_out
+
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
         parameters.batch_size   = batch_size

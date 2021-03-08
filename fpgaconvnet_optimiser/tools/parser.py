@@ -11,11 +11,13 @@ import networkx as nx
 import fpgaconvnet_optimiser.tools.graphs as graphs
 import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
 
-from fpgaconvnet_optimiser.models.layers.BatchNormLayer       import BatchNormLayer
-from fpgaconvnet_optimiser.models.layers.ConvolutionLayer     import ConvolutionLayer
-from fpgaconvnet_optimiser.models.layers.InnerProductLayer    import InnerProductLayer
-from fpgaconvnet_optimiser.models.layers.PoolingLayer         import PoolingLayer
-from fpgaconvnet_optimiser.models.layers.ReLULayer            import ReLULayer
+from fpgaconvnet_optimiser.models.layers import BatchNormLayer
+from fpgaconvnet_optimiser.models.layers import ConvolutionLayer
+from fpgaconvnet_optimiser.models.layers import InnerProductLayer
+from fpgaconvnet_optimiser.models.layers import PoolingLayer
+from fpgaconvnet_optimiser.models.layers import ReLULayer
+from fpgaconvnet_optimiser.models.layers import LRNLayer
+from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
@@ -174,6 +176,7 @@ def add_hardware(model, graph):
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
             graph.nodes[name]['hw'] = BatchNormLayer([0,0,0])
             continue
+
         #raise NameError
         print(name,graph.nodes[name]['type'])
 
@@ -213,14 +216,10 @@ def parse_net(filepath,view=True):
     remove_nodes = []
     for node in graph.nodes:
         if "type" not in graph.nodes[node]:
-            print(node)
             remove_nodes.append(node)
     for node in remove_nodes:
         graph.remove_node(node)
 
-    #graphs.print_graph(graph)
-    print(graph.nodes)
-    
     # remove unnecessary nodes
     filter_node_types(graph, LAYER_TYPE.Dropout)
     filter_node_types(graph, LAYER_TYPE.Transpose)
@@ -229,6 +228,8 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.Cast)
     filter_node_types(graph, LAYER_TYPE.Squeeze)
     filter_node_types(graph, LAYER_TYPE.Shape)
+    filter_node_types(graph, LAYER_TYPE.Softmax)
+    filter_node_types(graph, LAYER_TYPE.LRN)
 
     # add hardware to graph
     add_hardware(model, graph)

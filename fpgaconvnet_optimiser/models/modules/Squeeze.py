@@ -1,6 +1,8 @@
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
+import sys
 
 class Squeeze(Module):
     def __init__(
@@ -16,6 +18,13 @@ class Squeeze(Module):
         # init variables
         self.coarse_out = coarse_out
         self.coarse_in  = coarse_in
+
+        # load resource coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/squeeze_rsc_coef.npy"))
+        os.chdir(work_dir)
 
     def module_info(self):
         return {

@@ -8,6 +8,8 @@ across a kernel-size window of the feature map.
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
+import sys
 
 class Pool(Module):
     def __init__(
@@ -23,6 +25,13 @@ class Pool(Module):
         # init variables
         self.k_size    = k_size
         self.pool_type = pool_type
+
+        # load resource coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/pool_rsc_coef.npy"))
+        os.chdir(work_dir)
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [

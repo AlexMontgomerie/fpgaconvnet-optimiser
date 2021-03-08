@@ -9,3 +9,5 @@ from .PoolingLayer      import PoolingLayer
 from .ReLULayer         import ReLULayer
 from .ConvolutionLayer  import ConvolutionLayer
 from .SqueezeLayer      import SqueezeLayer
+from .LRNLayer          import LRNLayer
+from .SoftMaxLayer      import SoftMaxLayer

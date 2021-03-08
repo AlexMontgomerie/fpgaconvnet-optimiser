@@ -173,6 +173,12 @@ class ConvolutionLayer(Layer):
 
     def get_coarse_group_feasible(self):
         return self.get_factors(int(self.groups))
+        
+    def update_coarse_in(self, coarse_in):
+        self.coarse_in  = coarse_in
+
+    def update_coarse_out(self, coarse_out):
+        self.coarse_out = coarse_out
 
     def get_fine_feasible(self):
         #return self.get_factors(int(self.k_size*self.k_size))
