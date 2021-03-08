@@ -77,12 +77,14 @@ def get_all_horizontal_merges(self,partition_index):
             for i in range(len(self.partitions)):
                 if next_node in graphs.get_input_nodes(self.partitions[i].graph):
                     # check that this is a complete block if it's a split
-                    if self.partitions[i].graph.out_degree(next_node) == self.graph.out_degree(next_node):
+                    if (self.partitions[i].graph.out_degree(next_node) == self.graph.out_degree(next_node) or
+                        self.graph.out_degree(next_node) == 1):
                         partition_pairs[0] = (partition_index,i)
     
     # check that if it's a concat layer, it's complete
     if self.graph.in_degree(output_node) > 1:
-        if self.partitions[partition_index].graph.in_degree(output_node) == self.graph.in_degree(output_node):
+        if (self.partitions[partition_index].graph.in_degree(output_node) == self.graph.in_degree(output_node) or
+            self.graph.in_degree(output_node) == 1):
             _find_next_partition()
     else:
         _find_next_partition()
@@ -96,12 +98,14 @@ def get_all_horizontal_merges(self,partition_index):
             for i in range(len(self.partitions)):
                 if prev_node in graphs.get_output_nodes(self.partitions[i].graph):
                     # check that this is a complete block
-                    if self.partitions[i].graph.in_degree(prev_node) == self.graph.in_degree(prev_node):
+                    if (self.partitions[i].graph.in_degree(prev_node) == self.graph.in_degree(prev_node) or
+                        self.graph.in_degree(prev_node) == 1):
                         partition_pairs[1] = (i,partition_index)
 
     # check that if it's a split layer, it's complete
     if self.graph.out_degree(input_node) > 1:
-        if self.partitions[partition_index].graph.out_degree(input_node) == self.graph.out_degree(input_node):
+        if (self.partitions[partition_index].graph.out_degree(input_node) == self.graph.out_degree(input_node) or
+            self.graph.out_degree(input_node) == 1):
             _find_prev_partition()
     else: 
         _find_prev_partition()
