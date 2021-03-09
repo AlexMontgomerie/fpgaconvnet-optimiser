@@ -45,7 +45,7 @@ class Network():
         self.workload_matrix    = matrix.get_workload_matrix(self.graph)
 
         # partitions
-        self.partitions = [Partition(copy.deepcopy(self.graph))]
+        self.partitions = [Partition(copy.deepcopy(self.graph),0)]
 
         # platform
         self.platform = {
@@ -63,7 +63,13 @@ class Network():
                 'BRAM'  : 0
             }
         }
-        self.cluster = {}
+        # cluster definition: if left empty the
+        self.cluster = [{
+                            "id":0,
+                            "platform":self.platform
+                        }]
+        # int:int map with partition index as key and platform index as value 
+        self.partitionmap = {partition.get_id():0 for partition in self.partitions}
 
         # all types of layers
         self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
