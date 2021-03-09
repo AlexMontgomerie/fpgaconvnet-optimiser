@@ -91,12 +91,12 @@ def update_cluster(self, cluster_path):
             platform_specification = json.load(f)
 
         temp_platform = {}
-        temp_platform['id']                 = copy.deepcopy(platform['id'])
-        temp_platform['connections_in']     = copy.deepcopy(platform['connections_in'])
-        temp_platform['connections_out']    = copy.deepcopy(platform['connections_out'])
+        temp_platform['id']                 = platform['id']
+        temp_platform['connections_in']     = platform['connections_in']
+        temp_platform['connections_out']    = platform['connections_out']
 
-        temp_platform['name']               = copy.deepcopy(platform_specification['name']+"_{id:03d}".format(id=temp_platform['id']))
-        temp_platform['specification']      = copy.deepcopy(platform_specification)
-        self.cluster[temp_platform['id']]    = temp_platform
+        temp_platform['name']               = platform_specification['name']+"_{id:03d}".format(id=temp_platform['id'])
+        temp_platform['specification']      = platform_specification
+        self.cluster[temp_platform['id']]    = copy.deepcopy(temp_platform)
 
     print(self.cluster)
