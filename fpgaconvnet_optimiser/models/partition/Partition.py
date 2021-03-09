@@ -5,7 +5,8 @@ class Partition():
 
     def __init__(
             self, 
-            graph, 
+            graph,
+            id, 
             ports_in=1,
             ports_out=1,
             streams_in=1,
@@ -13,7 +14,7 @@ class Partition():
             batch_size=1,
             wr_factor=1
         ):
-
+        self.id = id
         ## graph for partition
         self.graph = graph
         
@@ -124,3 +125,9 @@ class Partition():
                     cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i] ,edge_labels[edge]["nodes_in"][i]))
         # return cluster
         return cluster
+
+    def get_id(self):
+        return self.id
+    
+    def set_id(self,id):
+        self.id = id
