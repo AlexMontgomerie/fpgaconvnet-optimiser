@@ -33,9 +33,7 @@ class CommunicationLayer(Layer):
         ]
         # init modules
         self.modules = {
-            "fork"           : Fork(dim_out,1,coarse_out),
             "comm"  : Communication(dim_out,coarse_out,send_nreceive),
-            "glue"           : Glue(dim_out,filters,coarse_in,coarse_out)
         }
         self.update()
         #self.load_coef()
@@ -88,31 +86,14 @@ class CommunicationLayer(Layer):
         self.modules['comm'].rows     = self.rows_in()
         self.modules['comm'].cols     = self.cols_in()
         self.modules['comm'].channels = int(self.channels/self.coarse_in)
-        # fork
-        self.modules['fork'].rows     = self.rows_out()
-        self.modules['fork'].cols     = self.cols_out()
-        self.modules['fork'].channels = int(self.channels/self.coarse_in)
-        self.modules['fork'].coarse   = self.coarse_out
-        # glue
-        self.modules['glue'].rows       = self.rows_out()
-        self.modules['glue'].cols       = self.cols_out()
-        self.modules['glue'].filters    = self.filters
-        self.modules['glue'].coarse_in  = self.coarse_in
-        self.modules['glue'].coarse_out = self.coarse_out
-
 
     ### RATES ### 
     def rates_graph(self):
-        rates_graph = np.zeros( shape=(3,4) , dtype=float )
+        rates_graph = np.zeros( shape=(1,2) , dtype=float )
     
         rates_graph[0,0] = self.modules['comm'].rate_in()
         rates_graph[0,1] = self.modules['comm'].rate_out()
-        # fork
-        rates_graph[1,1] = self.modules['fork'].rate_in()
-        rates_graph[1,2] = self.modules['fork'].rate_out()
-        # conv
-        rates_graph[2,2] = self.modules['glue'].rate_in()
-        rates_graph[2,3] = self.modules['glue'].rate_out()
+
         return rates_graph
 
     def get_coarse_in_feasible(self,wr_factor=1):
@@ -139,30 +120,14 @@ class CommunicationLayer(Layer):
     def resource(self):
 
         comm_rsc      = self.modules['comm'].rsc()
-        fork_rsc    = self.modules['fork'].rsc()
-        glue_rsc    = self.modules['glue'].rsc()
-
-        if self.coarse_out == 1:
-            fork_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if self.coarse_in == 1:
-            glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # weight usage
         # Total
         return {
-            "LUT"  :  comm_rsc['LUT']*self.coarse_in +
-                      fork_rsc['LUT']*self.coarse_in +
-                      glue_rsc['LUT'],
-            "FF"   :  comm_rsc['FF']*self.coarse_in +
-                      fork_rsc['FF']*self.coarse_in +
-                      glue_rsc['FF'],
-            "BRAM" :  comm_rsc['BRAM']*self.coarse_in +
-                      fork_rsc['BRAM']*self.coarse_in +
-                      glue_rsc['BRAM'],
-            "DSP"  :  comm_rsc['DSP']*self.coarse_in +
-                      fork_rsc['DSP']*self.coarse_in +
-                      glue_rsc['DSP']
-        }
+            "LUT"  :  comm_rsc['LUT']*self.coarse_in ,
+            "FF"   :  comm_rsc['FF']*self.coarse_in, 
+            "BRAM" :  comm_rsc['BRAM']*self.coarse_in,
+            "DSP"  :  comm_rsc['DSP']*self.coarse_in}
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
@@ -170,24 +135,8 @@ class CommunicationLayer(Layer):
         for i in range(self.coarse_in):
             cluster.add_node(pydot.Node( "_".join([name,"comm",str(i)]), label="comm" ))
 
-        for i in range(self.coarse_in):
-            cluster.add_node(pydot.Node( "_".join([name,"fork",str(i)]), label="fork" ))
-            cluster.add_edge(pydot.Edge( "_".join([name,"comm",str(i)]) , "_".join([name,"fork",str(i)]) ))
-
-        for i in range(self.coarse_in):
-            for j in range(self.coarse_out):
-                cluster.add_node(pydot.Node( "_".join([name,"conv",str(i),str(j)]), label="conv" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"fork",str(i)]) , "_".join([name,"conv",str(i),str(j)]) ))
-
-        for i in range(self.coarse_in):
-            for j in range(self.coarse_out):
-                cluster.add_node(pydot.Node( "_".join([name,"glue",str(j)]), label="+" ))
-                cluster.add_node(pydot.Node( "_".join([name,"accum",str(i),str(j)]), label="accum" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(i),str(j)]), "_".join([name,"accum",str(i),str(j)]) ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(i),str(j)]), "_".join([name,"glue",str(j)]) ))
-
         # get nodes in and out
         nodes_in  = [ "_".join([name,"comm",str(i)]) for i in range(self.coarse_in) ]
-        nodes_out = [ "_".join([name,"glue",str(i)]) for i in range(self.coarse_out) ]
+        nodes_out = [ "_".join([name,"comm",str(i)]) for i in range(self.coarse_out) ]
 
         return cluster, nodes_in, nodes_out
