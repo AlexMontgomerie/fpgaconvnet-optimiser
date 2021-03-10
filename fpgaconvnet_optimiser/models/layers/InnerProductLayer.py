@@ -18,12 +18,14 @@ class InnerProductLayer(Layer):
             coarse_in   =1,
             coarse_out  =1,
             data_width  =16,
+            weight_width =8,
+            acc_width   =30,
             sa          =0.5,
             sa_out      =0.5
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
 
-        self.weight_width = 8
+        self.weight_width = weight_width
 
         # update flags
         self.flags['channel_dependant'] = True
@@ -39,10 +41,10 @@ class InnerProductLayer(Layer):
 
         # init modules
         self.modules = {
-            "fork"           : Fork( [self.channels,self.rows,self.cols]    ,[1,1],coarse_out),
-            "conv"           : Conv( [self.channels*self.rows*self.cols,1,1],filters,1,[1,1],1),
-            "accum"          : Accum([self.channels*self.rows*self.cols,1,1],filters,1),
-            "glue"           : Glue( [self.channels*self.rows*self.cols,1,1],filters,coarse_in,coarse_out)
+            "fork"           : Fork( [self.channels,self.rows,self.cols]    ,[1,1],coarse_out,data_width),
+            "conv"           : Conv( [self.channels*self.rows*self.cols,1,1],filters,1,[1,1],1,data_width,weight_width),
+            "accum"          : Accum([self.channels*self.rows*self.cols,1,1],filters,1,acc_width),
+            "glue"           : Glue( [self.channels*self.rows*self.cols,1,1],filters,coarse_in,coarse_out,data_width)
         }
         self.update()
 

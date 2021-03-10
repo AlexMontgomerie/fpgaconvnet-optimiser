@@ -21,7 +21,7 @@ class ReLULayer(Layer):
 
         # init modules
         self.modules = {
-            "relu" : ReLU(dim)
+            "relu" : ReLU(dim, data_width)
         }
         self.update()
 

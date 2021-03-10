@@ -16,7 +16,7 @@ class Optimiser(Network):
     Base class for all optimisation strategies. This inherits the `Network` class. 
     """
 
-    def __init__(self,name,network_path):
+    def __init__(self,name,network_path,data_width=16,weight_width=8,acc_width=30):
         """
         Parameters
         ----------
@@ -37,7 +37,7 @@ class Optimiser(Network):
             are `['coarse','fine','partition','weights_reloading']`
         """
         # Initialise Network
-        Network.__init__(self,name,network_path)
+        Network.__init__(self,name,network_path,data_width=data_width,weight_width=weight_width,acc_width=acc_width)
 
         self.objective   = 0
         self.constraints = {

@@ -44,7 +44,7 @@ class PoolingLayer(Layer):
         # init modules
         self.modules = {
             "sliding_window" : SlidingWindow(dim, k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, data_width),
-            "pool"           : Pool(dim, k_size)
+            "pool"           : Pool(dim, k_size, data_width=data_width)
         }
         self.update()
         #self.load_coef()

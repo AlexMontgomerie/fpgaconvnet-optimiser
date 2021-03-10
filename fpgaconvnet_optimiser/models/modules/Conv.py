@@ -26,7 +26,8 @@ class Conv(Module):
             fine,
             k_size,
             groups,
-            data_width=16
+            data_width=16,
+            weight_width=8
         ):
         """
         Parameters
@@ -63,6 +64,8 @@ class Conv(Module):
         self.groups  = groups
         self.fine    = fine
         self.k_size  = k_size
+
+        self.weight_width = weight_width
 
         # load resource coefficients
         work_dir = os.getcwd()
@@ -120,7 +123,7 @@ class Conv(Module):
         return {
           "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : 0,
-          "DSP"  : self.fine,
+          "DSP"  : self.fine * math.ceil((self.weight_width + self.data_width) / 48), #https://github.com/Xilinx/finn/blob/4fee6ffd8e13f91314ec9086e9ce9b2ea9de15c7/src/finn/custom_op/fpgadataflow/streamingfclayer_batch.py#L368
           "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 

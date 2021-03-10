@@ -24,6 +24,8 @@ class ConvolutionLayer(Layer):
             coarse_group = 1,
             fine        =1,
             data_width  =16,
+            weight_width =8,
+            acc_width   =30,
             sa          =0.5,
             sa_out      =0.5
         ):
@@ -34,7 +36,7 @@ class ConvolutionLayer(Layer):
         self.flags['transformable']     = True
 
         # weight width
-        self.weight_width = 8
+        self.weight_width = weight_width
 
         # init variables
         self.k_size     = k_size
@@ -57,10 +59,10 @@ class ConvolutionLayer(Layer):
         # init modules
         self.modules = {
             "sliding_window" : SlidingWindow(dim, k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, data_width),
-            "fork"           : Fork(dim_out,k_size,coarse_out),
-            "conv"           : Conv(dim_out,filters,fine,k_size,groups),
-            "accum"          : Accum(dim_out,filters,groups),
-            "glue"           : Glue(dim_out,filters,coarse_in,coarse_out)
+            "fork"           : Fork(dim_out,k_size,coarse_out,data_width),
+            "conv"           : Conv(dim_out,filters,fine,k_size,groups,data_width,weight_width),
+            "accum"          : Accum(dim_out,filters,groups,acc_width),
+            "glue"           : Glue(dim_out,filters,coarse_in,coarse_out,data_width)
         }
         self.update()
         #self.load_coef()

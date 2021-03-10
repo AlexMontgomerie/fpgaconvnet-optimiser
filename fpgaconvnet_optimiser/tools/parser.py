@@ -109,7 +109,7 @@ def build_graph(model):
     # return graph
     return graph
 
-def add_hardware(model, graph):
+def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
     # iterate over nodes in graph
     for node in model.graph.node:
         # get node name
@@ -137,7 +137,10 @@ def add_hardware(model, graph):
                 k_size =attr["kernel_shape"],
                 stride =attr["strides"],
                 pad    =attr["pads"],
-                groups =attr["group"]
+                groups =attr["group"],
+                data_width =data_width,
+                weight_width =weight_width,
+                acc_width =acc_width
             )
             continue
         # FC Layer
@@ -148,7 +151,10 @@ def add_hardware(model, graph):
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             # create inner product layer hardware
             graph.nodes[name]['hw'] = InnerProductLayer([0,0,0],
-                filters
+                filters,
+                data_width =data_width,
+                weight_width =weight_width,
+                acc_width =acc_width
             )
             continue
         # Pooling layer
@@ -165,16 +171,21 @@ def add_hardware(model, graph):
                 k_size =attr["kernel_shape"],
                 stride =attr["strides"],
                 pad    =attr["pads"],
+                data_width =data_width
             )
             continue
         # ReLU Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.ReLU:
             # create relu layer hardware
-            graph.nodes[name]['hw'] = ReLULayer([0,0,0])
+            graph.nodes[name]['hw'] = ReLULayer([0,0,0],
+                data_width =data_width
+            )
             continue
         # BatchNorm Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
-            graph.nodes[name]['hw'] = BatchNormLayer([0,0,0])
+            graph.nodes[name]['hw'] = BatchNormLayer([0,0,0],
+                data_width =data_width
+            )
             continue
 
         #raise NameError
@@ -204,7 +215,7 @@ def add_dimensions(model, graph):
             graph.nodes[node]['hw'].rows     = dim[1]
             graph.nodes[node]['hw'].cols     = dim[2]
 
-def parse_net(filepath,view=True):
+def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30):
 
     # load onnx model
     model = onnx_helper.load(filepath)
@@ -232,7 +243,7 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.LRN)
 
     # add hardware to graph
-    add_hardware(model, graph)
+    add_hardware(model, graph, data_width, weight_width, acc_width)
 
     # add layer dimensions
     add_dimensions(model, graph)

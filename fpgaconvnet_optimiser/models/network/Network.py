@@ -17,15 +17,15 @@ from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 class Network():
 
-    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0):
+    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30):
 
         ## percentage resource allocation
         self.rsc_allocation = 0.7 
 
         ## bitwidths
-        self.data_width     = 16
-        self.weight_width   = 8
-        self.acc_width      = 30 
+        self.data_width     = data_width
+        self.weight_width   = weight_width
+        self.acc_width      = acc_width 
 
         # network name
         self.name = name
@@ -34,7 +34,7 @@ class Network():
         self.batch_size = batch_size
  
         # load network
-        self.model, self.graph = parser.parse_net(network_path, view=False)
+        self.model, self.graph = parser.parse_net(network_path, view=False, data_width=self.data_width, weight_width=self.weight_width, acc_width=self.acc_width)
 
         # node and edge lists
         self.node_list = list(self.graph.nodes())
@@ -45,7 +45,7 @@ class Network():
         self.workload_matrix    = matrix.get_workload_matrix(self.graph)
 
         # partitions
-        self.partitions = [Partition(copy.deepcopy(self.graph))]
+        self.partitions = [Partition(copy.deepcopy(self.graph), data_width=self.data_width, weight_width=self.weight_width, acc_width=self.acc_width)]
 
         # platform
         self.platform = {

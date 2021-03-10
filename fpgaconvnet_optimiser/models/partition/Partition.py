@@ -11,7 +11,10 @@ class Partition():
             streams_in=1,
             streams_out=1,
             batch_size=1,
-            wr_factor=1
+            wr_factor=1,
+            data_width=16,
+            weight_width=8,
+            acc_width=30
         ):
 
         ## graph for partition
@@ -36,9 +39,9 @@ class Partition():
 
         ## bitwidths (TODO: add as parameters)
         self.port_width     = 64
-        self.data_width     = 16
-        self.weight_width   = 8
-        self.acc_width      = 30 
+        self.data_width     = data_width
+        self.weight_width   = weight_width
+        self.acc_width      = acc_width
 
         # maximum streams in and out (TODO: turn into function calls)
         self.max_streams_in     = self.ports_in*int(self.port_width/self.data_width)

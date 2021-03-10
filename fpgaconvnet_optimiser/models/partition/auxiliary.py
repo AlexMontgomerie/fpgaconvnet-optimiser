@@ -30,7 +30,8 @@ def add_squeeze(self):
                         self.graph.nodes[start_node]['hw'].cols_out()
                     ], 
                     self.graph.nodes[start_node]['hw'].coarse_out * self.graph.nodes[start_node]['hw'].coarse_group,
-                    self.graph.nodes[end_node]['hw'].coarse_in * self.graph.nodes[end_node]['hw'].coarse_group
+                    self.graph.nodes[end_node]['hw'].coarse_in * self.graph.nodes[end_node]['hw'].coarse_group,
+                    data_width = min(self.graph.nodes[start_node]['hw'].data_width, self.graph.nodes[end_node]['hw'].data_width)
                 )
             )
             # add node to graph
@@ -52,7 +53,8 @@ def add_squeeze(self):
                     self.graph.nodes[input_node]['hw'].cols_in()
                 ], 
                 self.streams_in,
-                self.graph.nodes[input_node]['hw'].coarse_in * self.graph.nodes[input_node]['hw'].coarse_group
+                self.graph.nodes[input_node]['hw'].coarse_in * self.graph.nodes[input_node]['hw'].coarse_group,
+                data_width = self.graph.nodes[input_node]['hw'].data_width
             )
         )
         # add edge to graph
@@ -71,7 +73,8 @@ def add_squeeze(self):
                     self.graph.nodes[output_node]['hw'].cols_out()
                 ], 
                 self.graph.nodes[output_node]['hw'].coarse_out * self.graph.nodes[output_node]['hw'].coarse_group,
-                self.streams_out
+                self.streams_out,
+                data_width = self.graph.nodes[output_node]['hw'].data_width
             )
         )
         self.graph.add_edge(output_node,new_node)

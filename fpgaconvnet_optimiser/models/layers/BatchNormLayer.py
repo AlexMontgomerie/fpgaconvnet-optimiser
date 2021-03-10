@@ -23,7 +23,7 @@ class BatchNormLayer(Layer):
 
         # modules
         self.modules = {
-            "batch_norm" : BatchNorm(dim)
+            "batch_norm" : BatchNorm(dim, data_width)
         }
         self.update()
 

@@ -281,7 +281,7 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in,
+            "BRAM"  : math.ceil(self.buffer_depth*self.data_width/18000)*self.coarse_in,
             "DSP"   : 0
         }
 
