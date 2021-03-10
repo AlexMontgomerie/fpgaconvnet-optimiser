@@ -92,6 +92,8 @@ def update_coarse_in_out_partition(self):
             else:
                 self.partitions[i].graph.nodes[input_node]['hw'].update_coarse_in(1)
                 self.partitions[i].graph.nodes[input_node]['hw'].update_coarse_group(
-                    self.partitions[i-1].graph.nodes[output_node]['hw'].coarse_out * self.partitions[i-1].graph.nodes[output_node]['hw'].coarse_group 
+                    min(self.partitions[i-1].graph.nodes[output_node]['hw'].coarse_out * self.partitions[i-1].graph.nodes[output_node]['hw'].coarse_group,
+                        self.partitions[i].graph.nodes[input_node]['hw'].get_coarse_group_feasible()[-1])
                 )
+                
 
