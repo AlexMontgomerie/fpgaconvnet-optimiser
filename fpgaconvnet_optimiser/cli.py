@@ -62,7 +62,8 @@ def main():
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
                 cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]))
+                iterations=int(optimiser_config["annealing"]["iterations"]),
+                transforms_config=optimiser_config["transforms"])
     elif args.optimiser == "simulated_annealing":
         # create network
         net = SimulatedAnnealing(args.name,args.model_path,
@@ -70,7 +71,8 @@ def main():
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
                 cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]))
+                iterations=int(optimiser_config["annealing"]["iterations"]),
+                transforms_config=optimiser_config["transforms"])
     
     # turn on debugging
     net.DEBUG = True

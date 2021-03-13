@@ -19,29 +19,7 @@ from fpgaconvnet_optimiser.models.layers import ReLULayer
 from fpgaconvnet_optimiser.models.layers import LRNLayer
 from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
-
-def _layer_type(op_type):
-    layer_types = { 
-        "Conv"      : LAYER_TYPE.Convolution,
-        "Gemm"      : LAYER_TYPE.InnerProduct,
-        "Relu"      : LAYER_TYPE.ReLU,
-        "MaxPool"   : LAYER_TYPE.Pooling,
-        "LRN"       : LAYER_TYPE.LRN,
-        "Reshape"   : LAYER_TYPE.Transpose,
-        "Softmax"   : LAYER_TYPE.Softmax,
-        "Dropout"   : LAYER_TYPE.Dropout,
-        "Flatten"   : LAYER_TYPE.Flatten,
-        "BatchNormalization" : LAYER_TYPE.BatchNorm,
-        "GlobalAveragePool"  : LAYER_TYPE.Pooling,
-        "AveragePool"        : LAYER_TYPE.Pooling,
-        "Add"       : LAYER_TYPE.Eltwise,
-        "Cast"      : LAYER_TYPE.Cast,
-        "Clip"      : LAYER_TYPE.Clip,
-        "Shape"     : LAYER_TYPE.Shape,
-        "Squeeze"   : LAYER_TYPE.Squeeze,
-    }
-    return layer_types.get(op_type, lambda: TypeError)
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 
 def remove_node(graph, node): # TODO: move to tools.graphs
     prev_nodes = graphs.get_prev_nodes(graph,node)
@@ -67,8 +45,8 @@ def build_graph(model):
         # get name of node
         name = onnx_helper._name(node)
         # add node to graph
-        graph.add_node( name, type=_layer_type(node.op_type), hw=None, inputs={} )
-        if _layer_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
+        graph.add_node( name, type=from_onnx_op_type(node.op_type), hw=None, inputs={} )
+        if from_onnx_op_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
             graph.nodes[name]['inputs'] = { "weights": "", "bias": "" } 
     # add all edges from network
     edges = []

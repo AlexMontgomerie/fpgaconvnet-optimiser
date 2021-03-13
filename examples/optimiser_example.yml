@@ -14,6 +14,11 @@ transforms:
         apply_transform: true
         probability: 0.25
         start_complete: true
+        allowed_partitions:
+            - [Relu, Conv]
+            - [MaxPool, Conv]
+            - [Relu, Gemm]
+            - [AveragePool, Gemm]
 annealing:
     T: 10.0
     T_min: 0.00001
