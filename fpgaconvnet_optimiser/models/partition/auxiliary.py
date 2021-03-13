@@ -1,10 +1,11 @@
+from build.lib.fpgaconvnet_optimiser.tools.graphs import print_graph
 import numpy as np
 import copy
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
 import fpgaconvnet_optimiser.tools.matrix as matrix
 
-from fpgaconvnet_optimiser.models.layers import SqueezeLayer
+from fpgaconvnet_optimiser.models.layers import CommunicationLayer, SqueezeLayer
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
@@ -98,3 +99,68 @@ def remove_squeeze(self):
     # remove squeeze nodes
     self.graph.remove_nodes_from(remove_nodes)
 
+def add_communication(self,platform):
+    new_comm_link=0
+    if platform['connections_in']!=[0]:
+        # check input node
+        input_node = graphs.get_input_nodes(self.graph)[0]
+        if self.graph.nodes[input_node]['type'] != LAYER_TYPE.Communication:
+            # add node to graph
+            new_node  = "_".join(["comm_in",str(platform['connections_in'][0]),input_node])
+            self.graph.add_node(new_node,type=LAYER_TYPE.Communication,
+                hw=CommunicationLayer(
+                    dim=[
+                        self.graph.nodes[input_node]['hw'].channels_out(),
+                        self.graph.nodes[input_node]['hw'].rows_out(),
+                        self.graph.nodes[input_node]['hw'].cols_out()
+                    ], 
+                    coarse_in=self.graph.nodes[input_node]['hw'].coarse_out,
+                    coarse_out=self.streams_out,
+                    send_nreceive=True,
+                    pair_id=new_comm_link
+                )
+            )
+            # add node to graph
+            self.graph.add_edge(new_node,input_node)
+            
+        
+    if platform['connections_out']!=[0]:
+        # Check if output node is communication layer 
+        output_node = graphs.get_output_nodes(self.graph)[0]
+        if self.graph.nodes[output_node]['type'] != LAYER_TYPE.Communication:
+            # add node to graph
+            new_node  = "_".join(["comm_out",str(platform['connections_out'][0]),output_node])
+            self.graph.add_node(new_node,type=LAYER_TYPE.Communication,
+                hw=CommunicationLayer(
+                    dim=[
+                        self.graph.nodes[output_node]['hw'].channels_out(),
+                        self.graph.nodes[output_node]['hw'].rows_out(),
+                        self.graph.nodes[output_node]['hw'].cols_out()
+                    ], 
+                    coarse_in=self.graph.nodes[output_node]['hw'].coarse_out,
+                    coarse_out=self.streams_out,
+                    send_nreceive=True,
+                    pair_id=new_comm_link
+                )
+            )
+            self.graph.add_edge(output_node,new_node)
+   #print("ID:{id:002d} ".format(id=self.get_id()))
+
+
+def remove_communication(self):
+    # remove input squeeze module
+    try:
+        input_node = graphs.get_input_nodes(self.graph)[0]
+        if self.graph.nodes[input_node]['type'] == LAYER_TYPE.Communication:
+            self.graph.remove_node(input_node)
+    except:
+        print("Unable to remove input communication")
+    try:
+        if(graphs.get_output_nodes(self.graph)):
+            output_node = graphs.get_output_nodes(self.graph)[0]
+            if self.graph.nodes[output_node]['type'] == LAYER_TYPE.Communication:
+                self.graph.remove_node(output_node)
+    except:
+        print("Partition:{}".format(self.get_id()))
+        print_graph(self.graph)
+        print("Unable to remove output communication")

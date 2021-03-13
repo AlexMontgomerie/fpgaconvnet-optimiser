@@ -83,6 +83,7 @@ class Network():
         self.update_partition_map()
         # update partitions
         self.update_partitions()
+        self.partitions[0].remove_communication()
     
     # import transforms
     ## partitioning transform
@@ -182,4 +183,4 @@ class Network():
             g.add_subgraph(partition_cluster)
         # save graph
         g.write_png(output_path)
-        g.write_svg(output_path)
+        g.write_svg(output_path.replace('png', 'svg', 1))

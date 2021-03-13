@@ -77,6 +77,9 @@ class Partition():
     # auxiliary layer functions
     from fpgaconvnet_optimiser.models.partition.auxiliary import add_squeeze
     from fpgaconvnet_optimiser.models.partition.auxiliary import remove_squeeze
+    from fpgaconvnet_optimiser.models.partition.auxiliary import add_communication
+    from fpgaconvnet_optimiser.models.partition.auxiliary import remove_communication
+
 
     # metrics
     from fpgaconvnet_optimiser.models.partition.metrics import get_pipeline_depth

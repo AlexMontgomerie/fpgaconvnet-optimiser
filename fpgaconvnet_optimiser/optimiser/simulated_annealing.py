@@ -1,3 +1,4 @@
+from fpgaconvnet_optimiser.tools.graphs import print_graph
 import sys
 import numpy as np
 import json
@@ -104,6 +105,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 # remove all auxiliary layers
                 for i in range(len(self.partitions)):
                     self.partitions[i].remove_squeeze()
+                    self.partitions[i].remove_communication()
+
 
                 # Apply a transform
                 ## Choose a random transform

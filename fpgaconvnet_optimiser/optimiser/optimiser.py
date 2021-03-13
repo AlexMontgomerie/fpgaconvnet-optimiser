@@ -133,6 +133,7 @@ class Optimiser(Network):
             ### apply random partition
             # remove squeeze layers prior to partitioning
             self.partitions[partition_index].remove_squeeze()
+            self.partitions[partition_index].remove_communication()
             self.apply_random_partition(partition_index)
             return
 
