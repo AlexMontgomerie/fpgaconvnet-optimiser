@@ -8,6 +8,7 @@ def create_report(self, output_path):
         "date_created" : str(datetime.datetime.now()),
         "total_iterations" : 0, # TODO
         "platform" : self.platform,
+        "cluster" : self.cluster,
         "network" : {
             "memory_usage" : self.get_memory_usage_estimate(),
             "performance" : {
