@@ -10,6 +10,8 @@ def update_partitions(self):
    
     # update partitions 
     for partition_index in range(len(self.partitions)):
+        self.partitions[partition_index].set_id(partition_index)
+        self.update_partition_map()
 
         ## update all modules again
         self.partitions[partition_index].update_modules()
@@ -99,4 +101,6 @@ def update_cluster(self, cluster_path):
         temp_platform['specification']      = platform_specification
         self.cluster[temp_platform['id']]    = copy.deepcopy(temp_platform)
 
-    print(self.cluster)
+
+def update_partition_map(self):
+    self.partitionmap={partition.get_id():partition.get_id()%len(self.cluster)+1 for partition in self.partitions}

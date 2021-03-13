@@ -84,6 +84,7 @@ def main():
     # update platform information
     net.update_platform(args.platform_path)
     net.update_cluster(args.cluster_path)
+    net.update_partition_map()
     # specify optimiser objective
     if args.objective == "throughput":
         net.objective  = 1 

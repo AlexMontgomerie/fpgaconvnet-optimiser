@@ -64,17 +64,23 @@ class Network():
             }
         }
         # cluster definition: if left empty the
-        self.cluster = [{
-                            "id":0,
-                            "platform":self.platform
-                        }]
+        self.cluster = {1: 
+                            {
+                                "name":"platform_1",
+                                "specification":self.platform,
+                                "id":1,
+                                "connections_out":[0],
+                                "connections_in":[0]
+                            },
+                        }
         # int:int map with partition index as key and platform index as value 
-        self.partitionmap = {partition.get_id():0 for partition in self.partitions}
+        self.partitionmap = {partition.get_id():1 for partition in self.partitions}
 
         # all types of layers
         self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
         self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
- 
+        #self.update_cluster()
+        self.update_partition_map()
         # update partitions
         self.update_partitions()
     
@@ -114,6 +120,7 @@ class Network():
     from fpgaconvnet_optimiser.models.network.update import update_partitions
     from fpgaconvnet_optimiser.models.network.update import update_platform
     from fpgaconvnet_optimiser.models.network.update import update_cluster
+    from fpgaconvnet_optimiser.models.network.update import update_partition_map
 
     # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node 
