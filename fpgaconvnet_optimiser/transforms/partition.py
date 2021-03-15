@@ -2,6 +2,7 @@
 Defines how the graph is split into subgraphs of the model for different reconfigurable components. 
 """
 
+from build.lib.fpgaconvnet_optimiser.tools.graphs import print_graph
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 from fpgaconvnet_optimiser.transforms.helper import get_all_layers
 from itertools import combinations, chain
@@ -80,12 +81,18 @@ def get_all_horizontal_merges(self,partition_index):
                     if self.partitions[i].graph.out_degree(next_node) == self.graph.out_degree(next_node):
                         partition_pairs[0] = (partition_index,i)
     
-    # check that if it's a concat layer, it's complete
-    if self.graph.in_degree(output_node) > 1:
-        if self.partitions[partition_index].graph.in_degree(output_node) == self.graph.in_degree(output_node):
+    try: 
+        if self.graph.in_degree(output_node) > 1:
+            if self.partitions[partition_index].graph.in_degree(output_node) == self.graph.in_degree(output_node):
+                _find_next_partition()
+        else:
             _find_next_partition()
-    else:
-        _find_next_partition()
+    except:
+        print("An exception occurred")
+        print("Partition:"+str(partition_index))
+        print_graph(self.partitions[partition_index].graph)
+        print(output_node)
+        print(self.graph.in_degree(output_node))
 
     # get the previous node
     input_node = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]

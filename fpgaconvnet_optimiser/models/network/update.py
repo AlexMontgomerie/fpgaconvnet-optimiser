@@ -34,9 +34,11 @@ def update_partitions(self):
         ## update all modules again
         self.partitions[partition_index].update_modules()
  
+        platform = self.cluster[self.partitionmap[partition_index]]
+        self.partitions[partition_index].add_communication(platform)
         ## add auxiliary layers
         self.partitions[partition_index].add_squeeze()
-        
+
         ## update partition info
         input_nodes  = graphs.get_input_nodes(self.partitions[partition_index].graph)
         output_nodes = graphs.get_output_nodes(self.partitions[partition_index].graph)
@@ -45,7 +47,7 @@ def update_partitions(self):
         
         ## update batch size for partitions
         self.partitions[partition_index].batch_size = self.batch_size
-        
+
         ## update sizes
         self.partitions[partition_index].size_in  = self.partitions[partition_index].graph.nodes[input_nodes[0]]['hw'].size_in()
         self.partitions[partition_index].size_out = self.partitions[partition_index].graph.nodes[input_nodes[0]]['hw'].size_out()
@@ -85,6 +87,7 @@ def update_platform(self, platform_path):
 
 def update_cluster(self, cluster_path):
     # get platform
+    self.cluster={}
     with open(cluster_path,'r') as f:
         cluster = json.load(f)
 

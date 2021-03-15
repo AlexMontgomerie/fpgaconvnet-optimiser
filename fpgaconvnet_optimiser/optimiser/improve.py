@@ -112,6 +112,7 @@ class Improve(Optimiser):
                 # remove all auxiliary layers
                 for i in range(len(self.partitions)):
                     self.partitions[i].remove_squeeze()
+                    self.partitions[i].remove_communication()
 
                 # Apply a transform
                 ## Choose a random transform
