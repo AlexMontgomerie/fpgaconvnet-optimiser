@@ -25,6 +25,28 @@ def check_resources(self):
         assert partition_resource_usage['DSP']  <= (self.rsc_allocation*self.platform['constraints']['DSP']) , "ERROR: DSP usage exceeded"
         assert partition_resource_usage['BRAM'] <= (self.rsc_allocation*self.platform['constraints']['BRAM']), "ERROR: BRAM usage exceeded"
 
+def get_resources_bad_partitions(self):
+    bad_partitions = {}
+
+    # iterate over partitions
+    for partition_index, partition in enumerate(self.partitions):
+        bad_resource = {}
+        # get the resource usage for the platform
+        partition_resource_usage = partition.get_resource_usage()
+        #if partition_resource_usage['FF']   > (self.platform['constraints']['FF']):
+        #    bad_resource['FF'] = partition_resource_usage['FF']
+        #if partition_resource_usage['LUT']  > (self.platform['constraints']['LUT']):
+        #    bad_resource['LUT'] = partition_resource_usage['LUT']
+        if partition_resource_usage['DSP']  > (self.rsc_allocation*self.platform['constraints']['DSP']):
+            bad_resource['DSP'] = partition_resource_usage['DSP']
+        if partition_resource_usage['BRAM'] > (self.rsc_allocation*self.platform['constraints']['BRAM']):
+            bad_resource['BRAM'] = partition_resource_usage['BRAM']
+
+        if len(bad_resource) > 0:
+            bad_partitions[partition_index] = bad_resource
+
+    return bad_partitions
+
 def check_workload(self):
     workload_total = np.zeros( shape=( len(self.edge_list),len(self.node_list) ) , dtype=float )
     # iterate over partitions

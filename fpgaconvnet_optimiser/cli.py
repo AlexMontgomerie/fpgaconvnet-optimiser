@@ -27,9 +27,10 @@ def main():
         help='Batch size')
     parser.add_argument('--objective',choices=['throughput','latency'],required=True,
         help='Optimiser objective')
-    parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition'],
-        default=['fine','coarse','weights_reloading','partition'],
-        help='network transforms')
+    # use optimiser config instead
+    #parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition'],
+    #    default=['fine','coarse','weights_reloading','partition'],
+    #    help='network transforms')
     parser.add_argument('--optimiser',choices=['simulated_annealing','improve'],default='improve',
         help='Optimiser strategy')
     parser.add_argument('--optimiser_config_path',metavar='PATH',
@@ -94,7 +95,7 @@ def main():
     net.batch_size = args.batch_size
 
     # specify available transforms
-    net.transforms = args.transforms
+    net.get_transforms()
 
     # initialize graph
 

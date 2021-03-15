@@ -116,6 +116,7 @@ class Network():
     # validate
     from fpgaconvnet_optimiser.models.network.validate import check_ports
     from fpgaconvnet_optimiser.models.network.validate import check_resources
+    from fpgaconvnet_optimiser.models.network.validate import get_resources_bad_partitions    
     from fpgaconvnet_optimiser.models.network.validate import check_workload
     from fpgaconvnet_optimiser.models.network.validate import check_streams
     from fpgaconvnet_optimiser.models.network.validate import check_partitions

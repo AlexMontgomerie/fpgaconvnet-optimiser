@@ -268,7 +268,7 @@ def merge_complete(self):
 def apply_random_partition(self, partition_index):
    # choose randomly between merge or split
     ## split partition
-    transform_type = random.choice(['split','merge'])
+    transform_type = random.choice(self.transforms_config["partition"]["allowed_type"])
     if transform_type == 'split':
         ## get all possible splits
         horizontal_splits = self.get_all_horizontal_splits(partition_index)

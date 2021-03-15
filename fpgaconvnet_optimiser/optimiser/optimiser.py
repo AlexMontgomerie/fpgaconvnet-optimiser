@@ -16,7 +16,7 @@ class Optimiser(Network):
     Base class for all optimisation strategies. This inherits the `Network` class. 
     """
 
-    def __init__(self,name,network_path,data_width=16,weight_width=8,acc_width=30):
+    def __init__(self,name,network_path,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30):
         """
         Parameters
         ----------
@@ -47,6 +47,18 @@ class Optimiser(Network):
         }
 
         self.transforms = ['coarse','fine','partition','weights_reloading']
+
+        self.transforms_config = transforms_config
+        if len(fix_starting_point_config) == 0:
+            self.fix_starting_point_config = transforms_config
+        else:
+            self.fix_starting_point_config = fix_starting_point_config
+
+    def get_transforms(self):
+        self.transforms = []
+        for transform_type, attr in self.transforms_config.items():
+            if bool(attr["apply_transform"]):
+                self.transforms.append(transform_type)
 
     def get_cost(self):
         """

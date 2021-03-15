@@ -35,7 +35,6 @@ python -m fpgaconvnet_optimiser --name vgg16 \
     --output_path outputs/vgg16 \
     --batch_size 256 \
     --objective throughput \
-    --transforms fine weights_reloading coarse partition \
     --optimiser simulated_annealing \
     --optimiser_config_path examples/optimiser_example.yml 
 ```
