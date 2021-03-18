@@ -5,18 +5,18 @@ transforms:
         start_complete: false
     coarse:
         apply_transform: true
-        probability: 0.25
+        probability: 0.5
     weights_reloading:
         apply_transform: true 
-        probability: 0.25
+        probability: 0.125
         start_max: true
     partition:
         apply_transform: true
-        probability: 0.25
+        probability: 0.125
         start_complete: true
 annealing:
-    T: 10.0
+    T: 1.0
     T_min: 0.00001
-    k: 0.1
-    cool: 0.97
+    k: 0.01
+    cool: 0.96
     iterations: 50

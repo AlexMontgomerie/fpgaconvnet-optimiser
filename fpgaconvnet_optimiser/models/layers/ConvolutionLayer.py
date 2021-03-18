@@ -188,6 +188,9 @@ class ConvolutionLayer(Layer):
             "bias"      : bias_size
         }
 
+    def get_operations(self):
+        return self.k_size*self.k_size*self.channels_in()*self.filters*self.rows_out()*self.cols_out()
+
     def resource(self):
 
         sw_rsc      = self.modules['sliding_window'].rsc()
