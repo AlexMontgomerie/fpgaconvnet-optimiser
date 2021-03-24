@@ -120,11 +120,19 @@ def add_input_from_initializer(model : onnx.ModelProto):
 def load(filepath):
     model = onnx.load(filepath)
     onnx.checker.check_model(model)
+    add_input_from_initializer(model) #Seems to be necessary for conv layers from pytorch (at least)
     model = onnx.shape_inference.infer_shapes(model)
     model = onnx.utils.polish_model(model)
     passes = ["extract_constant_to_initializer", "eliminate_unused_initializer","fuse_bn_into_conv"]
     model = optimizer.optimize(model, passes=passes)
-    return model 
+
+    #issue with the reshaping - possibly the "branching"
+    #saving the optimised model to see what got broken
+    #sv_pnt = '../optim_crps.onnx'
+    #onnx.save(model, sv_pnt)
+    #print(SAVED) #save model LOOKs identical with onnx visualiser
+
+    return model
 
 def update_batch_size(model, batch_size): # from https://github.com/microsoft/onnxruntime/issues/1467#issuecomment-514322927
     # change input batch size
@@ -177,13 +185,13 @@ def _out_dim(model, name):
     value_info = get_model_value_info(model, name)
     if len(value_info.type.tensor_type.shape.dim) == 4:
         #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
-        dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels 
+        dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
         dim[1] = int(value_info.type.tensor_type.shape.dim[2].dim_value) # rows
         dim[2] = int(value_info.type.tensor_type.shape.dim[3].dim_value) # cols
         return dim
     elif len(value_info.type.tensor_type.shape.dim) == 2:
         #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
-        dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels 
+        dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
         dim[1] = 1 # rows
         dim[2] = 1 # cols
         return dim
