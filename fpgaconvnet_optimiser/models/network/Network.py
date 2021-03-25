@@ -107,7 +107,8 @@ class Network():
     from fpgaconvnet_optimiser.models.network.update import update_partitions
     from fpgaconvnet_optimiser.models.network.update import update_platform
     from fpgaconvnet_optimiser.models.network.update import update_coarse_in_out_partition
-
+    from fpgaconvnet_optimiser.models.network.update import update_group_coarse_partition
+    from fpgaconvnet_optimiser.models.network.update import update_group_wr_partition
     # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node 
     from fpgaconvnet_optimiser.models.network.represent import get_model_output_node 
@@ -149,18 +150,24 @@ class Network():
 
     """
 
-    def get_latency(self):
+    def get_latency(self, partition_list=None):
+        if partition_list == None:
+            partition_list = list(range(len(self.partitions)))
         latency = 0
         # iterate over partitions:
-        for partition in self.partitions:
+        for partition_index, partition in enumerate(self.partitions):
+            if partition_index not in partition_list:
+                continue
             # accumulate latency for each partition
             latency += partition.get_latency(self.platform["freq"])
         # return the total latency as well as reconfiguration time
-        return latency + (len(self.partitions)-1)*self.platform["reconf_time"]
+        return latency + (len(partition_list)-1)*self.platform["reconf_time"]
 
-    def get_throughput(self):
+    def get_throughput(self, partition_list=None):
+        if partition_list == None:
+            partition_list = list(range(len(self.partitions)))
         # return the frames per second
-        return float(self.batch_size)/self.get_latency()
+        return float(self.batch_size)/self.get_latency(partition_list)
 
     def visualise(self, output_path):
         g = pydot.Dot(graph_type='digraph')
