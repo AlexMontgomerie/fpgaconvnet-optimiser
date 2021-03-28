@@ -198,6 +198,7 @@ class Optimiser(Network):
 
 
     def starting_point_distillation(self, teacher_partition_path):
+        print("load starting point from:", teacher_partition_path)
         teacher_partitions = fpgaconvnet_pb2.partitions()
         with open(teacher_partition_path,'r') as f:
             json_format.Parse(f.read(), teacher_partitions)
@@ -331,7 +332,8 @@ class Optimiser(Network):
                         lcm = 1
                         for a in factors:
                             lcm = _lcm(lcm, a)
-                        padded_channels = math.ceil(padded_channels/lcm)*lcm 
+                        padded_channels = math.ceil(padded_channels/lcm)*lcm
+                        student_partition.graph.nodes[node]['hw'].lcm = lcm
 
                         if padded_channels != student_partition.graph.nodes[node]['hw'].filters:
                             print("padding filters of ", node, student_partition.graph.nodes[node]['hw'].filters, "-->")
