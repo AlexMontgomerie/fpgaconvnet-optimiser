@@ -2,7 +2,8 @@ import onnx
 import onnxruntime
 import onnx.utils
 import onnx.numpy_helper
-from onnx import optimizer, version_converter
+from onnx import version_converter
+import onnxoptimizer as optimizer
 from onnx.tools import update_model_dims
 
 def add_value_info_for_constants(model : onnx.ModelProto):
