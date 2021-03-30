@@ -36,6 +36,8 @@ class Network():
         # load network
         self.model, self.graph = parser.parse_net(network_path, view=False)
 
+        graphs.print_graph(self.graph)
+
         # node and edge lists
         self.node_list = list(self.graph.nodes())
         self.edge_list = list(self.graph.edges())
