@@ -15,6 +15,8 @@ import math
 import os
 import sys
 
+from fpgaconvnet_optimiser.tools.onnx_helper import _pair
+
 class SlidingWindow(Module):
     """
     Sliding window hardware model class.
@@ -66,6 +68,9 @@ class SlidingWindow(Module):
         """
         # init module
         Module.__init__(self,dim,data_width)
+
+        k_size = _pair(k_size)
+        stride = _pair(stride)
 
         # init variables
         self.k_size = k_size

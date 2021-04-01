@@ -2,8 +2,11 @@ import onnx
 import onnxruntime
 import onnx.utils
 import onnx.numpy_helper
-from onnx import optimizer, version_converter
+from onnx import version_converter
+import onnxoptimizer as optimizer
 from onnx.tools import update_model_dims
+from itertools import repeat
+from collections.abc import Iterable
 
 def add_value_info_for_constants(model : onnx.ModelProto):
     """
@@ -190,4 +193,12 @@ def _out_dim(model, name):
         dim[2] = 1 # cols
         return dim
 
+def _nlist(n):
+    def parse(x):
+        if isinstance(x, Iterable):
+            return x
+        return list(repeat(x, n))
+    return parse
 
+_pair = _nlist(2)
+_quadruple = _nlist(4)

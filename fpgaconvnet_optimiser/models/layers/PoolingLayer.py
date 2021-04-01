@@ -7,6 +7,8 @@ from fpgaconvnet_optimiser.models.modules import SlidingWindow
 from fpgaconvnet_optimiser.models.modules import Pool
 from fpgaconvnet_optimiser.models.layers import Layer
 
+from fpgaconvnet_optimiser.tools.onnx_helper import _pair, _quadruple
+
 class PoolingLayer(Layer):
     def __init__(
             self,
@@ -23,6 +25,10 @@ class PoolingLayer(Layer):
             sa_out      =0.5
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
+
+        k_size = _pair(k_size)
+        stride = _pair(stride)
+        pad    = _quadruple(pad)
 
         # update flags
         self.flags['transformable'] = True

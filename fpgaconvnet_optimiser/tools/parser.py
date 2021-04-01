@@ -165,8 +165,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 data_width =data_width
             )
             continue
-
-        #raise NameError
+        raise NameError
         print(name,graph.nodes[name]['type'])
 
 def add_dimensions(model, graph):
@@ -225,6 +224,10 @@ def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30):
 
     # add layer dimensions
     add_dimensions(model, graph)
+
+    # update all layers
+    for node in graph.nodes:
+        graph.nodes[node]['hw'].update()
 
     return model, graph
 

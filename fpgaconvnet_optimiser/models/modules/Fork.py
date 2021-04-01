@@ -14,6 +14,8 @@ import math
 import os
 import sys
 
+from fpgaconvnet_optimiser.tools.onnx_helper import _pair
+
 class Fork(Module):
     def __init__(
             self,
@@ -24,6 +26,8 @@ class Fork(Module):
         ):
         # init module
         Module.__init__(self,dim,data_width)
+
+        k_size = _pair(k_size)
 
         # init variables
         self.k_size = k_size

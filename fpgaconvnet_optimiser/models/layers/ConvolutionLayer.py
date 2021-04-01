@@ -10,6 +10,8 @@ from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
 from fpgaconvnet_optimiser.models.layers import Layer
 
+from fpgaconvnet_optimiser.tools.onnx_helper import _pair, _quadruple
+
 class ConvolutionLayer(Layer):
     def __init__(
             self,
@@ -30,6 +32,10 @@ class ConvolutionLayer(Layer):
             sa_out      =0.5
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width,coarse_group)
+
+        k_size = _pair(k_size)
+        stride = _pair(stride)
+        pad    = _quadruple(pad)
 
         # update flags
         self.flags['channel_dependant'] = True
