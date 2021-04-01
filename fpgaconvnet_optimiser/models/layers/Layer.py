@@ -289,9 +289,21 @@ class Layer:
     def get_coarse_out_feasible(self,wr_factor=1):
         return self.get_factors(int(self.channels_out()/wr_factor))
 
+    def update_coarse_in(self, coarse_in):
+        self.coarse_in  = coarse_in
+        self.coarse_out = coarse_in
+
+    def update_coarse_out(self, coarse_out):
+        self.coarse_in  = coarse_out
+        self.coarse_out = coarse_out
+
     def load_coef(self):
         for module in self.modules:
-            self.modules[module].load_coef("coefficients/{}_rsc_coef.npy".format(module))
+            self.modules[module].load_coef(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "../../coefficients/{}_rsc_coef.npy".format(module))
+            )
 
     def update(self):
         pass

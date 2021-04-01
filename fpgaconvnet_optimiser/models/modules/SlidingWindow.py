@@ -12,6 +12,7 @@ and pooling functions.
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
 
 class SlidingWindow(Module):
     """
@@ -72,6 +73,10 @@ class SlidingWindow(Module):
         self.pad_right  = pad_right
         self.pad_bottom = pad_bottom
         self.pad_left   = pad_left
+
+        # load resource coefficients
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/sliding_window_rsc_coef.npy"))
 
     def utilisation_model(self):
         return [
