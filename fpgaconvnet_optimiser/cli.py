@@ -12,6 +12,7 @@ import numpy as np
 
 from fpgaconvnet_optimiser.optimiser.simulated_annealing import SimulatedAnnealing
 from fpgaconvnet_optimiser.optimiser.improve import Improve
+from fpgaconvnet_optimiser.optimiser.greedy_partition import GreedyPartition
 
 def main():
     parser = argparse.ArgumentParser(description="Optimiser Script")
@@ -31,10 +32,12 @@ def main():
     #parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition'],
     #    default=['fine','coarse','weights_reloading','partition'],
     #    help='network transforms')
-    parser.add_argument('--optimiser',choices=['simulated_annealing','improve'],default='improve',
+    parser.add_argument('--optimiser',choices=['simulated_annealing','improve', 'greedy_partition'],default='improve',
         help='Optimiser strategy')
     parser.add_argument('--optimiser_config_path',metavar='PATH',
         help='Configuration file (.yml) for optimiser')
+    parser.add_argument('--teacher_partition_path',metavar='PATH',
+        help='Previously optimised partitions saved in JSON')
     parser.add_argument('--seed',metavar='N',type=int,default=1234567890,
         help='Seed for the optimiser run')
 
@@ -68,6 +71,15 @@ def main():
     elif args.optimiser == "simulated_annealing":
         # create network
         net = SimulatedAnnealing(args.name,args.model_path,
+                T=float(optimiser_config["annealing"]["T"]),
+                T_min=float(optimiser_config["annealing"]["T_min"]),
+                k=float(optimiser_config["annealing"]["k"]),
+                cool=float(optimiser_config["annealing"]["cool"]),
+                iterations=int(optimiser_config["annealing"]["iterations"]),
+                transforms_config=optimiser_config["transforms"])
+    elif optimiser == "greedy_partition":
+        # create network
+        net = GreedyPartition(name, model_path,
                 T=float(optimiser_config["annealing"]["T"]),
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
@@ -108,6 +120,13 @@ def main():
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
+
+    if bool(optimiser_config["annealing"]["starting_point_distillation"]):
+        net.update_partitions()
+        net.starting_point_distillation(args.teacher_partition_path)
+        net.update_partitions()
+        net.merge_memory_bound_partitions()
+        net.update_partitions()
 
     # run optimiser
     net.run_optimiser()

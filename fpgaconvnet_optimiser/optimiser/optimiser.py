@@ -340,7 +340,7 @@ class Optimiser(Network):
                             print(padded_channels)
 
                             if student_partition.graph.nodes[node]["hw"].filters == student_partition.graph.nodes[node]["hw"].groups:
-                                print("padding groups of ", node, partition.graph.nodes[node]["hw"].groups, "-->")
+                                print("padding groups of ", node, student_partition.graph.nodes[node]["hw"].groups, "-->")
                                 print(padded_channels)
                                 student_partition.graph.nodes[node]["hw"].groups = padded_channels
                             student_partition.graph.nodes[node]['hw'].filters = padded_channels
@@ -375,3 +375,53 @@ class Optimiser(Network):
                 student_partition.wr_layer = wr_layer
                 student_partition.wr_factor = wr_factor               
                 student_partition.apply_weights_reloading_transform()
+
+    def merge_memory_bound_partitions(self):
+        print("resolving memory bound partitions")
+        for _ in range(50):
+            partitions = copy.deepcopy(self.partitions)
+
+            self.update_partitions()
+            input_memory_bound = []
+            output_memory_bound = []
+
+            for partition_index, partition in enumerate(self.partitions):
+                if partition.is_input_memory_bound():
+                    input_memory_bound.append(partition_index)
+                if partition.is_output_memory_bound():
+                    output_memory_bound.append(partition_index)
+            memory_bound = input_memory_bound + output_memory_bound
+
+            if len(memory_bound) == 0:
+                self.partitions = partitions
+                break
+
+            # remove all auxiliary layers
+            for i in range(len(self.partitions)):
+                self.partitions[i].remove_squeeze()
+
+            ## Choose slowest partition
+            partition_latencys = [ self.partitions[partition_index].get_latency(self.platform["freq"]) for partition_index in memory_bound]
+            partition_index    = np.random.choice(memory_bound, 1, p=(partition_latencys/sum(partition_latencys)))[0]
+            
+            horizontal_merges = self.get_all_horizontal_merges(partition_index)
+            
+            if horizontal_merges[0] and partition_index in output_memory_bound:
+                self.partitions[horizontal_merges[0][0]].reset()
+                self.partitions[horizontal_merges[0][1]].reset()               
+                self.merge_horizontal(*horizontal_merges[0])
+            elif horizontal_merges[1] and partition_index in input_memory_bound:
+                self.partitions[horizontal_merges[1][0]].reset()
+                self.partitions[horizontal_merges[1][1]].reset()    
+                self.merge_horizontal(*horizontal_merges[1])
+
+
+            self.update_partitions()
+
+            try: 
+                self.check_resources()
+                self.check_constraints()
+            except AssertionError:
+                # revert to previous state
+                self.partitions = partitions
+                #continue
