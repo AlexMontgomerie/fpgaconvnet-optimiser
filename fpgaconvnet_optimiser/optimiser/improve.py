@@ -19,10 +19,10 @@ class Improve(Optimiser):
     Chooses the hardware component causing a bottleneck and performs the same decision as simulated annealing
     """
 
-    def __init__(self,name,network_path,T=10.0,k=0.0001,T_min=0.0001,cool=0.95,iterations=50,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30):
+    def __init__(self,name,network_path,T=10.0,k=0.0001,T_min=0.0001,cool=0.95,iterations=50,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
         # Initialise Network
-        Optimiser.__init__(self,name,network_path,transforms_config,fix_starting_point_config,data_width,weight_width,acc_width)
+        Optimiser.__init__(self,name,network_path,transforms_config,fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
 
         # Simulate Annealing Variables
         self.T          = T

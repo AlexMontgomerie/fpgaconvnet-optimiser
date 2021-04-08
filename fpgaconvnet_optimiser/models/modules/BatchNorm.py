@@ -15,14 +15,14 @@ class BatchNorm(Module):
         Module.__init__(self,dim,data_width)
     
     
-    def load_coef(self,static_coef_path,dynamic_coef_path,rsc_coef_path):
+    def load_coef(self,rsc_coef_path):
         pass
 
     def rsc(self):
         return {
           "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : 0,
-          "DSP"  : 0,
+          "DSP"  : 1,
           "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 

@@ -120,12 +120,14 @@ def add_input_from_initializer(model : onnx.ModelProto):
 
     return add_const_value_infos_to_graph(model.graph)
 
-def load(filepath):
+def load(filepath,fuse_bn):
     model = onnx.load(filepath)
     onnx.checker.check_model(model)
     model = onnx.shape_inference.infer_shapes(model)
     model = onnx.utils.polish_model(model)
-    passes = ["extract_constant_to_initializer", "eliminate_unused_initializer","fuse_bn_into_conv"]
+    passes = ["extract_constant_to_initializer", "eliminate_unused_initializer"]
+    if fuse_bn:
+        passes.append("fuse_bn_into_conv")
     model = optimizer.optimize(model, passes=passes)
     return model 
 

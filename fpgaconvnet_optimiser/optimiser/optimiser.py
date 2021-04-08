@@ -20,7 +20,7 @@ class Optimiser(Network):
     Base class for all optimisation strategies. This inherits the `Network` class. 
     """
 
-    def __init__(self,name,network_path,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30):
+    def __init__(self,name,network_path,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
         """
         Parameters
         ----------
@@ -41,7 +41,7 @@ class Optimiser(Network):
             are `['coarse','fine','partition','weights_reloading']`
         """
         # Initialise Network
-        Network.__init__(self,name,network_path,data_width=data_width,weight_width=weight_width,acc_width=acc_width)
+        Network.__init__(self,name,network_path,data_width=data_width,weight_width=weight_width,acc_width=acc_width,fuse_bn=fuse_bn)
 
         self.objective   = 0
         self.constraints = {
@@ -211,7 +211,7 @@ class Optimiser(Network):
                 if layer_index <= current_layer_index:
                     continue
 
-                if from_proto_layer_type(layer.type) in [LAYER_TYPE.Convolution, LAYER_TYPE.Pooling, LAYER_TYPE.ReLU, LAYER_TYPE.InnerProduct]:
+                if from_proto_layer_type(layer.type) in [LAYER_TYPE.Convolution, LAYER_TYPE.Pooling, LAYER_TYPE.ReLU, LAYER_TYPE.InnerProduct, LAYER_TYPE.BatchNorm]:
                     teacher_parameters = json_format.MessageToDict(layer.parameters, preserving_proto_field_name=True)
                     if "groups" in teacher_parameters.keys():
                         groups = teacher_parameters["groups"]
@@ -230,7 +230,7 @@ class Optimiser(Network):
 
         def _iterate_next_teacher_partition_until_conv(partition, factors):
             for layer_index,layer in enumerate(partition.layers):
-                if from_proto_layer_type(layer.type) in [LAYER_TYPE.Convolution, LAYER_TYPE.Pooling, LAYER_TYPE.ReLU, LAYER_TYPE.InnerProduct]:
+                if from_proto_layer_type(layer.type) in [LAYER_TYPE.Convolution, LAYER_TYPE.Pooling, LAYER_TYPE.ReLU, LAYER_TYPE.InnerProduct, LAYER_TYPE.BatchNorm]:
                     teacher_parameters = json_format.MessageToDict(layer.parameters, preserving_proto_field_name=True)
                     if "groups" in teacher_parameters.keys():
                         groups = teacher_parameters["groups"]
@@ -295,7 +295,7 @@ class Optimiser(Network):
             student_node_index = 0
             for layer_index,layer in enumerate(teacher_partition.layers):
 
-                if from_proto_layer_type(layer.type) in [LAYER_TYPE.Convolution, LAYER_TYPE.Pooling, LAYER_TYPE.ReLU, LAYER_TYPE.InnerProduct]:
+                if from_proto_layer_type(layer.type) in [LAYER_TYPE.Convolution, LAYER_TYPE.Pooling, LAYER_TYPE.ReLU, LAYER_TYPE.InnerProduct, LAYER_TYPE.BatchNorm]:
                     node = graphs.ordered_node_list(student_partition.graph)[student_node_index]
                     student_node_index += 1
                     #node = layer.name

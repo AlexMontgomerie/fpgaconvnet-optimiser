@@ -192,10 +192,10 @@ def add_dimensions(model, graph):
             graph.nodes[node]['hw'].rows     = dim[1]
             graph.nodes[node]['hw'].cols     = dim[2]
 
-def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30):
+def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
     # load onnx model
-    model = onnx_helper.load(filepath)
+    model = onnx_helper.load(filepath,fuse_bn)
     
     # get graph
     graph = build_graph(model)

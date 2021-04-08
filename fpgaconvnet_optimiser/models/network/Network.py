@@ -17,7 +17,7 @@ from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 class Network():
 
-    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30):
+    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True):
 
         ## percentage resource allocation
         self.rsc_allocation = 0.7 
@@ -32,9 +32,11 @@ class Network():
 
         # initialise variables
         self.batch_size = batch_size
+
+        self.fuse_bn = fuse_bn
  
         # load network
-        self.model, self.graph = parser.parse_net(network_path, view=False, data_width=self.data_width, weight_width=self.weight_width, acc_width=self.acc_width)
+        self.model, self.graph = parser.parse_net(network_path, view=False, data_width=self.data_width, weight_width=self.weight_width, acc_width=self.acc_width, fuse_bn=self.fuse_bn)
 
         # node and edge lists
         self.node_list = list(self.graph.nodes())
