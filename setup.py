@@ -31,6 +31,7 @@ setuptools.setup(
         "onnxruntime>=1.6.0",
         "graphviz>=0.16",
         "pydot>=1.4.2",
-        "onnxoptimizer>0.2.5",
+        "onnxoptimizer>=0.2.5",
+        "ddt>=1.4.2",
     ]
 )
