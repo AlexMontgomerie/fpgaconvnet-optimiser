@@ -1,18 +1,23 @@
 import json
 import datetime
+import numpy as np
 
 def create_report(self, output_path):
     # create report dictionary
+    total_operations = sum([partition.get_total_operations() for partition in self.partitions])
+    #total_dsps = np.average([partition.get_resource_usage()["DSP"]) for partition in self.partitions])
     report = {
         "name" : self.name,
         "date_created" : str(datetime.datetime.now()),
         "total_iterations" : 0, # TODO
         "platform" : self.platform,
+        "total_operations" : total_operations,
         "network" : {
             "memory_usage" : self.get_memory_usage_estimate(),
             "performance" : {
                 "latency" : self.get_latency(),
-                "throughput" : self.get_throughput()
+                "throughput" : self.get_throughput(),
+                "performance" : total_operations/self.get_latency()
             },
             "num_partitions" : len(self.partitions),
             "max_resource_usage" : {
@@ -40,8 +45,8 @@ def create_report(self, output_path):
                 "DSP" : resource_usage["DSP"]
             },
             "bandwidth" : {
-                "in" : 0,   # TODO
-                "out" : 0   # TODO
+                "in" : self.partitions[i].get_bandwidth_in(self.platform["freq"]),
+                "out" : self.partitions[i].get_bandwidth_out(self.platform["freq"])
             }
         }
         # add information for each layer of the partition

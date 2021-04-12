@@ -322,6 +322,9 @@ class Layer:
             'channels_out'  : self.channels_out()
         }
 
+    def get_operations(self):
+        return 0
+
     def layer_info_dict(self):
         # get parameters
         parameter = fpgaconvnet_pb2.parameter()

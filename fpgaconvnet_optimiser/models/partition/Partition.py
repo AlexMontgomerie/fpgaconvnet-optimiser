@@ -84,7 +84,10 @@ class Partition():
     from fpgaconvnet_optimiser.models.partition.metrics import get_pipeline_depth
     from fpgaconvnet_optimiser.models.partition.metrics import get_interval
     from fpgaconvnet_optimiser.models.partition.metrics import get_latency
-    
+    from fpgaconvnet_optimiser.models.partition.metrics import get_total_operations
+    from fpgaconvnet_optimiser.models.partition.metrics import get_bandwidth_in
+    from fpgaconvnet_optimiser.models.partition.metrics import get_bandwidth_out
+
     # update
     from fpgaconvnet_optimiser.models.partition.update import update_modules
     from fpgaconvnet_optimiser.models.partition.update import update_coefficients

@@ -5,21 +5,11 @@ This repo contains code for optimising the mapping a Convolutional Neural Networ
 
 The following programs are required:
 
-- `python=3.6`
-- `onnx=1.8.0`
+- `python=3.7`
 
-The first step is to setup the python environment. It is recommended to use [conda](https://docs.conda.io/en/latest/miniconda.html) to manage your environment. The following installs an environment called `fpgaconvnet`.
-
-```
-conda env create -f environment.yml
-```
-
-Instructions for installing [onnx](https://github.com/onnx/onnx) can be found on their github page. The instructions are copied here:
+To install this package, run from this directory the following:
 
 ```
-git clone https://github.com/onnx/onnx.git
-cd onnx
-git submodule update --init --recursive
 python setup.py install
 ```
 

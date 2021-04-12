@@ -17,6 +17,6 @@ transforms:
 annealing:
     T: 10.0
     T_min: 0.00001
-    k: 0.1
-    cool: 0.97
+    k: 0.01
+    cool: 0.98
     iterations: 50

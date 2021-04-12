@@ -143,10 +143,12 @@ class SlidingWindow(Module):
             resource coefficients for the estimate.
         """
         # streams
-        #if self.channels > 1: 
-        bram_line_buffer = (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000)
-        #if self.channels*self.data_width >= 512:
-        bram_frame_buffer = self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000)
+        bram_line_buffer = 0
+        if self.channels > 1: 
+            bram_line_buffer = (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000)
+        bram_frame_buffer = 0
+        if self.channels*self.data_width >= 512:
+            bram_frame_buffer = self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000)
         return {
           "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : bram_line_buffer+bram_frame_buffer,
