@@ -1,8 +1,8 @@
 import unittest
 import ddt
-import tools.matrix as matrix
-import tools.parser as parser
-from tools.layer_enum import LAYER_TYPE
+import fpgaconvnet_optimiser.tools.matrix as matrix
+import fpgaconvnet_optimiser.tools.parser as parser
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 from numpy.linalg import matrix_rank
 import scipy
@@ -18,16 +18,12 @@ CONNECTION MATRIX
 class TestConnectionMatrix(unittest.TestCase):
 
     @ddt.data(
-        "test/sw/data/single_layer.prototxt",
-        "test/sw/data/sequential.prototxt",
-        "test/sw/data/multipath.prototxt",
-        "data/models/googlenet.prototxt",
-        "data/models/googlenet_short.prototxt"
+        "examples/models/lenet.onnx",
     )
     def test_net(self,model_path):
 
         # graph definition
-        graph, node_info = parser.parse_net(model_path,view=False)
+        _, graph = parser.parse_net(model_path,view=False)
 
         # get matrix and expected dimensions
         n_nodes             = len(matrix.get_node_list_matrix(graph))
@@ -51,21 +47,17 @@ STREAMS MATRIX
 class TestStreamsMatrix(unittest.TestCase):
 
     @ddt.data(
-        "test/sw/data/single_layer.prototxt",
-        "test/sw/data/sequential.prototxt",
-        "test/sw/data/multipath.prototxt",
-        "data/models/googlenet.prototxt",
-        "data/models/googlenet_short.prototxt"
+        "examples/models/lenet.onnx",
     )
     def test_net(self,model_path):
 
         # graph definition
-        graph, node_info = parser.parse_net(model_path,view=False)
+        _, graph = parser.parse_net(model_path,view=False)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
         n_edges         = len(matrix.get_edge_list_matrix(graph))
-        streams_matrix  = matrix.get_streams_matrix(graph,node_info)
+        streams_matrix  = matrix.get_streams_matrix(graph)
 
         # check dimension of matrix
         self.assertEqual(streams_matrix.shape[0],n_edges)
@@ -83,21 +75,17 @@ RATES MATRIX
 class TestRatesMatrix(unittest.TestCase):
 
     @ddt.data(
-        "test/sw/data/single_layer.prototxt",
-        "test/sw/data/sequential.prototxt",
-        "test/sw/data/multipath.prototxt",
-        "data/models/googlenet.prototxt",
-        "data/models/googlenet_short.prototxt"
+        "examples/models/lenet.onnx",
     )
     def test_net(self,model_path):
 
         # graph definition
-        graph, node_info = parser.parse_net(model_path,view=False)
+        _, graph = parser.parse_net(model_path,view=False)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
         n_edges         = len(matrix.get_edge_list_matrix(graph))
-        rates_matrix    = matrix.get_rates_matrix(graph,node_info)
+        rates_matrix    = matrix.get_rates_matrix(graph)
 
         # check dimension of matrix
         self.assertEqual(rates_matrix.shape[0],n_edges)
@@ -112,15 +100,12 @@ RATES BALANCED MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
+"""
 @ddt.ddt
 class TestBalancedRatesMatrix(unittest.TestCase):
 
     @ddt.data(
-        "test/sw/data/single_layer.prototxt",
-        "test/sw/data/sequential.prototxt",
-        "test/sw/data/multipath.prototxt",
-        "data/models/googlenet.prototxt",
-        "data/models/googlenet_short.prototxt"
+        "examples/models/lenet.onnx",
     )
     def test_net(self,model_path):
 
@@ -154,7 +139,8 @@ class TestBalancedRatesMatrix(unittest.TestCase):
         # check the edges all have the same rate
         for row_index in range(rates_matrix.shape[0]):
             self.assertEqual(np.sum(balanced_rates_matrix[row_index,:]), 0.0)
-        
+"""
+
 """    
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -166,21 +152,17 @@ WORKLOAD MATRIX
 class TestWorkloadMatrix(unittest.TestCase):
 
     @ddt.data(
-        "test/sw/data/single_layer.prototxt",
-        "test/sw/data/sequential.prototxt",
-        "test/sw/data/multipath.prototxt",
-        "data/models/googlenet.prototxt",
-        "data/models/googlenet_short.prototxt"
+        "examples/models/lenet.onnx",
     )
     def test_net(self,model_path):
 
         # graph definition
-        graph, node_info = parser.parse_net(model_path,view=False)
+        _, graph = parser.parse_net(model_path,view=False)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
         n_edges         = len(matrix.get_edge_list_matrix(graph))
-        workload_matrix = matrix.get_workload_matrix(graph,node_info)
+        workload_matrix = matrix.get_workload_matrix(graph)
 
         # check dimension of matrix
         self.assertEqual(workload_matrix.shape[0],n_edges)
@@ -203,21 +185,17 @@ TOPOLOGY MATRIX
 class TestTopologyMatrix(unittest.TestCase):
 
     @ddt.data(
-        "test/sw/data/single_layer.prototxt",
-        "test/sw/data/sequential.prototxt",
-        "test/sw/data/multipath.prototxt",
-        "data/models/googlenet.prototxt",
-        "data/models/googlenet_short.prototxt"
+        "examples/models/lenet.onnx",
     )
     def test_net(self,model_path):
 
         # graph definition
-        graph, node_info = parser.parse_net(model_path,view=False)
+        _, graph = parser.parse_net(model_path,view=False)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
         n_edges         = len(matrix.get_edge_list_matrix(graph))
-        topology_matrix = matrix.get_topology_matrix(graph,node_info)
+        topology_matrix = matrix.get_topology_matrix(graph)
 
         # check dimension of matrix
         self.assertEqual(topology_matrix.shape[0],n_edges)
@@ -236,21 +214,17 @@ INTERVAL MATRIX
 class TestIntervalMatrix(unittest.TestCase):
 
     @ddt.data(
-        "test/sw/data/single_layer.prototxt",
-        "test/sw/data/sequential.prototxt",
-        "test/sw/data/multipath.prototxt",
-        "data/models/googlenet.prototxt",
-        "data/models/googlenet_short.prototxt"
+        "examples/models/lenet.onnx",
     )
     def test_net(self,model_path):
 
         # graph definition
-        graph, node_info = parser.parse_net(model_path,view=False)
+        _, graph = parser.parse_net(model_path,view=False)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
         n_edges         = len(matrix.get_edge_list_matrix(graph))
-        interval_matrix = matrix.get_interval_matrix(graph,node_info)
+        interval_matrix = matrix.get_interval_matrix(graph)
 
         # check dimension of matrix
         self.assertEqual(interval_matrix.shape[0],n_edges)

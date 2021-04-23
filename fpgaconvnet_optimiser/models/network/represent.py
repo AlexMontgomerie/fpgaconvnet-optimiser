@@ -47,17 +47,21 @@ def save_all_partitions(self,filepath): # TODO: update
             stream_in  = layer.streams_in.add()
             prev_nodes = graphs.get_prev_nodes(self.partitions[i].graph, node)
             if not prev_nodes:
-                stream_in.name   = "in"
+                layer.node_in   = node
+                stream_in.name  = "in"
             else :
-                stream_in.name   = "_".join([prev_nodes[0].replace("/","_"), node.replace("/","_")])
+                layer.node_in   = prev_nodes[0]
+                stream_in.name  = "_".join([prev_nodes[0].replace("/","_"), node.replace("/","_")])
             stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_in
             # add stream(s) out 
             stream_out = layer.streams_out.add()
             next_nodes = graphs.get_next_nodes(self.partitions[i].graph, node)
             if not next_nodes:
-                stream_out.name   = "out"
+                layer.node_out  = node
+                stream_out.name = "out"
             else:
-                stream_out.name   = "_".join([node.replace("/","_"), next_nodes[0].replace("/","_")])
+                layer.node_out  = next_nodes[0]
+                stream_out.name = "_".join([node.replace("/","_"), next_nodes[0].replace("/","_")])
             stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_out
             # add parameters 
             self.partitions[i].graph.nodes[node]['hw'].layer_info(layer.parameters, batch_size=self.partitions[i].batch_size)

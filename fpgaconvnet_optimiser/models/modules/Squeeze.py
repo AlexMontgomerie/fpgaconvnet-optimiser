@@ -1,6 +1,7 @@
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
 
 class Squeeze(Module):
     def __init__(

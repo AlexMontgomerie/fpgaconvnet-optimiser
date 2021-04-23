@@ -71,7 +71,7 @@ def main():
                 k=float(optimiser_config["annealing"]["k"]),
                 cool=float(optimiser_config["annealing"]["cool"]),
                 iterations=int(optimiser_config["annealing"]["iterations"]))
-    
+
     # turn on debugging
     net.DEBUG = True
 
@@ -95,10 +95,8 @@ def main():
     net.transforms = args.transforms
 
     # initialize graph
-
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
-        print("here")
         net.split_complete()
     
     ## apply complete max weights reloading

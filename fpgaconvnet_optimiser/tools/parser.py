@@ -176,8 +176,7 @@ def add_hardware(model, graph):
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
             graph.nodes[name]['hw'] = BatchNormLayer([0,0,0])
             continue
-
-        #raise NameError
+        raise NameError
         print(name,graph.nodes[name]['type'])
 
 def add_dimensions(model, graph):
@@ -236,6 +235,10 @@ def parse_net(filepath,view=True):
 
     # add layer dimensions
     add_dimensions(model, graph)
+
+    # update all layers
+    for node in graph.nodes:
+        graph.nodes[node]['hw'].update()
 
     return model, graph
 
