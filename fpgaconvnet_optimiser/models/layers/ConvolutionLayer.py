@@ -164,6 +164,12 @@ class ConvolutionLayer(Layer):
     def get_coarse_out_feasible(self,wr_factor=1):
         return self.get_factors(int(self.channels_out(0)/(self.groups*wr_factor)))
 
+    def update_coarse_in(self, coarse_in):
+        self.coarse_in  = coarse_in
+
+    def update_coarse_out(self, coarse_out):
+        self.coarse_out = coarse_out
+
     def get_fine_feasible(self):
         #return self.get_factors(int(self.k_size*self.k_size))
         return [ 1, self.k_size, self.k_size*self.k_size ]
@@ -178,6 +184,9 @@ class ConvolutionLayer(Layer):
             "weights"   : weights_size,
             "bias"      : bias_size
         }
+
+    def get_operations(self):
+        return self.k_size*self.k_size*self.channels_in()*self.filters*self.rows_out()*self.cols_out()
 
     def resource(self):
 

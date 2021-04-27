@@ -11,6 +11,7 @@ layers.
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
 
 class Fork(Module):
     def __init__(
@@ -29,19 +30,9 @@ class Fork(Module):
         self.k_size = k_size
         self.coarse = coarse
 
-        # dynamic power model
-        self.dynamic_model = lambda freq, rate, sa_in, sa_out : [
-            self.data_width*freq,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size*self.coarse
-        ]
- 
-        # utilisation model
-        self.utilisation_model = lambda : [
-            1,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*self.k_size*self.k_size*self.coarse
-        ]
+        # load resource coefficients
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/fork_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [

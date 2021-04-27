@@ -12,6 +12,7 @@ and pooling functions.
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
 
 class SlidingWindow(Module):
     """
@@ -79,6 +80,10 @@ class SlidingWindow(Module):
         self.pad_bottom = pad_bottom
         self.pad_left   = pad_left
 
+        # load resource coefficients
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/sliding_window_rsc_coef.npy"))
+
     def utilisation_model(self):
         return [
             1,
@@ -144,10 +149,12 @@ class SlidingWindow(Module):
             resource coefficients for the estimate.
         """
         # streams
-        #if self.channels > 1: 
-        bram_line_buffer = (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000)
-        #if self.channels*self.data_width >= 512:
-        bram_frame_buffer = self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000)
+        bram_line_buffer = 0
+        if self.channels > 1: 
+            bram_line_buffer = (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000)
+        bram_frame_buffer = 0
+        if self.channels*self.data_width >= 512:
+            bram_frame_buffer = self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000)
         return {
           "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : bram_line_buffer+bram_frame_buffer,

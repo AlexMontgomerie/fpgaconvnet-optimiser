@@ -12,6 +12,7 @@ on-chip weights storage.
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
 
 class Conv(Module):
     """
@@ -66,6 +67,10 @@ class Conv(Module):
         self.groups  = groups
         self.fine    = fine
         self.k_size  = k_size
+
+        # load resource coefficients
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/conv_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
