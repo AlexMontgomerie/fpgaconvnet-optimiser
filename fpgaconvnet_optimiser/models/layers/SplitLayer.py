@@ -11,7 +11,7 @@ import numpy as np
 import os
 import math
 
-class SplitLayer((Layer):
+class SplitLayer(Layer):
     def __init__(
             self,
             rows,
@@ -107,9 +107,9 @@ class SplitLayer((Layer):
 
         #Total
         return {
-            "LUT"   :   fork_rsc['LUT']*self.coarse_in[0]
-            "FF"    :   fork_rsc['FF']*self.coarse_in[0]
-            "BRAM"  :   fork_rsc['BRAM']*self.coarse_in[0]
+            "LUT"   :   fork_rsc['LUT']*self.coarse_in[0],
+            "FF"    :   fork_rsc['FF']*self.coarse_in[0],
+            "BRAM"  :   fork_rsc['BRAM']*self.coarse_in[0],
             "DSP"   :   fork_rsc['DSP']*self.coarse_in[0]
         }
 

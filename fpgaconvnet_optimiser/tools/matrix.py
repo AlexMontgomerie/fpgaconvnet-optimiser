@@ -165,8 +165,8 @@ def get_streams_matrix(graph,node_list=[],edge_list=[]):
     if not edge_list:
         edge_list = get_edge_list_matrix(graph)
 
-    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_in()
-    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_out()
+    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_in(edge_index)
+    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_out(edge_index)
 
     return _matrix(graph,node_list,edge_list,weight_in,weight_out)
 

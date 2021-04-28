@@ -10,44 +10,37 @@ import pydot
 class ReLULayer(Layer):
     def __init__(
             self,
-            dim,
-            data_width  =16,
-            coarse_in   =1,
-            coarse_out  =1,
-            sa          =0.5,
-            sa_out      =0.5
+            *args,
         ):
-        Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
+
+        # initialise parent class
+        super().__init__(*args)
 
         # init modules
         self.modules = {
-            "relu" : ReLU(dim)
+            "relu" : ReLU(self.rows_in(0), self.cols_in(0), self.channels_in(0))
         }
         self.update()
-
-        # switching activity
-        self.sa     = sa
-        self.sa_out = sa_out
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
         parameters.batch_size   = batch_size
         parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
-        parameters.coarse_in    = self.coarse_in
-        parameters.coarse_out   = self.coarse_out
-        parameters.coarse       = self.coarse_out
+        parameters.rows_in      = self.rows_in(0)
+        parameters.cols_in      = self.cols_in(0)
+        parameters.channels_in  = self.channels_in(0)
+        parameters.rows_out     = self.rows_out(0)
+        parameters.cols_out     = self.cols_out(0)
+        parameters.channels_out = self.channels_out(0)
+        parameters.coarse_in    = self.coarse_in[0]
+        parameters.coarse_out   = self.coarse_out[0]
+        parameters.coarse       = self.coarse_out[0]
 
     ## UPDATE MODULES ##
     def update(self):
-        self.modules['relu'].rows     = self.rows_in()
-        self.modules['relu'].cols     = self.cols_in()
-        self.modules['relu'].channels = int(self.channels/self.coarse_in)
+        self.modules['relu'].rows     = self.rows_in(0)
+        self.modules['relu'].cols     = self.cols_in(0)
+        self.modules['relu'].channels = int(self.channels_in(0)/self.coarse_in[0])
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)

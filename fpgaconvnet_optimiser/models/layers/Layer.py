@@ -9,6 +9,8 @@ from google.protobuf.json_format import MessageToDict
 from functools import reduce
 import os
 import math
+from typing import List
+
 
 class Layer:
     """
@@ -16,11 +18,11 @@ class Layer:
     """
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
-            coarse_in,
-            coarse_out,
+            rows: List[int],
+            cols: List[int],
+            channels: List[int],
+            coarse_in: List[int],
+            coarse_out: List[int],
             ports_in=1,
             ports_out=1,
             data_width=16

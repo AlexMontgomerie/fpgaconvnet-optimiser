@@ -4,6 +4,7 @@ Base class for all hardware module models.
 
 import numpy as np
 import copy
+from typing import List
 
 class Module:
     """
@@ -20,7 +21,13 @@ class Module:
         so the `rows`, `cols` and `channels` attributes are representative
         of the tensor if it was flattened to three dimensions.
     """
-    def __init__(self,dim,data_width=16):
+    def __init__(
+            self,
+            rows: int,
+            cols: int,
+            channels: int,
+            data_width=16
+        ):
         """
         Parameters
         ----------

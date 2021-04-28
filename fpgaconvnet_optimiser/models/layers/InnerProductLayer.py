@@ -13,17 +13,12 @@ import torch
 class InnerProductLayer(Layer):
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
             filters,
-            coarse_in   =1,
-            coarse_out  =1,
-            data_width  =16,
-            sa          =0.5,
-            sa_out      =0.5
+            *args
         ):
-        Layer.__init__(self,[rows],[cols],[channels],[coarse_in],[coarse_out],data_width)
+
+        # initialise parent class
+        super().__init__(*args)
 
         self.weight_width = 8
 
@@ -31,34 +26,32 @@ class InnerProductLayer(Layer):
         self.flags['channel_dependant'] = True
         self.flags['transformable']     = True
 
+        # save parameters
         self.filters   = filters
 
         # init modules
         self.modules = {
-            "fork"           : Fork( self.rows[0],self.cols[0], self.channels[0],1,coarse_out),
-            "conv"           : Conv( 1,1,self.channels[0]*self.rows[0]*self.cols[0],filters,1,1,1),
-            "accum"          : Accum(1,1,self.channels[0]*self.rows[0]*self.cols[0],filters,1),
-            "glue"           : Glue( 1,1,self.channels[0]*self.rows[0]*self.cols[0],filters,coarse_in,coarse_out)
+            "fork"           : Fork( self.rows_in(0),self.cols_in(0), self.channels_in(0),1,self.coarse_out[0]),
+            "conv"           : Conv( 1,1,self.channels_in(0)*self.rows_in(0)*self.cols_in(0),filters,1,1,1),
+            "accum"          : Accum(1,1,self.channels_in(0)*self.rows_in(0)*self.cols_in(0),filters,1),
+            "glue"           : Glue( 1,1,self.channels_in(0)*self.rows_in(0)*self.cols_in(0),
+                filters, self.coarse_in[0], self.coarse_out[0])
         }
         self.update()
 
-        # switching activity
-        self.sa     = sa
-        self.sa_out = sa_out
-
-    def rows_out(self):
+    def rows_out(self, port_index):
         return 1
 
-    def cols_out(self):
+    def cols_out(self, port_index):
         return 1
 
-    def channels_out(self):
+    def channels_out(self, port_index):
         return self.filters 
 
-    def rate_in(self,index):
+    def rate_in(self, port_index):
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
 
-    def rate_out(self,index):
+    def rate_out(self, port_index):
         return abs(self.balance_module_rates(self.rates_graph())[3,4])
 
     def update_coarse_in(self, coarse_in):
@@ -110,17 +103,17 @@ class InnerProductLayer(Layer):
     def rates_graph(self): 
         rates_graph = np.zeros( shape=(4,5) , dtype=float ) 
         # fork 
-        rates_graph[0,0] = self.modules['fork'].rate_in(0) 
-        rates_graph[0,1] = self.modules['fork'].rate_out(0)
+        rates_graph[0,0] = self.modules['fork'].rate_in() 
+        rates_graph[0,1] = self.modules['fork'].rate_out()
         # conv
-        rates_graph[1,1] = self.modules['conv'].rate_in(0)
-        rates_graph[1,2] = self.modules['conv'].rate_out(0)
+        rates_graph[1,1] = self.modules['conv'].rate_in()
+        rates_graph[1,2] = self.modules['conv'].rate_out()
         # accum
-        rates_graph[2,2] = self.modules['accum'].rate_in(0)
-        rates_graph[2,3] = self.modules['accum'].rate_out(0)
+        rates_graph[2,2] = self.modules['accum'].rate_in()
+        rates_graph[2,3] = self.modules['accum'].rate_out()
         # glue
-        rates_graph[3,3] = self.modules['glue'].rate_in(0)
-        rates_graph[3,4] = self.modules['glue'].rate_out(0)
+        rates_graph[3,3] = self.modules['glue'].rate_in()
+        rates_graph[3,4] = self.modules['glue'].rate_out()
 
         return rates_graph
  
