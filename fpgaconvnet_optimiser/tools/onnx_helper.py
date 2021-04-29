@@ -127,12 +127,6 @@ def load(filepath):
     passes = ["extract_constant_to_initializer", "eliminate_unused_initializer","fuse_bn_into_conv"]
     model = optimizer.optimize(model, passes=passes)
 
-    #issue with the reshaping - possibly the "branching"
-    #saving the optimised model to see what got broken
-    #sv_pnt = '../optim_crps.onnx'
-    #onnx.save(model, sv_pnt)
-    #print(SAVED) #save model LOOKs identical with onnx visualiser
-
     return model
 
 def update_batch_size(model, batch_size): # from https://github.com/microsoft/onnxruntime/issues/1467#issuecomment-514322927
