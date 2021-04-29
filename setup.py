@@ -27,7 +27,7 @@ setuptools.setup(
         "pyyaml>=5.1.0",
         "scipy>=1.2.1",
         "torchvision>=0.8.2",
-        "onnx>=1.8.0",
+        "onnx==1.8.0",
         "onnxruntime>=1.6.0",
         "graphviz>=0.16",
         "pydot>=1.4.2",
