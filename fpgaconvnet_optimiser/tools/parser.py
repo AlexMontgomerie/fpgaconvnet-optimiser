@@ -10,7 +10,7 @@ import networkx as nx
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
 #import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
-import onnx_helper
+import onnx_helper #TODO MAKE SURE TO CHANGE BACK
 
 from fpgaconvnet_optimiser.models.layers import BatchNormLayer
 from fpgaconvnet_optimiser.models.layers import ConvolutionLayer
@@ -20,7 +20,8 @@ from fpgaconvnet_optimiser.models.layers import ReLULayer
 from fpgaconvnet_optimiser.models.layers import LRNLayer
 from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
+#from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
+from layer_enum import LAYER_TYPE
 
 def _layer_type(op_type):
     layer_types = {
@@ -41,7 +42,6 @@ def _layer_type(op_type):
         "Clip"      : LAYER_TYPE.Clip,
         "Shape"     : LAYER_TYPE.Shape,
         "Squeeze"   : LAYER_TYPE.Squeeze,
-
         "If"        : LAYER_TYPE.If,
         "ReduceMax" : LAYER_TYPE.ReduceMax,
         "Greater"   : LAYER_TYPE.Greater,
@@ -81,16 +81,27 @@ def build_graph(model):
             graph.nodes[name]['inputs'] = { "weights": "", "bias": "" }
 
         #add subgraphs to the network
-        if _layer_type(node.op_type) == LAYER.If:
+        if _layer_type(node.op_type) == LAYER_TYPE.If:
             #how to access the subgraphs...
+            print("printing the if node")
+            #print(node)
+            for subgraph in node.attribute:
+                for subnode in subgraph.g.node:
+                    name = onnx_helper._name(subnode)
+                    print(name, ":", subnode.op_type)
+
+                    # add sub graph node to graph
+                    graph.add_node(name, type=_layer_type(subnode.op_type), hw=None, inputs={} )
 
     # add all edges from network
     edges = []
     for name in graph.nodes():
         # get node from model
         node = onnx_helper.get_model_node(model, name)
+        print("made it here", name)
         # add edges into node
         for input_node in node.input:
+            print("mih", name)
             # add initializers
             if onnx_helper.get_model_initializer(model, input_node) is not None:
                 # get input details
@@ -118,6 +129,7 @@ def build_graph(model):
                 if output_node != name:
                     edges.append((name,output_node))
     # add edges to graph
+    print("EDGES\n",edges)
     for edge in edges:
         graph.add_edge(*edge)
     # return graph
