@@ -12,7 +12,7 @@ import networkx as nx
 import onnxoptimizer as optimizer
 
 #import fpgaconvnet_optimiser.tools.graphs as graphs
-import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
+#import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
 
 #from fpgaconvnet_optimiser.models.layers import BatchNormLayer
 #from fpgaconvnet_optimiser.models.layers import ConvolutionLayer
@@ -22,7 +22,7 @@ import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
 #from fpgaconvnet_optimiser.models.layers import LRNLayer
 #from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
+#from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 #import the current parser functions to see what they can do
 import parser

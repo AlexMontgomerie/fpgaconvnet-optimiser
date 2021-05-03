@@ -42,6 +42,7 @@ def _layer_type(op_type):
         "Clip"      : LAYER_TYPE.Clip,
         "Shape"     : LAYER_TYPE.Shape,
         "Squeeze"   : LAYER_TYPE.Squeeze,
+        #placeholder layers for branching + exit decision
         "If"        : LAYER_TYPE.If,
         "ReduceMax" : LAYER_TYPE.ReduceMax,
         "Greater"   : LAYER_TYPE.Greater,
@@ -69,6 +70,8 @@ def build_graph(model):
     # graph structure
     graph = nx.DiGraph()
     # add all nodes from network
+    submodels = []
+
     for node in model.graph.node:
         # get name of node
         name = onnx_helper._name(node)
@@ -84,8 +87,8 @@ def build_graph(model):
         if _layer_type(node.op_type) == LAYER_TYPE.If:
             #how to access the subgraphs...
             print("printing the if node")
-            #print(node)
             for subgraph in node.attribute:
+                submodels.append(subgraph)
                 for subnode in subgraph.g.node:
                     name = onnx_helper._name(subnode)
                     print(name, ":", subnode.op_type)
@@ -97,7 +100,7 @@ def build_graph(model):
     edges = []
     for name in graph.nodes():
         # get node from model
-        node = onnx_helper.get_model_node(model, name)
+        node = onnx_helper.get_model_node(model, name, submodels=submodels)
         print("made it here", name)
         # add edges into node
         for input_node in node.input:
@@ -280,7 +283,7 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.Cast)
     filter_node_types(graph, LAYER_TYPE.Squeeze)
     filter_node_types(graph, LAYER_TYPE.Shape)
-    filter_node_types(graph, LAYER_TYPE.Softmax)
+    #filter_node_types(graph, LAYER_TYPE.Softmax) #needed for exit condition
     filter_node_types(graph, LAYER_TYPE.LRN)
 
     # add hardware to graph

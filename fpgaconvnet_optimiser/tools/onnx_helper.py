@@ -145,10 +145,16 @@ def _name(node):
     #return _format_name( node.name if node.name else node.output[0] )
     return _format_name( node.output[0] )
 
-def get_model_node(model, name):
+def get_model_node(model, name, submodels=[]):
     for node in model.graph.node:
         if _name(node) == name: # formatted match
             return node
+    for sm in submodels: #look through submodels
+        for subnode in sm.g.node: #g used in subgraphs for graph
+            if _name(subnode) == name: # formatted match
+                return subnode
+    print("Node name not in graphs")
+    raise NameError
 
 def get_model_value_info(model, name):
     for node in model.graph.value_info:
