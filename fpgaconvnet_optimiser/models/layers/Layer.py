@@ -301,7 +301,7 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in,
+            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in[0],
             "DSP"   : 0
         }
 
@@ -321,12 +321,12 @@ class Layer:
         return self.get_factors(int(self.channels_out(port_index)/wr_factor))
 
     def update_coarse_in(self, coarse_in):
-        self.coarse_in  = coarse_in
-        self.coarse_out = coarse_in
+        self.coarse_in[0]  = coarse_in
+        self.coarse_out[0] = coarse_in
 
     def update_coarse_out(self, coarse_out):
-        self.coarse_in  = coarse_out
-        self.coarse_out = coarse_out
+        self.coarse_in[0]  = coarse_out
+        self.coarse_out[0] = coarse_out
 
     def load_coef(self):
         for module in self.modules:

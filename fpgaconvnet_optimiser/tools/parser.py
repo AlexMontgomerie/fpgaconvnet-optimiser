@@ -133,11 +133,11 @@ def add_hardware(model, graph):
             # create convolution layer hardware
             graph.nodes[name]['hw'] = ConvolutionLayer(
                 filters,
-                [0], # initialise rows to 0
-                [0], # initialise cols to 0
-                [0], # initialise channels to 0
-                [1], # initialise coarse in to 0
-                [1], # initialise coarse out to 0
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
                 k_size =attr["kernel_shape"][0],
                 stride =attr["strides"][0],
                 pad    =attr["pads"][0],
@@ -153,11 +153,11 @@ def add_hardware(model, graph):
             # create inner product layer hardware
             graph.nodes[name]['hw'] = InnerProductLayer(
                 filters,
-                [0], # initialise rows to 0
-                [0], # initialise cols to 0
-                [0], # initialise channels to 0
-                [1], # initialise coarse in to 0
-                [1], # initialise coarse out to 0
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
             )
             continue
         # Pooling layer
@@ -170,11 +170,11 @@ def add_hardware(model, graph):
             attr.setdefault("dilations", [1,1])
             # create pooling layer hardware
             graph.nodes[name]['hw'] = PoolingLayer(
-                [0], # initialise rows to 0
-                [0], # initialise cols to 0
-                [0], # initialise channels to 0
-                [1], # initialise coarse in to 0
-                [1], # initialise coarse out to 0
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
                 pool_type = 'max', # TODO: change so that it does AVG also
                 k_size =attr["kernel_shape"][0],
                 stride =attr["strides"][0],
@@ -185,21 +185,21 @@ def add_hardware(model, graph):
         if graph.nodes[name]['type'] == LAYER_TYPE.ReLU:
             # create relu layer hardware
             graph.nodes[name]['hw'] = ReLULayer(
-                [0], # initialise rows to 0
-                [0], # initialise cols to 0
-                [0], # initialise channels to 0
-                [1], # initialise coarse in to 0
-                [1], # initialise coarse out to 0
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
             )
             continue
         # BatchNorm Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
             graph.nodes[name]['hw'] = BatchNormLayer(
-                [0], # initialise rows to 0
-                [0], # initialise cols to 0
-                [0], # initialise channels to 0
-                [1], # initialise coarse in to 0
-                [1], # initialise coarse out to 0
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
             )
             continue
         raise NameError

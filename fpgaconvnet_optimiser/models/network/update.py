@@ -14,6 +14,13 @@ def update_partitions(self):
         ## remove squeeze layer
         self.partitions[partition_index].remove_squeeze()
 
+    # remove all empty partitions
+    for partition_index in range(len(self.partitions)):
+
+        # remove empty partition
+        if len(self.partitions[partition_index].graph.nodes) == 0:
+            del self.partitions[partition_index]
+
     # update coarse in and out of partition to avoid mismatch
     self.update_coarse_in_out_partition()
  
@@ -23,10 +30,11 @@ def update_partitions(self):
         ## update streams in and out
         input_node  = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
         output_node = graphs.get_output_nodes(self.partitions[partition_index].graph)[0]
+
         self.partitions[partition_index].streams_in  = min(self.partitions[partition_index].max_streams_in,
-                self.partitions[partition_index].graph.nodes[input_node]["hw"].coarse_in)
+                self.partitions[partition_index].graph.nodes[input_node]["hw"].coarse_in[0])
         self.partitions[partition_index].streams_out = min(self.partitions[partition_index].max_streams_out,
-                self.partitions[partition_index].graph.nodes[output_node]["hw"].coarse_out)
+                self.partitions[partition_index].graph.nodes[output_node]["hw"].coarse_out[0])
 
         ## add auxiliary layers
         self.partitions[partition_index].add_squeeze()
@@ -41,8 +49,8 @@ def update_partitions(self):
         self.partitions[partition_index].batch_size = self.batch_size
         
         ## update sizes
-        self.partitions[partition_index].size_in  = self.partitions[partition_index].graph.nodes[input_nodes[0]]['hw'].size_in()
-        self.partitions[partition_index].size_out = self.partitions[partition_index].graph.nodes[input_nodes[0]]['hw'].size_out()
+        self.partitions[partition_index].size_in  = self.partitions[partition_index].graph.nodes[input_nodes[0]]['hw'].size_in(0)
+        self.partitions[partition_index].size_out = self.partitions[partition_index].graph.nodes[input_nodes[0]]['hw'].size_out(0)
         if self.partitions[partition_index].wr_layer != None:
             wr_layer_info = self.partitions[partition_index].graph.nodes[self.partitions[partition_index].wr_layer]['hw']
             self.partitions[partition_index].size_wr = wr_layer_info.get_parameters_size()['weights']
@@ -85,6 +93,6 @@ def update_coarse_in_out_partition(self):
             output_node = graphs.get_output_nodes(self.partitions[i-1].graph)[0] # TODO: support multi-port
             # update input node's coarse in with previous coarse out
             self.partitions[i].graph.nodes[input_node]['hw'].update_coarse_in(
-                self.partitions[i-1].graph.nodes[output_node]['hw'].coarse_out 
+                self.partitions[i-1].graph.nodes[output_node]['hw'].coarse_out[0]
             )
 

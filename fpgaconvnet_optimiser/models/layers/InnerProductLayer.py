@@ -13,12 +13,16 @@ import torch
 class InnerProductLayer(Layer):
     def __init__(
             self,
-            filters,
-            *args
+            filters: int,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
         ):
 
         # initialise parent class
-        super().__init__(*args)
+        super().__init__([rows], [cols], [channels], [coarse_in], [coarse_out])
 
         self.weight_width = 8
 
@@ -55,10 +59,10 @@ class InnerProductLayer(Layer):
         return abs(self.balance_module_rates(self.rates_graph())[3,4])
 
     def update_coarse_in(self, coarse_in):
-        self.coarse_in  = coarse_in
+        self.coarse_in[0]  = coarse_in
 
     def update_coarse_out(self, coarse_out):
-        self.coarse_out = coarse_out
+        self.coarse_out[0] = coarse_out
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):

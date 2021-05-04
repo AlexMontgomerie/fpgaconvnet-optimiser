@@ -10,11 +10,15 @@ import pydot
 class ReLULayer(Layer):
     def __init__(
             self,
-            *args,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
         ):
 
         # initialise parent class
-        super().__init__(*args)
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
         # init modules
         self.modules = {

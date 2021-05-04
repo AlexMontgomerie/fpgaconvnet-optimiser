@@ -14,18 +14,20 @@ class ConvolutionLayer(Layer):
     def __init__(
             self,
             filters: int,
-            *args,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
             k_size      =3,
             stride      =1,
             groups      =1,
             pad         =0,
             fine        =1,
-            sa          =0.5,
-            sa_out      =0.5
         ):
 
         # initialise parent class
-        super().__init__(*args)
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
         # update flags
         self.flags['channel_dependant'] = True
@@ -58,23 +60,24 @@ class ConvolutionLayer(Layer):
         self.update()
         #self.load_coef()
 
-        # switching activity
-        self.sa     = sa
-        self.sa_out = sa_out
-
     def rows_out(self, port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return int(math.floor((self.rows_in(0)-self.k_size+2*self.pad)/self.stride)+1)
 
     def cols_out(self, port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return int(math.floor((self.cols_in(0)-self.k_size+2*self.pad)/self.stride)+1)
 
     def channels_out(self, port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return self.filters
 
     def rate_in(self,port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
 
     def rate_out(self,port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[4,5])
 
     ## LAYER INFO ##
@@ -156,10 +159,12 @@ class ConvolutionLayer(Layer):
 
         return rates_graph
 
-    def get_coarse_in_feasible(self,wr_factor=1):
+    def get_coarse_in_feasible(self,port_index,wr_factor=1):
+        assert port_index == 0
         return self.get_factors(int(self.channels_in(0)/(self.groups*wr_factor)))
 
-    def get_coarse_out_feasible(self,wr_factor=1):
+    def get_coarse_out_feasible(self,port_index,wr_factor=1):
+        assert port_index == 0
         return self.get_factors(int(self.channels_out(0)/(self.groups*wr_factor)))
 
     def update_coarse_in(self, coarse_in):
@@ -176,7 +181,7 @@ class ConvolutionLayer(Layer):
         return self.get_factors(int(self.filters/(self.groups*self.coarse_out[0])))
 
     def get_parameters_size(self):
-        weights_size = self.channels[0] * int( self.filters / self.groups ) * self.k_size * self.k_size
+        weights_size = self.channels_in(0) * int( self.filters / self.groups ) * self.k_size * self.k_size
         bias_size = 0
         return {
             "weights"   : weights_size,
@@ -204,7 +209,7 @@ class ConvolutionLayer(Layer):
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # weight usage
-        n_filters = float(self.filters*self.channels[0]*self.k_size*self.k_size)/float(self.fine*self.groups*self.coarse_in[0]*self.coarse_out[0])
+        n_filters = float(self.filters*self.channels_in(0)*self.k_size*self.k_size)/float(self.fine*self.groups*self.coarse_in[0]*self.coarse_out[0])
         weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in[0]*self.coarse_out[0]*self.fine
 
         # Total
@@ -262,9 +267,9 @@ class ConvolutionLayer(Layer):
 
     def functional_model(self,data,weights,bias,batch_size=1):
 
-        assert data.shape[0] == self.rows[0]    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols[0]    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels[0], "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
         assert weights.shape[1] == int(self.channels[0]/self.groups), "ERROR (weights): invalid channel dimension"
@@ -287,17 +292,4 @@ class ConvolutionLayer(Layer):
         data = np.moveaxis(data, -1, 0)
         data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
         return convolution_layer(torch.from_numpy(data)).detach().numpy()
-
-if __name__ == "__main__":
-
-    # 
-    ConvolutionLayer(
-        100,
-        [10],
-        [20],
-        [30],
-        2,
-        4
-    )
-
 

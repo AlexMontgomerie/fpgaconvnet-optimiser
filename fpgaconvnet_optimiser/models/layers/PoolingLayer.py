@@ -10,7 +10,11 @@ from fpgaconvnet_optimiser.models.layers import Layer
 class PoolingLayer(Layer):
     def __init__(
             self,
-            *args,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
             pool_type   ='max',
             k_size      =2,
             stride      =2,
@@ -19,16 +23,12 @@ class PoolingLayer(Layer):
         ):
        
         # initialise parent class
-        super().__init__(*args)
-
-        # check inputs correct
-        assert len(self.rows) == 1      , "ERROR: more than one port!" 
-        assert len(self.cols) == 1      , "ERROR: more than one port!" 
-        assert len(self.channels) == 1  , "ERROR: more than one port!" 
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
         # update flags
         self.flags['transformable'] = True
 
+        # update parameters
         self.k_size     = k_size
         self.stride     = stride
         self.pad        = pad

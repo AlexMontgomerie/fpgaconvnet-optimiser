@@ -50,11 +50,11 @@ class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
 
         # initialise layer
         layer = PoolingLayer(
-            [config["rows"]],
-            [config["cols"]],
-            [config["channels"]],
-            [config["coarse"]],
-            [config["coarse"]],
+            config["rows"],
+            config["cols"],
+            config["channels"],
+            config["coarse"],
+            config["coarse"],
             k_size=config["kernel_size"],
             stride=config["stride"],
             pad=config["pad"],
@@ -96,11 +96,11 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
         # initialise layer
         layer = ConvolutionLayer(
             config["filters"],
-            [config["rows"]],
-            [config["cols"]],
-            [config["channels"]],
-            [config["coarse_in"]],
-            [config["coarse_out"]],
+            config["rows"],
+            config["cols"],
+            config["channels"],
+            config["coarse_in"],
+            config["coarse_out"],
             k_size=config["kernel_size"],
             stride=config["stride"],
             groups=config["groups"],
@@ -136,11 +136,11 @@ class TestReLULayer(TestLayerTemplate,unittest.TestCase):
 
         # initialise layer
         layer = ReLULayer(
-            [config["rows"]],
-            [config["cols"]],
-            [config["channels"]],
-            [config["coarse"]],
-            [config["coarse"]],
+            config["rows"],
+            config["cols"],
+            config["channels"],
+            config["coarse"],
+            config["coarse"],
         )
         
         # run tests
@@ -171,11 +171,37 @@ class TestInnerProductLayer(TestLayerTemplate,unittest.TestCase):
         # initialise layer
         layer = InnerProductLayer(
             config["filters"],
-            [config["rows"]],
-            [config["cols"]],
-            [config["channels"]],
-            [config["coarse_in"]],
-            [config["coarse_out"]],
+            config["rows"],
+            config["cols"],
+            config["channels"],
+            config["coarse_in"],
+            config["coarse_out"],
+        )
+        
+        # run tests
+        self.run_test_dimensions(layer)
+        self.run_test_rates(layer)
+
+@ddt.ddt
+class TestSqueezeLayer(TestLayerTemplate,unittest.TestCase):
+
+    @ddt.data(
+        "tests/configs/layers/squeeze/config_0.json",
+        "tests/configs/layers/squeeze/config_1.json",
+    )
+    def test_layer_configurations(self, config_path):
+        
+        # open configuration
+        with open(config_path, "r") as f:
+            config = json.load(f)
+
+        # initialise layer
+        layer = SqueezeLayer(
+            config["rows"],
+            config["cols"],
+            config["channels"],
+            config["coarse_in"],
+            config["coarse_out"],
         )
         
         # run tests
