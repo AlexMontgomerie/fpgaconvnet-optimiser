@@ -167,7 +167,7 @@ def get_model_input(model, name):
             return node
 
 def get_model_initializer(model, name, to_tensor=True):
-    for node in model.graph.initializer:
+    for node in model.graph.initializer: #works with subgraphs
         if node.name == name: # exact match
             if to_tensor:
                 return onnx.numpy_helper.to_array(node)

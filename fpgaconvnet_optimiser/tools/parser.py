@@ -69,9 +69,13 @@ def filter_node_types(graph, layer_type):
 def build_graph(model):
     # graph structure
     graph = nx.DiGraph()
-    # add all nodes from network
-    submodels = []
+    submodels = [] #links to the subgraphs in if statements
+    ifnodes = [] #the name/number of the if nodes
+    edges = [] #dataflow edges
+    ctrledges = []
+    #TODO this would be the point to add in branch execution rates
 
+    # add all nodes from network
     for node in model.graph.node:
         # get name of node
         name = onnx_helper._name(node)
@@ -85,26 +89,29 @@ def build_graph(model):
 
         #add subgraphs to the network
         if _layer_type(node.op_type) == LAYER_TYPE.If:
-            #how to access the subgraphs...
+            print("IFNODE", name)
+            ifnodes.append(name)
+            #access the subgraphs
             print("printing the if node")
             for subgraph in node.attribute:
                 submodels.append(subgraph)
+                last_name = None
                 for subnode in subgraph.g.node:
-                    name = onnx_helper._name(subnode)
-                    print(name, ":", subnode.op_type)
+                    subname = onnx_helper._name(subnode)
+                    print(subname, ":", subnode.op_type)
 
                     # add sub graph node to graph
-                    graph.add_node(name, type=_layer_type(subnode.op_type), hw=None, inputs={} )
+                    graph.add_node(subname, type=_layer_type(subnode.op_type), hw=None, inputs={} )
+                    last_name=subname
+                edges.append((last_name, name))
+
 
     # add all edges from network
-    edges = []
     for name in graph.nodes():
         # get node from model
         node = onnx_helper.get_model_node(model, name, submodels=submodels)
-        print("made it here", name)
         # add edges into node
         for input_node in node.input:
-            print("mih", name)
             # add initializers
             if onnx_helper.get_model_initializer(model, input_node) is not None:
                 # get input details
@@ -271,7 +278,9 @@ def parse_net(filepath,view=True):
     remove_nodes = []
     for node in graph.nodes:
         if "type" not in graph.nodes[node]:
+            print("REMOVING", node)
             remove_nodes.append(node)
+    print(remove_nodes)
     for node in remove_nodes:
         graph.remove_node(node)
 
