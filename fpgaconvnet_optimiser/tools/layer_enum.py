@@ -25,7 +25,7 @@ class LAYER_TYPE(Enum):
     Cast      = 47
     Clip      = 48
     Shape     = 49
-    #EE Layers - arbitrarily assigned TODO add layers, assign properly
+    #EE Layers - arbitrarily assigned
     If        = 50
     ReduceMax = 51
     Greater   = 52
