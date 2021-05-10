@@ -9,6 +9,14 @@ import scipy
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 
+NETWORKS = [
+    "examples/models/lenet.onnx",
+    "examples/models/alexnet.onnx",
+    "examples/models/vgg16.onnx",
+    "examples/models/caffenet.onnx",
+    "examples/models/caffenet.onnx",
+]
+
 """    
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 CONNECTION MATRIX
@@ -17,9 +25,7 @@ CONNECTION MATRIX
 @ddt.ddt
 class TestConnectionMatrix(unittest.TestCase):
 
-    @ddt.data(
-        "examples/models/lenet.onnx",
-    )
+    @ddt.data(*NETWORKS)
     def test_net(self,model_path):
 
         # graph definition
@@ -46,9 +52,7 @@ STREAMS MATRIX
 @ddt.ddt
 class TestStreamsMatrix(unittest.TestCase):
 
-    @ddt.data(
-        "examples/models/lenet.onnx",
-    )
+    @ddt.data(*NETWORKS)
     def test_net(self,model_path):
 
         # graph definition
@@ -74,9 +78,7 @@ RATES MATRIX
 @ddt.ddt
 class TestRatesMatrix(unittest.TestCase):
 
-    @ddt.data(
-        "examples/models/lenet.onnx",
-    )
+    @ddt.data(*NETWORKS)
     def test_net(self,model_path):
 
         # graph definition
@@ -151,9 +153,7 @@ WORKLOAD MATRIX
 @ddt.ddt
 class TestWorkloadMatrix(unittest.TestCase):
 
-    @ddt.data(
-        "examples/models/lenet.onnx",
-    )
+    @ddt.data(*NETWORKS)
     def test_net(self,model_path):
 
         # graph definition
@@ -184,9 +184,7 @@ TOPOLOGY MATRIX
 @ddt.ddt
 class TestTopologyMatrix(unittest.TestCase):
 
-    @ddt.data(
-        "examples/models/lenet.onnx",
-    )
+    @ddt.data(*NETWORKS)
     def test_net(self,model_path):
 
         # graph definition
@@ -213,9 +211,7 @@ INTERVAL MATRIX
 @ddt.ddt
 class TestIntervalMatrix(unittest.TestCase):
 
-    @ddt.data(
-        "examples/models/lenet.onnx",
-    )
+    @ddt.data(*NETWORKS)
     def test_net(self,model_path):
 
         # graph definition
@@ -229,7 +225,21 @@ class TestIntervalMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(interval_matrix.shape[0],n_edges)
         self.assertEqual(interval_matrix.shape[1],n_nodes)
-        
+
+        print(np.max(interval_matrix))
+
+        workload_matrix = matrix.get_workload_matrix(graph)
+        streams_matrix  = matrix.get_streams_matrix(graph)
+        rates_matrix    = matrix.get_balanced_rates_matrix(graph)
+        #print(rates_matrix)
+
+        interval_matrix = matrix.np.multiply(streams_matrix, np.absolute(rates_matrix))
+        interval_matrix = matrix.np.divide(workload_matrix, np.absolute(interval_matrix))
+        interval_matrix = matrix.np.nan_to_num(interval_matrix)
+
+
+        print(np.max(interval_matrix))
+
         # check rank of matrix
         #self.assertEqual(matrix_rank(interval_matrix),n_nodes-1)
 
@@ -237,6 +247,3 @@ class TestIntervalMatrix(unittest.TestCase):
         #interval = np.unique(np.absolute(interval_matrix).astype(int)).tolist()
         #self.assertEqual(len(interval),2)
 
-
-if __name__ == '__main__':
-    unittest.main()       
