@@ -66,6 +66,7 @@ class Network():
             'wr_time'       : 0.0,
             'ports'         : 4,
             'port_width'    : 64,
+            'mem_bandwidth' : 0,
             'mem_capacity'  : 0,
             'constraints'   : {
                 'FF'    : 0,
@@ -130,6 +131,7 @@ class Network():
     from fpgaconvnet_optimiser.models.network.validate import check_workload
     from fpgaconvnet_optimiser.models.network.validate import check_streams
     from fpgaconvnet_optimiser.models.network.validate import check_partitions
+    from fpgaconvnet_optimiser.models.network.validate import check_memory_bandwidth
 
     """
 
