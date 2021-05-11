@@ -126,12 +126,14 @@ class Conv(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self): # TODO: improve DSP utilisation for different bitwidths
+    def rsc(self,coef=None): # TODO: improve DSP utilisation for different bitwidths
+        if coef == None:
+            coef = self.rsc_coef
         return {
-          "LUT"  : int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
           "BRAM" : 0,
-          "DSP"  : self.fine * math.ceil((self.weight_width + self.data_width) / 48), #https://github.com/Xilinx/finn/blob/4fee6ffd8e13f91314ec9086e9ce9b2ea9de15c7/src/finn/custom_op/fpgadataflow/streamingfclayer_batch.py#L368
-          "FF"   : int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "DSP"  : self.fine * math.ceil((self.weight_width + self.data_width) / 48), #https://github.com/Xilinx/finn/blob/4fee6ffd8e13f91314ec9086e9ce9b2ea9de15c7/src/finn/custom_op/fpgadataflow/streamingfclayer_batch.py#L368,
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     '''
