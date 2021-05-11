@@ -112,12 +112,14 @@ class Conv(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self): # TODO: improve DSP utilisation for different bitwidths
+    def rsc(self,coef=None): # TODO: improve DSP utilisation for different bitwidths
+        if coef == None:
+            coef = self.rsc_coef
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
           "BRAM" : 0,
-          "DSP"  : self.fine,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "DSP"  : self.fine+1,
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     '''

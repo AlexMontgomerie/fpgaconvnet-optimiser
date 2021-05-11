@@ -2,13 +2,14 @@
 
 """
 
-import pydot
-import numpy as np
-import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2 
-from google.protobuf.json_format import MessageToDict
-from functools import reduce
 import os
 import math
+from functools import reduce
+
+import pydot
+from google.protobuf.json_format import MessageToDict
+
+import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
 
 class Layer:
     """
@@ -39,17 +40,17 @@ class Layer:
         channels: int
             channel dimension of input featuremap
         coarse_in: int
-            number of parallel streams into the layer.    
-        coarse_out: int
+            number of parallel streams into the layer.
+            coarse_out: int
             number of parallel streams out of the layer.
         data_width: int
-            bitwidth of featuremap pixels 
+            bitwidth of featuremap pixels
         modules: dict
-            dictionary of `module` instances that make 
+            dictionary of `module` instances that make
             up the layer. These modules are used for the
             resource and performance models of the layer.
         """
-        
+
         # flags
         self.flags = {
             "multi_input"       : False,

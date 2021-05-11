@@ -21,7 +21,7 @@ class Accum(Module):
             dim,
             filters,
             groups,
-            data_width=32
+            data_width=30
         ):
         # init module
         Module.__init__(self,dim,data_width)
@@ -35,12 +35,15 @@ class Accum(Module):
             "../../coefficients/accum_rsc_coef.npy"))
 
     def utilisation_model(self):
-        return [
+        bram_acc_buffer_size =  (self.filters/self.groups)*self.data_width
+        return np.array([
             1,
-            self.data_width,
-            self.data_width*self.filters,
-            self.data_width*self.channels
-        ]
+            #self.data_width,
+            self.data_width*self.groups,
+            self.data_width*(self.channels/self.groups),
+            bram_acc_buffer_size,
+            math.ceil( (bram_acc_buffer_size)/18000),
+        ])
 
     def channels_in(self):
         return int((self.channels*self.filters)/(self.groups))
@@ -69,19 +72,27 @@ class Accum(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self):
+    def rsc(self,coef=None):
+        if coef == None:
+            coef = self.rsc_coef
         # streams
         #bram_input_buffer = math.ceil( ((self.channels*self.filters+1)*self.data_width)/18000)
         #bram_acc_buffer   = math.ceil( ((self.groups*self.filters+1)*self.data_width)/18000)
-        bram_acc_buffer_size =  ((self.filters/self.groups)*(self.channels/self.groups)+1)*self.data_width
-        bram_acc_buffer = 0
-        if bram_acc_buffer_size >= 512:
-            bram_acc_buffer = math.ceil( (bram_acc_buffer_size)/18000) 
+        data_width = 30
+        acc_buffer =  (self.filters/self.groups)
+        acc_fifo_bram = 0
+        if acc_buffer*self.data_width >= 512:
+            acc_buffer_fifo_data = math.ceil( (acc_buffer*data_width)/18000) 
+            acc_buffer_fifo_addr = math.ceil( math.log(acc_buffer,2) )
+            #acc_fifo_bram = max(acc_buffer_fifo_data, acc_buffer_fifo_addr)
+            acc_fifo_bram = acc_buffer_fifo_data
+        acc_buffer_bram = math.ceil( (acc_buffer*data_width)/18000) 
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
-          "BRAM" : bram_acc_buffer,
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
+          #"BRAM" : int(np.dot(self.utilisation_model(), coef["BRAM"])),
+          "BRAM" : acc_fifo_bram,# + acc_fifo_bram,
           "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     def functional_model(self,data):
