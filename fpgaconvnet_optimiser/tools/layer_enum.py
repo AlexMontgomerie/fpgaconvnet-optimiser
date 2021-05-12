@@ -30,6 +30,8 @@ class LAYER_TYPE(Enum):
     ReduceMax = 51
     Greater   = 52
     Identity  = 53
+    #Not an ONNX op in this case
+    Buffer    = 54
 
     @classmethod
     def get_type(cls, t):

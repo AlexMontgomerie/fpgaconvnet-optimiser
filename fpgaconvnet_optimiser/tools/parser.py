@@ -71,9 +71,10 @@ def filter_node_types(graph, layer_type):
 def build_graph(model):
     # graph structure
     graph = nx.DiGraph()
-    submodels = [] #links to the subgraphs in if statements
+    submodels = [] #links to the subgraphs in If ops
     ctrledges = [] #the name/ID of the if nodes [[ifnode,then,else]]
     edges = [] #dataflow edges
+    exitedges = [] #dataflow from exits to parent If op
     #TODO this would be the point to add in branch execution rates
 
     # add all nodes from network
@@ -115,7 +116,7 @@ def build_graph(model):
                     # add sub graph node to graph
                     graph.add_node(subname, type=_layer_type(subnode.op_type), hw=None, inputs={} )
                     last_name=subname
-                edges.append((last_name, name))
+                exitedges.append((last_name, name)) #dataflow from last node in branch to If op
             ctrledges.append(ifnode)
 
 
@@ -153,11 +154,64 @@ def build_graph(model):
                 if output_node != name:
                     edges.append((name,output_node))
     # add edges to graph
-    print("EDGES\n",edges)
+    #print("EDGES\n",edges)
     for edge in edges:
         graph.add_edge(*edge)
     # return graph
-    return graph, ctrledges
+    return graph, ctrledges, exitedges
+
+def add_split_nodes(graph, ctrledges):
+    #adding the split nodes for branching
+    splitnodes = []
+    for node in graph.nodes:
+        successors = graphs.get_next_nodes(graph, node)
+        #print(successors)
+        if len(successors) > 1: #general split node placement
+            splitnodes.append((node, successors))
+    print("splitnodes:", splitnodes)
+
+    for i,(node,successors) in enumerate(splitnodes):
+        splitname = "split_" + str(i)
+        graph.add_node(splitname, type=LAYER_TYPE.Split, hw=None, inputs={} )
+        for succ in successors:
+            graph.remove_edge(node, succ)
+            graph.add_edge(splitname, succ)
+        graph.add_edge(node, splitname)
+
+def add_buffer_nodes(graph, ctrledges):
+    #adding buffer nodes to store/buffer compute at branch points
+    buffernodes = []
+    for branch_start in ctrledges: #TODO write this more succintly
+        #then = [1], else = [2]
+        predec = graphs.get_prev_nodes(graph, branch_start[1])
+        if len(predec) > 1:
+            raise Exception("Multiple predecessors not supported")
+        buffernodes.append((predec[0], branch_start[1]))
+
+        predec = graphs.get_prev_nodes(graph, branch_start[2])
+        if len(predec) > 1:
+            raise Exception("Multiple predecessors not supported")
+        buffernodes.append((predec[0], branch_start[2]))
+    print("buffernodes:", buffernodes)
+
+    for i,(predec,node) in enumerate(buffernodes):
+        buffername = "buffer_" + str(i)
+        graph.add_node(buffername, type=LAYER_TYPE.Buffer, hw=None, inputs={} )
+        #for succ in successors:
+        graph.remove_edge(predec, node)
+        graph.add_edge(predec, buffername)
+        graph.add_edge(buffername, node)
+
+def shift_crtledges(graph, ctrledges):
+    #assumption that target layer will be immediate predecessor
+    for node in ctrledges:
+        #ctrledges[i][0] is the If node
+        predec = graphs.get_prev_nodes(graph, node[0])
+        if len(predec) > 1:
+            raise Exception("Multiple predecessors not supported")
+        if graph.nodes[predec[0]]["type"] not in [LAYER_TYPE.Greater]:
+            raise Exception("Other layer types not supported")
+        node[0] = predec[0] #replace with predecessor
 
 def add_hardware(model, graph):
     # iterate over nodes in graph
@@ -252,21 +306,31 @@ def add_hardware(model, graph):
                 1, # initialise coarse out to 0
             )
             continue
-        #split/buffer layer
+        #split layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Split:
             #has input and minimum two outputs
-
+            #connect up the inputs and outputs - might be done thru graph
+            continue
+        #buffer layer
+        if graph.nodes[name]['type'] == LAYER_TYPE.Buffer:
+            #buffer point to be moved up and down links-depending on exit laten
+            #maybe do a size calc here?
+            #might need to specify link from EC to here?
+            continue
         #top1 exit criterion layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Greater:
             #need to have some idea of the hw layer for EC
             #softmax, reducemax, greater than threshold
-            #control edges - currently they are tied to If node
 
-        #early exit buffer/output layer
+            #add the control edges to the buffers/drop points
+            continue
+        #early exit layer
         if graph.nodes[name]['type'] == LAYER_TYPE.If:
             #with two exits it makes sense to pull from the if
             #will need to generalise assumptions for >2 exits
 
+            #graph - two df inputs, pick either or on hw level
+            continue
 
         print(name, graph.nodes[name]['type'])
         raise NameError
@@ -295,37 +359,13 @@ def add_dimensions(model, graph):
             graph.nodes[node]['hw'].rows[0]     = dim[1]
             graph.nodes[node]['hw'].cols[0]     = dim[2]
 
-def determine_early_exits(model, graph, ctrledges):
-    print(graph.nodes)
-    print(graph.edges)
-    #for node in graph.nodes:
-
-def add_split_nodes(model, graph, ctrledges):
-    splitnodes = []
-    for node in graph.nodes:
-        successors = [succ for succ in graph.successors(node)]
-        #print(successors)
-        if len(successors) > 1:
-            splitnodes.append((node, successors))
-    print("splitnodes:", splitnodes)
-    i=0
-    for node,successors in splitnodes:
-        splitname = "split_" + str(i)
-        graph.add_node(splitname, type=LAYER_TYPE.Split, hw=None, inputs={} )
-        for succ in successors:
-            graph.remove_edge(node, succ)
-            graph.add_edge(splitname, succ)
-        graph.add_edge(node, splitname)
-
-        i+=1
-
 def parse_net(filepath,view=True):
     print("GOT HERE")
     # load onnx model
     model = onnx_helper.load(filepath)
 
     # get graph
-    graph, ctrledges = build_graph(model)
+    graph, ctrledges, exitedges = build_graph(model)
     print("parse_net(): CTRL EDGES\n", ctrledges)
 
     # remove input node
@@ -345,22 +385,28 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.Cast)
     filter_node_types(graph, LAYER_TYPE.Squeeze)
     filter_node_types(graph, LAYER_TYPE.Shape)
-    filter_node_types(graph, LAYER_TYPE.Softmax) #needed for exit condition
+    #TODO softmax needed for exit condition, remove filter when ONNX input updated
+    filter_node_types(graph, LAYER_TYPE.Softmax)
     filter_node_types(graph, LAYER_TYPE.LRN)
 
     #remove ReduceMax since it's implied as part of the EC
     filter_node_types(graph, LAYER_TYPE.ReduceMax)
 
-    #add in split/buffer layer points
-    add_split_nodes(model, graph, ctrledges)
-    print("updated edges", graph.edges)
+    #add in split and buffer/offchip store layer nodes
+    add_split_nodes(graph, ctrledges)
+    #print("updated edges-split", graph.edges)
+    add_buffer_nodes(graph, ctrledges)
+    print("updated edges-buffer\n", graph.edges)
+
+    #shift control edge from If to Greater (the layer standing in as EC)
+    shift_crtledges(graph, ctrledges)
+    print("updated ctrledges", ctrledges)
 
     #determine Early Exit points (Identity operations, edge to exit)
-
-
-    #convert Softmax, ReduceMax, Greater, If to T1EC layer
-    #might need to have separate softmax depending on required output
-
+    for eedge in exitedges:
+        graph.add_edge(*eedge)
+    print("updated edges-exits\n", graph.edges)
+    #TODO separate softmax layer from other layers in model
 
     # add hardware to graph
     add_hardware(model, graph)
@@ -373,4 +419,3 @@ def parse_net(filepath,view=True):
         graph.nodes[node]['hw'].update()
 
     return model, graph
-
