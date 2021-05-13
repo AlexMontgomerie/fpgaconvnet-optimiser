@@ -49,6 +49,8 @@ def _layer_type(op_type):
         "Identity"  : LAYER_TYPE.Identity,
         #hw layer to help split dataflow
         "Split"     : LAYER_TYPE.Split,
+        #flexble buffer point for intermediate results
+        "Buffer"    : LAYER_TYPE.Buffer,
     }
     return layer_types.get(op_type, lambda: TypeError)
 
@@ -118,8 +120,6 @@ def build_graph(model):
                     last_name=subname
                 exitedges.append((last_name, name)) #dataflow from last node in branch to If op
             ctrledges.append(ifnode)
-
-
 
     # add all edges from network
     for name in graph.nodes():
@@ -316,6 +316,7 @@ def add_hardware(model, graph):
             #buffer point to be moved up and down links-depending on exit laten
             #maybe do a size calc here?
             #might need to specify link from EC to here?
+
             continue
         #top1 exit criterion layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Greater:
