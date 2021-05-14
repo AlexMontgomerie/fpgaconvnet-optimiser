@@ -27,6 +27,7 @@ class Buffer(Module):
             ctrledge,
             #filters,
             #groups,
+            drop_mode   =True,
             data_width=16
         ):
         # init module
@@ -34,6 +35,7 @@ class Buffer(Module):
 
         # init variables
         self.ctrledge = ctrledge
+        self.drop_mode = drop_mode
         #self.filters = filters
         #self.groups  = groups
 
@@ -93,6 +95,13 @@ class Buffer(Module):
             self.cols,
             self.channels),dtype=float)
 
-        if !ctrl_drop: #True means a drop signal has been sent
-            out = data
-        return out
+        if self.drop_mode: #non-inverted
+            if ctrl_drop:
+                return out
+            else:
+                return data #pass through
+        else: #inverted
+            if not ctrl_drop:
+                return out
+            else:
+                return data #pass through

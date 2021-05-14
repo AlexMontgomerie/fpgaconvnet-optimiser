@@ -13,6 +13,9 @@ Drop signal will be control signal from the Exit Condition.
 
 Future goal will be to have buffer as an offchip memory link.
 In this case, the drop might not be used.
+
+If "drop_mode" True then when True ctrl signal received, drop the data.
+If "drop_mode" False then use inverted ctrl signal.
 """
 
 import numpy as np
@@ -29,6 +32,7 @@ class BufferLayer(Layer):
             self,
             dim,
             ctrledge,
+            drop_mode   =True,
             coarse_in   =1,
             coarse_out  =1,
             data_width  =16,
@@ -37,6 +41,7 @@ class BufferLayer(Layer):
 
         #ctrledge links to exit condition layer
         self.ctrledge = ctrledge
+        self.drop_mode = drop_mode
 
         #init modules
         self.modules = {
@@ -59,7 +64,6 @@ class BufferLayer(Layer):
 
     ## UPDATE MODULES ##
     def update(self):
-        # sliding window
         self.modules['buffer'].rows     = self.rows_in()
         self.modules['buffer'].cols     = self.cols_in()
         self.modules['buffer'].channels = self.channels_in()
@@ -70,8 +74,8 @@ class BufferLayer(Layer):
     def rates_graph(self):
         rates_graph = np.zeros( shape=(1,2) , dtype=float )
         #buffer
-            rates_graph[0,0] = self.modules['buffer'].rate_in()
-            rates_graph[0,1] = self.modules['buffer'].rate_out()
+        rates_graph[0,0] = self.modules['buffer'].rate_in()
+        rates_graph[0,1] = self.modules['buffer'].rate_out()
         return rates_graph
 
     def update_coarse_in(self, coarse_in):
@@ -84,7 +88,7 @@ class BufferLayer(Layer):
 
     def resource(self):
 
-        buff_rsc    = self.modules['sliding_window'].rsc()
+        buff_rsc    = self.modules['buffer'].rsc()
 
         # Total
         return {
@@ -106,7 +110,7 @@ class BufferLayer(Layer):
 
         return cluster, nodes_in, nodes_out
 
-    def functional_model(self,data,weights,bias,batch_size=1):
+    def functional_model(self, data, ctrl_drop):
         #Buffer is not an ONNX or pytorch op
         # check input dimensionality
         assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
@@ -118,6 +122,14 @@ class BufferLayer(Layer):
             self.cols,
             self.channels),dtype=float)
 
-        if !ctrl_drop: #True means a drop signal has been sent
-            out = data
-        return out
+        if self.drop_mode: #non-inverted
+            if ctrl_drop:
+                return out
+            else:
+                return data #pass through
+        else: #inverted
+            if not ctrl_drop:
+                return out
+            else:
+                return data #pass through
+
