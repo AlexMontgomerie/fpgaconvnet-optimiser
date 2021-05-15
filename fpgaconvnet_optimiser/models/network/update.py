@@ -89,3 +89,24 @@ def update_coarse_in_out_partition(self):
                 self.partitions[i-1].graph.nodes[output_node]['hw'].coarse_out 
             )
 
+def update_cluster(self, cluster_path):
+    # get platform
+    self.cluster={}
+    with open(cluster_path,'r') as f:
+        cluster = json.load(f)
+
+    for platform in cluster:
+        with open(platform['platform'],'r') as f:
+            platform_specification = json.load(f)
+
+        temp_platform = {}
+        temp_platform['id']                 = platform['id']
+        temp_platform['connections_in']     = platform['connections_in']
+        temp_platform['connections_out']    = platform['connections_out']
+        temp_platform['name']               = platform_specification['name']+"_{id:03d}".format(id=temp_platform['id'])
+        temp_platform['specification']      = platform_specification
+        self.cluster[temp_platform['id']]   = copy.deepcopy(temp_platform)
+
+
+def update_partition_map(self):
+    self.partitionmap = {partition.get_id(): partition.get_id() % len(self.cluster) + 1 for partition in self.partitions}
