@@ -152,3 +152,6 @@ class Improve(Optimiser):
 
             # reduce temperature
             self.T *= self.cool
+        self.get_multi_fpga_throughput()
+        print("Latency:{}, Reconfiguration time: {}".format(self.get_latency(),(math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"]))
+        print(len(self.partitions))

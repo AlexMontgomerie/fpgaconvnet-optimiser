@@ -1,3 +1,4 @@
+from fpgaconvnet_optimiser.models.partition.metrics import get_interval
 import os
 import json
 import pydot
@@ -176,6 +177,22 @@ class Network():
 
     """
 
+    def get_multi_fpga_throughput(self):
+         # return the frames per second
+        interval = 0
+        for partition in self.partitions:
+            if interval < partition.get_interval():
+                interval = partition.get_interval()
+        print("Throughput based on max interval= {}",1/interval*self.platform["freq"]*1000000)
+        #no_weight_reloading = False
+        no_weight_reloading = True
+        if len(self.cluster)>=len(self.partitions):
+            no_weight_reloading = True
+            for partition in self.partitions:
+                if partition.wr_factor > 1:
+                    no_weight_reloading = False
+        print("No weight reloading {}".format(no_weight_reloading))        
+
     def get_latency(self):
         latency = 0
         # iterate over partitions:
@@ -183,11 +200,22 @@ class Network():
             # accumulate latency for each partition
             latency += partition.get_latency(self.platform["freq"])
         # return the total latency as well as reconfiguration time
-        return latency + (len(self.partitions)-1)*self.platform["reconf_time"]
+        return latency + (math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"]
 
     def get_throughput(self):
-        # return the frames per second
-        return float(self.batch_size)/self.get_latency()
+        interval = 0
+        pipelining_allowed = False
+        if len(self.cluster) >= len(self.partitions):
+            pipelining_allowed = True
+            for partition in self.partitions:
+                if partition.wr_factor > 1:
+                    pipelining_allowed = False
+                if interval < partition.get_interval():
+                    interval = partition.get_interval()
+        if pipelining_allowed:
+            return 1/interval*self.platform["freq"]*1000000
+        else :
+            return float(self.batch_size)/self.get_latency()
 
     def visualise(self, output_path):
         g = pydot.Dot(graph_type='digraph')
