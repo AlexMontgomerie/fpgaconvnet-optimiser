@@ -21,3 +21,5 @@ docs/fpgaconvnet_optimiser/
 
 build/
 dist/
+
+**.pyc

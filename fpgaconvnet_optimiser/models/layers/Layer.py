@@ -2,15 +2,19 @@
 
 """
 
-import pydot
-import numpy as np
-import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2 
-from google.protobuf.json_format import MessageToDict
-from functools import reduce
 import os
 import math
+<<<<<<< HEAD
 from typing import List
 
+=======
+from functools import reduce
+
+import pydot
+from google.protobuf.json_format import MessageToDict
+
+import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
+>>>>>>> 0a9c8516e6c4d456fed71a883f6f1820a00e13a1
 
 class Layer:
     """
@@ -56,13 +60,13 @@ class Layer:
         coarse_out: list int
             number of parallel streams per port out of the layer.
         data_width: int
-            bitwidth of featuremap pixels 
+            bitwidth of featuremap pixels
         modules: dict
-            dictionary of `module` instances that make 
+            dictionary of `module` instances that make
             up the layer. These modules are used for the
             resource and performance models of the layer.
         """
-        
+
         # flags
         self.flags = {
             "multi_input"       : False,
@@ -329,12 +333,14 @@ class Layer:
         self.coarse_out[0] = coarse_out
 
     def load_coef(self):
-        for module in self.modules:
-            self.modules[module].load_coef(
-                os.path.join(
-                    os.path.dirname(__file__),
-                    "../../coefficients/{}_rsc_coef.npy".format(module))
-            )
+        pass
+        # for module in self.modules:
+        #     self.modules[module].load_coef(
+        #         os.path.join(
+        #             os.path.dirname(__file__),
+        #             "../../coefficients/{}_rsc_coef.npy".format(module))
+        #     )
+        
 
     def update(self):
         pass

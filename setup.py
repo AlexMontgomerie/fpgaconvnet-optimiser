@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="fpgaconvnet-optimiser-AlexMontgomerie", # Replace with your own username
+    name="fpgaconvnet-optimiser", # Replace with your own username
     version="0.0.6",
     author="Alex Montgomerie",
     author_email="am9215@ic.ac.uk",
@@ -18,7 +18,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     install_requires=[
         "networkx>=2.5",
         "numpy>=1.19.2",
@@ -27,11 +27,13 @@ setuptools.setup(
         "pyyaml>=5.1.0",
         "scipy>=1.2.1",
         "torchvision>=0.8.2",
-        "onnx>=1.8.0",
+        "onnx==1.8.0",
         "onnxruntime>=1.6.0",
         "graphviz>=0.16",
         "pydot>=1.4.2",
         "onnxoptimizer>=0.2.5",
         "ddt>=1.4.2",
+        "sklearn",
+        "matplotlib",
     ]
 )

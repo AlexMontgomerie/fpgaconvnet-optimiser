@@ -58,7 +58,10 @@ class Conv(Module):
             to `LUT`, `BRAM`, `DSP` and `FF` resources in 
             that order.
         """
- 
+
+        # module name
+        self.name = "conv"
+
         # init module
         Module.__init__(self,rows,cols,channels,data_width)
 
@@ -69,8 +72,8 @@ class Conv(Module):
         self.k_size  = k_size
 
         # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/conv_rsc_coef.npy"))
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/conv_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -117,12 +120,14 @@ class Conv(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self): # TODO: improve DSP utilisation for different bitwidths
+    def rsc(self,coef=None): # TODO: improve DSP utilisation for different bitwidths
+        if coef == None:
+            coef = self.rsc_coef
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
           "BRAM" : 0,
-          "DSP"  : self.fine,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "DSP"  : self.fine+1,
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     '''

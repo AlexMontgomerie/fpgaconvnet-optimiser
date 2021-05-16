@@ -13,6 +13,10 @@ class Squeeze(Module):
             coarse_in,
             data_width=16
         ):
+        
+        # module name
+        self.name = "squeeze"
+
         # init module
         Module.__init__(self,rows,cols,channels,data_width)
 
@@ -20,9 +24,9 @@ class Squeeze(Module):
         self.coarse_out = coarse_out
         self.coarse_in  = coarse_in
 
-        # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/squeeze_rsc_coef.npy"))
+        # # load resource coefficients
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/squeeze_rsc_coef.npy"))
 
     def module_info(self):
         return {
