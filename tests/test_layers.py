@@ -208,4 +208,29 @@ class TestSqueezeLayer(TestLayerTemplate,unittest.TestCase):
         self.run_test_dimensions(layer)
         self.run_test_rates(layer)
 
+@ddt.ddt
+class TestSplitLayer(TestLayerTemplate,unittest.TestCase):
+
+    @ddt.data(
+        "tests/configs/layers/split/config_0.json",
+    )
+    def test_layer_configurations(self, config_path):
+        
+        # open configuration
+        with open(config_path, "r") as f:
+            config = json.load(f)
+
+        # initialise layer
+        layer = SplitLayer(
+            config["rows"],
+            config["cols"],
+            config["channels"],
+            config["coarse"],
+            ports_out=config["ports_out"]
+        )
+        
+        # run tests
+        self.run_test_dimensions(layer)
+        self.run_test_rates(layer)
+
 
