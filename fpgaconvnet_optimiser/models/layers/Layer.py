@@ -4,17 +4,11 @@
 
 import os
 import math
-<<<<<<< HEAD
 from typing import List
-
-=======
 from functools import reduce
-
 import pydot
 from google.protobuf.json_format import MessageToDict
-
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
->>>>>>> 0a9c8516e6c4d456fed71a883f6f1820a00e13a1
 
 class Layer:
     """
