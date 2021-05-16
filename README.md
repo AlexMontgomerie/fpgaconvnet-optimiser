@@ -13,6 +13,14 @@ To install this package, run from this directory the following:
 python setup.py install
 ```
 
+## Testing
+
+A suite of tests have been created for the optimiser repo. To run all of them, use the following:
+
+```
+python -m unittest discover tests/
+```
+
 ## Optimiser Framework
 
 The main tool is the optimisation script which generates an optimised hardware topology for a given model and platform. There are several components needed for this: a model of the hardware, transforms that map the model to the hardware and an optimisation scheme that chooses the best mapping. These will be outlined later. 

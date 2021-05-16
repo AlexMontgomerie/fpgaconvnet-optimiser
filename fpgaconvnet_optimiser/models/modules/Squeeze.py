@@ -6,13 +6,15 @@ import os
 class Squeeze(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             coarse_out,
             coarse_in,
             data_width=16
         ):
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.coarse_out = coarse_out

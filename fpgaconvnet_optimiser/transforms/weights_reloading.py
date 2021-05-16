@@ -94,8 +94,8 @@ def remove_weights_reloading_transform(self):
         layers_after = graphs.get_next_nodes_all(self.graph, self.wr_layer)
         for layer in layers_after:
             ## get channels and reduce by wr factor
-            channels = self.graph.nodes[layer]['hw'].channels
-            self.graph.nodes[layer]['hw'].channels = int(channels*self.wr_factor)
+            channels = self.graph.nodes[layer]['hw'].channels[0]
+            self.graph.nodes[layer]['hw'].channels[0] = int(channels*self.wr_factor)
     # set wr_factor to 1
     self.wr_factor = 1
 
@@ -109,5 +109,5 @@ def apply_weights_reloading_transform(self):
         layers_after = graphs.get_next_nodes_all(self.graph, self.wr_layer)
         for layer in layers_after:
             ## get channels and reduce by wr factor
-            channels = self.graph.nodes[layer]['hw'].channels
-            self.graph.nodes[layer]['hw'].channels = int(channels/self.wr_factor)
+            channels = self.graph.nodes[layer]['hw'].channels[0]
+            self.graph.nodes[layer]['hw'].channels[0] = int(channels/self.wr_factor)

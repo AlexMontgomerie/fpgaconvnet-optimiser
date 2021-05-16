@@ -9,6 +9,8 @@ from google.protobuf.json_format import MessageToDict
 from functools import reduce
 import os
 import math
+from typing import List
+
 
 class Layer:
     """
@@ -16,32 +18,43 @@ class Layer:
     """
     def __init__(
             self,
-            dim,
-            coarse_in,
-            coarse_out,
-            data_width
+            rows: List[int],
+            cols: List[int],
+            channels: List[int],
+            coarse_in: List[int],
+            coarse_out: List[int],
+            ports_in=1,
+            ports_out=1,
+            data_width=16
         ):
         """
         Parameters
         ----------
-        dim: list
-            dimensions of the input featuremap. Should contain
-            `channels`, `rows`, `cols` in that order.
+        rows: list int
+            row dimension of input featuremap
+        cols: list int
+            column dimension of input featuremap
+        channels: list int
+            channel dimension of input featuremap
 
         Attributes
         ----------
         buffer_depth: int, default: 0
             depth of incoming fifo buffers for each stream in.
-        rows: int
+        rows: list int
             row dimension of input featuremap
-        cols: int
+        cols: list int
             column dimension of input featuremap
-        channels: int
+        channels: list int
             channel dimension of input featuremap
-        coarse_in: int
-            number of parallel streams into the layer.    
-        coarse_out: int
-            number of parallel streams out of the layer.
+        ports_in: int
+            number of ports into the layer
+        ports_out: int
+            number of ports out of the layer
+        coarse_in: list int
+            number of parallel streams per port into the layer.    
+        coarse_out: list int
+            number of parallel streams per port out of the layer.
         data_width: int
             bitwidth of featuremap pixels 
         modules: dict
@@ -62,9 +75,13 @@ class Layer:
         self.buffer_depth = 0
 
         # parameters
-        self.rows       = dim[1]
-        self.cols       = dim[2]
-        self.channels   = dim[0]
+        self.rows       = rows
+        self.cols       = cols
+        self.channels   = channels
+
+        # ports
+        self.ports_in   = ports_in
+        self.ports_out  = ports_out
 
         # streams
         self.coarse_in  = coarse_in
@@ -81,61 +98,67 @@ class Layer:
         self.dynamic_coef = {}
         self.rsc_coef     = {}
 
-    def rows_in(self):
+    def rows_in(self, port_index):
         """
         Returns
         -------
         int
             row dimension of the input featuremap
         """
-        return self.rows
+        assert(port_index < self.ports_in)
+        return self.rows[port_index]
 
-    def cols_in(self):
+    def cols_in(self, port_index):
         """
         Returns
         -------
         int
             column dimension of the input featuremap
         """
-        return self.cols
+        assert(port_index < self.ports_in)
+        return self.cols[port_index]
 
-    def channels_in(self):
+    def channels_in(self, port_index):
         """
         Returns
         -------
         int
             channel dimension of the input featuremap
         """
-        return self.channels
+        assert(port_index < self.ports_in)
+        return self.channels[port_index]
 
-    def rows_out(self):
+    def rows_out(self, port_index):
         """
         Returns
         -------
         int
             row dimension of the output featuremap
         """
-        return self.rows_in()
+        assert(port_index < self.ports_out)
+        return self.rows[port_index]
 
-    def cols_out(self):
+    def cols_out(self, port_index):
         """
         Returns
         -------
         int
             column dimension of the output featuremap
         """
-        return self.cols_in()
+        assert(port_index < self.ports_out)
+        return self.cols[port_index]
 
-    def channels_out(self):
+    def channels_out(self, port_index):
         """
         Returns
         -------
         int
             channel dimension of the output featuremap
         """
-        return self.channels_in()
+        assert(port_index < self.ports_out)
+        return self.channels[port_index]
 
-    def rate_in(self,index):
+    def rate_in(self, port_index):
         """
         Parameters
         ----------
@@ -150,9 +173,10 @@ class Layer:
 
             default is 1.0
         """
+        assert(port_index < self.ports_in)
         return 1.0
 
-    def rate_out(self,index):
+    def rate_out(self, port_index):
         """
         Parameters
         ----------
@@ -167,27 +191,30 @@ class Layer:
 
             default is 1.0
         """
+        assert(port_index < self.ports_out)
         return 1.0
 
-    def streams_in(self):
+    def streams_in(self, port_index):
         """
         Returns
         -------
         int 
             number of parallel streams into the layer.
         """
-        return self.coarse_in
+        assert(port_index < self.ports_in)
+        return self.coarse_in[port_index]
 
-    def streams_out(self):
+    def streams_out(self, port_index):
         """
         Returns
         -------
         int 
             number of parallel streams out of the layer.
         """
-        return self.coarse_out
+        assert(port_index < self.ports_out)
+        return self.coarse_out[port_index]
 
-    def workload_in(self, index):
+    def workload_in(self, port_index):
         """
         Parameters
         ----------
@@ -201,9 +228,10 @@ class Layer:
             featuremap. This is calculated by 
             `rows_in()*cols_in()*channels_in()`.
         """
-        return self.rows_in()  * self.cols_in()  * self.channels_in()
+        assert(port_index < self.ports_in)
+        return self.rows_in(port_index) * self.cols_in(port_index) * self.channels_in(port_index)
         
-    def workload_out(self, index):
+    def workload_out(self, port_index):
         """
         Parameters
         ----------
@@ -217,25 +245,28 @@ class Layer:
             single featuremap. This is calculated by 
             `rows_out()*cols_out()*channels_out()`.
         """
-        return self.rows_out() * self.cols_out() * self.channels_out()
+        assert(port_index < self.ports_out)
+        return self.rows_out(port_index) * self.cols_out(port_index) * self.channels_out(port_index)
 
-    def size_in(self):
+    def size_in(self, port_index):
         """
         Returns
         -------
         int 
             workload in per stream.
         """
-        return self.rows_in()  * self.cols_in()  * int( self.channels_in() / self.coarse_in )
+        assert(port_index < self.ports_in)
+        return self.rows_in(port_index) * self.cols_in(port_index) * int( self.channels_in(port_index) / self.streams_in(port_index) )
         
-    def size_out(self):
+    def size_out(self, port_index):
         """
         Returns
         -------
         int 
             workload out per stream.
         """
-        return self.rows_out() * self.cols_out() * int( self.channels_out() / self.coarse_out )
+        assert(port_index < self.ports_out)
+        return self.rows_out(port_index) * self.cols_out(port_index) * int( self.channels_out(port_index) / self.streams_out(port_index) )
 
     def width_in(self):
         """
@@ -256,8 +287,8 @@ class Layer:
         return self.data_width
 
     def get_latency(self):
-        latency_in  = abs(self.workload_in(0) /(self.rate_in(0) *self.streams_in() ))
-        latency_out = abs(self.workload_out(0)/(self.rate_out(0)*self.streams_out()))
+        latency_in  = max([ abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for i in self.ports_in ])
+        latency_out = max([ abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i))) for i in self.ports_out ])
         return max(latency_in,latency_out)
 
     def pipeline_depth(self):
@@ -270,7 +301,7 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in,
+            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in[0],
             "DSP"   : 0
         }
 
@@ -283,19 +314,19 @@ class Layer:
     def power(self,freq,rate):
         return self.static_power() + self.dynamic_power(freq,rate)
 
-    def get_coarse_in_feasible(self,wr_factor=1):
-        return self.get_factors(int(self.channels_in()/wr_factor))
+    def get_coarse_in_feasible(self, port_index, wr_factor=1):
+        return self.get_factors(int(self.channels_in(port_index)/wr_factor))
 
-    def get_coarse_out_feasible(self,wr_factor=1):
-        return self.get_factors(int(self.channels_out()/wr_factor))
+    def get_coarse_out_feasible(self, port_index, wr_factor=1):
+        return self.get_factors(int(self.channels_out(port_index)/wr_factor))
 
     def update_coarse_in(self, coarse_in):
-        self.coarse_in  = coarse_in
-        self.coarse_out = coarse_in
+        self.coarse_in[0]  = coarse_in
+        self.coarse_out[0] = coarse_in
 
     def update_coarse_out(self, coarse_out):
-        self.coarse_in  = coarse_out
-        self.coarse_out = coarse_out
+        self.coarse_in[0]  = coarse_out
+        self.coarse_out[0] = coarse_out
 
     def load_coef(self):
         for module in self.modules:
@@ -332,10 +363,10 @@ class Layer:
         # convert to dictionary
         return MessageToDict(parameter, preserving_proto_field_name=True) 
 
-    def visualise(self,name):
+    def visualise(self,name): # TODO
         cluster = pydot.Cluster(name,label=name)
 
-        for i in range(self.coarse_in):
+        for i in range(self.coarse_in[0]):
             cluster.add_node(pydot.Node( "_".join([name,"edge",str(i)]), label=self.__class__.__name__ ))
 
         return cluster, "_".join([name,"edge"]), "_".join([name,"edge"])

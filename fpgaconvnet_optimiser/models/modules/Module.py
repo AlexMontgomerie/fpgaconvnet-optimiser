@@ -4,6 +4,7 @@ Base class for all hardware module models.
 
 import numpy as np
 import copy
+from typing import List
 
 class Module:
     """
@@ -20,13 +21,22 @@ class Module:
         so the `rows`, `cols` and `channels` attributes are representative
         of the tensor if it was flattened to three dimensions.
     """
-    def __init__(self,dim,data_width=16):
+    def __init__(
+            self,
+            rows: int,
+            cols: int,
+            channels: int,
+            data_width=16
+        ):
         """
         Parameters
         ----------
-        dim: list
-            dimensions of the input featuremap. Should contain
-            `channels`, `rows`, `cols` in that order.
+        rows: int
+            row dimension of the input feature map
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
 
         Attributes
         ----------
@@ -44,9 +54,9 @@ class Module:
             that order.
         """
         # init variables
-        self.rows       = dim[1]
-        self.cols       = dim[2]
-        self.channels   = dim[0]
+        self.rows       = rows
+        self.cols       = cols
+        self.channels   = channels
 
         self.data_width = data_width
 
