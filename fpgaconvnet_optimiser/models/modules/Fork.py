@@ -21,6 +21,10 @@ class Fork(Module):
             coarse,
             data_width=16
         ):
+        
+        # module name
+        self.name = "fork"
+ 
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -29,8 +33,8 @@ class Fork(Module):
         self.coarse = coarse
 
         # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/fork_rsc_coef.npy"))
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/fork_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [

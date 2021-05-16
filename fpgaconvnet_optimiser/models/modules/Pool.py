@@ -18,6 +18,10 @@ class Pool(Module):
             pool_type='max',
             data_width=16
         ):
+        
+        # module name
+        self.name = "pool"
+ 
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -26,8 +30,8 @@ class Pool(Module):
         self.pool_type = pool_type
 
         # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/pool_rsc_coef.npy"))
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/pool_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [

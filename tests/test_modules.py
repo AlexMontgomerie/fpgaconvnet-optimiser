@@ -32,6 +32,15 @@ class TestModuleTemplate():
         self.assertGreaterEqual(module.rate_out(), 0.0) 
         self.assertLessEqual(module.rate_out(), 1.0) 
 
+    def run_test_resources(self, module):
+        
+        rsc = module.rsc()
+        self.assertGreaterEqual(rsc["LUT"], 0.0) 
+        self.assertGreaterEqual(rsc["FF"], 0.0) 
+        self.assertGreaterEqual(rsc["DSP"], 0.0) 
+        self.assertGreaterEqual(rsc["BRAM"], 0.0) 
+
+
 @ddt.ddt
 class TestForkModule(TestModuleTemplate,unittest.TestCase):
 
@@ -61,6 +70,7 @@ class TestForkModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
         
 @ddt.ddt
 class TestAccumModule(TestModuleTemplate,unittest.TestCase):
@@ -86,6 +96,7 @@ class TestAccumModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
         
         # additional checks
         self.assertGreater(module.filters,0)
@@ -119,6 +130,7 @@ class TestConvModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestGlueModule(TestModuleTemplate,unittest.TestCase):
@@ -148,6 +160,7 @@ class TestGlueModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestSlidingWindowModule(TestModuleTemplate,unittest.TestCase):
@@ -176,6 +189,7 @@ class TestSlidingWindowModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestPoolModule(TestModuleTemplate,unittest.TestCase):
@@ -207,6 +221,7 @@ class TestPoolModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestSqueezeModule(TestModuleTemplate,unittest.TestCase):
@@ -228,6 +243,7 @@ class TestSqueezeModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestReLUModule(TestModuleTemplate,unittest.TestCase):
@@ -256,5 +272,6 @@ class TestReLUModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 

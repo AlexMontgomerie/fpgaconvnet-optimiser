@@ -13,6 +13,10 @@ class ReLU(Module):
             dim,
             data_width=16
         ):
+        
+        # module name
+        self.name = "relu"
+ 
         # init module
         Module.__init__(self,dim,data_width)
 

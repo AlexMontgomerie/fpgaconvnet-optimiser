@@ -63,6 +63,10 @@ class SlidingWindow(Module):
             to `LUT`, `BRAM`, `DSP` and `FF` resources in 
             that order.
         """
+        
+        # module name
+        self.name = "sliding_window"
+
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -75,8 +79,8 @@ class SlidingWindow(Module):
         self.pad_left   = pad_left
 
         # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/sliding_window_rsc_coef.npy"))
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/sliding_window_rsc_coef.npy"))
 
     def utilisation_model(self):
         return [
