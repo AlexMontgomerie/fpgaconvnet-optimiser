@@ -3,6 +3,8 @@ Base class for all hardware module models.
 '''
 
 import numpy as np
+import os
+import sys
 import copy
 
 class Module:
@@ -51,9 +53,14 @@ class Module:
         self.data_width = data_width
 
         # coefficients
-        self.static_coef  = [ 0 ]
-        self.dynamic_coef = [ 0 ]
-        self.rsc_coef     = [ 0,0,0,0 ]
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+        self.rsc_coef = {}
+        rsc_types = ["FF","LUT","DSP","BRAM"]
+        for rsc_type in rsc_types:
+            self.rsc_coef[rsc_type] = np.load(os.path.join(os.path.dirname(__file__),
+                f"../../coefficients/{self.name}_{rsc_type.lower()}.npy"))
+        os.chdir(work_dir)
 
     def module_info(self):
         """

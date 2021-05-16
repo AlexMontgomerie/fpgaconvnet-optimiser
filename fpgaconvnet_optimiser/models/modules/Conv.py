@@ -57,7 +57,10 @@ class Conv(Module):
             to `LUT`, `BRAM`, `DSP` and `FF` resources in 
             that order.
         """
- 
+
+        # module name
+        self.name = "conv"
+
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -72,11 +75,11 @@ class Conv(Module):
         self.weight_width = weight_width
 
         # load resource coefficients
-        work_dir = os.getcwd()
-        os.chdir(sys.path[0])
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/conv_rsc_coef.npy"))
-        os.chdir(work_dir)
+        #work_dir = os.getcwd()
+        #os.chdir(sys.path[0])
+        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #    "../../coefficients/conv_rsc_coef.npy"))
+        #os.chdir(work_dir)
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -125,10 +128,10 @@ class Conv(Module):
 
     def rsc(self): # TODO: improve DSP utilisation for different bitwidths
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : 0,
           "DSP"  : self.fine * math.ceil((self.weight_width + self.data_width) / 48), #https://github.com/Xilinx/finn/blob/4fee6ffd8e13f91314ec9086e9ce9b2ea9de15c7/src/finn/custom_op/fpgadataflow/streamingfclayer_batch.py#L368
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 
     '''

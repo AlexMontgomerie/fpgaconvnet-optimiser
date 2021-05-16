@@ -66,6 +66,10 @@ class SlidingWindow(Module):
             to `LUT`, `BRAM`, `DSP` and `FF` resources in 
             that order.
         """
+        
+        # module name
+        self.name = "sliding_window"
+
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -82,11 +86,11 @@ class SlidingWindow(Module):
 
 
         # load resource coefficients
-        work_dir = os.getcwd()
-        os.chdir(sys.path[0])
-        self.rsc_coef = np.load(os.path.join(os.path.dirname((__file__)),
-            "../../coefficients/sliding_window_rsc_coef.npy"))
-        os.chdir(work_dir)
+        #work_dir = os.getcwd()
+        #os.chdir(sys.path[0])
+        #self.rsc_coef = np.load(os.path.join(os.path.dirname((__file__)),
+        #    "../../coefficients/sliding_window_rsc_coef.npy"))
+        #os.chdir(work_dir)
 
     def utilisation_model(self):
         return [
@@ -158,10 +162,10 @@ class SlidingWindow(Module):
         #if self.channels*self.data_width >= 512:
         bram_frame_buffer = self.k_size[0]*(self.k_size[1]-1)*math.ceil( ((self.channels+1)*self.data_width)/18000)
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : bram_line_buffer+bram_frame_buffer,
           "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 
     def functional_model(self, data):

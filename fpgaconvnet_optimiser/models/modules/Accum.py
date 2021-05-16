@@ -24,6 +24,10 @@ class Accum(Module):
             groups,
             data_width=32
         ):
+
+        # module name
+        self.name = "accum"
+        
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -32,11 +36,11 @@ class Accum(Module):
         self.groups  = groups
 
         # load resource coefficients
-        work_dir = os.getcwd()
-        os.chdir(sys.path[0])
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/accum_rsc_coef.npy"))
-        os.chdir(work_dir)
+        #work_dir = os.getcwd()
+        #os.chdir(sys.path[0])
+        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #    "../../coefficients/accum_rsc_coef.npy"))
+        #os.chdir(work_dir)
 
     def utilisation_model(self):
         return [
@@ -81,10 +85,10 @@ class Accum(Module):
         #if bram_acc_buffer_size >= 512:
         bram_acc_buffer = math.ceil( (bram_acc_buffer_size)/18000) 
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : bram_acc_buffer,
           "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 
     def functional_model(self,data):

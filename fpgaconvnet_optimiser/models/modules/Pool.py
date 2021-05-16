@@ -21,6 +21,10 @@ class Pool(Module):
             pool_type='max',
             data_width=16
         ):
+        
+        # module name
+        self.name = "pool"
+ 
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -31,11 +35,11 @@ class Pool(Module):
         self.pool_type = pool_type
 
         # load resource coefficients
-        work_dir = os.getcwd()
-        os.chdir(sys.path[0])
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/pool_rsc_coef.npy"))
-        os.chdir(work_dir)
+        #work_dir = os.getcwd()
+        #os.chdir(sys.path[0])
+        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #    "../../coefficients/pool_rsc_coef.npy"))
+        #os.chdir(work_dir)
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -66,10 +70,10 @@ class Pool(Module):
 
     def rsc(self):
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : 0,
           "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 
     '''

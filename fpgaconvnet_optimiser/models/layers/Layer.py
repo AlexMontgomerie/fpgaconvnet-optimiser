@@ -315,15 +315,17 @@ class Layer:
         self.coarse_group  = coarse_group
 
     def load_coef(self):
-        work_dir = os.getcwd()
-        os.chdir(sys.path[0])
-        for module in self.modules:
-            self.modules[module].load_coef(
-                os.path.join(
-                    os.path.dirname(__file__),
-                    "../../coefficients/{}_rsc_coef.npy".format(module))
-            )
-        os.chdir(work_dir)
+        #work_dir = os.getcwd()
+        #os.chdir(sys.path[0])
+        #for module in self.modules:
+        #    self.modules[module].load_coef(
+        #        os.path.join(
+        #            os.path.dirname(__file__),
+        #            "../../coefficients/{}_rsc_coef.npy".format(module))
+        #    )
+        #os.chdir(work_dir)
+        pass
+        
 
     def update(self):
         pass

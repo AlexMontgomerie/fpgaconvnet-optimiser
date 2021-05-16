@@ -24,6 +24,10 @@ class Fork(Module):
             coarse,
             data_width=16
         ):
+        
+        # module name
+        self.name = "fork"
+ 
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -34,11 +38,11 @@ class Fork(Module):
         self.coarse = coarse
 
         # load resource coefficients
-        work_dir = os.getcwd()
-        os.chdir(sys.path[0])
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/fork_rsc_coef.npy"))
-        os.chdir(work_dir)
+        #work_dir = os.getcwd()
+        #os.chdir(sys.path[0])
+        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #    "../../coefficients/fork_rsc_coef.npy"))
+        #os.chdir(work_dir)
 
         # dynamic power model
         self.dynamic_model = lambda freq, rate, sa_in, sa_out : [
@@ -82,10 +86,10 @@ class Fork(Module):
 
     def rsc(self):
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : 0,
           "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 
     '''

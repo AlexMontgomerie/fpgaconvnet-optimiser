@@ -14,6 +14,10 @@ class ReLU(Module):
             dim,
             data_width=16
         ):
+        
+        # module name
+        self.name = "relu"
+ 
         # init module
         Module.__init__(self,dim,data_width)
 
@@ -40,10 +44,10 @@ class ReLU(Module):
 
     def rsc(self):
         return {
-          "LUT"  : 0, # int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : 0,
           "DSP"  : 0,
-          "FF"   : 0 # int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
 
     '''
