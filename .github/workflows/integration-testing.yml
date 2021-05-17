@@ -1,0 +1,29 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        cd examples/models
+        ./get_example_models.sh
+    - name: Run Tests
+      run: |
+        python -m unittest discover tests/
