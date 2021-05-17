@@ -7,12 +7,14 @@ transforms:
         apply_transform: true
         probability: 0.25
     weights_reloading:
-        apply_transform: true 
+        apply_transform: true
         probability: 0.25
         start_max: true
     partition:
         apply_transform: true
         probability: 0.25
+        horizontal: true
+        vertical: true
         start_complete: true
         allowed_type: [split, merge]
         allowed_partitions:

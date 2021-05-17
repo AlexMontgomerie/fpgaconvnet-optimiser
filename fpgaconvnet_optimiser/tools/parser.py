@@ -2,7 +2,7 @@ from graphviz import Digraph
 import pydot
 import os
 import random
-import copy 
+import copy
 import onnx
 import onnx.utils
 import onnx.numpy_helper
@@ -47,7 +47,7 @@ def build_graph(model):
         # add node to graph
         graph.add_node( name, type=from_onnx_op_type(node.op_type), hw=None, inputs={} )
         if from_onnx_op_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
-            graph.nodes[name]['inputs'] = { "weights": "", "bias": "" } 
+            graph.nodes[name]['inputs'] = { "weights": "", "bias": "" }
     # add all edges from network
     edges = []
     for name in graph.nodes():
@@ -102,7 +102,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
             weights_dim = onnx_helper.get_model_input(model,weights_input)
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             # get node attributes
-            attr = onnx_helper._format_attr(node.attribute) 
+            attr = onnx_helper._format_attr(node.attribute)
             # default attributes
             attr.setdefault("group", 1)
             attr.setdefault("strides", [1,1])
@@ -137,7 +137,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
         # Pooling layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Pooling:
             # get node attributes
-            attr = onnx_helper._format_attr(node.attribute) 
+            attr = onnx_helper._format_attr(node.attribute)
             # default attributes
             attr.setdefault("strides", [1,1])
             attr.setdefault("pads", [0,0,0,0])
@@ -193,7 +193,7 @@ def add_dimensions(model, graph):
         prev_nodes = graphs.get_prev_nodes(graph, node)
         for prev_node in prev_nodes: # TODO: support parallel networks
             # get previous node output dimensions
-            dim = onnx_helper._out_dim(model, prev_node) 
+            dim = onnx_helper._out_dim(model, prev_node)
             # update input dimensions
             graph.nodes[node]['hw'].channels[0] = dim[0]
             graph.nodes[node]['hw'].rows[0]     = dim[1]
@@ -203,10 +203,10 @@ def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_
 
     # load onnx model
     model = onnx_helper.load(filepath,fuse_bn)
-    
+
     # get graph
     graph = build_graph(model)
-    
+
     # remove input node
     remove_nodes = []
     for node in graph.nodes:

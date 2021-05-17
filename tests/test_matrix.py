@@ -16,7 +16,7 @@ NETWORKS = [
     "examples/models/caffenet.onnx",
 ]
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 CONNECTION MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,11 +38,11 @@ class TestConnectionMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(connections_matrix.shape[0],n_edges)
         self.assertEqual(connections_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(connections_matrix),n_nodes-1)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 STREAMS MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,11 +65,11 @@ class TestStreamsMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(streams_matrix.shape[0],n_edges)
         self.assertEqual(streams_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(streams_matrix),n_nodes-1)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 RATES MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -91,11 +91,11 @@ class TestRatesMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(rates_matrix.shape[0],n_edges)
         self.assertEqual(rates_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(rates_matrix),n_nodes-1)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 RATES BALANCED MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -119,7 +119,7 @@ RATES BALANCED MATRIX
 #         # check dimension of matrix
 #         self.assertEqual(balanced_rates_matrix.shape[0],n_edges)
 #         self.assertEqual(balanced_rates_matrix.shape[1],n_nodes)
-        
+
 #         # check rank of matrix
 #         self.assertEqual(matrix_rank(balanced_rates_matrix),n_nodes-1)
 
@@ -135,12 +135,12 @@ RATES BALANCED MATRIX
 #                         ratio            = np.nan_to_num(rates_matrix[row_index,col_index] / rates_matrix[i,col_index])
 #                         ratio_balanced   = np.nan_to_num(balanced_rates_matrix[row_index,col_index] / balanced_rates_matrix[i,col_index])
 #                         self.assertAlmostEqual(ratio,ratio_balanced)
-        
+
 #         # check the edges all have the same rate
 #         for row_index in range(rates_matrix.shape[0]):
 #             self.assertEqual(np.sum(balanced_rates_matrix[row_index,:]), 0.0)
 
-"""    
+"""
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 WORKLOAD MATRIX
@@ -164,16 +164,16 @@ class TestWorkloadMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(workload_matrix.shape[0],n_edges)
         self.assertEqual(workload_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(workload_matrix),n_nodes-1)
 
         # check edges all have the same workload
         for i in range(workload_matrix.shape[0]):
-            self.assertEqual(np.sum(workload_matrix[i,:]), 0, 
+            self.assertEqual(np.sum(workload_matrix[i,:]), 0,
                     f"Mismatching workload for edge: {matrix.get_edge_list_matrix(graph)[i]}")
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 TOPOLOGY MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -196,11 +196,11 @@ class TestTopologyMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(topology_matrix.shape[0],n_edges)
         self.assertEqual(topology_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(topology_matrix),n_nodes-1)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 INTERVAL MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

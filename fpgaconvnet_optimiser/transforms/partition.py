@@ -1,5 +1,5 @@
 """
-Defines how the graph is split into subgraphs of the model for different reconfigurable components. 
+Defines how the graph is split into subgraphs of the model for different reconfigurable components.
 """
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
@@ -7,7 +7,7 @@ from fpgaconvnet_optimiser.transforms.helper import get_all_layers
 from itertools import combinations, chain
 import random
 import fpgaconvnet_optimiser.tools.graphs as graphs
-import fpgaconvnet_optimiser.tools.matrix as matrix 
+import fpgaconvnet_optimiser.tools.matrix as matrix
 import copy
 import math
 
@@ -18,7 +18,7 @@ def check_parallel_block(self,partition_index):
     # check if not a parallel block
     if not ((self.partitions[partition_index].graph.nodes[input_node]['type'] == LAYER_TYPE.Split) and \
             (self.partitions[partition_index].graph.nodes[output_node]['type'] == LAYER_TYPE.Concat)):
-        return False 
+        return False
     # check the number of split and concat nodes
     n_split  = len(get_all_layers(self.partitions[partition_index].graph,LAYER_TYPE.Split))
     n_concat = len(get_all_layers(self.partitions[partition_index].graph,LAYER_TYPE.Concat))
@@ -37,31 +37,33 @@ def get_all_horizontal_splits(self,partition_index):
         # next node
         next_node = graphs.get_next_nodes(self.partitions[partition_index].graph,input_node)[0]
         # check if exiting parallel block
-        if self.partitions[partition_index].graph.in_degree(input_node) > 1: 
+        if self.partitions[partition_index].graph.in_degree(input_node) > 1:
             in_parallel_block = False
         # check if entering parallel block
-        if self.partitions[partition_index].graph.out_degree(input_node) > 1: 
-            return _iterate_graph(edge_list,next_node,True) 
+        if self.partitions[partition_index].graph.out_degree(input_node) > 1:
+            return _iterate_graph(edge_list,next_node,True)
         # skip node - concat partition
-        if self.partitions[partition_index].graph.in_degree(next_node) > 1: 
-            return _iterate_graph(edge_list,next_node,in_parallel_block) 
-        # skip node - split position not valid
-        # if "allowed_partitions" in self.transforms_config["partition"].keys():
-        #     allowed = False
-        #     for allowed_split in self.transforms_config["partition"]["allowed_partitions"]:
-        #         if (from_onnx_op_type(allowed_split[0]) == self.partitions[partition_index].graph.nodes[input_node]["type"] and 
-        #             from_onnx_op_type(allowed_split[1]) == self.partitions[partition_index].graph.nodes[next_node]["type"]):
-        #             allowed = True
-        #             break
-        #     if not allowed:
-        #         return _iterate_graph(edge_list,next_node,in_parallel_block) 
+        if self.partitions[partition_index].graph.in_degree(next_node) > 1:
+            return _iterate_graph(edge_list,next_node,in_parallel_block)
         # append to partition list
         if not in_parallel_block:
             edge_list.append((input_node,next_node))
-        return _iterate_graph(edge_list,next_node,in_parallel_block) 
+        return _iterate_graph(edge_list,next_node,in_parallel_block)
     # iterate over graph from start node
     input_node = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
-    return _iterate_graph([],input_node,False) # TODO: assuming only one input
+    all_horizontal_splits = _iterate_graph([],input_node,False) # TODO: assuming only one input
+    # filter all the splits
+    filtered_horizontal_splits = []
+    for split in all_horizontal_splits:
+        # get layer types
+        layer_types = [
+            self.partitions[partition_index].graph.nodes[split[0]]["type"],
+            self.partitions[partition_index].graph.nodes[split[1]]["type"]
+        ]
+        if layer_types in self.transforms_config["partition"]["allowed_partitions"]:
+            filtered_horizontal_splits.append(split)
+    # return the filtered splits
+    return filtered_horizontal_splits
 
 def get_all_vertical_splits(self,partition_index): # TODO: improve to get all possible combinations
     # check if parallel block
@@ -82,20 +84,24 @@ def get_all_horizontal_merges(self,partition_index):
     output_node = graphs.get_output_nodes(self.partitions[partition_index].graph)[0]
     def _find_next_partition():
         if self.graph.out_degree(output_node) > 0:
-            next_node = graphs.get_next_nodes(self.graph,output_node)[0] 
-            # find the partition pair for the output 
+            next_node = graphs.get_next_nodes(self.graph,output_node)[0]
+            # find the partition pair for the output
             for i in range(len(self.partitions)):
                 if i == partition_index:
                     continue
                 if next_node in graphs.get_input_nodes(self.partitions[i].graph):
-                    # TODO: check that this is a complete block if it's a split
-                    #if self.partitions[i].graph.out_degree(next_node) == self.graph.out_degree(next_node):
-                    return (partition_index,i)
+                    # check that this is a complete block
+                    if ( self.partitions[i].graph.out_degree(next_node) ==
+                            self.graph.out_degree(next_node) ) or
+                            ( self.graph.out_degree(next_node) == 1 ):
+                        return (partition_index,i)
         return ()
 
     # check that if it's a concat layer, it's complete
     if self.graph.in_degree(output_node) > 1:
-        if self.partitions[partition_index].graph.in_degree(output_node) == self.graph.in_degree(output_node):
+        if ( self.partitions[partition_index].graph.in_degree(output_node) ==
+                self.graph.in_degree(output_node) ) or
+                ( self.graph.out_degree(output_node) == 1 ):
             partition_pairs[0] = _find_next_partition()
     else:
         partition_pairs[0] = _find_next_partition()
@@ -104,22 +110,26 @@ def get_all_horizontal_merges(self,partition_index):
     input_node = graphs.get_input_nodes(self.partitions[partition_index].graph)[0]
     def _find_prev_partition():
         if self.graph.in_degree(input_node) > 0:
-            prev_node = graphs.get_prev_nodes(self.graph,input_node)[0] 
+            prev_node = graphs.get_prev_nodes(self.graph,input_node)[0]
             # find the partition pair for the input
             for i in range(len(self.partitions)):
                 if i == partition_index:
                     continue
                 if prev_node in graphs.get_output_nodes(self.partitions[i].graph):
-                    # TODO check that this is a complete block
-                    #if self.partitions[i].graph.in_degree(prev_node) == self.graph.in_degree(prev_node):
-                    return (i,partition_index)
+                    # check that this is a complete block
+                    if ( self.partitions[i].graph.in_degree(prev_node) ==
+                            self.graph.in_degree(prev_node) ) or
+                            ( self.graph.out_degree(next_node) == 1 ):
+                        return (i,partition_index)
         return ()
 
     # check that if it's a split layer, it's complete
     if self.graph.out_degree(input_node) > 1:
-        if self.partitions[partition_index].graph.out_degree(input_node) == self.graph.out_degree(input_node):
+        if self.partitions[partition_index].graph.out_degree(input_node) ==
+                self.graph.out_degree(input_node) or
+                ( self.graph.out_degree(next_node) == 1 ):
             partition_pairs[1] = _find_prev_partition()
-    else: 
+    else:
         partition_pairs[1] = _find_prev_partition()
 
     return partition_pairs
@@ -234,7 +244,7 @@ def split_vertical_complete(self):
         # find next partition
         partition_index = _find_vertical_split_partition()
 
-def split_complete(self):
+def split_complete(self): # TODO: this assumes no parallel blocks within parallel blocks
     self.split_horizontal_complete()
     self.split_vertical_complete()
     self.split_horizontal_complete()
@@ -281,7 +291,7 @@ def merge_complete(self):
 def apply_random_partition(self, partition_index):
    # choose randomly between merge or split
     ## split partition
-    transform_type = random.choice(["split", "merge"])
+    transform_type = random.choice(self.transforms_config["partition"]["allowed_type"])
     if transform_type == 'split':
         ## get all possible splits
         horizontal_splits = self.get_all_horizontal_splits(partition_index)
@@ -301,9 +311,9 @@ def apply_random_partition(self, partition_index):
         horizontal_merges = list(filter(None,horizontal_merges))
         vertical_merges   = self.get_all_vertical_merges(partition_index)
         ## merge horizontally first
-        if horizontal_merges: 
+        if horizontal_merges:
             horizontal_merge = random.choice(horizontal_merges)
             self.merge_horizontal(*horizontal_merge)
-        elif vertical_merges: 
+        elif vertical_merges:
             self.merge_vertical(*random.choice(vertical_merges))
-            
+

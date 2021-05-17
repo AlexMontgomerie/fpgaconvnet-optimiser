@@ -11,10 +11,10 @@ np.seterr(divide='ignore', invalid='ignore')
 
 NETWORKS = [
     "examples/models/lenet.onnx",
-    # "examples/models/alexnet.onnx",
-    # "examples/models/vgg16.onnx",
-    # "examples/models/caffenet.onnx",
-    # "examples/models/caffenet.onnx",
+    "examples/models/alexnet.onnx",
+    "examples/models/vgg16.onnx",
+    "examples/models/caffenet.onnx",
+    "examples/models/caffenet.onnx",
 ]
 
 PLATFORM = "examples/platforms/zedboard.json"
@@ -22,7 +22,7 @@ PLATFORM = "examples/platforms/zedboard.json"
 class TestNetworkTemplate():
 
     def run_test_validation(self,network):
-        # run all validation checks 
+        # run all validation checks
         network.check_ports()
         network.check_workload()
         network.check_streams()
@@ -30,7 +30,7 @@ class TestNetworkTemplate():
         network.check_memory_bandwidth()
 
 @ddt.ddt
-class TestNetwork(TestNetworkTemplate,unittest.TestCase):
+class TestNetwork(TestNetworkTemplate, unittest.TestCase):
 
     @ddt.data(*NETWORKS)
     def test_network(self, network_path):

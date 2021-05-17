@@ -9,7 +9,7 @@ import fpgaconvnet_optimiser.tools.graphs as graphs
 
 from google.protobuf import json_format
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_proto_layer_type 
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_proto_layer_type
 
 LATENCY   =0
 THROUGHPUT=1
@@ -17,7 +17,7 @@ POWER     =2
 
 class Optimiser(Network):
     """
-    Base class for all optimisation strategies. This inherits the `Network` class. 
+    Base class for all optimisation strategies. This inherits the `Network` class.
     """
 
     def __init__(self,name,network_path,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
@@ -34,7 +34,7 @@ class Optimiser(Network):
         ----------
         objective: int
             Objective for the optimiser. One of `LATENCY`, `THROUGHPUT` and `POWER`.
-        constraints: dict 
+        constraints: dict
             dictionary containing constraints for `latency`, `throughput` and `power`.
         transforms: list
             list of transforms that can be applied to the network. Allowed transforms
@@ -66,15 +66,15 @@ class Optimiser(Network):
 
     def get_cost(self, partition_list=None):
         """
-        calculates the cost function of the optimisation strategy at it's current state. 
+        calculates the cost function of the optimisation strategy at it's current state.
         This cost is based on the objective of the optimiser. There are three objectives
-        that can be chosen: 
-        
+        that can be chosen:
+
         - `LATENCY (0)`
         - `THROUGHPUT (1)`
         - `POWER (2)`
 
-        Returns: 
+        Returns:
         --------
         float
         """
@@ -88,8 +88,8 @@ class Optimiser(Network):
             return -self.get_throughput(partition_list)
         # Power objective
         elif self.objective == POWER:
-            return self.get_power_average(partition_list)    
-    
+            return self.get_power_average(partition_list)
+
     def check_constraints(self):
         """
         function to check the performance constraints of the network. Checks
@@ -106,7 +106,7 @@ class Optimiser(Network):
     def apply_transform(self, transform, partition_index=None, node=None):
         """
         function to apply chosen transform to the network. Partition index
-        and node can be specified. If not, a random partition and node is 
+        and node can be specified. If not, a random partition and node is
         chosen.
 
         Parameters
@@ -162,7 +162,7 @@ class Optimiser(Network):
         # objective
         objectives = [ 'latency', 'throughput','power']
         objective  = objectives[self.objective]
-        # cost 
+        # cost
         cost = self.get_cost()
         # Resources
         resources = [ self.get_resource_usage(i) for i in range(len(self.partitions)) ]
@@ -175,11 +175,11 @@ class Optimiser(Network):
 
     def get_optimal_batch_size(self):
         """
-        gets an approximation of the optimal (largest) batch size for throughput-based 
+        gets an approximation of the optimal (largest) batch size for throughput-based
         applications. This is dependant on the platform's memory capacity. Updates the
-        `self.batch_size` variable. 
+        `self.batch_size` variable.
         """
- 
+
         # change the batch size to zero
         self.batch_size = 1
         # update each partitions batch size
@@ -258,7 +258,7 @@ class Optimiser(Network):
                     print(padded_channels)
                     partition.graph.nodes[input_node]["hw"].groups = padded_channels
                 partition.graph.nodes[input_node]["hw"].channels = padded_channels
-                if partition.graph.nodes[input_node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:                    
+                if partition.graph.nodes[input_node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                     return True
             return False
 
@@ -270,7 +270,7 @@ class Optimiser(Network):
                 print(padded_channels)
                 partition.graph.nodes[input_node]["hw"].groups = padded_channels
             partition.graph.nodes[input_node]["hw"].channels = padded_channels
-            if partition.graph.nodes[input_node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:                    
+            if partition.graph.nodes[input_node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                 return True
 
             while partition.graph.out_degree(input_node) != 0:
@@ -280,14 +280,14 @@ class Optimiser(Network):
                 if partition.graph.nodes[input_node]["hw"].channels == partition.graph.nodes[input_node]["hw"].groups:
                     partition.graph.nodes[input_node]["hw"].groups = padded_channels
                 partition.graph.nodes[input_node]["hw"].channels = padded_channels
-                if partition.graph.nodes[input_node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:                    
+                if partition.graph.nodes[input_node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                     return True
             return False
 
         for partition_index, teacher_partition in enumerate(teacher_partitions.partition):
             student_partition = self.partitions[partition_index]
             student_partition.remove_weights_reloading_transform()
-        
+
         self.update_partitions()
 
         for partition_index, teacher_partition in enumerate(teacher_partitions.partition):
@@ -320,7 +320,7 @@ class Optimiser(Network):
                             factors.append(coarse_out*groups*wr_factor)
                         if "coarse_group" in teacher_parameters.keys():
                             coarse_group = teacher_parameters["coarse_group"]
-                            factors.append(coarse_group)   
+                            factors.append(coarse_group)
 
                         reach_conv = _iterate_current_teacher_partition_until_conv(teacher_partition, layer_index, factors)
                         if not reach_conv:
@@ -364,16 +364,16 @@ class Optimiser(Network):
                     if "fine" in teacher_parameters.keys():
                         fine = teacher_parameters["fine"]
                         assert fine in student_partition.graph.nodes[node]["hw"].get_fine_feasible(), "padding required"
-                        student_partition.graph.nodes[node]["hw"].fine = fine   
+                        student_partition.graph.nodes[node]["hw"].fine = fine
 
 
             if teacher_partition.weights_reloading_layer != "None":
                 wr_layer = student_partition.get_wr_layer()
                 #wr_layer = teacher_partition.weights_reloading_layer
                 wr_factor = teacher_partition.weights_reloading_factor
-                assert wr_factor in student_partition.graph.nodes[wr_layer]['hw'].get_weights_reloading_feasible(), "padding required"                    
+                assert wr_factor in student_partition.graph.nodes[wr_layer]['hw'].get_weights_reloading_feasible(), "padding required"
                 student_partition.wr_layer = wr_layer
-                student_partition.wr_factor = wr_factor               
+                student_partition.wr_factor = wr_factor
                 student_partition.apply_weights_reloading_transform()
 
     def merge_memory_bound_partitions(self):
@@ -396,29 +396,28 @@ class Optimiser(Network):
                 self.partitions = partitions
                 break
 
-            # remove all auxiliary layers
             for i in range(len(self.partitions)):
                 self.partitions[i].remove_squeeze()
 
             ## Choose slowest partition
             partition_latencys = [ self.partitions[partition_index].get_latency(self.platform["freq"]) for partition_index in memory_bound]
             partition_index    = np.random.choice(memory_bound, 1, p=(partition_latencys/sum(partition_latencys)))[0]
-            
+
             horizontal_merges = self.get_all_horizontal_merges(partition_index)
-            
+
             if horizontal_merges[0] and partition_index in output_memory_bound:
                 self.partitions[horizontal_merges[0][0]].reset()
-                self.partitions[horizontal_merges[0][1]].reset()               
+                self.partitions[horizontal_merges[0][1]].reset()
                 self.merge_horizontal(*horizontal_merges[0])
             elif horizontal_merges[1] and partition_index in input_memory_bound:
                 self.partitions[horizontal_merges[1][0]].reset()
-                self.partitions[horizontal_merges[1][1]].reset()    
+                self.partitions[horizontal_merges[1][1]].reset()
                 self.merge_horizontal(*horizontal_merges[1])
 
 
             self.update_partitions()
 
-            try: 
+            try:
                 self.check_resources()
                 self.check_constraints()
             except AssertionError:
