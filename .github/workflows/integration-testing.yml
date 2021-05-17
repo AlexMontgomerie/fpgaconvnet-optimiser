@@ -22,6 +22,7 @@ jobs:
         python-version: '3.x'
     - name: Install dependencies
       run: |
+        sudo apt-get install protobuf-compiler libprotoc-dev
         python setup.py install
         cd examples/models
         ./get_example_models.sh
