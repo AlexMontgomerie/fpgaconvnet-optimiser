@@ -127,9 +127,10 @@ class PoolingLayer(Layer):
         parameters.coarse       = self.coarse
         parameters.coarse_in    = self.coarse
         parameters.coarse_out   = self.coarse
-        parameters.kernel_size.extend(self.k_size)
-        parameters.stride.extend(self.stride)
-        parameters.pad.extend(self.pad)
+        parameters.kernel_size_x = self.k_size[0]
+        parameters.kernel_size_y = self.k_size[1]
+        parameters.stride_x = self.stride[0]
+        parameters.stride_y = self.stride[1]
         parameters.pad_top      = self.pad_top
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom

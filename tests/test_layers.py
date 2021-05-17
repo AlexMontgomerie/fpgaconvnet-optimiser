@@ -7,22 +7,63 @@ class TestLayerTemplate():
 
     def run_test_dimensions(self, layer):
         # check input dimensions
-        self.assertTrue(layer.rows_in(0) > 0) 
-        self.assertTrue(layer.cols_in(0) > 0) 
-        self.assertTrue(layer.channels_in(0) > 0) 
+        self.assertTrue(layer.rows_in() > 0)
+        self.assertTrue(layer.cols_in() > 0)
+        self.assertTrue(layer.channels_in() > 0)
         # check output dimensions
-        self.assertTrue(layer.rows_out(0) > 0) 
-        self.assertTrue(layer.cols_out(0) > 0) 
-        self.assertTrue(layer.channels_out(0) > 0) 
-    
+        self.assertTrue(layer.rows_out() > 0)
+        self.assertTrue(layer.cols_out() > 0)
+        self.assertTrue(layer.channels_out(0) > 0)
+
     def run_test_rates(self, layer):
         # check rate in
-        self.assertTrue(layer.rate_in(0) >= 0.0) 
-        self.assertTrue(layer.rate_in(0) <= 1.0) 
+        self.assertTrue(layer.rate_in() >= 0.0)
+        self.assertTrue(layer.rate_in() <= 1.0)
         # check rate out
-        self.assertTrue(layer.rate_out(0) >= 0.0) 
-        self.assertTrue(layer.rate_out(0) <= 1.0) 
+        self.assertTrue(layer.rate_out() >= 0.0)
+        self.assertTrue(layer.rate_out() <= 1.0)
 
+    def run_test_workload(self,layer):
+        # check workload in
+        self.assertTrue(layer.workload_in() >= 0.0)
+        # check workload out
+        self.assertTrue(layer.workload_out() >= 0.0)
+
+    def run_test_streams(self,layer):
+        # check streams in
+        self.assertTrue(layer.streams_in() >= 1)
+        # check streams out
+        self.assertTrue(layer.streams_out() >= 1)
+
+    def run_test_size(self,layer):
+        # check size in
+        self.assertTrue(layer.size_in() >= 1)
+        # check size out
+        self.assertTrue(layer.size_out() >= 1)
+
+    def run_test_latency(self,layer):
+        # check latency in
+        self.assertTrue(layer.get_latency_in() >= 0.0)
+        # check size out
+        self.assertTrue(layer.get_latency_in() >= 0.0)
+
+    def run_test_pipeline_depth(self,layer):
+        # check pipeline depth
+        self.assertTrue(layer.pipeline_depth() >= 0.0)
+
+    def run_test_wait_depth(self,layer):
+        # check wait depth
+        #self.assertTrue(layer.wait_depth() >= 0.0)
+        pass
+
+    def run_test_resources(self,layer):
+        # check resources
+        rsc = layer.resource()
+        self.assertEqual(set(list(rsc.keys())), set(["BRAM","DSP","LUT","FF"]))
+        self.assertTrue(rsc["LUT"] >= 0)
+        self.assertTrue(rsc["FF"] >= 0)
+        self.assertTrue(rsc["DSP"] >= 0)
+        self.assertTrue(rsc["BRAM"] >= 0)
 
 @ddt.ddt
 class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
@@ -43,7 +84,7 @@ class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/pooling/config_12.json",
     )
     def test_layer_configurations(self, config_path):
-        
+
         # open configuration
         with open(config_path, "r") as f:
             config = json.load(f)
@@ -58,10 +99,17 @@ class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
             stride=config["stride"],
             pad=config["pad"],
         )
-        
+
         # run tests
         self.run_test_dimensions(layer)
         self.run_test_rates(layer)
+        self.run_test_workload(layer)
+        self.run_test_size(layer)
+        self.run_test_streams(layer)
+        self.run_test_latency(layer)
+        self.run_test_pipeline_depth(layer)
+        self.run_test_wait_depth(layer)
+        self.run_test_resources(layer)
 
 @ddt.ddt
 class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
@@ -87,7 +135,7 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/convolution/config_19.json",
     )
     def test_layer_configurations(self, config_path):
-        
+
         # open configuration
         with open(config_path, "r") as f:
             config = json.load(f)
@@ -106,10 +154,17 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
             pad=config["pad"],
             fine=config["fine"],
         )
-        
+
         # run tests
         self.run_test_dimensions(layer)
         self.run_test_rates(layer)
+        self.run_test_workload(layer)
+        self.run_test_size(layer)
+        self.run_test_streams(layer)
+        self.run_test_latency(layer)
+        self.run_test_pipeline_depth(layer)
+        self.run_test_wait_depth(layer)
+        self.run_test_resources(layer)
 
 @ddt.ddt
 class TestReLULayer(TestLayerTemplate,unittest.TestCase):
@@ -128,7 +183,7 @@ class TestReLULayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/relu/config_10.json",
     )
     def test_layer_configurations(self, config_path):
-        
+
         # open configuration
         with open(config_path, "r") as f:
             config = json.load(f)
@@ -140,10 +195,17 @@ class TestReLULayer(TestLayerTemplate,unittest.TestCase):
             config["channels"],
             coarse=config["coarse"],
         )
-        
+
         # run tests
         self.run_test_dimensions(layer)
         self.run_test_rates(layer)
+        self.run_test_workload(layer)
+        self.run_test_size(layer)
+        self.run_test_streams(layer)
+        self.run_test_latency(layer)
+        self.run_test_pipeline_depth(layer)
+        self.run_test_wait_depth(layer)
+        self.run_test_resources(layer)
 
 @ddt.ddt
 class TestInnerProductLayer(TestLayerTemplate,unittest.TestCase):
@@ -161,7 +223,7 @@ class TestInnerProductLayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/inner_product/config_9.json",
     )
     def test_layer_configurations(self, config_path):
-        
+
         # open configuration
         with open(config_path, "r") as f:
             config = json.load(f)
@@ -175,10 +237,17 @@ class TestInnerProductLayer(TestLayerTemplate,unittest.TestCase):
             config["coarse_in"],
             config["coarse_out"],
         )
-        
+
         # run tests
         self.run_test_dimensions(layer)
         self.run_test_rates(layer)
+        self.run_test_workload(layer)
+        self.run_test_size(layer)
+        self.run_test_streams(layer)
+        self.run_test_latency(layer)
+        self.run_test_pipeline_depth(layer)
+        self.run_test_wait_depth(layer)
+        self.run_test_resources(layer)
 
 @ddt.ddt
 class TestSqueezeLayer(TestLayerTemplate,unittest.TestCase):
@@ -188,7 +257,7 @@ class TestSqueezeLayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/squeeze/config_1.json",
     )
     def test_layer_configurations(self, config_path):
-        
+
         # open configuration
         with open(config_path, "r") as f:
             config = json.load(f)
@@ -201,10 +270,17 @@ class TestSqueezeLayer(TestLayerTemplate,unittest.TestCase):
             config["coarse_in"],
             config["coarse_out"],
         )
-        
+
         # run tests
         self.run_test_dimensions(layer)
         self.run_test_rates(layer)
+        self.run_test_workload(layer)
+        self.run_test_size(layer)
+        self.run_test_streams(layer)
+        self.run_test_latency(layer)
+        self.run_test_pipeline_depth(layer)
+        self.run_test_wait_depth(layer)
+        self.run_test_resources(layer)
 
 @ddt.ddt
 class TestSplitLayer(TestLayerTemplate,unittest.TestCase):
@@ -213,7 +289,7 @@ class TestSplitLayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/split/config_0.json",
     )
     def test_layer_configurations(self, config_path):
-        
+
         # open configuration
         with open(config_path, "r") as f:
             config = json.load(f)
@@ -226,9 +302,15 @@ class TestSplitLayer(TestLayerTemplate,unittest.TestCase):
             config["coarse"],
             ports_out=config["ports_out"]
         )
-        
+
         # run tests
         self.run_test_dimensions(layer)
         self.run_test_rates(layer)
-
+        self.run_test_workload(layer)
+        self.run_test_size(layer)
+        self.run_test_streams(layer)
+        self.run_test_latency(layer)
+        self.run_test_pipeline_depth(layer)
+        self.run_test_wait_depth(layer)
+        self.run_test_resources(layer)
 

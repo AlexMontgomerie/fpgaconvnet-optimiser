@@ -120,7 +120,7 @@ def add_input_from_initializer(model : onnx.ModelProto):
 
     return add_const_value_infos_to_graph(model.graph)
 
-def load(filepath,fuse_bn):
+def load(filepath,fuse_bn=True):
     model = onnx.load(filepath)
     onnx.checker.check_model(model)
     add_input_from_initializer(model) #Seems to be necessary for conv layers from pytorch (at least)
@@ -197,12 +197,3 @@ def _out_dim(model, name):
         dim[2] = 1 # cols
         return dim
 
-def _nlist(n):
-    def parse(x):
-        if isinstance(x, Iterable):
-            return x
-        return list(repeat(x, n))
-    return parse
-
-_pair = _nlist(2)
-_quadruple = _nlist(4)

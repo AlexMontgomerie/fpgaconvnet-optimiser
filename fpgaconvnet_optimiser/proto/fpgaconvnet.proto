@@ -6,28 +6,28 @@ message stream {
 }
 
 message parameter {
-    required int32 batch_size  = 20;
-    required int32 rows_in     = 1;
-    required int32 cols_in     = 2;
-    required int32 channels_in = 3;
-    required int32 rows_out     = 4;
-    required int32 cols_out     = 5;
-    required int32 channels_out = 6;
-    required int32 coarse_in    = 7;
-    required int32 coarse_out   = 8;
-    optional int32 coarse       = 21;
-    optional int32 filters  = 9;
-    repeated int32 pad        = 10;
-    optional int32 pad_top    = 11;
-    optional int32 pad_right  = 12;
-    optional int32 pad_bottom = 13;
-    optional int32 pad_left   = 14;
-    repeated int32 stride   = 15;
-    optional int32 coarse_group = 22;
+    required int32 batch_size  = 1;
+    required int32 rows_in     = 2;
+    required int32 cols_in     = 3;
+    required int32 channels_in = 4;
+    required int32 rows_out     = 5;
+    required int32 cols_out     = 6;
+    required int32 channels_out = 7;
+    required int32 coarse_in    = 8;
+    required int32 coarse_out   = 9;
+    optional int32 coarse       = 10;
+    optional int32 coarse_group = 11;
+    optional int32 pad_top    = 12;
+    optional int32 pad_right  = 13;
+    optional int32 pad_bottom = 14;
+    optional int32 pad_left   = 15;
     optional int32 groups   = 16;
-    repeated int32 kernel_size  = 17;
-    optional int32 fine         = 18;
-    required int32 buffer_depth  = 19 [default = 2];
+    optional int32 kernel_size_x = 17;
+    optional int32 kernel_size_y = 18;
+    optional int32 stride_x = 19;
+    optional int32 stride_y = 20;
+    optional int32 fine         = 21;
+    required int32 buffer_depth  = 22 [default = 2];
 }
 
 message layer {

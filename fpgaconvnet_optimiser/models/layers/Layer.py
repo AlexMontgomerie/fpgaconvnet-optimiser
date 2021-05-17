@@ -51,7 +51,7 @@ class Layer:
         ports_out: int
             number of ports out of the layer
         coarse_in: list int
-            number of parallel streams per port into the layer.    
+            number of parallel streams per port into the layer.
         coarse_out: list int
             number of parallel streams per port out of the layer.
         data_width: int
@@ -67,7 +67,8 @@ class Layer:
             "multi_input"       : False,
             "multi_output"      : False,
             "channel_dependant" : False,
-            "transformable"     : False
+            "transformable"     : False,
+            "multi_groups"      : False,
         }
 
         # buffer depth
@@ -166,7 +167,7 @@ class Layer:
 
         Returns
         -------
-        float 
+        float
             rate of words into layer. As a fraction of a
             clock cycle.
 
@@ -184,8 +185,8 @@ class Layer:
 
         Returns
         -------
-        float 
-            rate of words out of the layer. As a fraction 
+        float
+            rate of words out of the layer. As a fraction
             of a clock cycle.
 
             default is 1.0
@@ -197,7 +198,7 @@ class Layer:
         """
         Returns
         -------
-        int 
+        int
             number of parallel streams into the layer.
         """
         assert(port_index < self.ports_in)
@@ -207,7 +208,7 @@ class Layer:
         """
         Returns
         -------
-        int 
+        int
             number of parallel streams out of the layer.
         """
         assert(port_index < self.ports_out)
@@ -222,14 +223,14 @@ class Layer:
 
         Returns
         -------
-        int 
+        int
             workload into layer from port `index` for a single
-            featuremap. This is calculated by 
+            featuremap. This is calculated by
             `rows_in()*cols_in()*channels_in()`.
         """
         assert(port_index < self.ports_in)
         return self.rows_in(port_index) * self.cols_in(port_index) * self.channels_in(port_index)
-        
+
     def workload_out(self, port_index=0):
         """
         Parameters
@@ -239,9 +240,9 @@ class Layer:
 
         Returns
         -------
-        int 
-            workload out of layer from port `index` for a 
-            single featuremap. This is calculated by 
+        int
+            workload out of layer from port `index` for a
+            single featuremap. This is calculated by
             `rows_out()*cols_out()*channels_out()`.
         """
         assert(port_index < self.ports_out)
@@ -251,17 +252,17 @@ class Layer:
         """
         Returns
         -------
-        int 
+        int
             workload in per stream.
         """
         assert(port_index < self.ports_in)
         return self.rows_in(port_index) * self.cols_in(port_index) * int( self.channels_in(port_index) / self.streams_in(port_index) )
-        
+
     def size_out(self, port_index=0):
         """
         Returns
         -------
-        int 
+        int
             workload out per stream.
         """
         assert(port_index < self.ports_out)
@@ -271,25 +272,29 @@ class Layer:
         """
         Returns
         -------
-        int 
+        int
             data width in
         """
         return self.data_width
-    
+
     def width_out(self):
         """
         Returns
         -------
-        int 
+        int
             data width out
-        """ 
+        """
         return self.data_width
 
     def get_latency_in(self):
-        return max([ abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for i in self.ports_in ])
+        return max([
+            abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for
+            i in range(self.ports_in) ])
 
     def get_latency_out(self):
-        return max([ abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i))) for i in self.ports_out ])
+        return max([
+            abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i)))
+            for i in range(self.ports_out) ])
 
     def get_latency(self):
         return max(self.get_latency_in(), self.get_latency_out())
@@ -334,7 +339,7 @@ class Layer:
         #             os.path.dirname(__file__),
         #             "../../coefficients/{}_rsc_coef.npy".format(module))
         #     )
-        
+
 
     def update(self):
         pass
@@ -361,7 +366,7 @@ class Layer:
         parameter = fpgaconvnet_pb2.parameter()
         self.layer_info(parameter)
         # convert to dictionary
-        return MessageToDict(parameter, preserving_proto_field_name=True) 
+        return MessageToDict(parameter, preserving_proto_field_name=True)
 
     def visualise(self,name): # TODO: add standard method of creating visualisation
         cluster = pydot.Cluster(name,label=name)
@@ -372,7 +377,7 @@ class Layer:
         return cluster, "_".join([name,"edge"]), "_".join([name,"edge"])
 
     def functional_model(self,data,batch_size=1): # TODO: just leave empty
-        return 
+        return
 
     def balance_module_rates(self,rate_graph): # TODO: need to verify this method
 
@@ -400,6 +405,6 @@ class Layer:
         return rate_graph
 
     def get_factors(self, n):
-        return list(set(reduce(list.__add__, 
+        return list(set(reduce(list.__add__,
                     ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0))))
 

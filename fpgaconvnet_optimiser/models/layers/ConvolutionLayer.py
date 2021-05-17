@@ -31,6 +31,11 @@ class ConvolutionLayer(Layer):
         # initialise parent class
         super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
+        # update flags
+        self.flags["channel_dependant"] = True
+        self.flags["transformable"] = True
+        self.flags["has_groups"] = True
+
         # change coarse to be scalar
         self.coarse_in = coarse_in
         self.coarse_out = coarse_out
@@ -64,10 +69,6 @@ class ConvolutionLayer(Layer):
         else:
             raise TypeError
 
-        # update flags
-        self.flags['channel_dependant'] = True
-        self.flags['transformable']     = True
-
         # weight width
         # self.weight_width = weight_width
 
@@ -86,7 +87,7 @@ class ConvolutionLayer(Layer):
 
         # init modules
         self.modules = {
-            "sliding_window" : SlidingWindow(self.rows_in(), self.cols_in(), self.channels_in(), k_size, stride, 
+            "sliding_window" : SlidingWindow(self.rows_in(), self.cols_in(), self.channels_in(), k_size, stride,
                 self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width),
             "fork"           : Fork(self.rows_out(), self.cols_out(), self.filters, k_size, self.coarse_out),
             "conv"           : Conv(self.rows_out(), self.cols_out(), self.filters, filters, fine, k_size, groups),
@@ -144,20 +145,21 @@ class ConvolutionLayer(Layer):
         parameters.channels_out = self.channels_out()
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
+        parameters.coarse_group = self.coarse_group
         parameters.fine         = self.fine
         parameters.filters      = self.filters
-        parameters.kernel_size.extend(self.k_size)
-        parameters.stride.extend(self.stride)
-        parameters.coarse_group = self.coarse_group
+        parameters.kernel_size_x = self.k_size[0]
+        parameters.kernel_size_y = self.k_size[1]
+        parameters.stride_x = self.stride[0]
+        parameters.stride_y = self.stride[1]
         parameters.groups       = self.groups
-        parameters.pad.extend(self.pad)
         parameters.pad_top      = self.pad_top
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
 
     ## UPDATE MODULES ##
-    def update(self): 
+    def update(self):
         # sliding window
         self.modules['sliding_window'].rows     = self.rows_in()
         self.modules['sliding_window'].cols     = self.cols_in()
@@ -187,7 +189,7 @@ class ConvolutionLayer(Layer):
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
 
-    ### RATES ### 
+    ### RATES ###
     def rates_graph(self):
         rates_graph = np.zeros( shape=(5,6) , dtype=float )
         # sliding_window
@@ -206,7 +208,7 @@ class ConvolutionLayer(Layer):
         # accum
         rates_graph[3,3] = self.modules['accum'].rate_in()
         rates_graph[3,4] = self.modules['accum'].rate_out()
-        # glue 
+        # glue
         rates_graph[4,4] = self.modules['glue'].rate_in()
         rates_graph[4,5] = self.modules['glue'].rate_out()
 
@@ -222,7 +224,7 @@ class ConvolutionLayer(Layer):
 
     def get_coarse_group_feasible(self):
         return self.get_factors(int(self.groups))
-        
+
     def get_fine_feasible(self):
         #return self.get_factors(int(self.k_size*self.k_size))
         if self.k_size[0] != self.k_size[1]:
@@ -230,7 +232,6 @@ class ConvolutionLayer(Layer):
             return [ 1, max(self.k_size[0],self.k_size[1])]
         else:
             return [ 1, self.k_size[0], self.k_size[0]*self.k_size[1] ]
-
 
     def get_weights_reloading_feasible(self):
         return self.get_factors(int(self.filters/(self.groups*self.coarse_out)))
@@ -323,7 +324,7 @@ class ConvolutionLayer(Layer):
             # get nodes in and out
             for i in range(self.coarse_in):
                 nodes_in.append("_".join([name,"sw",str(g*self.coarse_in+i)]))
-            
+
             for j in range(self.coarse_out):
                 nodes_out.append("_".join([name,"glue",str(g*self.coarse_out+j)]))
 
@@ -343,17 +344,17 @@ class ConvolutionLayer(Layer):
         assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
 
         # instantiate convolution layer
-        convolution_layer = torch.nn.Conv2d(self.channels_in(), self.filters, self.k_size, 
+        convolution_layer = torch.nn.Conv2d(self.channels_in(), self.filters, self.k_size,
                 stride=self.stride, padding=self.pad, groups=self.groups)
 
         # update weights
         convolution_layer.weight = torch.nn.Parameter(torch.from_numpy(weights))
-        
+
         # update bias
         convolution_layer.bias = torch.nn.Parameter(torch.from_numpy(bias))
-        
+
         # return output featuremap
         data = np.moveaxis(data, -1, 0)
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return convolution_layer(torch.from_numpy(data)).detach().numpy()
 
