@@ -10,16 +10,17 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
 
 class Glue(Module):
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
-            filters,
-            coarse_in,
-            coarse_out,
+            rows: int,
+            cols: int,
+            channels: int,
+            filters: int,
+            coarse_in: int,
+            coarse_out: int,
             data_width=16
         ):
         
@@ -33,18 +34,6 @@ class Glue(Module):
         self.filters    = filters
         self.coarse_in  = coarse_in
         self.coarse_out = coarse_out
-
-        # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/glue_rsc_coef.npy"))
-
-    def dynamic_model(self, freq, rate, sa_in, sa_out):
-        return [
-            self.data_width*freq,
-            self.data_width*self.sa_in*freq*rate,
-            self.data_width*self.sa_in*freq*rate*self.coarse_in*self.coarse_out,
-            self.data_width*self.sa_in*freq*rate*self.coarse_out
-        ]
 
     def utilisation_model(self):
         return [

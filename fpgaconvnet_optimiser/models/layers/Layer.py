@@ -4,6 +4,7 @@
 
 import os
 import math
+import sys
 from typing import List
 from functools import reduce
 import pydot
@@ -96,7 +97,7 @@ class Layer:
         self.dynamic_coef = {}
         self.rsc_coef     = {}
 
-    def rows_in(self, port_index):
+    def rows_in(self, port_index=0):
         """
         Returns
         -------
@@ -106,7 +107,7 @@ class Layer:
         assert(port_index < self.ports_in)
         return self.rows[port_index]
 
-    def cols_in(self, port_index):
+    def cols_in(self, port_index=0):
         """
         Returns
         -------
@@ -116,7 +117,7 @@ class Layer:
         assert(port_index < self.ports_in)
         return self.cols[port_index]
 
-    def channels_in(self, port_index):
+    def channels_in(self, port_index=0):
         """
         Returns
         -------
@@ -126,7 +127,7 @@ class Layer:
         assert(port_index < self.ports_in)
         return self.channels[port_index]
 
-    def rows_out(self, port_index):
+    def rows_out(self, port_index=0):
         """
         Returns
         -------
@@ -136,7 +137,7 @@ class Layer:
         assert(port_index < self.ports_out)
         return self.rows[port_index]
 
-    def cols_out(self, port_index):
+    def cols_out(self, port_index=0):
         """
         Returns
         -------
@@ -146,7 +147,7 @@ class Layer:
         assert(port_index < self.ports_out)
         return self.cols[port_index]
 
-    def channels_out(self, port_index):
+    def channels_out(self, port_index=0):
         """
         Returns
         -------
@@ -156,7 +157,7 @@ class Layer:
         assert(port_index < self.ports_out)
         return self.channels[port_index]
 
-    def rate_in(self, port_index):
+    def rate_in(self, port_index=0):
         """
         Parameters
         ----------
@@ -174,7 +175,7 @@ class Layer:
         assert(port_index < self.ports_in)
         return 1.0
 
-    def rate_out(self, port_index):
+    def rate_out(self, port_index=0):
         """
         Parameters
         ----------
@@ -192,7 +193,7 @@ class Layer:
         assert(port_index < self.ports_out)
         return 1.0
 
-    def streams_in(self, port_index):
+    def streams_in(self, port_index=0):
         """
         Returns
         -------
@@ -202,7 +203,7 @@ class Layer:
         assert(port_index < self.ports_in)
         return self.coarse_in[port_index]
 
-    def streams_out(self, port_index):
+    def streams_out(self, port_index=0):
         """
         Returns
         -------
@@ -212,7 +213,7 @@ class Layer:
         assert(port_index < self.ports_out)
         return self.coarse_out[port_index]
 
-    def workload_in(self, port_index):
+    def workload_in(self, port_index=0):
         """
         Parameters
         ----------
@@ -229,7 +230,7 @@ class Layer:
         assert(port_index < self.ports_in)
         return self.rows_in(port_index) * self.cols_in(port_index) * self.channels_in(port_index)
         
-    def workload_out(self, port_index):
+    def workload_out(self, port_index=0):
         """
         Parameters
         ----------
@@ -246,7 +247,7 @@ class Layer:
         assert(port_index < self.ports_out)
         return self.rows_out(port_index) * self.cols_out(port_index) * self.channels_out(port_index)
 
-    def size_in(self, port_index):
+    def size_in(self, port_index=0):
         """
         Returns
         -------
@@ -256,7 +257,7 @@ class Layer:
         assert(port_index < self.ports_in)
         return self.rows_in(port_index) * self.cols_in(port_index) * int( self.channels_in(port_index) / self.streams_in(port_index) )
         
-    def size_out(self, port_index):
+    def size_out(self, port_index=0):
         """
         Returns
         -------
@@ -284,10 +285,14 @@ class Layer:
         """ 
         return self.data_width
 
+    def get_latency_in(self):
+        return max([ abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for i in self.ports_in ])
+
+    def get_latency_out(self):
+        return max([ abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i))) for i in self.ports_out ])
+
     def get_latency(self):
-        latency_in  = max([ abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for i in self.ports_in ])
-        latency_out = max([ abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i))) for i in self.ports_out ])
-        return max(latency_in,latency_out)
+        return max(self.get_latency_in(), self.get_latency_out())
 
     def pipeline_depth(self):
         return sum([ self.modules[module].pipeline_depth() for module in self.modules ])
@@ -299,32 +304,27 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in[0],
+            "BRAM"  : math.ceil(self.buffer_depth*self.data_width/18000)*self.streams_in(),
             "DSP"   : 0
         }
 
-    def static_power(self):
-        return 0
-
-    def dynamic_power(self, freq, rate): 
-        return 0
-
-    def power(self,freq,rate):
-        return self.static_power() + self.dynamic_power(freq,rate)
-
-    def get_coarse_in_feasible(self, port_index, wr_factor=1):
+    def get_coarse_in_feasible(self, port_index=0, wr_factor=1):
+        assert(port_index < self.ports_in)
         return self.get_factors(int(self.channels_in(port_index)/wr_factor))
 
-    def get_coarse_out_feasible(self, port_index, wr_factor=1):
+    def get_coarse_out_feasible(self, port_index=0, wr_factor=1):
+        assert(port_index < self.ports_out)
         return self.get_factors(int(self.channels_out(port_index)/wr_factor))
 
-    def update_coarse_in(self, coarse_in):
-        self.coarse_in[0]  = coarse_in
-        self.coarse_out[0] = coarse_in
+    def update_coarse_in(self, coarse_in, port_index=0):
+        assert(port_index < self.ports_in)
+        self.coarse_in[port_index]  = coarse_in
+        self.update_coarse_out(coarse_in, port_index=port_index)
 
-    def update_coarse_out(self, coarse_out):
-        self.coarse_in[0]  = coarse_out
-        self.coarse_out[0] = coarse_out
+    def update_coarse_out(self, coarse_out, port_index=0):
+        assert(port_index < self.ports_out)
+        self.coarse_out[port_index] = coarse_out
+        self.update_coarse_in(coarse_in, port_index=port_index)
 
     def load_coef(self):
         pass
@@ -363,7 +363,7 @@ class Layer:
         # convert to dictionary
         return MessageToDict(parameter, preserving_proto_field_name=True) 
 
-    def visualise(self,name): # TODO
+    def visualise(self,name): # TODO: add standard method of creating visualisation
         cluster = pydot.Cluster(name,label=name)
 
         for i in range(self.coarse_in[0]):
@@ -374,7 +374,7 @@ class Layer:
     def functional_model(self,data,batch_size=1): # TODO: just leave empty
         return 
 
-    def balance_module_rates(self,rate_graph):
+    def balance_module_rates(self,rate_graph): # TODO: need to verify this method
 
         rate_ratio = [ abs(rate_graph[i,i+1]/rate_graph[i,i]) for i in range(rate_graph.shape[0]) ]
 

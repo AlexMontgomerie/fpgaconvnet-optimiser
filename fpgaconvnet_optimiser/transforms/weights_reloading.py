@@ -18,7 +18,10 @@ def get_wr_layer(self):
         if self.graph.nodes[layer]['type'] == LAYER_TYPE.Concat:
             return None
         if self.graph.nodes[layer]['type'] in transformable_layers:
-            return layer
+            if self.graph.nodes[layer]["hw"].groups == 1:
+                return layer
+            else:
+                return None
         if self.graph.in_degree(layer) == 0:
             return None
         prev_node = graphs.get_prev_nodes(self.graph,layer)[0]

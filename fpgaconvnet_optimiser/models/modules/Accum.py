@@ -14,15 +14,16 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
 
 class Accum(Module):
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
-            filters,
-            groups,
+            rows: int,
+            cols: int,
+            channels: int,
+            filters: int,
+            groups: int,
             data_width=30
         ):
 
@@ -35,10 +36,6 @@ class Accum(Module):
         # init variables
         self.filters = filters
         self.groups  = groups
-
-        # load resource coefficients
-        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #    "../../coefficients/accum_rsc_coef.npy"))
 
     def utilisation_model(self):
         bram_acc_buffer_size =  (self.filters/self.groups)*self.data_width

@@ -19,29 +19,7 @@ from fpgaconvnet_optimiser.models.layers import ReLULayer
 from fpgaconvnet_optimiser.models.layers import LRNLayer
 from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
-
-def _layer_type(op_type):
-    layer_types = { 
-        "Conv"      : LAYER_TYPE.Convolution,
-        "Gemm"      : LAYER_TYPE.InnerProduct,
-        "Relu"      : LAYER_TYPE.ReLU,
-        "MaxPool"   : LAYER_TYPE.Pooling,
-        "LRN"       : LAYER_TYPE.LRN,
-        "Reshape"   : LAYER_TYPE.Transpose,
-        "Softmax"   : LAYER_TYPE.Softmax,
-        "Dropout"   : LAYER_TYPE.Dropout,
-        "Flatten"   : LAYER_TYPE.Flatten,
-        "BatchNormalization" : LAYER_TYPE.BatchNorm,
-        "GlobalAveragePool"  : LAYER_TYPE.Pooling,
-        "AveragePool"        : LAYER_TYPE.Pooling,
-        "Add"       : LAYER_TYPE.Eltwise,
-        "Cast"      : LAYER_TYPE.Cast,
-        "Clip"      : LAYER_TYPE.Clip,
-        "Shape"     : LAYER_TYPE.Shape,
-        "Squeeze"   : LAYER_TYPE.Squeeze,
-    }
-    return layer_types.get(op_type, lambda: TypeError)
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 
 def remove_node(graph, node): # TODO: move to tools.graphs
     prev_nodes = graphs.get_prev_nodes(graph,node)
@@ -67,8 +45,8 @@ def build_graph(model):
         # get name of node
         name = onnx_helper._name(node)
         # add node to graph
-        graph.add_node( name, type=_layer_type(node.op_type), hw=None, inputs={} )
-        if _layer_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
+        graph.add_node( name, type=from_onnx_op_type(node.op_type), hw=None, inputs={} )
+        if from_onnx_op_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
             graph.nodes[name]['inputs'] = { "weights": "", "bias": "" } 
     # add all edges from network
     edges = []
@@ -109,7 +87,7 @@ def build_graph(model):
     # return graph
     return graph
 
-def add_hardware(model, graph):
+def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
     # iterate over nodes in graph
     for node in model.graph.node:
         # get node name
@@ -136,12 +114,13 @@ def add_hardware(model, graph):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
-                k_size =attr["kernel_shape"][0],
-                stride =attr["strides"][0],
-                pad    =attr["pads"][0],
-                groups =attr["group"]
+                k_size =attr["kernel_shape"],
+                stride =attr["strides"],
+                pad    =attr["pads"],
+                groups =attr["group"],
+                data_width =data_width,
+                weight_width =weight_width,
+                acc_width =acc_width
             )
             continue
         # FC Layer
@@ -156,8 +135,6 @@ def add_hardware(model, graph):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
             )
             continue
         # Pooling layer
@@ -176,9 +153,10 @@ def add_hardware(model, graph):
                 1, # initialise coarse in to 0
                 1, # initialise coarse out to 0
                 pool_type = 'max', # TODO: change so that it does AVG also
-                k_size =attr["kernel_shape"][0],
-                stride =attr["strides"][0],
-                pad    =attr["pads"][0]
+                k_size =attr["kernel_shape"],
+                stride =attr["strides"],
+                pad    =attr["pads"],
+                data_width =data_width
             )
             continue
         # ReLU Layer
@@ -188,8 +166,6 @@ def add_hardware(model, graph):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
             )
             continue
         # BatchNorm Layer
@@ -229,10 +205,10 @@ def add_dimensions(model, graph):
             graph.nodes[node]['hw'].rows[0]     = dim[1]
             graph.nodes[node]['hw'].cols[0]     = dim[2]
 
-def parse_net(filepath,view=True):
+def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
     # load onnx model
-    model = onnx_helper.load(filepath)
+    model = onnx_helper.load(filepath,fuse_bn)
     
     # get graph
     graph = build_graph(model)
@@ -257,7 +233,7 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.LRN)
 
     # add hardware to graph
-    add_hardware(model, graph)
+    add_hardware(model, graph, data_width, weight_width, acc_width)
 
     # add layer dimensions
     add_dimensions(model, graph)

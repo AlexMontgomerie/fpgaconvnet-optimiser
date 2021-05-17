@@ -13,6 +13,8 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
+from typing import Union, List
 
 class SlidingWindow(Module):
     """
@@ -20,15 +22,15 @@ class SlidingWindow(Module):
     """
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
-            k_size,
-            stride,
-            pad_top,
-            pad_right,
-            pad_bottom,
-            pad_left,
+            rows: int,
+            cols: int,
+            channels: int,
+            k_size: Union(List[int],int),
+            stride: Union(List[int],int),
+            pad_top: int,
+            pad_right: int,
+            pad_bottom: int,
+            pad_left: int,
             data_width=16
         ):
         """
@@ -76,6 +78,22 @@ class SlidingWindow(Module):
         # init module
         Module.__init__(self, rows, cols, channels, data_width)
 
+        # handle kernel size
+        if isinstance(k_size, int):
+            k_size = [k_size, k_size]
+        elif isinstance(k_size, list):
+            assert len(k_size) == 2, "Must specify two kernel dimensions"
+        else:
+            raise TypeError
+
+        # handle stride
+        if isinstance(stride, int):
+            stride = [stride, stride]
+        elif isinstance(stride, list):
+            assert len(stride) == 2, "Must specify two stride dimensions"
+        else:
+            raise TypeError
+
         # init variables
         self.k_size = k_size
         self.stride = stride
@@ -84,28 +102,24 @@ class SlidingWindow(Module):
         self.pad_bottom = pad_bottom
         self.pad_left   = pad_left
 
-        # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/sliding_window_rsc_coef.npy"))
-
     def utilisation_model(self):
         return [
             1,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*(self.k_size-1),
-            self.data_width*self.k_size*(self.k_size-1),
-            (self.k_size-1)*(((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width < 512 else 0,
-            (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width >= 512 else 0,
-            self.k_size*(self.k_size-1)*(self.channels+1)*self.data_width  if self.channels*self.data_width < 512 else 0,
-            self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000) if self.channels*self.data_width >= 512 else 0,
-            self.data_width*self.k_size*self.k_size*self.channels
+            self.data_width*self.k_size[0]*self.k_size[1],
+            self.data_width*(self.k_size[0]-1),
+            self.data_width*self.k_size[0]*(self.k_size[1]-1),
+            (self.k_size[0]-1)*(((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width < 512 else 0,
+            (self.k_size[0]-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width >= 512 else 0,
+            self.k_size[0]*(self.k_size[1]-1)*(self.channels+1)*self.data_width  if self.channels*self.data_width < 512 else 0,
+            self.k_size[0]*(self.k_size[1]-1)*math.ceil( ((self.channels+1)*self.data_width)/18000) if self.channels*self.data_width >= 512 else 0,
+            self.data_width*self.k_size[0]*self.k_size[1]*self.channels
         ]
 
     def rows_out(self):
-        return int((self.rows_in()-self.k_size+self.pad_top+self.pad_bottom)/self.stride+1)
+        return int((self.rows_in()-self.k_size[0]+self.pad_top+self.pad_bottom)/self.stride[0]+1)
 
     def cols_out(self):
-        return int((self.cols_in()-self.k_size+self.pad_left+self.pad_right)/self.stride+1)
+        return int((self.cols_in()-self.k_size[1]+self.pad_left+self.pad_right)/self.stride[1]+1)
 
     def rate_in(self):
         return 1.0 # TODO: maybe need to reduce for padding effect
@@ -114,7 +128,7 @@ class SlidingWindow(Module):
         return (self.rows_out()*self.cols_out())/float(self.rows*self.cols)
 
     def pipeline_depth(self):
-        return (self.cols+self.pad_left+self.pad_right)*(self.channels)*(self.k_size-1)+self.channels*self.k_size*(self.k_size-1)
+        return (self.cols+self.pad_left+self.pad_right)*(self.channels)*(self.k_size[0]-1)+self.channels*self.k_size[0]*(self.k_size[1]-1)
 
     def wait_depth(self):
         """
@@ -218,14 +232,14 @@ class SlidingWindow(Module):
             self.rows_out(),
             self.cols_out(),
             self.channels,
-            self.k_size,
-            self.k_size),dtype=float)
+            self.k_size[0],
+            self.k_size[1]),dtype=float)
 
         for index,_ in np.ndenumerate(out):
             out[index] = data_padded[
                           index[0],
-                          index[1]*self.stride+index[4],
-                          index[2]*self.stride+index[5],
+                          index[1]*self.stride[0]+index[4],
+                          index[2]*self.stride[1]+index[5],
                           index[3]]
 
         return out

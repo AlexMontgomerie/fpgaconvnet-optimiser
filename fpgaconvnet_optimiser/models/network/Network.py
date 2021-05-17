@@ -28,24 +28,26 @@ from fpgaconvnet_optimiser.models.layers import SqueezeLayer
 
 class Network():
 
-    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0):
+    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True):
 
         ## percentage resource allocation
         self.rsc_allocation = 0.7 
 
         ## bitwidths
-        self.data_width     = 16
-        self.weight_width   = 8
-        self.acc_width      = 30 
+        self.data_width     = data_width
+        self.weight_width   = weight_width
+        self.acc_width      = acc_width 
 
         # network name
         self.name = name
 
         # initialise variables
         self.batch_size = batch_size
+
+        self.fuse_bn = fuse_bn
  
         # load network
-        self.model, self.graph = parser.parse_net(network_path, view=False)
+        self.model, self.graph = parser.parse_net(network_path, view=False, data_width=self.data_width, weight_width=self.weight_width, acc_width=self.acc_width, fuse_bn=self.fuse_bn)
 
         # node and edge lists
         self.node_list = list(self.graph.nodes())
@@ -56,7 +58,7 @@ class Network():
         self.workload_matrix    = matrix.get_workload_matrix(self.graph)
 
         # partitions
-        self.partitions = [Partition(copy.deepcopy(self.graph))]
+        self.partitions = [Partition(copy.deepcopy(self.graph), data_width=self.data_width, weight_width=self.weight_width, acc_width=self.acc_width)]
 
         # platform
         self.platform = {
@@ -119,7 +121,8 @@ class Network():
     from fpgaconvnet_optimiser.models.network.update import update_partitions
     from fpgaconvnet_optimiser.models.network.update import update_platform
     from fpgaconvnet_optimiser.models.network.update import update_coarse_in_out_partition
-
+    from fpgaconvnet_optimiser.models.network.update import update_group_coarse_partition
+    from fpgaconvnet_optimiser.models.network.update import update_group_wr_partition
     # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node 
     from fpgaconvnet_optimiser.models.network.represent import get_model_output_node 
@@ -128,6 +131,7 @@ class Network():
     # validate
     from fpgaconvnet_optimiser.models.network.validate import check_ports
     from fpgaconvnet_optimiser.models.network.validate import check_resources
+    from fpgaconvnet_optimiser.models.network.validate import get_resources_bad_partitions    
     from fpgaconvnet_optimiser.models.network.validate import check_workload
     from fpgaconvnet_optimiser.models.network.validate import check_streams
     from fpgaconvnet_optimiser.models.network.validate import check_partitions
@@ -161,18 +165,24 @@ class Network():
 
     """
 
-    def get_latency(self):
+    def get_latency(self, partition_list=None):
+        if partition_list == None:
+            partition_list = list(range(len(self.partitions)))
         latency = 0
         # iterate over partitions:
-        for partition in self.partitions:
+        for partition_index, partition in enumerate(self.partitions):
+            if partition_index not in partition_list:
+                continue
             # accumulate latency for each partition
             latency += partition.get_latency(self.platform["freq"])
         # return the total latency as well as reconfiguration time
-        return latency + (len(self.partitions)-1)*self.platform["reconf_time"]
+        return latency + (len(partition_list)-1)*self.platform["reconf_time"]
 
-    def get_throughput(self):
+    def get_throughput(self, partition_list=None):
+        if partition_list == None:
+            partition_list = list(range(len(self.partitions)))
         # return the frames per second
-        return float(self.batch_size)/self.get_latency()
+        return float(self.batch_size)/self.get_latency(partition_list)
 
     def visualise(self, output_path):
         g = pydot.Dot(graph_type='digraph')

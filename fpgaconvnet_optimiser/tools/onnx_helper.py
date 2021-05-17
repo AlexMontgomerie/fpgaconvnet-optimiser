@@ -5,6 +5,8 @@ import onnx.numpy_helper
 from onnx import version_converter
 import onnxoptimizer as optimizer
 from onnx.tools import update_model_dims
+from itertools import repeat
+from collections.abc import Iterable
 
 def add_value_info_for_constants(model : onnx.ModelProto):
     """
@@ -118,13 +120,15 @@ def add_input_from_initializer(model : onnx.ModelProto):
 
     return add_const_value_infos_to_graph(model.graph)
 
-def load(filepath):
+def load(filepath,fuse_bn):
     model = onnx.load(filepath)
     onnx.checker.check_model(model)
     add_input_from_initializer(model) #Seems to be necessary for conv layers from pytorch (at least)
     model = onnx.shape_inference.infer_shapes(model)
     model = onnx.utils.polish_model(model)
-    passes = ["extract_constant_to_initializer", "eliminate_unused_initializer","fuse_bn_into_conv"]
+    passes = ["extract_constant_to_initializer", "eliminate_unused_initializer"]
+    if fuse_bn:
+        passes.append("fuse_bn_into_conv")
     model = optimizer.optimize(model, passes=passes)
 
     return model
@@ -173,6 +177,8 @@ def _format_attr(attribute):
     for attr in attribute:
         if attr.type == 7: # (INTS) TODO: find enumeration
             attr_out[attr.name] = [ int(i) for i in attr.ints ]
+        elif attr.type == 2: #(INT)
+            attr_out[attr.name] = attr.i
     return attr_out
 
 def _out_dim(model, name):
@@ -191,4 +197,12 @@ def _out_dim(model, name):
         dim[2] = 1 # cols
         return dim
 
+def _nlist(n):
+    def parse(x):
+        if isinstance(x, Iterable):
+            return x
+        return list(repeat(x, n))
+    return parse
 
+_pair = _nlist(2)
+_quadruple = _nlist(4)

@@ -13,6 +13,7 @@ import random
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
+from fpgaconvnet_optimiser.transforms.helper import get_factors
 
 transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
 
@@ -33,14 +34,19 @@ def apply_random_coarse_layer(self, layer):
     """
     # choose coarse in or coarse out
     coarse_type = random.choice(['coarse_in','coarse_out'])
+    #if self.graph.nodes[layer]['hw'].groups == 1:
+    #    coarse_type = random.choice(['coarse_in','coarse_out'])
+    #else:
+    #    #coarse_type = random.choice(['coarse_in','coarse_out', 'coarse_group'])
+    #    coarse_type = random.choice(['coarse_group'])
     # apply coarse folding
     ## coarse in
     if coarse_type == 'coarse_in':
         # get all feasible coarse in
-        coarse_in_feasible = self.graph.nodes[layer]['hw'].get_coarse_in_feasible(0)
+        coarse_in_feasible = self.graph.nodes[layer]['hw'].get_coarse_in_feasible()
         # if input layer, make sure streams aren't too large 
-        if layer in graphs.get_input_nodes(self.graph):
-            coarse_in_feasible = [ x for x in coarse_in_feasible if x <= self.max_streams_in ]
+        #if layer in graphs.get_input_nodes(self.graph):
+        #    coarse_in_feasible = [ x for x in coarse_in_feasible if ((x * self.graph.nodes[layer]['hw'].coarse_group  <= self.max_streams_in) or x == 1)]
         # choose random coarse in factor
         coarse_in = random.choice(coarse_in_feasible)
         # update coarse folding for both node info and actual layers 
@@ -48,24 +54,38 @@ def apply_random_coarse_layer(self, layer):
     ## coarse out
     if coarse_type == 'coarse_out':
         # get all feasible coarse out 
-        coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible(0)
+        coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()
         # if output layer, make sure streams aren't too large 
-        if layer in graphs.get_output_nodes(self.graph):
-            coarse_out_feasible = [ x for x in coarse_out_feasible if x <= self.max_streams_out ]
+        #if layer in graphs.get_output_nodes(self.graph):
+        #    coarse_out_feasible = [ x for x in coarse_out_feasible if ((x * self.graph.nodes[layer]['hw'].coarse_group <= self.max_streams_out) or x == 1)]
         # choose random coarse out factor
         coarse_out = random.choice(coarse_out_feasible)
         # update coarse folding for both node info and actual layers 
         self.graph.nodes[layer]['hw'].update_coarse_out(coarse_out)
+    ## coarse group
+    #if coarse_type == 'coarse_group':
+    #    # get all feasible coarse group 
+    #    coarse_group_feasible = self.graph.nodes[layer]['hw'].get_coarse_group_feasible()
+    #    # if input layer, make sure streams aren't too large 
+    #    #if layer in graphs.get_input_nodes(self.graph):
+    #    #    coarse_group_feasible = [ x for x in coarse_group_feasible if ((x * self.graph.nodes[layer]['hw'].coarse_in  <= self.max_streams_in) or x == 1)]
+    #    # if output layer, make sure streams aren't too large 
+    #    #if layer in graphs.get_output_nodes(self.graph):
+    #    #    coarse_group_feasible = [ x for x in coarse_group_feasible if ((x * self.graph.nodes[layer]['hw'].coarse_out <= self.max_streams_out) or x == 1)]
+    #    # choose random coarse out factor
+    #    coarse_group = random.choice(coarse_group_feasible)
+    #    # update coarse folding for both node info and actual layers 
+    #    self.graph.nodes[layer]['hw'].update_coarse_group(coarse_group)
 
 def fix_coarse(self):
     # iterate over layers
     for node in self.graph.nodes():
         # check if coarse in is greater than max feasible coarse in
-        coarse_in = self.graph.nodes[node]['hw'].coarse_in[0]
-        coarse_in_max = self.graph.nodes[node]['hw'].get_coarse_in_feasible(0)[-1]
+        coarse_in = self.graph.nodes[node]['hw'].streams_in()
+        coarse_in_max = self.graph.nodes[node]['hw'].get_coarse_in_feasible()[-1]
         self.graph.nodes[node]['hw'].update_coarse_in(min(coarse_in,coarse_in_max))
         # check if coarse out is greater than max feasible coarse out
-        coarse_out = self.graph.nodes[node]['hw'].coarse_out[0]
-        coarse_out_max = self.graph.nodes[node]['hw'].get_coarse_out_feasible(0)[-1]
+        coarse_out = self.graph.nodes[node]['hw'].streams_out()
+        coarse_out_max = self.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
         self.graph.nodes[node]['hw'].update_coarse_out(min(coarse_out,coarse_out_max))
-            
+

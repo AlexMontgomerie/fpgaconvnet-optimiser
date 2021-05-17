@@ -6,13 +6,14 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
 
 class ReLU(Module):
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
+            rows: int,
+            cols: int,
+            channels: int,
             data_width=16
         ):
         
@@ -21,10 +22,6 @@ class ReLU(Module):
  
         # init module
         Module.__init__(self,rows,cols,channels,data_width)
-
-        # load resource coefficients
-        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #    "../../coefficients/relu_rsc_coef.npy"))
 
     def module_info(self):
         return {

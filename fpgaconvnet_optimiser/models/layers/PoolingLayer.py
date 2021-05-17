@@ -2,6 +2,7 @@ import torch
 import math
 import numpy as np
 import pydot
+from typing import Union, List
 
 from fpgaconvnet_optimiser.models.modules import SlidingWindow
 from fpgaconvnet_optimiser.models.modules import Pool
@@ -13,17 +14,45 @@ class PoolingLayer(Layer):
             rows: int,
             cols: int,
             channels: int,
-            coarse_in: int,
-            coarse_out: int,
+            coarse: int,
             pool_type   ='max',
-            k_size      =2,
-            stride      =2,
-            pad         =0,
-            fine        =1
+            k_size: Union(List[int], int),
+            stride: Union(List[int], int),
+            pad: Union(List[int], int),
+            fine: int,
         ):
        
         # initialise parent class
-        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
+        super().__init__([rows],[cols],[channels],[coarse],[coarse])
+
+        # handle kernel size
+        if isinstance(k_size, int):
+            k_size = [k_size, k_size]
+        elif isinstance(k_size, list):
+            assert len(k_size) == 2, "Must specify two kernel dimensions"
+        else:
+            raise TypeError
+
+        # handle stride
+        if isinstance(stride, int):
+            stride = [stride, stride]
+        elif isinstance(stride, list):
+            assert len(stride) == 2, "Must specify two stride dimensions"
+        else:
+            raise TypeError
+
+        # handle pad
+        if isinstance(pad, int):
+            pad = [
+                    pad - (self.rows_in() - k_size + 2*pad) % stride,
+                    pad,
+                    pad,
+                    pad - (self.cols_in() - k_size + 2*pad) % stride,
+                ]
+        elif isinstance(pad, list):
+            assert len(pad) == 4, "Must specify four pad dimensions"
+        else:
+            raise TypeError
 
         # update flags
         self.flags['transformable'] = True
@@ -31,35 +60,36 @@ class PoolingLayer(Layer):
         # update parameters
         self.k_size     = k_size
         self.stride     = stride
-        self.pad        = pad
-        self.pad_top    = pad + (self.rows[0] - k_size + 2*pad) % stride
-        self.pad_right  = pad + (self.cols[0] - k_size + 2*pad) % stride
-        self.pad_bottom = pad
-        self.pad_left   = pad
+        self.pad_top    = pad[0]
+        self.pad_right  = pad[3]
+        self.pad_bottom = pad[2]
+        self.pad_left   = pad[1]
         self.fine       = fine
         self.pool_type  = pool_type
- 
+        self.coarse = coarse
+
+        # 
         if pool_type == 'max':
-            self.fine = self.k_size * self.k_size
+            self.fine = self.k_size[0] * self.k_size[1]
 
         # init modules
         self.modules = {
-            "sliding_window" : SlidingWindow(self.rows_in(0), self.cols_in(0), self.channels_in(0), 
-                k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width),
-            "pool"           : Pool(self.rows_in(0), self.cols_in(0), self.channels_in(0), k_size)
+            "sliding_window" : SlidingWindow(self.rows_in(), self.cols_in(), self.channels_in(), 
+                self.k_size, self.stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width),
+            "pool"           : Pool(self.rows_in(), self.cols_in(), self.channels_in(), k_size)
         }
         self.update()
         #self.load_coef()
 
-    def rows_out(self, port_index):
+    def rows_out(self):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
-        return int(math.ceil((self.rows_in(0)-self.k_size+2*self.pad)/self.stride)+1)
+        return int(math.ceil((self.rows_in()-self.k_size[0]+self.pad_top+self.pad_bottom)/self.stride[0])+1)
 
-    def cols_out(self, port_index):
+    def cols_out(self):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
-        return int(math.ceil((self.cols_in(0)-self.k_size+2*self.pad)/self.stride)+1)
+        return int(math.ceil((self.cols_in()-self.k_size[1]+self.pad_left+self.pad_right)/self.stride[1])+1)
 
-    def rate_in(self, port_index):
+    def rate_in(self, index):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
     
@@ -67,23 +97,39 @@ class PoolingLayer(Layer):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return abs(self.balance_module_rates(self.rates_graph())[1,2])
 
+    def streams_in(self, port_index=0):
+        assert(port_index < self.ports_in)
+        return self.coarse
+
+    def streams_out(self, port_index=0):
+        assert(port_index < self.ports_out)
+        return self.coarse
+
+    def update_coarse_in(self, coarse_in, port_index=0):
+        assert(port_index < self.ports_in)
+        self.coarse = coarse_in
+
+    def update_coarse_out(self, coarse_out, port_index=0):
+        assert(port_index < self.ports_out)
+        self.coarse = coarse_out
+
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
         parameters.batch_size   = batch_size
         parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in(0)
-        parameters.rows_in      = self.rows_in(0)
-        parameters.cols_in      = self.cols_in(0)
-        parameters.channels_in  = self.channels_in0()
-        parameters.rows_out     = self.rows_out(0)
-        parameters.cols_out     = self.cols_out(0)
-        parameters.channels_out = self.channels_out(0)
-        parameters.coarse       = self.coarse_in[0]
-        parameters.coarse_in    = self.coarse_in[0]
-        parameters.coarse_out   = self.coarse_out[0]
-        parameters.kernel_size  = self.k_size
-        parameters.stride       = self.stride
-        parameters.pad          = self.pad
+        parameters.rows_in      = self.rows_in()
+        parameters.rows_in      = self.rows_in()
+        parameters.cols_in      = self.cols_in()
+        parameters.channels_in  = self.channels_in()
+        parameters.rows_out     = self.rows_out()
+        parameters.cols_out     = self.cols_out()
+        parameters.channels_out = self.channels_out()
+        parameters.coarse       = self.coarse
+        parameters.coarse_in    = self.coarse
+        parameters.coarse_out   = self.coarse
+        parameters.kernel_size.extend(self.k_size)
+        parameters.stride.extend(self.stride)
+        parameters.pad.extend(self.pad)
         parameters.pad_top      = self.pad_top
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
@@ -92,13 +138,13 @@ class PoolingLayer(Layer):
     ## UPDATE MODULES ##
     def update(self):
         # sliding window
-        self.modules['sliding_window'].rows     = self.rows_in(0)
-        self.modules['sliding_window'].cols     = self.cols_in(0)
-        self.modules['sliding_window'].channels = int(self.channels[0]/self.coarse_in[0])
+        self.modules['sliding_window'].rows     = self.rows_in()
+        self.modules['sliding_window'].cols     = self.cols_in()
+        self.modules['sliding_window'].channels = int(self.channels_in()/self.coarse)
         # pool
-        self.modules['pool'].rows     = self.rows_out(0)
-        self.modules['pool'].cols     = self.cols_out(0)
-        self.modules['pool'].channels = int(self.channels[0]/self.coarse_in[0])
+        self.modules['pool'].rows     = self.rows_out()
+        self.modules['pool'].cols     = self.cols_out()
+        self.modules['pool'].channels = int(self.channels_in()/self.coarse)
 
     ### RATES ### TODO
     def rates_graph(self):
@@ -122,23 +168,23 @@ class PoolingLayer(Layer):
         
         # Total
         return {
-            "LUT"  :  sw_rsc['LUT']*self.coarse_in[0] +
-                      pool_rsc['LUT']*self.coarse_in[0],
-            "FF"   :  sw_rsc['FF']*self.coarse_in[0] +
-                      pool_rsc['FF']*self.coarse_in[0],
-            "BRAM" :  sw_rsc['BRAM']*self.coarse_in[0] +
-                      pool_rsc['BRAM']*self.coarse_in[0],
-            "DSP" :   sw_rsc['DSP']*self.coarse_in[0] +
-                      pool_rsc['DSP']*self.coarse_in[0]
+            "LUT"  :  sw_rsc['LUT']*self.coarse +
+                      pool_rsc['LUT']*self.coarse,
+            "FF"   :  sw_rsc['FF']*self.coarse +
+                      pool_rsc['FF']*self.coarse,
+            "BRAM" :  sw_rsc['BRAM']*self.coarse +
+                      pool_rsc['BRAM']*self.coarse,
+            "DSP" :   sw_rsc['DSP']*self.coarse +
+                      pool_rsc['DSP']*self.coarse
         }
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
-        for i in range(self.coarse_in[0]):
+        for i in range(self.coarse):
             cluster.add_node(pydot.Node( "_".join([name,"sw",str(i)]), label="sw" ))
 
-        for i in range(self.coarse_out[0]):
+        for i in range(self.coarse):
             cluster.add_node(pydot.Node( "_".join([name,"pool",str(i)]), label="pool" ))
             cluster.add_edge(pydot.Edge( "_".join([name,"sw",str(i)]) , "_".join([name,"pool",str(i)]) ))
 
@@ -150,9 +196,9 @@ class PoolingLayer(Layer):
 
     def functional_model(self,data,batch_size=1):
 
-        assert data.shape[0] == self.rows[0]    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols[0]    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels[0], "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         # instantiate pooling layer
         pooling_layer = torch.nn.MaxPool2d(self.k_size, stride=self.stride, padding=self.pad)

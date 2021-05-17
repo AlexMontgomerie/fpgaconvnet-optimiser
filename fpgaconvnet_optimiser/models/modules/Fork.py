@@ -12,15 +12,17 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
+from typing import Union, List
 
 class Fork(Module):
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
-            k_size,
-            coarse,
+            rows: int,
+            cols: int,
+            channels: int,
+            k_size: Union(List[int],int),
+            coarse: int,
             data_width=16
         ):
         
@@ -30,26 +32,23 @@ class Fork(Module):
         # init module
         Module.__init__(self,rows,cols,channels,data_width)
 
+        # handle kernel size
+        if isinstance(k_size, int):
+            k_size = [k_size, k_size]
+        elif isinstance(k_size, list):
+            assert len(k_size) == 2, "Must specify two kernel dimensions"
+        else:
+            raise TypeError
+
         # init variables
         self.k_size = k_size
         self.coarse = coarse
 
-        # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/fork_rsc_coef.npy"))
-
-    def dynamic_model(self, freq, rate, sa_in, sa_out):
-        return [
-            self.data_width*freq,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size*self.coarse
-        ]
-
     def utilisation_model(self):
         return [
             1,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*self.k_size*self.k_size*self.coarse
+            self.data_width*self.k_size[0]*self.k_size[1],
+            self.data_width*self.k_size[0]*self.k_size[1]*self.coarse
         ]
 
     def module_info(self):
@@ -84,16 +83,16 @@ class Fork(Module):
         assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
         assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.k_size  , "ERROR: invalid column dimension"
-        assert data.shape[4] == self.k_size  , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.k_size[0]  , "ERROR: invalid column dimension"
+        assert data.shape[4] == self.k_size[1]  , "ERROR: invalid column dimension"
 
         out = np.ndarray((
             self.rows,
             self.cols,
             self.channels,
             self.coarse,
-            self.k_size,
-            self.k_size),dtype=float)
+            self.k_size[0],
+            self.k_size[1]),dtype=float)
 
         for index,_ in np.ndenumerate(out):
             out[index] = data[

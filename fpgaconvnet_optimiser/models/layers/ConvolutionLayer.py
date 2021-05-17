@@ -2,6 +2,7 @@ import numpy as np
 import math
 import pydot
 import torch
+from typing import Union, List
 
 from fpgaconvnet_optimiser.models.modules import SlidingWindow
 from fpgaconvnet_optimiser.models.modules import Conv
@@ -17,56 +18,91 @@ class ConvolutionLayer(Layer):
             rows: int,
             cols: int,
             channels: int,
-            coarse_in: int,
-            coarse_out: int,
-            k_size      =3,
-            stride      =1,
-            groups      =1,
-            pad         =0,
-            fine        =1,
+            coarse_in: int = 1,
+            coarse_out: int = 1,
+            coarse_group: int = 1,
+            k_size: Union(List[int], int) = 3,
+            stride: Union(List[int], int) = 1,
+            groups: int = 1,
+            pad: Union(List[int], int) = 0,
+            fine: int  = 1,
         ):
 
         # initialise parent class
         super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
+
+        # change coarse to be scalar
+        self.coarse_in = coarse_in
+        self.coarse_out = coarse_out
+
+        # handle kernel size
+        if isinstance(k_size, int):
+            k_size = [k_size, k_size]
+        elif isinstance(k_size, list):
+            assert len(k_size) == 2, "Must specify two kernel dimensions"
+        else:
+            raise TypeError
+
+        # handle stride
+        if isinstance(stride, int):
+            stride = [stride, stride]
+        elif isinstance(stride, list):
+            assert len(stride) == 2, "Must specify two stride dimensions"
+        else:
+            raise TypeError
+
+        # handle pad
+        if isinstance(pad, int):
+            pad = [
+                    pad - (self.rows_in() - k_size + 2*pad) % stride,
+                    pad,
+                    pad,
+                    pad - (self.cols_in() - k_size + 2*pad) % stride,
+                ]
+        elif isinstance(pad, list):
+            assert len(pad) == 4, "Must specify four pad dimensions"
+        else:
+            raise TypeError
 
         # update flags
         self.flags['channel_dependant'] = True
         self.flags['transformable']     = True
 
         # weight width
-        self.weight_width = 8
+        self.weight_width = weight_width
 
         # init variables
-        self.k_size     = k_size
-        self.stride     = stride
-        self.groups     = groups
-        self.pad        = pad
-        self.pad_top    = pad - (self.rows_in(0) - k_size + 2*pad) % stride
-        self.pad_right  = pad - (self.cols_in(0) - k_size + 2*pad) % stride
-        self.pad_bottom = pad
-        self.pad_left   = pad
-        self.fine       = fine
-        self.filters    = filters
+        self.k_size = k_size
+        self.stride = stride
+        self.groups = groups
+        self.pad = pad
+        self.pad_top = pad[0]
+        self.pad_right = pad[3]
+        self.pad_bottom = pad[2]
+        self.pad_left = pad[1]
+        self.coarse_group = coarse_group
+        self.fine = fine
+        self.filters = filters
 
         # init modules
         self.modules = {
-            "sliding_window" : SlidingWindow(self.rows_in(0), self.cols_in(0), self.channels_in(0), k_size, stride, 
+            "sliding_window" : SlidingWindow(self.rows_in(), self.cols_in(), self.channels_in(), k_size, stride, 
                 self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width),
-            "fork"           : Fork(self.rows_out(0), self.cols_out(0), self.filters, k_size, self.coarse_out),
-            "conv"           : Conv(self.rows_out(0), self.cols_out(0), self.filters, filters, fine, k_size, groups),
-            "accum"          : Accum(self.rows_out(0), self.cols_out(0), self.filters, filters, groups),
-            "glue"           : Glue(self.rows_out(0), self.cols_out(0), self.filters, filters, self.coarse_in[0], self.coarse_out[0])
+            "fork"           : Fork(self.rows_out(), self.cols_out(), self.filters, k_size, self.coarse_out),
+            "conv"           : Conv(self.rows_out(), self.cols_out(), self.filters, filters, fine, k_size, groups),
+            "accum"          : Accum(self.rows_out(), self.cols_out(), self.filters, filters, groups),
+            "glue"           : Glue(self.rows_out(), self.cols_out(), self.filters, filters, self.coarse_in, self.coarse_out)
         }
         self.update()
         #self.load_coef()
 
     def rows_out(self, port_index):
         assert port_index == 0, "convolution layers are only allowed a single port"
-        return int(math.floor((self.rows_in(0)-self.k_size+2*self.pad)/self.stride)+1)
+        return int(math.floor((self.rows_in()-self.k_size+self.pad_top+self.pad_bottom)/self.stride[0])+1)
 
     def cols_out(self, port_index):
         assert port_index == 0, "convolution layers are only allowed a single port"
-        return int(math.floor((self.cols_in(0)-self.k_size+2*self.pad)/self.stride)+1)
+        return int(math.floor((self.cols_in()-self.k_size+self.pad_left+self.pad_right)/self.stride[1])+1)
 
     def channels_out(self, port_index):
         assert port_index == 0, "convolution layers are only allowed a single port"
@@ -80,24 +116,33 @@ class ConvolutionLayer(Layer):
         assert port_index == 0, "convolution layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[4,5])
 
+    def streams_in(self, port_index=0):
+        assert port_index == 0, "convolution layers are only allowed a single port"
+        return self.coarse_in
+
+    def streams_out(self, port_index=0):
+        assert port_index == 0, "convolution layers are only allowed a single port"
+        return self.coarse_out
+
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
         parameters.batch_size   = batch_size
         parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in(0)
-        parameters.cols_in      = self.cols_in(0)
-        parameters.channels_in  = self.channels_in(0)
-        parameters.rows_out     = self.rows_out(0)
-        parameters.cols_out     = self.cols_out(0)
-        parameters.channels_out = self.channels_out(0)
-        parameters.coarse_in    = self.coarse_in[0]
-        parameters.coarse_out   = self.coarse_out[0]
+        parameters.rows_in      = self.rows_in()
+        parameters.cols_in      = self.cols_in()
+        parameters.channels_in  = self.channels_in()
+        parameters.rows_out     = self.rows_out()
+        parameters.cols_out     = self.cols_out()
+        parameters.channels_out = self.channels_out()
+        parameters.coarse_in    = self.coarse_in
+        parameters.coarse_out   = self.coarse_out
         parameters.fine         = self.fine
         parameters.filters      = self.filters
-        parameters.kernel_size  = self.k_size
-        parameters.stride       = self.stride
+        parameters.kernel_size.extend(self.k_size)
+        parameters.stride.extend(self.stride)
+        parameters.coarse_group = self.coarse_group
         parameters.groups       = self.groups
-        parameters.pad          = self.pad
+        parameters.pad.extend(self.pad)
         parameters.pad_top      = self.pad_top
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
@@ -106,33 +151,33 @@ class ConvolutionLayer(Layer):
     ## UPDATE MODULES ##
     def update(self): 
         # sliding window
-        self.modules['sliding_window'].rows     = self.rows_in(0)
-        self.modules['sliding_window'].cols     = self.cols_in(0)
-        self.modules['sliding_window'].channels = int(self.channels[0]/self.coarse_in[0])
+        self.modules['sliding_window'].rows     = self.rows_in()
+        self.modules['sliding_window'].cols     = self.cols_in()
+        self.modules['sliding_window'].channels = int(self.channels_in()/self.coarse_in*self.coarse_group)
         # fork
-        self.modules['fork'].rows     = self.rows_out(0)
-        self.modules['fork'].cols     = self.cols_out(0)
-        self.modules['fork'].channels = int(self.channels[0]/self.coarse_in[0])
-        self.modules['fork'].coarse   = self.coarse_out[0]
+        self.modules['fork'].rows     = self.rows_out()
+        self.modules['fork'].cols     = self.cols_out()
+        self.modules['fork'].channels = int(self.channels_in()/self.coarse_in*self.coarse_group)
+        self.modules['fork'].coarse   = self.coarse_out
         # conv
-        self.modules['conv'].rows     = self.rows_out(0)
-        self.modules['conv'].cols     = self.cols_out(0)
-        self.modules['conv'].channels = int(self.channels[0]/self.coarse_in[0])
-        self.modules['conv'].filters  = int(self.filters/(self.coarse_out[0]*self.groups))
+        self.modules['conv'].rows     = self.rows_out()
+        self.modules['conv'].cols     = self.cols_out()
+        self.modules['conv'].channels = int(self.channels_in()/self.coarse_in*self.coarse_group)
+        self.modules['conv'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
         self.modules['conv'].fine     = self.fine
+        self.modules['conv'].groups   = int(self.groups/self.coarse_group)
         # accum
-        self.modules['accum'].rows     = self.rows_out(0)
-        self.modules['accum'].cols     = self.cols_out(0)
-        self.modules['accum'].channels = int(self.channels[0]/(self.coarse_in[0]))
-        self.modules['accum'].filters  = int(self.filters/(self.coarse_out[0]))
-        self.modules['accum'].groups   = self.groups
+        self.modules['accum'].rows     = self.rows_out()
+        self.modules['accum'].cols     = self.cols_out()
+        self.modules['accum'].channels = int(self.channels_in()/(self.coarse_in*self.coarse_group))
+        self.modules['accum'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
+        self.modules['accum'].groups   = int(self.groups/self.coarse_group)
         # glue
-        self.modules['glue'].rows       = self.rows_out(0)
-        self.modules['glue'].cols       = self.cols_out(0)
-        self.modules['glue'].filters    = self.filters
-        self.modules['glue'].coarse_in  = self.coarse_in[0]
-        self.modules['glue'].coarse_out = self.coarse_out[0]
-
+        self.modules['glue'].rows       = self.rows_out()
+        self.modules['glue'].cols       = self.cols_out()
+        self.modules['glue'].filters    = int(self.filters/self.coarse_group)
+        self.modules['glue'].coarse_in  = self.coarse_in
+        self.modules['glue'].coarse_out = self.coarse_out
 
     ### RATES ### 
     def rates_graph(self):
@@ -159,29 +204,39 @@ class ConvolutionLayer(Layer):
 
         return rates_graph
 
-    def get_coarse_in_feasible(self,port_index,wr_factor=1):
-        assert port_index == 0
-        return self.get_factors(int(self.channels_in(0)/(self.groups*wr_factor)))
+    def get_coarse_in_feasible(self,port_index=0,wr_factor=1):
+        assert port_index == 0, "convolution layers are only allowed a single port"
+        return self.get_factors(int(self.channels_in()/(self.groups*wr_factor)))
 
-    def get_coarse_out_feasible(self,port_index,wr_factor=1):
-        assert port_index == 0
-        return self.get_factors(int(self.channels_out(0)/(self.groups*wr_factor)))
+    def get_coarse_out_feasible(self,port_index=0,wr_factor=1):
+        assert port_index == 0, "convolution layers are only allowed a single port"
+        return self.get_factors(int(self.channels_out()/(self.groups*wr_factor)))
 
-    def update_coarse_in(self, coarse_in):
-        self.coarse_in[0]  = coarse_in
+    def get_coarse_group_feasible(self):
+        return self.get_factors(int(self.groups))
+        
+    def update_coarse_in(self, coarse_in, port_index=0):
+        assert port_index == 0, "convolution layers are only allowed a single port"
+        self.coarse_in  = coarse_in
 
-    def update_coarse_out(self, coarse_out):
-        self.coarse_out[0] = coarse_out
+    def update_coarse_out(self, coarse_out, port_index=0):
+        assert port_index == 0, "convolution layers are only allowed a single port"
+        self.coarse_out = coarse_out
 
     def get_fine_feasible(self):
         #return self.get_factors(int(self.k_size*self.k_size))
-        return [ 1, self.k_size, self.k_size*self.k_size ]
+        if self.k_size[0] != self.k_size[1]:
+            assert(self.k_size[0] == 1 or self.k_size[1] == 1)
+            return [ 1, max(self.k_size[0],self.k_size[1])]
+        else:
+            return [ 1, self.k_size[0], self.k_size[0]*self.k_size[1] ]
+
 
     def get_weights_reloading_feasible(self):
-        return self.get_factors(int(self.filters/(self.groups*self.coarse_out[0])))
+        return self.get_factors(int(self.filters/(self.groups*self.coarse_out)))
 
     def get_parameters_size(self):
-        weights_size = self.channels_in(0) * int( self.filters / self.groups ) * self.k_size * self.k_size
+        weights_size = self.channels_in() * int( self.filters / self.groups ) * self.k_size[0] * self.k_size[1]
         bias_size = 0
         return {
             "weights"   : weights_size,
@@ -189,7 +244,7 @@ class ConvolutionLayer(Layer):
         }
 
     def get_operations(self):
-        return self.k_size*self.k_size*self.channels_in(0)*self.filters*self.rows_out(0)*self.cols_out(0)
+        return self.k_size[0]*self.k_size[1]*self.channels_in()*self.filters*self.rows_out()*self.cols_out()
 
     def resource(self):
 
@@ -199,69 +254,76 @@ class ConvolutionLayer(Layer):
         accum_rsc   = self.modules['accum'].rsc()
         glue_rsc    = self.modules['glue'].rsc()
 
-        if self.k_size == 1:
+        if self.k_size[0] == 1 and self.k_size[1] == 1:
             sw_rsc      = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if self.coarse_out[0] == 1:
+        if self.coarse_out == 1:
             fork_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if int(self.channels[0]/self.coarse_in[0]) == 1:
+        if int(self.channels_in()/(self.coarse_in*self.coarse_group)) == 1:
             accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if self.coarse_in[0] == 1:
+        if self.coarse_in == 1:
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # weight usage
-        n_filters = float(self.filters*self.channels_in(0)*self.k_size*self.k_size)/float(self.fine*self.groups*self.coarse_in[0]*self.coarse_out[0])
-        weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in[0]*self.coarse_out[0]*self.fine
+        n_filters = float(self.filters/self.groups*self.channels_in()*self.k_size[0]*self.k_size[1]) / \
+            float(self.fine*self.coarse_in*self.coarse_out*self.coarse_group)
+        weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.coarse_group*self.fine
 
         # Total
         return {
-            "LUT"  :  sw_rsc['LUT']*self.coarse_in[0] +
-                      fork_rsc['LUT']*self.coarse_in[0] +
-                      conv_rsc['LUT']*self.coarse_in[0]*self.coarse_out[0] +
-                      accum_rsc['LUT']*self.coarse_in[0]*self.coarse_out[0] +
-                      glue_rsc['LUT'],
-            "FF"   :  sw_rsc['FF']*self.coarse_in[0] +
-                      fork_rsc['FF']*self.coarse_in[0] +
-                      conv_rsc['FF']*self.coarse_in[0]*self.coarse_out[0] +
-                      accum_rsc['FF']*self.coarse_in[0]*self.coarse_out[0] +
-                      glue_rsc['FF'],
-            "BRAM" :  sw_rsc['BRAM']*self.coarse_in[0] +
-                      fork_rsc['BRAM']*self.coarse_in[0] +
-                      conv_rsc['BRAM']*self.coarse_in[0]*self.coarse_out[0] +
-                      accum_rsc['BRAM']*self.coarse_out[0] +
-                      glue_rsc['BRAM'] +
+            "LUT"  :  sw_rsc['LUT']*self.coarse_in*self.coarse_group +
+                      fork_rsc['LUT']*self.coarse_in*self.coarse_group +
+                      conv_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      accum_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      glue_rsc['LUT']*self.coarse_group,
+            "FF"   :  sw_rsc['FF']*self.coarse_in*self.coarse_group +
+                      fork_rsc['FF']*self.coarse_in*self.coarse_group +
+                      conv_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      accum_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      glue_rsc['FF']*self.coarse_group,
+            "BRAM" :  sw_rsc['BRAM']*self.coarse_in*self.coarse_group +
+                      fork_rsc['BRAM']*self.coarse_in*self.coarse_group +
+                      conv_rsc['BRAM']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      accum_rsc['BRAM']*self.coarse_out*self.coarse_group +
+                      glue_rsc['BRAM']*self.coarse_group +
                       weights_bram_usage,
-            "DSP" :   sw_rsc['DSP']*self.coarse_in[0] +
-                      fork_rsc['DSP']*self.coarse_in[0] +
-                      conv_rsc['DSP']*self.coarse_in[0]*self.coarse_out[0] +
-                      accum_rsc['DSP']*self.coarse_in[0]*self.coarse_out[0] +
-                      glue_rsc['DSP']
+            "DSP" :   sw_rsc['DSP']*self.coarse_in*self.coarse_group +
+                      fork_rsc['DSP']*self.coarse_in*self.coarse_group +
+                      conv_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      accum_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      glue_rsc['DSP']*self.coarse_group
         }
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
+        nodes_in = []
+        nodes_out = []
 
-        for i in range(self.coarse_in[0]):
-            cluster.add_node(pydot.Node( "_".join([name,"sw",str(i)]), label="sw" ))
+        for g in range(self.coarse_group):
+            for i in range(self.coarse_in):
+                cluster.add_node(pydot.Node( "_".join([name,"sw",str(g*self.coarse_in+i)]), label="sw" ))
 
-        for i in range(self.coarse_in[0]):
-            cluster.add_node(pydot.Node( "_".join([name,"fork",str(i)]), label="fork" ))
-            cluster.add_edge(pydot.Edge( "_".join([name,"sw",str(i)]) , "_".join([name,"fork",str(i)]) ))
+            for i in range(self.coarse_in):
+                cluster.add_node(pydot.Node( "_".join([name,"fork",str(g*self.coarse_in+i)]), label="fork" ))
+                cluster.add_edge(pydot.Edge( "_".join([name,"sw",str(g*self.coarse_in+i)]) , "_".join([name,"fork",str(i)]) ))
 
-        for i in range(self.coarse_in[0]):
-            for j in range(self.coarse_out[0]):
-                cluster.add_node(pydot.Node( "_".join([name,"conv",str(i),str(j)]), label="conv" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"fork",str(i)]) , "_".join([name,"conv",str(i),str(j)]) ))
+            for i in range(self.coarse_in):
+                for j in range(self.coarse_out):
+                    cluster.add_node(pydot.Node( "_".join([name,"conv",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), label="conv" ))
+                    cluster.add_edge(pydot.Edge( "_".join([name,"fork",str(g*self.coarse_in+i)]) , "_".join([name,"conv",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]) ))
 
-        for i in range(self.coarse_in[0]):
-            for j in range(self.coarse_out[0]):
-                cluster.add_node(pydot.Node( "_".join([name,"glue",str(j)]), label="+" ))
-                cluster.add_node(pydot.Node( "_".join([name,"accum",str(i),str(j)]), label="accum" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(i),str(j)]), "_".join([name,"accum",str(i),str(j)]) ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(i),str(j)]), "_".join([name,"glue",str(j)]) ))
+            for i in range(self.coarse_in):
+                for j in range(self.coarse_out):
+                    cluster.add_node(pydot.Node( "_".join([name,"glue",str(g*self.coarse_out+j)]), label="+" ))
+                    cluster.add_node(pydot.Node( "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), label="accum" ))
+                    cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]) ))
+                    cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), "_".join([name,"glue",str(g*self.coarse_out+j)]) ))
 
-        # get nodes in and out
-        nodes_in  = [ "_".join([name,"sw",str(i)]) for i in range(self.coarse_in[0]) ]
-        nodes_out = [ "_".join([name,"glue",str(i)]) for i in range(self.coarse_out[0]) ]
+            # get nodes in and out
+            for i in range(self.coarse_in):
+                nodes_in.append("_".join([name,"sw",str(g*self.coarse_in+i)]))
+            
+            for j in range(self.coarse_out):
+                nodes_out.append("_".join([name,"glue",str(g*self.coarse_out+j)]))
 
         return cluster, nodes_in, nodes_out
 
@@ -272,14 +334,14 @@ class ConvolutionLayer(Layer):
         assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == int(self.channels[0]/self.groups), "ERROR (weights): invalid channel dimension"
-        assert weights.shape[2] == self.k_size  , "ERROR (weights): invalid kernel dimension"
-        assert weights.shape[3] == self.k_size  , "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[1] == int(self.channels_in()/self.groups), "ERROR (weights): invalid channel dimension"
+        assert weights.shape[2] == self.k_size[0]  , "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[3] == self.k_size[1]  , "ERROR (weights): invalid kernel dimension"
 
         assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
 
         # instantiate convolution layer
-        convolution_layer = torch.nn.Conv2d(self.channels[0], self.filters, self.k_size, 
+        convolution_layer = torch.nn.Conv2d(self.channels_in(), self.filters, self.k_size, 
                 stride=self.stride, padding=self.pad, groups=self.groups)
 
         # update weights

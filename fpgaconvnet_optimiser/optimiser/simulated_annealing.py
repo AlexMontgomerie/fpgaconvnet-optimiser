@@ -6,6 +6,7 @@ import random
 import math
 
 from fpgaconvnet_optimiser.optimiser.optimiser import Optimiser
+import fpgaconvnet_optimiser.tools.graphs as graphs
 
 LATENCY   =0
 THROUGHPUT=1
@@ -17,10 +18,10 @@ class SimulatedAnnealing(Optimiser):
 Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
     """
     
-    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10):
+    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
         # Initialise Network
-        Optimiser.__init__(self,name,network_path)
+        Optimiser.__init__(self,name,network_path,transforms_config,fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
 
         # Simulate Annealing Variables
         self.T          = T
@@ -61,20 +62,28 @@ Randomly chooses a transform and hardware component to change. The change is acc
             start = True
         except AssertionError as error:
             print("ERROR: Exceeds resource usage (trying to find valid starting point)")
+            bad_partitions = self.get_resources_bad_partitions()
         
         # Attempt to find a good starting point
         if not start:
-            for i in range(START_LOOP):
+            transforms_config = self.transforms_config
+            self.transforms_config = self.fix_starting_point_config
+            self.get_transforms()
+
+            for i in range(START_LOOP):  
                 transform = random.choice(self.transforms)
-                self.apply_transform(transform)
+                partition_index = list(bad_partitions.keys())[-1]
+                self.apply_transform(transform,partition_index)
                 self.update_partitions()
 
                 try:
                     self.check_resources()
                     self.check_constraints()
+                    self.transforms_config = transforms_config
+                    self.get_transforms()
                     break
                 except AssertionError as error:
-                    pass
+                    bad_partitions = self.get_resources_bad_partitions()
 
         try: 
             self.check_resources()
@@ -113,7 +122,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 partition_index = random.randint(0,len(self.partitions)-1)
  
                 ## Choose a random node in partition
-                node = random.choice(list(self.partitions[partition_index].graph))
+                node = random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph))
                 
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)

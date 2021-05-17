@@ -17,14 +17,15 @@ message parameter {
     required int32 coarse_out   = 8;
     optional int32 coarse       = 21;
     optional int32 filters  = 9;
-    optional int32 pad        = 10;
+    repeated int32 pad        = 10;
     optional int32 pad_top    = 11;
     optional int32 pad_right  = 12;
     optional int32 pad_bottom = 13;
     optional int32 pad_left   = 14;
-    optional int32 stride   = 15;
+    repeated int32 stride   = 15;
+    optional int32 coarse_group = 22;
     optional int32 groups   = 16;
-    optional int32 kernel_size  = 17;
+    repeated int32 kernel_size  = 17;
     optional int32 fine         = 18;
     required int32 buffer_depth  = 19 [default = 2];
 }

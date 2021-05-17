@@ -6,10 +6,11 @@ class SoftMaxLayer(Layer):
             dim,
             coarse_in   =1,
             coarse_out  =1,
+            coarse_group =1,
             data_width  =16,
             sa          =0.5,
             sa_out      =0.5
         ):
-        Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
+        Layer.__init__(self,dim,coarse_in,coarse_out,data_width,coarse_group)
 
 

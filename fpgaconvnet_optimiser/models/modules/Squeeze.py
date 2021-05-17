@@ -2,15 +2,19 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> ddfbba918a133f4b67598cc891fcb81c8985f5a9
 
 class Squeeze(Module):
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
-            coarse_out,
-            coarse_in,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_out: int,
+            coarse_in: int,
             data_width=16
         ):
         
@@ -23,10 +27,6 @@ class Squeeze(Module):
         # init variables
         self.coarse_out = coarse_out
         self.coarse_in  = coarse_in
-
-        # # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/squeeze_rsc_coef.npy"))
 
     def module_info(self):
         return {
