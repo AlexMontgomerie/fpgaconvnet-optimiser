@@ -53,8 +53,7 @@ class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
             config["rows"],
             config["cols"],
             config["channels"],
-            config["coarse"],
-            config["coarse"],
+            coarse=config["coarse"],
             k_size=config["kernel_size"],
             stride=config["stride"],
             pad=config["pad"],
@@ -99,8 +98,8 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
             config["rows"],
             config["cols"],
             config["channels"],
-            config["coarse_in"],
-            config["coarse_out"],
+            coarse_in=config["coarse_in"],
+            coarse_out=config["coarse_out"],
             k_size=config["kernel_size"],
             stride=config["stride"],
             groups=config["groups"],
@@ -139,8 +138,7 @@ class TestReLULayer(TestLayerTemplate,unittest.TestCase):
             config["rows"],
             config["cols"],
             config["channels"],
-            config["coarse"],
-            config["coarse"],
+            coarse=config["coarse"],
         )
         
         # run tests

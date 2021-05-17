@@ -118,9 +118,6 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 stride =attr["strides"],
                 pad    =attr["pads"],
                 groups =attr["group"],
-                data_width =data_width,
-                weight_width =weight_width,
-                acc_width =acc_width
             )
             continue
         # FC Layer
@@ -150,13 +147,10 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
                 pool_type = 'max', # TODO: change so that it does AVG also
                 k_size =attr["kernel_shape"],
                 stride =attr["strides"],
                 pad    =attr["pads"],
-                data_width =data_width
             )
             continue
         # ReLU Layer

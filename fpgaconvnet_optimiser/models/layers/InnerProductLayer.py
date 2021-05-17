@@ -43,25 +43,40 @@ class InnerProductLayer(Layer):
         }
         self.update()
 
-    def rows_out(self, port_index):
+    def rows_out(self, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
         return 1
 
-    def cols_out(self, port_index):
+    def cols_out(self, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
         return 1
 
-    def channels_out(self, port_index):
+    def channels_out(self, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
         return self.filters 
 
-    def rate_in(self, port_index):
+    def rate_in(self, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
 
-    def rate_out(self, port_index):
+    def rate_out(self, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[3,4])
 
-    def update_coarse_in(self, coarse_in):
+    def streams_in(self, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
+        return self.coarse_in
+
+    def streams_out(self, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
+        return self.coarse_out
+
+    def update_coarse_in(self, coarse_in, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
         self.coarse_in  = coarse_in
 
-    def update_coarse_out(self, coarse_out):
+    def update_coarse_out(self, coarse_out, port_index=0):
+        assert port_index == 0, "inner product layers are only allowed a single port"
         self.coarse_out = coarse_out
 
     ## LAYER INFO ##
@@ -134,6 +149,8 @@ class InnerProductLayer(Layer):
   
     def resource(self):
 
+        weight_width = 8
+
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
         accum_rsc   = self.modules['accum'].rsc()
@@ -145,7 +162,7 @@ class InnerProductLayer(Layer):
 
         # TODO: add to modules instead
         n_filters = float(self.filters*self.channels_in()*self.rows_in()*self.cols_in())/float(self.coarse_in*self.coarse_out)
-        weights_bram_usage = int(math.ceil(self.weight_width*n_filters/18000))*self.coarse_in*self.coarse_out
+        weights_bram_usage = int(math.ceil(weight_width*n_filters/18000))*self.coarse_in*self.coarse_out
 
         # Total
         return {
@@ -202,7 +219,7 @@ class InnerProductLayer(Layer):
         assert weights.shape[1] == self.rows_in()*self.cols_in()*self.channels_in(), "ERROR (weights): invalid channel dimension"
 
         
-        # instantiate convolution layer
+        # instantiate inner product layer
         inner_product_layer = torch.nn.Linear(self.channels_in()*self.rows_in()*self.cols_in(), self.filters, bias=False)
         
         # update weights

@@ -21,7 +21,7 @@ class Fork(Module):
             rows: int,
             cols: int,
             channels: int,
-            k_size: Union(List[int],int),
+            k_size: Union[List[int],int],
             coarse: int,
             data_width=16
         ):

@@ -27,7 +27,7 @@ class Conv(Module):
             channels: int,
             filters: int,
             fine: int,
-            k_size: Union(List[int], int),
+            k_size: Union[List[int], int],
             groups: int,
             data_width=16,
             weight_width=8

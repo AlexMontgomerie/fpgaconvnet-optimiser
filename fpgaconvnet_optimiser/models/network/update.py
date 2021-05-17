@@ -23,9 +23,9 @@ def update_partitions(self):
             del self.partitions[partition_index]
 
     # update coarse in and out of partition to avoid mismatch
-    self.update_group_coarse_partition()
-    self.update_group_wr_partition()
-    #self.update_coarse_in_out_partition()
+    # self.update_group_coarse_partition()
+    # self.update_group_wr_partition()
+    self.update_coarse_in_out_partition()
  
     # update partitions 
     for partition_index in range(len(self.partitions)):

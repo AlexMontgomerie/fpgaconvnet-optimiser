@@ -14,7 +14,6 @@ NETWORKS = [
     "examples/models/alexnet.onnx",
     "examples/models/vgg16.onnx",
     "examples/models/caffenet.onnx",
-    "examples/models/caffenet.onnx",
 ]
 
 """    
@@ -102,54 +101,52 @@ RATES BALANCED MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
-"""
-@ddt.ddt
-class TestBalancedRatesMatrix(unittest.TestCase):
+# @ddt.ddt
+# class TestBalancedRatesMatrix(unittest.TestCase):
 
-    @ddt.data(
-        "examples/models/lenet.onnx",
-    )
-    def test_net(self,model_path):
+#     @ddt.data(
+#         "examples/models/lenet.onnx",
+#     )
+#     def test_net(self,model_path):
 
-        # graph definition
-        graph, node_info = parser.parse_net(model_path,view=False)
+#         # graph definition
+#         graph, node_info = parser.parse_net(model_path,view=False)
 
-        # get matrix and expected dimensions
-        n_nodes                 = len(matrix.get_node_list_matrix(graph))
-        n_edges                 = len(matrix.get_edge_list_matrix(graph))
-        balanced_rates_matrix   = matrix.get_balanced_rates_matrix(graph,node_info)
-        # check dimension of matrix
-        self.assertEqual(balanced_rates_matrix.shape[0],n_edges)
-        self.assertEqual(balanced_rates_matrix.shape[1],n_nodes)
+#         # get matrix and expected dimensions
+#         n_nodes                 = len(matrix.get_node_list_matrix(graph))
+#         n_edges                 = len(matrix.get_edge_list_matrix(graph))
+#         balanced_rates_matrix   = matrix.get_balanced_rates_matrix(graph,node_info)
+#         # check dimension of matrix
+#         self.assertEqual(balanced_rates_matrix.shape[0],n_edges)
+#         self.assertEqual(balanced_rates_matrix.shape[1],n_nodes)
         
-        # check rank of matrix
-        self.assertEqual(matrix_rank(balanced_rates_matrix),n_nodes-1)
+#         # check rank of matrix
+#         self.assertEqual(matrix_rank(balanced_rates_matrix),n_nodes-1)
 
-        rates_matrix = matrix.get_rates_matrix(graph,node_info)
-        # check rate ratios
-        ## iterate over columns
-        for col_index in range(rates_matrix.shape[1]):
-            node = matrix.get_node_list_matrix(graph)[col_index]
-            if (node in node_info) and (node_info[node]['type'] == LAYER_TYPE.Convolution):
-                ## go over every in out combination
-                for row_index in range(rates_matrix.shape[0]):
-                    for i in range(rates_matrix.shape[0]):
-                        ratio            = np.nan_to_num(rates_matrix[row_index,col_index] / rates_matrix[i,col_index])
-                        ratio_balanced   = np.nan_to_num(balanced_rates_matrix[row_index,col_index] / balanced_rates_matrix[i,col_index])
-                        self.assertAlmostEqual(ratio,ratio_balanced)
+#         rates_matrix = matrix.get_rates_matrix(graph,node_info)
+#         # check rate ratios
+#         ## iterate over columns
+#         for col_index in range(rates_matrix.shape[1]):
+#             node = matrix.get_node_list_matrix(graph)[col_index]
+#             if (node in node_info) and (node_info[node]['type'] == LAYER_TYPE.Convolution):
+#                 ## go over every in out combination
+#                 for row_index in range(rates_matrix.shape[0]):
+#                     for i in range(rates_matrix.shape[0]):
+#                         ratio            = np.nan_to_num(rates_matrix[row_index,col_index] / rates_matrix[i,col_index])
+#                         ratio_balanced   = np.nan_to_num(balanced_rates_matrix[row_index,col_index] / balanced_rates_matrix[i,col_index])
+#                         self.assertAlmostEqual(ratio,ratio_balanced)
         
-        # check the edges all have the same rate
-        for row_index in range(rates_matrix.shape[0]):
-            self.assertEqual(np.sum(balanced_rates_matrix[row_index,:]), 0.0)
-"""
+#         # check the edges all have the same rate
+#         for row_index in range(rates_matrix.shape[0]):
+#             self.assertEqual(np.sum(balanced_rates_matrix[row_index,:]), 0.0)
 
 """    
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 WORKLOAD MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-"""
 
+"""
 @ddt.ddt
 class TestWorkloadMatrix(unittest.TestCase):
 
@@ -173,7 +170,8 @@ class TestWorkloadMatrix(unittest.TestCase):
 
         # check edges all have the same workload
         for i in range(workload_matrix.shape[0]):
-            self.assertEqual(np.sum(workload_matrix[i,:]),0)
+            self.assertEqual(np.sum(workload_matrix[i,:]), 0, 
+                    f"Mismatching workload for edge: {matrix.get_edge_list_matrix(graph)[i]}")
 
 """    
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

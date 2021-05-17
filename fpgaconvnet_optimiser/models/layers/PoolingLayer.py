@@ -14,12 +14,12 @@ class PoolingLayer(Layer):
             rows: int,
             cols: int,
             channels: int,
-            coarse: int,
+            coarse: int = 1,
             pool_type   ='max',
-            k_size: Union(List[int], int),
-            stride: Union(List[int], int),
-            pad: Union(List[int], int),
-            fine: int,
+            k_size: Union[List[int], int] = 2,
+            stride: Union[List[int], int] = 2,
+            pad: Union[List[int], int] = 0,
+            fine: int = 1,
         ):
        
         # initialise parent class
@@ -44,10 +44,10 @@ class PoolingLayer(Layer):
         # handle pad
         if isinstance(pad, int):
             pad = [
-                    pad - (self.rows_in() - k_size + 2*pad) % stride,
+                    pad - (self.rows_in() - k_size[0] + 2*pad) % stride[0],
                     pad,
                     pad,
-                    pad - (self.cols_in() - k_size + 2*pad) % stride,
+                    pad - (self.cols_in() - k_size[1] + 2*pad) % stride[1],
                 ]
         elif isinstance(pad, list):
             assert len(pad) == 4, "Must specify four pad dimensions"
@@ -81,19 +81,19 @@ class PoolingLayer(Layer):
         self.update()
         #self.load_coef()
 
-    def rows_out(self):
+    def rows_out(self, port_index=0):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return int(math.ceil((self.rows_in()-self.k_size[0]+self.pad_top+self.pad_bottom)/self.stride[0])+1)
 
-    def cols_out(self):
+    def cols_out(self, port_index=0):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return int(math.ceil((self.cols_in()-self.k_size[1]+self.pad_left+self.pad_right)/self.stride[1])+1)
 
-    def rate_in(self, index):
+    def rate_in(self, port_index=0):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
     
-    def rate_out(self, port_index):
+    def rate_out(self, port_index=0):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return abs(self.balance_module_rates(self.rates_graph())[1,2])
 

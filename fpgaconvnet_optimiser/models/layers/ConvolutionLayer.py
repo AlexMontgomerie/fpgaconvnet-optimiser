@@ -21,10 +21,10 @@ class ConvolutionLayer(Layer):
             coarse_in: int = 1,
             coarse_out: int = 1,
             coarse_group: int = 1,
-            k_size: Union(List[int], int) = 3,
-            stride: Union(List[int], int) = 1,
+            k_size: Union[List[int], int] = 3,
+            stride: Union[List[int], int] = 1,
             groups: int = 1,
-            pad: Union(List[int], int) = 0,
+            pad: Union[List[int], int] = 0,
             fine: int  = 1,
         ):
 
@@ -54,10 +54,10 @@ class ConvolutionLayer(Layer):
         # handle pad
         if isinstance(pad, int):
             pad = [
-                    pad - (self.rows_in() - k_size + 2*pad) % stride,
+                    pad - (self.rows_in() - k_size[0] + 2*pad) % stride[0],
                     pad,
                     pad,
-                    pad - (self.cols_in() - k_size + 2*pad) % stride,
+                    pad - (self.cols_in() - k_size[1] + 2*pad) % stride[1],
                 ]
         elif isinstance(pad, list):
             assert len(pad) == 4, "Must specify four pad dimensions"
@@ -69,7 +69,7 @@ class ConvolutionLayer(Layer):
         self.flags['transformable']     = True
 
         # weight width
-        self.weight_width = weight_width
+        # self.weight_width = weight_width
 
         # init variables
         self.k_size = k_size
@@ -96,23 +96,23 @@ class ConvolutionLayer(Layer):
         self.update()
         #self.load_coef()
 
-    def rows_out(self, port_index):
+    def rows_out(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
-        return int(math.floor((self.rows_in()-self.k_size+self.pad_top+self.pad_bottom)/self.stride[0])+1)
+        return int(math.floor((self.rows_in()-self.k_size[0]+self.pad_top+self.pad_bottom)/self.stride[0])+1)
 
-    def cols_out(self, port_index):
+    def cols_out(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
-        return int(math.floor((self.cols_in()-self.k_size+self.pad_left+self.pad_right)/self.stride[1])+1)
+        return int(math.floor((self.cols_in()-self.k_size[0]+self.pad_left+self.pad_right)/self.stride[1])+1)
 
-    def channels_out(self, port_index):
+    def channels_out(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
         return self.filters
 
-    def rate_in(self,port_index):
+    def rate_in(self,port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
 
-    def rate_out(self,port_index):
+    def rate_out(self,port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[4,5])
 
@@ -123,6 +123,14 @@ class ConvolutionLayer(Layer):
     def streams_out(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
         return self.coarse_out
+
+    def update_coarse_in(self, coarse_in, port_index=0):
+        assert port_index == 0, "convolution layers are only allowed a single port"
+        self.coarse_in  = coarse_in
+
+    def update_coarse_out(self, coarse_out, port_index=0):
+        assert port_index == 0, "convolution layers are only allowed a single port"
+        self.coarse_out = coarse_out
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
@@ -215,14 +223,6 @@ class ConvolutionLayer(Layer):
     def get_coarse_group_feasible(self):
         return self.get_factors(int(self.groups))
         
-    def update_coarse_in(self, coarse_in, port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        self.coarse_in  = coarse_in
-
-    def update_coarse_out(self, coarse_out, port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        self.coarse_out = coarse_out
-
     def get_fine_feasible(self):
         #return self.get_factors(int(self.k_size*self.k_size))
         if self.k_size[0] != self.k_size[1]:
@@ -248,6 +248,8 @@ class ConvolutionLayer(Layer):
 
     def resource(self):
 
+        weight_width = 8
+
         sw_rsc      = self.modules['sliding_window'].rsc()
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
@@ -266,7 +268,7 @@ class ConvolutionLayer(Layer):
         # weight usage
         n_filters = float(self.filters/self.groups*self.channels_in()*self.k_size[0]*self.k_size[1]) / \
             float(self.fine*self.coarse_in*self.coarse_out*self.coarse_group)
-        weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.coarse_group*self.fine
+        weights_bram_usage = int(math.ceil((weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.coarse_group*self.fine
 
         # Total
         return {

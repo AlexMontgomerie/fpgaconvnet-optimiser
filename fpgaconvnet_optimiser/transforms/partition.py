@@ -46,15 +46,15 @@ def get_all_horizontal_splits(self,partition_index):
         if self.partitions[partition_index].graph.in_degree(next_node) > 1: 
             return _iterate_graph(edge_list,next_node,in_parallel_block) 
         # skip node - split position not valid
-        if "allowed_partitions" in self.transforms_config["partition"].keys():
-            allowed = False
-            for allowed_split in self.transforms_config["partition"]["allowed_partitions"]:
-                if (from_onnx_op_type(allowed_split[0]) == self.partitions[partition_index].graph.nodes[input_node]["type"] and 
-                    from_onnx_op_type(allowed_split[1]) == self.partitions[partition_index].graph.nodes[next_node]["type"]):
-                    allowed = True
-                    break
-            if not allowed:
-                return _iterate_graph(edge_list,next_node,in_parallel_block) 
+        # if "allowed_partitions" in self.transforms_config["partition"].keys():
+        #     allowed = False
+        #     for allowed_split in self.transforms_config["partition"]["allowed_partitions"]:
+        #         if (from_onnx_op_type(allowed_split[0]) == self.partitions[partition_index].graph.nodes[input_node]["type"] and 
+        #             from_onnx_op_type(allowed_split[1]) == self.partitions[partition_index].graph.nodes[next_node]["type"]):
+        #             allowed = True
+        #             break
+        #     if not allowed:
+        #         return _iterate_graph(edge_list,next_node,in_parallel_block) 
         # append to partition list
         if not in_parallel_block:
             edge_list.append((input_node,next_node))
@@ -281,7 +281,7 @@ def merge_complete(self):
 def apply_random_partition(self, partition_index):
    # choose randomly between merge or split
     ## split partition
-    transform_type = random.choice(self.transforms_config["partition"]["allowed_type"])
+    transform_type = random.choice(["split", "merge"])
     if transform_type == 'split':
         ## get all possible splits
         horizontal_splits = self.get_all_horizontal_splits(partition_index)

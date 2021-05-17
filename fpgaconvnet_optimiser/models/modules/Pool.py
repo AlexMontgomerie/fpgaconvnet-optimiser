@@ -18,7 +18,7 @@ class Pool(Module):
             rows: int,
             cols: int,
             channels: int,
-            k_size: Union(List[int],int),
+            k_size: Union[List[int],int],
             pool_type='max',
             data_width=16
         ):

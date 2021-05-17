@@ -25,8 +25,8 @@ class SlidingWindow(Module):
             rows: int,
             cols: int,
             channels: int,
-            k_size: Union(List[int],int),
-            stride: Union(List[int],int),
+            k_size: Union[List[int],int],
+            stride: Union[List[int],int],
             pad_top: int,
             pad_right: int,
             pad_bottom: int,
@@ -178,21 +178,21 @@ class SlidingWindow(Module):
         line_size = ((self.cols+self.pad_left+self.pad_right)*self.channels+1)
         bram_line_buffer = 0
         if line_size*self.data_width >= 512:
-            bram_line_buffer_data = (self.k_size-1)*math.ceil(line_size*data_width/18000)
-            bram_line_buffer_addr = (self.k_size-1)*math.ceil(math.log(line_size,2))
+            bram_line_buffer_data = (self.k_size[0]-1)*math.ceil(line_size*data_width/18000)
+            bram_line_buffer_addr = (self.k_size[0]-1)*math.ceil(math.log(line_size,2))
             bram_line_buffer = max(bram_line_buffer_data, bram_line_buffer_addr)
             #bram_line_buffer = bram_line_buffer_data
         # frame buffer
         frame_size = (self.channels+1)
         bram_frame_buffer = 0
         if frame_size*self.data_width >= 512:
-            bram_frame_buffer_data = self.k_size*(self.k_size-1)*math.ceil(frame_size*data_width/18000)
-            bram_frame_buffer_addr = self.k_size*(self.k_size-1)*math.ceil(math.log(frame_size,2))
+            bram_frame_buffer_data = self.k_size[0]*(self.k_size[1]-1)*math.ceil(frame_size*data_width/18000)
+            bram_frame_buffer_addr = self.k_size[0]*(self.k_size[1]-1)*math.ceil(math.log(frame_size,2))
             bram_frame_buffer = max(bram_frame_buffer_data, bram_frame_buffer_addr)
             #bram_frame_buffer = bram_frame_buffer_data
         return {
           "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : bram_line_buffer+bram_frame_buffer + self.k_size*self.k_size,
+          "BRAM" : bram_line_buffer+bram_frame_buffer + self.k_size[0]*self.k_size[1],
           "DSP"  : 0,
           "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
