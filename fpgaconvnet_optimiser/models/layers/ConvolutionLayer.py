@@ -26,10 +26,17 @@ class ConvolutionLayer(Layer):
             groups: int = 1,
             pad: Union[List[int], int] = 0,
             fine: int  = 1,
+            data_width: int = 16,
+            weight_width: int = 8,
+            acc_width: int = 30
         ):
 
         # initialise parent class
-        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out],data_width=data_width)
+
+        # save the widths
+        self.weight_width = weight_width
+        self.acc_width = acc_width
 
         # update flags
         self.flags["channel_dependant"] = True
@@ -164,11 +171,13 @@ class ConvolutionLayer(Layer):
         self.modules['sliding_window'].rows     = self.rows_in()
         self.modules['sliding_window'].cols     = self.cols_in()
         self.modules['sliding_window'].channels = int(self.channels_in()/self.coarse_in*self.coarse_group)
+        self.modules['sliding_window'].data_width = self.data_width
         # fork
         self.modules['fork'].rows     = self.rows_out()
         self.modules['fork'].cols     = self.cols_out()
         self.modules['fork'].channels = int(self.channels_in()/self.coarse_in*self.coarse_group)
         self.modules['fork'].coarse   = self.coarse_out
+        self.modules['fork'].data_width = self.data_width
         # conv
         self.modules['conv'].rows     = self.rows_out()
         self.modules['conv'].cols     = self.cols_out()
@@ -176,18 +185,22 @@ class ConvolutionLayer(Layer):
         self.modules['conv'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
         self.modules['conv'].fine     = self.fine
         self.modules['conv'].groups   = int(self.groups/self.coarse_group)
+        self.modules['conv'].data_width = self.data_width
+        self.modules['conv'].weight_width = self.weight_width
         # accum
         self.modules['accum'].rows     = self.rows_out()
         self.modules['accum'].cols     = self.cols_out()
         self.modules['accum'].channels = int(self.channels_in()/(self.coarse_in*self.coarse_group))
         self.modules['accum'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
         self.modules['accum'].groups   = int(self.groups/self.coarse_group)
+        self.modules['accum'].data_width = self.acc_width
         # glue
         self.modules['glue'].rows       = self.rows_out()
         self.modules['glue'].cols       = self.cols_out()
         self.modules['glue'].filters    = int(self.filters/self.coarse_group)
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
+        self.modules['glue'].data_width = self.acc_width
 
     ### RATES ###
     def rates_graph(self):
@@ -249,8 +262,6 @@ class ConvolutionLayer(Layer):
 
     def resource(self):
 
-        weight_width = 8
-
         sw_rsc      = self.modules['sliding_window'].rsc()
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
@@ -269,7 +280,7 @@ class ConvolutionLayer(Layer):
         # weight usage
         n_filters = float(self.filters/self.groups*self.channels_in()*self.k_size[0]*self.k_size[1]) / \
             float(self.fine*self.coarse_in*self.coarse_out*self.coarse_group)
-        weights_bram_usage = int(math.ceil((weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.coarse_group*self.fine
+        weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.coarse_group*self.fine
 
         # Total
         return {

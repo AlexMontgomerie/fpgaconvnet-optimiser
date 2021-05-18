@@ -11,10 +11,12 @@ class SqueezeLayer(Layer):
             channels: int,
             coarse_in: int,
             coarse_out: int,
+            data_width: int = 16,
         ):
 
         # initialise parent class
-        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out],
+                data_width=data_width)
 
         self.coarse_in = coarse_in
         self.coarse_out = coarse_out
@@ -38,7 +40,7 @@ class SqueezeLayer(Layer):
     ## UPDATE MODULES ##
     def update(self):
         pass
-    
+
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
         parameters.batch_size   = batch_size
@@ -55,7 +57,7 @@ class SqueezeLayer(Layer):
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
-    
+
         # add squeeze module
         cluster.add_node(pydot.Node( "_".join([name,"squeeze"]), label="squeeze" ))
 

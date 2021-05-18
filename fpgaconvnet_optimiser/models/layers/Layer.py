@@ -22,9 +22,9 @@ class Layer:
             channels: List[int],
             coarse_in: List[int],
             coarse_out: List[int],
-            ports_in=1,
-            ports_out=1,
-            data_width=16
+            ports_in: int = 1,
+            ports_out: int = 1,
+            data_width: int = 16
         ):
         """
         Parameters

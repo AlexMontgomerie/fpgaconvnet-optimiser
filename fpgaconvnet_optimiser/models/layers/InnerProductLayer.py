@@ -19,10 +19,18 @@ class InnerProductLayer(Layer):
             channels: int,
             coarse_in: int = 1,
             coarse_out: int = 1,
+            data_width: int = 16,
+            weight_width: int = 8,
+            acc_width: int = 30
         ):
 
         # initialise parent class
-        super().__init__([rows], [cols], [channels], [coarse_in], [coarse_out])
+        super().__init__([rows], [cols], [channels], [coarse_in],
+                [coarse_out], data_width=data_width)
+
+        # save the widths
+        self.weight_width = weight_width
+        self.acc_width = acc_width
 
         # update flags
         self.flags['channel_dependant'] = True
@@ -53,7 +61,7 @@ class InnerProductLayer(Layer):
 
     def channels_out(self, port_index=0):
         assert port_index == 0, "inner product layers are only allowed a single port"
-        return self.filters 
+        return self.filters
 
     def rate_in(self, port_index=0):
         assert port_index == 0, "inner product layers are only allowed a single port"
@@ -119,10 +127,10 @@ class InnerProductLayer(Layer):
         self.modules['glue'].coarse_out = self.coarse_out
 
     ### RATES ###
-    def rates_graph(self): 
-        rates_graph = np.zeros( shape=(4,5) , dtype=float ) 
-        # fork 
-        rates_graph[0,0] = self.modules['fork'].rate_in() 
+    def rates_graph(self):
+        rates_graph = np.zeros( shape=(4,5) , dtype=float )
+        # fork
+        rates_graph[0,0] = self.modules['fork'].rate_in()
         rates_graph[0,1] = self.modules['fork'].rate_out()
         # conv
         rates_graph[1,1] = self.modules['conv'].rate_in()
@@ -135,21 +143,19 @@ class InnerProductLayer(Layer):
         rates_graph[3,4] = self.modules['glue'].rate_out()
 
         return rates_graph
- 
+
     def get_weights_reloading_feasible(self):
         return self.get_factors(int(self.filters/self.coarse_out))
- 
+
     def get_parameters_size(self):
-        weights_size = self.channels[0] * self.filters  
+        weights_size = self.channels[0] * self.filters
         bias_size = 0
         return {
             "weights"   : weights_size,
             "bias"      : bias_size
         }
-  
-    def resource(self):
 
-        weight_width = 8
+    def resource(self):
 
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
@@ -162,7 +168,7 @@ class InnerProductLayer(Layer):
 
         # TODO: add to modules instead
         n_filters = float(self.filters*self.channels_in()*self.rows_in()*self.cols_in())/float(self.coarse_in*self.coarse_out)
-        weights_bram_usage = int(math.ceil(weight_width*n_filters/18000))*self.coarse_in*self.coarse_out
+        weights_bram_usage = int(math.ceil(self.weight_width*n_filters/18000))*self.coarse_in*self.coarse_out
 
         # Total
         return {
@@ -218,18 +224,18 @@ class InnerProductLayer(Layer):
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
         assert weights.shape[1] == self.rows_in()*self.cols_in()*self.channels_in(), "ERROR (weights): invalid channel dimension"
 
-        
+
         # instantiate inner product layer
         inner_product_layer = torch.nn.Linear(self.channels_in()*self.rows_in()*self.cols_in(), self.filters, bias=False)
-        
+
         # update weights
         inner_product_layer.weight = torch.nn.Parameter(torch.from_numpy(weights))
-        
+
         # update bias
         inner_product_layer.bias = torch.nn.Parameter(torch.from_numpy(bias))
-        
+
         # return output featuremap
         data = np.moveaxis(data, -1, 0).flatten()
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return inner_product_layer(torch.from_numpy(data)).detach().numpy()
 

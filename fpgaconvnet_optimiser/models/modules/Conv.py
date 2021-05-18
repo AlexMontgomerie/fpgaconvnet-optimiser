@@ -47,7 +47,7 @@ class Conv(Module):
         filters: int
             output channel dimension of the featuremap.
         fine: int
-            
+
         rows: int
             row dimension of input featuremap
         cols: int
@@ -55,10 +55,10 @@ class Conv(Module):
         channels: int
             channel dimension of input featuremap
         data_width: int
-            bitwidth of featuremap pixels (default is 16) 
+            bitwidth of featuremap pixels (default is 16)
         rsc_coef: list
             list of resource model coefficients. Corresponds
-            to `LUT`, `BRAM`, `DSP` and `FF` resources in 
+            to `LUT`, `BRAM`, `DSP` and `FF` resources in
             that order.
         """
 
@@ -112,7 +112,7 @@ class Conv(Module):
         return self.fine/float(self.k_size[0]*self.k_size[1])
 
     def pipeline_depth(self):
-        return self.fine 
+        return self.fine
 
     def module_info(self):
         return {

@@ -13,8 +13,6 @@ class BatchNormLayer(Layer):
             coarse_in   =1,
             coarse_out  =1,
             data_width  =16,
-            sa          =0.5,
-            sa_out      =0.5
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
 
@@ -50,9 +48,9 @@ class BatchNormLayer(Layer):
     def resource(self):
 
         bn_rsc      = self.modules['batch_norm'].rsc()
-        n_filters = float(self.channels) / float(self.coarse_in)                         
+        n_filters = float(self.channels) / float(self.coarse_in)
         weights_bram_usage = int(math.ceil((2*self.data_width*n_filters)/18000))*self.coarse_in
-        
+
         # Total
         return {
             "LUT"  :  bn_rsc['LUT']*self.coarse_in,
@@ -60,10 +58,10 @@ class BatchNormLayer(Layer):
             "BRAM" :  bn_rsc['BRAM']*self.coarse_in+weights_bram_usage,
             "DSP" :   bn_rsc['DSP']*self.coarse_in
         }
-   
+
     def functional_model(self,data,gamma,beta,batch_size=1):
 
-        
+
         assert data.shape[0] == self.rows    , "ERROR (data): invalid row dimension"
         assert data.shape[1] == self.cols    , "ERROR (data): invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR (data): invalid channel dimension"
@@ -72,10 +70,10 @@ class BatchNormLayer(Layer):
         assert beta.shape[0]  == self.channels , "ERROR (weights): invalid filter dimension"
 
         # instantiate batch norm layer
-        batch_norm_layer = torch.nn.BatchNorm2d(self.channels, track_running_stats=False) 
+        batch_norm_layer = torch.nn.BatchNorm2d(self.channels, track_running_stats=False)
 
         # return output featuremap
         data = np.moveaxis(data, -1, 0)
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return batch_norm_layer(torch.from_numpy(data))
 
