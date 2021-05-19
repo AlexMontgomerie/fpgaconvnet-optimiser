@@ -6,7 +6,8 @@
   "LUT"  : 218600,
   "freq"          : 150000000,
   "reconf_time"   : 0.08255,
-  "mem_bandwidth" : 16,
+  "mem_bandwidth" : 9.6,
+  "comm_bandwidth": 0.956,
   "mem_capacity"  : 1024000000,
   "ports"         : 2,
   "port_width"    : 64

@@ -7,7 +7,8 @@
   "freq"          : 150000000,
   "reconf_time"   : 0.08255,
   "mem_bandwidth" : 16,
-  "mem_capacity"      : 512000000,
+  "comm_bandwidth": 256,
+  "mem_capacity"  : 512000000,
   "ports"         : 4,
   "port_width"    : 64
 }
