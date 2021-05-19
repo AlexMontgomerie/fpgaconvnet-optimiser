@@ -21,7 +21,7 @@ class PoolingLayer(Layer):
             pad         =0,
             fine        =1
         ):
-       
+
         # initialise parent class
         super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
@@ -38,18 +38,22 @@ class PoolingLayer(Layer):
         self.pad_left   = pad
         self.fine       = fine
         self.pool_type  = pool_type
- 
+
         if pool_type == 'max':
             self.fine = self.k_size * self.k_size
 
         # init modules
         self.modules = {
-            "sliding_window" : SlidingWindow(self.rows_in(0), self.cols_in(0), self.channels_in(0), 
+            "sliding_window" : SlidingWindow(self.rows_in(0), self.cols_in(0), self.channels_in(0),
                 k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width),
             "pool"           : Pool(self.rows_in(0), self.cols_in(0), self.channels_in(0), k_size)
         }
         self.update()
         #self.load_coef()
+
+        # switching activity
+        self.sa     = sa
+        self.sa_out = sa_out
 
     def rows_out(self, port_index):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
@@ -62,7 +66,7 @@ class PoolingLayer(Layer):
     def rate_in(self, port_index):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
-    
+
     def rate_out(self, port_index):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return abs(self.balance_module_rates(self.rates_graph())[1,2])
@@ -88,7 +92,7 @@ class PoolingLayer(Layer):
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
-  
+
     ## UPDATE MODULES ##
     def update(self):
         # sliding window
@@ -113,13 +117,13 @@ class PoolingLayer(Layer):
         return rates_graph
 
     def get_fine_feasible(self):
-        return [1] 
+        return [1]
 
     def resource(self):
 
         sw_rsc      = self.modules['sliding_window'].rsc()
         pool_rsc    = self.modules['pool'].rsc()
-        
+
         # Total
         return {
             "LUT"  :  sw_rsc['LUT']*self.coarse_in[0] +
@@ -156,8 +160,8 @@ class PoolingLayer(Layer):
 
         # instantiate pooling layer
         pooling_layer = torch.nn.MaxPool2d(self.k_size, stride=self.stride, padding=self.pad)
-        
+
         # return output featuremap
         data = np.moveaxis(data, -1, 0)
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return pooling_layer(torch.from_numpy(data)).detach().numpy()
