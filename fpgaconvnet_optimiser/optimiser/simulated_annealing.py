@@ -70,6 +70,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 self.update_partitions()
 
                 try:
+                    #self.validate_network()
                     self.check_resources()
                     self.check_constraints()
                     break
@@ -123,7 +124,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
             # Check resources
             try: 
-                self.check_resources()
+                self.validate_network()
                 self.check_constraints()
             except AssertionError:
                 # revert to previous state

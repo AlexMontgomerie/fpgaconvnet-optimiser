@@ -4,6 +4,10 @@ import copy
 import fpgaconvnet_optimiser.tools.graphs as graphs
 import fpgaconvnet_optimiser.tools.matrix as matrix
 
+def validate_network(self):
+    self.check_resources()
+    self.check_memory_bandwidth()
+    self.check_communication_bandwidth()
 
 def check_ports(self):
     # check each partition
@@ -72,3 +76,14 @@ def check_memory_bandwidth(self):
         bandwidth_out = partition.get_bandwidth_out(self.platform["freq"])
         # check within platform memory bounds
         assert (bandwidth_in+bandwidth_out) <= mem_bw, "Required memory bandwidth is greater than memory bandwidth"
+
+def check_communication_bandwidth(self):
+    # get memory bandwidth
+    comm_bw = self.platform["comm_bandwidth"]
+    # iterate over partitions
+    for partition in self.partitions:
+        # get bandwidth in and out
+        bandwidth_in = partition.get_bandwidth_in(self.platform["freq"])
+        bandwidth_out = partition.get_bandwidth_out(self.platform["freq"])
+        # check within platform memory bounds
+        assert (bandwidth_in+bandwidth_out) <= comm_bw, "Required bandwidth is greater than communication bandwidth"

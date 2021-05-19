@@ -64,7 +64,7 @@ class Improve(Optimiser):
         start = False
 
         try: 
-            self.check_resources()
+            self.validate_network()
             self.check_constraints()
             start = True
         except AssertionError as error:
@@ -78,14 +78,15 @@ class Improve(Optimiser):
                 self.update_partitions()
 
                 try:
-                    self.check_resources()
+                    self.validate_network()
+                    #self.check_resources()
                     self.check_constraints()
                     break
                 except AssertionError as error:
                     pass
 
         try: 
-            self.check_resources()
+            self.validate_network()
             self.check_constraints()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
@@ -134,7 +135,7 @@ class Improve(Optimiser):
 
             # Check resources
             try: 
-                self.check_resources()
+                self.validate_network()
                 self.check_constraints()
             except AssertionError:
                 # revert to previous state
