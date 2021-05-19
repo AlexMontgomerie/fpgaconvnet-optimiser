@@ -396,7 +396,7 @@ def add_dimensions(model, graph):
         # find previous node
         prev_nodes = graphs.get_prev_nodes(graph, node)
         for prev_node in prev_nodes: # TODO: support parallel networks
-            print("add_dimensions() prev_node:", node)
+            print("add_dimensions() prev_node:", prev_node)
             # get previous node output dimensions
             dim = onnx_helper._out_dim(model, prev_node)
             # update input dimensions
