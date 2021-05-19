@@ -1,6 +1,9 @@
 import json
 import datetime
 import numpy as np
+import csv
+import os
+import math
 
 def create_report(self, output_path):
     # create report dictionary
@@ -67,4 +70,23 @@ def create_report(self, output_path):
     with open(output_path,"w") as f:
         json.dump(report,f,indent=2)
 
+
+def create_csv_report(self,output_path):
+    with open(output_path+"/summary.csv", 'a', newline='') as file:
+        fieldnames = ['Cluster Size', 'Throughput(actual)','Throughput(interval)','Latency','Reconfiguration Time','DSP','BRAM','MaxBandwidthIn','MaxBandwidthOut','MaxBandwidth','MemoryEstimate','NumPartitions']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        if os.path.getsize(output_path+"/summary.csv")==0:
+            writer.writeheader()
+        writer.writerow({'Cluster Size':len(self.cluster),                  
+                         'Throughput(actual)':self.get_throughput(),
+                         'Throughput(interval)':self.get_multi_fpga_throughput(),
+                         'Latency':self.get_latency(),
+                         'Reconfiguration Time':(math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"],
+                         'DSP':max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ]),
+                         'BRAM':max([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ]),
+                         'MaxBandwidthIn':max([partition.get_bandwidth_in(self.platform["freq"]) for partition in self.partitions]),
+                         'MaxBandwidthOut':max([partition.get_bandwidth_out(self.platform["freq"]) for partition in self.partitions]),
+                         'MaxBandwidth':max([partition.get_bandwidth_in(self.platform["freq"])+partition.get_bandwidth_out(self.platform["freq"]) for partition in self.partitions]),
+                         'MemoryEstimate':self.get_memory_usage_estimate(),
+                         'NumPartitions':len(self.partitions)})
 

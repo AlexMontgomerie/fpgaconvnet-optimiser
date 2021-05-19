@@ -70,6 +70,8 @@ def update_platform(self, platform_path):
     self.platform['reconf_time']    = float(platform['reconf_time'])
     self.platform['mem_capacity']   = int(platform['mem_capacity'])
     self.platform['mem_bandwidth']  = float(platform['mem_bandwidth'])
+    self.platform['comm_bandwidth']  = float(platform['comm_bandwidth'])
+
 
     # update constraints
     self.platform['constraints']['FF']   = platform['FF']
