@@ -18,3 +18,8 @@ onnx/
 .eggs/
 
 docs/fpgaconvnet_optimiser/
+
+build/
+dist/
+
+**.pyc

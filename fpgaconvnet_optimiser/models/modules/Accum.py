@@ -13,6 +13,7 @@ their accumulation across channels.
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
 
 class Accum(Module):
     def __init__(
@@ -30,6 +31,10 @@ class Accum(Module):
         # init variables
         self.filters = filters
         self.groups  = groups
+
+        # load resource coefficients
+        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+            "../../coefficients/accum_rsc_coef.npy"))
 
     def utilisation_model(self):
         return [
@@ -71,8 +76,9 @@ class Accum(Module):
         #bram_input_buffer = math.ceil( ((self.channels*self.filters+1)*self.data_width)/18000)
         #bram_acc_buffer   = math.ceil( ((self.groups*self.filters+1)*self.data_width)/18000)
         bram_acc_buffer_size =  ((self.filters/self.groups)*(self.channels/self.groups)+1)*self.data_width
-        #if bram_acc_buffer_size >= 512:
-        bram_acc_buffer = math.ceil( (bram_acc_buffer_size)/18000) 
+        bram_acc_buffer = 0
+        if bram_acc_buffer_size >= 512:
+            bram_acc_buffer = math.ceil( (bram_acc_buffer_size)/18000) 
         return {
           "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : bram_acc_buffer,

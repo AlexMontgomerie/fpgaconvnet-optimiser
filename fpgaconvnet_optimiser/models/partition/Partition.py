@@ -34,10 +34,15 @@ class Partition():
         self.size_out   = 0
         self.size_wr    = 0
 
-        ## bitwidths
+        ## bitwidths (TODO: add as parameters)
+        self.port_width     = 64
         self.data_width     = 16
         self.weight_width   = 8
         self.acc_width      = 30 
+
+        # maximum streams in and out (TODO: turn into function calls)
+        self.max_streams_in     = self.ports_in*int(self.port_width/self.data_width)
+        self.max_streams_out    = self.ports_out*int(self.port_width/self.data_width)
 
         # update model coefficients
         self.update_coefficients()
@@ -69,8 +74,6 @@ class Partition():
 
     ## coarse transform
     from fpgaconvnet_optimiser.transforms.coarse import apply_random_coarse_layer
-    from fpgaconvnet_optimiser.transforms.coarse import apply_max_coarse
-    from fpgaconvnet_optimiser.transforms.coarse import apply_max_coarse_layer
     from fpgaconvnet_optimiser.transforms.coarse import fix_coarse
 
     # auxiliary layer functions
@@ -81,7 +84,10 @@ class Partition():
     from fpgaconvnet_optimiser.models.partition.metrics import get_pipeline_depth
     from fpgaconvnet_optimiser.models.partition.metrics import get_interval
     from fpgaconvnet_optimiser.models.partition.metrics import get_latency
-    
+    from fpgaconvnet_optimiser.models.partition.metrics import get_total_operations
+    from fpgaconvnet_optimiser.models.partition.metrics import get_bandwidth_in
+    from fpgaconvnet_optimiser.models.partition.metrics import get_bandwidth_out
+
     # update
     from fpgaconvnet_optimiser.models.partition.update import update_modules
     from fpgaconvnet_optimiser.models.partition.update import update_coefficients

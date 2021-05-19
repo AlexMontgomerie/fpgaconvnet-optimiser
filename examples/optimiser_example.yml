@@ -7,7 +7,7 @@ transforms:
         apply_transform: true
         probability: 0.25
     weights_reloading:
-        apply_transform: true
+        apply_transform: true 
         probability: 0.25
         start_max: true
     partition:
@@ -17,6 +17,6 @@ transforms:
 annealing:
     T: 10.0
     T_min: 0.00001
-    k: 0.1
-    cool: 0.97
+    k: 0.01
+    cool: 0.98
     iterations: 50

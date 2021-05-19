@@ -35,6 +35,9 @@ message layer {
     repeated stream streams_out = 3;
     required parameter parameters = 7;
 
+    required string node_in = 8;
+    required string node_out = 9;
+
     enum layer_type {
         CONVOLUTION     = 0;
         POOLING         = 1;
