@@ -81,7 +81,7 @@ class Network():
         self.cluster = {0: 
                             {
                                 "name":"platform_1",
-                                "specification":self.platform,
+                                "platform":self.platform,
                                 "id":1,
                                 "connections_out":[0],
                                 "connections_in":[0]

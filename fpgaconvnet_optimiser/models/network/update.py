@@ -106,7 +106,7 @@ def update_cluster(self, cluster_path):
         temp_platform['connections_in']     = platform['connections_in']
         temp_platform['connections_out']    = platform['connections_out']
         temp_platform['name']               = platform_specification['name']+"_{id:03d}".format(id=temp_platform['id'])
-        temp_platform['specification']      = platform_specification
+        temp_platform['platform']           = platform_specification
         self.cluster[len(self.cluster)]   = copy.deepcopy(temp_platform)
 
 
