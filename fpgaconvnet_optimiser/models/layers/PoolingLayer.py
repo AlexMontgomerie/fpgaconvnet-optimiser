@@ -19,7 +19,7 @@ class PoolingLayer(Layer):
             k_size      =2,
             stride      =2,
             pad         =0,
-            fine        =1
+            fine        =1,
         ):
 
         # initialise parent class
