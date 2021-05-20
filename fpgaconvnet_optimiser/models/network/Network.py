@@ -212,9 +212,9 @@ class Network():
             # return the latency (in seconds)
             wr_factor   = partition.wr_factor
             size_wr     = partition.size_wr
-            latency += (pipeline_depth*wr_factor + (wr_factor-1)*size_wr)/(freq*1000000)
-            if max_interval < interval*wr_factor:
-                max_interval=interval*wr_factor
+            latency += (pipeline_depth*wr_factor + (wr_factor-1)*(size_wr+batch_size*interval))/(freq*1000000)
+            if max_interval < interval:
+                max_interval = interval
         latency+=max_interval*batch_size/(freq*1000000)
         
         return latency
