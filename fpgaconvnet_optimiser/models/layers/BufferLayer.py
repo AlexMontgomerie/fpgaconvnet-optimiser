@@ -104,11 +104,11 @@ class BufferLayer(Layer):
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
-        for i in range(self.coarse_in):
+        for i in range(self.coarse_in[0]):
             cluster.add_node(pydot.Node( "_".join([name,"buff",str(i)]), label="buff" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"buff",str(i)]) for i in range(self.coarse_in) ]
+        nodes_in  = [ "_".join([name,"buff",str(i)]) for i in range(self.coarse_in[0]) ]
         nodes_out = nodes_in
 
         return cluster, nodes_in, nodes_out

@@ -49,7 +49,8 @@ class Network():
         self.fuse_bn = fuse_bn
 
         # load network
-        self.model, self.graph = parser.parse_net(network_path, view=False,
+        self.model, self.submodels, self.graph, self.ctrledges =\
+                parser.parse_net(network_path, view=False,
                 data_width=self.data_width, weight_width=self.weight_width,
                 acc_width=self.acc_width, fuse_bn=self.fuse_bn)
 
@@ -62,7 +63,7 @@ class Network():
         self.workload_matrix    = matrix.get_workload_matrix(self.graph)
 
         # partitions
-        self.partitions = [ Partition(copy.deepcopy(self.graph),
+        self.partitions = [ Partition(copy.deepcopy(self.graph), self.ctrledges,
                 data_width=self.data_width, weight_width=self.weight_width,
                 acc_width=self.acc_width) ]
 

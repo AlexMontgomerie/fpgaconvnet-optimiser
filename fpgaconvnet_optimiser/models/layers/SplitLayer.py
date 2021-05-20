@@ -107,18 +107,10 @@ class SplitLayer(MultiPortLayer):
         self._coarse_out = [val]
         self.update()
 
-    def rows_out(self, port_index=0) -> int:
-        return self.rows[0]
-
-    def cols_out(self, port_index=0) -> int:
-        return self.cols[0]
-
-    def channels_out(self, port_index=0) -> int:
-        return self.channels[0]
-
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)
         parameters.coarse = self.coarse
+        parameters.ports_out = self.ports_out
 
     def update(self):
         # fork
@@ -161,16 +153,9 @@ class SplitLayer(MultiPortLayer):
 #        for i in range(self.ports_out):
 #            self.coarse_out[0] = self.coarse
 #
-#        ### RATES ###
-#    def rates_graph(self):
-#        rates_graph = np.zeros( shape=(1,2) , dtype=float)
-#        # fork
-#        rates_graph[0,0] = self.modules['fork'].rate_in(0)
-#        rates_graph[0,1] = self.modules['fork'].rate_out(0)
-#
-#        return rates_graph
-#
 #>>>>>>> b273d34... started split layer (#26)
+#>>>>>>> c10e653... fixing MIMO layers to produce workload correctly
+
     def resource(self):
 
         # get module resources

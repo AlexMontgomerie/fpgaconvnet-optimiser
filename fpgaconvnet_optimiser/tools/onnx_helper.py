@@ -180,10 +180,14 @@ def get_model_value_info(model, name, submodels=[]):
             if _format_name(subnode.name) == name: # formatted match
                 return subnode
 
-def get_model_input(model, name):
+def get_model_input(model, name, submodels=[]):
     for node in model.graph.input:
         if node.name == name: # exact match
             return node
+    for sm in submodels: #look through submodels
+        for subnode in sm.g.value_info: #g used in subgraphs for graph
+            if subnode.name == name: # exact match
+                return subnode
 
 def get_model_output(model, name, submodels=[]):
     for node in model.graph.output:
@@ -194,13 +198,20 @@ def get_model_output(model, name, submodels=[]):
             if _format_name(subnode.name) == name: # formatted match
                 return subnode
 
-def get_model_initializer(model, name, to_tensor=True):
+def get_model_initializer(model, name, submodels=[], to_tensor=True):
     for node in model.graph.initializer: #works with subgraphs
         if node.name == name: # exact match
             if to_tensor:
                 return onnx.numpy_helper.to_array(node)
             else:
                 return node
+    for sm in submodels: #look through submodels
+        for subnode in sm.g.output: #g used in subgraphs for graph
+            if subnode.name == name: # exact match
+                if to_tensor:
+                    return onnx.numpy_helper.to_array(subnode)
+                else:
+                    return subnode
 
 def _format_attr(attribute):
     attr_out = {}

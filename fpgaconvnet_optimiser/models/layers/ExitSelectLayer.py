@@ -22,6 +22,7 @@ class ExitSelectLayer(Layer):
             coarse_in: int,
             coarse_out: int,
             ctrledge: str,
+            ports_in    = 2,
             data_width  =16,
         ):
         # initialise parent class
@@ -35,6 +36,7 @@ class ExitSelectLayer(Layer):
         #index 0 is then_branch, index 1 is else_branch
         #ctrledge links to exit condition layer
         self.ctrledge = ctrledge
+        self.ports_in = ports_in
 
         #init modules
         self.modules = {
@@ -83,15 +85,15 @@ class ExitSelectLayer(Layer):
     def visualise(self,name): #TODO replace 'mod' with actual modules used
         cluster = pydot.Cluster(name,label=name)
 
-        for i in range(self.coarse_in):
+        for i in range(self.coarse_in[0]):
             cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
 
-        for i in range(self.coarse_out):
+        for i in range(self.coarse_out[0]):
             cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_in) ]
-        nodes_out = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_out) ]
+        nodes_in  = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_in[0]) ]
+        nodes_out = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_out[0]) ]
 
         return cluster, nodes_in, nodes_out
 
