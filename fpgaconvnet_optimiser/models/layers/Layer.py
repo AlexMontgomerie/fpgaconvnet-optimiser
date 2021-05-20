@@ -8,6 +8,7 @@ import sys
 from typing import List
 from functools import reduce
 import pydot
+import collections
 from google.protobuf.json_format import MessageToDict
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
 
@@ -91,7 +92,7 @@ class Layer:
         self.data_width = data_width
 
         # init modules
-        self.modules = {}
+        self.modules = collections.OrderedDict()
 
         # power and resource model coefficients
         self.static_coef  = {}
@@ -106,7 +107,7 @@ class Layer:
             row dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.rows[port_index]
+        return self.modules[next(iter(self.modules))].rows_in()
 
     def cols_in(self, port_index=0):
         """
@@ -116,7 +117,7 @@ class Layer:
             column dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.cols[port_index]
+        return self.modules[next(iter(self.modules))].cols_in()
 
     def channels_in(self, port_index=0):
         """
@@ -126,7 +127,7 @@ class Layer:
             channel dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.channels[port_index]
+        return self.modules[next(iter(self.modules))].channels_in()
 
     def rows_out(self, port_index=0):
         """
@@ -136,7 +137,7 @@ class Layer:
             row dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.rows[port_index]
+        return self.modules[next(reversed(self.modules))].rows_out()
 
     def cols_out(self, port_index=0):
         """
@@ -146,7 +147,7 @@ class Layer:
             column dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.cols[port_index]
+        return self.modules[next(reversed(self.modules))].cols_out()
 
     def channels_out(self, port_index=0):
         """
@@ -156,7 +157,7 @@ class Layer:
             channel dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.channels[port_index]
+        return self.modules[next(reversed(self.modules))].channels_out()
 
     def rate_in(self, port_index=0):
         """
@@ -174,7 +175,7 @@ class Layer:
             default is 1.0
         """
         assert(port_index < self.ports_in)
-        return 1.0
+        return abs(self.balance_module_rates(self.rates_graph()[0,0]))
 
     def rate_out(self, port_index=0):
         """
@@ -192,7 +193,8 @@ class Layer:
             default is 1.0
         """
         assert(port_index < self.ports_out)
-        return 1.0
+        return abs(self.balance_module_rates(
+            self.rates_graph()[len(self.modules.keys())-1,len(self.modules.keys())]))
 
     def streams_in(self, port_index=0):
         """
