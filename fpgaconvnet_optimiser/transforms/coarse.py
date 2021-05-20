@@ -37,7 +37,7 @@ def apply_random_coarse_layer(self, layer):
     ## coarse in
     if coarse_type == 'coarse_in':
         # get all feasible coarse in
-        coarse_in_feasible = self.graph.nodes[layer]['hw'].get_coarse_in_feasible()
+        coarse_in_feasible = self.graph.nodes[layer]['hw'].get_coarse_in_feasible(0)
         # if input layer, make sure streams aren't too large 
         if layer in graphs.get_input_nodes(self.graph):
             coarse_in_feasible = [ x for x in coarse_in_feasible if x <= self.max_streams_in ]
@@ -48,7 +48,7 @@ def apply_random_coarse_layer(self, layer):
     ## coarse out
     if coarse_type == 'coarse_out':
         # get all feasible coarse out 
-        coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()
+        coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible(0)
         # if output layer, make sure streams aren't too large 
         if layer in graphs.get_output_nodes(self.graph):
             coarse_out_feasible = [ x for x in coarse_out_feasible if x <= self.max_streams_out ]
@@ -61,11 +61,11 @@ def fix_coarse(self):
     # iterate over layers
     for node in self.graph.nodes():
         # check if coarse in is greater than max feasible coarse in
-        coarse_in = self.graph.nodes[node]['hw'].coarse_in
-        coarse_in_max = self.graph.nodes[node]['hw'].get_coarse_in_feasible()[-1]
+        coarse_in = self.graph.nodes[node]['hw'].coarse_in[0]
+        coarse_in_max = self.graph.nodes[node]['hw'].get_coarse_in_feasible(0)[-1]
         self.graph.nodes[node]['hw'].update_coarse_in(min(coarse_in,coarse_in_max))
         # check if coarse out is greater than max feasible coarse out
-        coarse_out = self.graph.nodes[node]['hw'].coarse_out
-        coarse_out_max = self.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
+        coarse_out = self.graph.nodes[node]['hw'].coarse_out[0]
+        coarse_out_max = self.graph.nodes[node]['hw'].get_coarse_out_feasible(0)[-1]
         self.graph.nodes[node]['hw'].update_coarse_out(min(coarse_out,coarse_out_max))
             
