@@ -78,7 +78,7 @@ class Network():
             }
         }
         # cluster definition: if left empty the
-        self.cluster = {1: 
+        self.cluster = {0: 
                             {
                                 "name":"platform_1",
                                 "specification":self.platform,
