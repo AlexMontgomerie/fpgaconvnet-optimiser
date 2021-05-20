@@ -268,8 +268,8 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
                 k_size =attr["kernel_shape"][0],
                 stride =attr["strides"][0],
                 pad    =attr["pads"][0],
@@ -288,8 +288,8 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
             )
             continue
         # Pooling layer
@@ -305,8 +305,8 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
                 pool_type = 'max', # TODO: change so that it does AVG also
                 k_size =attr["kernel_shape"][0],
                 stride =attr["strides"][0],
@@ -320,8 +320,8 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
             )
             continue
         # BatchNorm Layer
@@ -330,8 +330,8 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
             )
             continue
         #top1 exit criterion layer
@@ -348,8 +348,8 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
                 ctrlout
             )
             continue
@@ -363,8 +363,8 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
                 ctrl_origin
             )
             continue
@@ -376,7 +376,13 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
         #split layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Split:
             #has input and minimum two outputs
-            #connect up the inputs and outputs - might be done thru graph
+            graph.nodes[name]['hw'] = SplitLayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse to 1
+                ports_out = 1, #initialise with 1
+            )
             continue
         #buffer layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Buffer:
@@ -389,8 +395,8 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 0
-                1, # initialise coarse out to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
                 ctrl_origin,
                 drop_mode=EE_flag
             )
