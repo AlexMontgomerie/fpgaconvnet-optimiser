@@ -9,16 +9,16 @@ from typing import List
 
 class Module:
     """
-    modules are the fundamental building block for the hardware 
+    modules are the fundamental building block for the hardware
     framework. In this base class, performance and resource model
-    templates are included, as well as a template for functional 
+    templates are included, as well as a template for functional
     models. All modules are derived from this base class and contain
-    the same methods. 
+    the same methods.
 
     .. note::
-        The model expects that the module is run for a single three 
-        dimensional featuremap. For intermediate modules within a layer, 
-        they may not be operating on a three dimensional tensor, and 
+        The model expects that the module is run for a single three
+        dimensional featuremap. For intermediate modules within a layer,
+        they may not be operating on a three dimensional tensor, and
         so the `rows`, `cols` and `channels` attributes are representative
         of the tensor if it was flattened to three dimensions.
     """
@@ -48,10 +48,10 @@ class Module:
         channels: int
             channel dimension of input featuremap
         data_width: int
-            bitwidth of featuremap pixels 
+            bitwidth of featuremap pixels
         rsc_coef: list
             list of resource model coefficients. Corresponds
-            to `LUT`, `BRAM`, `DSP` and `FF` resources in 
+            to `LUT`, `BRAM`, `DSP` and `FF` resources in
             that order.
         """
         # init variables
@@ -62,16 +62,19 @@ class Module:
         self.data_width = data_width
 
         # coefficients
-        self.rsc_coef = {}
-        rsc_types = ["FF","LUT","DSP","BRAM"]
-        for rsc_type in rsc_types:
-            self.rsc_coef[rsc_type] = np.load(os.path.join(os.path.dirname(__file__),
-                f"../../coefficients/{self.name}_{rsc_type.lower()}.npy"))
+        #self.rsc_coef = {}
+        #rsc_types = ["FF","LUT","DSP","BRAM"]
+        #for rsc_type in rsc_types:
+        #    self.rsc_coef[rsc_type] = np.load(os.path.join(os.path.dirname(__file__),
+        #        f"../../coefficients/{self.name}_{rsc_type.lower()}.npy"))
+        self.static_coef  = [ 0 ]
+        self.dynamic_coef = [ 0 ]
+        self.rsc_coef     = [ 0,0,0,0 ]
 
     def module_info(self):
         """
         creates a dictionary containing information and
-        parameters for the module. 
+        parameters for the module.
         """
         return {
             'type'      : self.__class__.__name__.upper(),
@@ -85,7 +88,7 @@ class Module:
 
     def load_coef(self,rsc_coef_path):
         """
-        loads coefficients of the module's resource 
+        loads coefficients of the module's resource
         and power models.
 
         Parameters
@@ -94,7 +97,7 @@ class Module:
             path to `.npy` file containing resource
             model coefficients.
         """
-        self.rsc_coef     = np.load(rsc_coef_path) 
+        self.rsc_coef     = np.load(rsc_coef_path)
 
     def utilisation_model(self):
         """
@@ -104,7 +107,7 @@ class Module:
             utilisation of resources model. Defaults
             to zero resources.
         """
- 
+
         return [0]
 
 
@@ -166,7 +169,7 @@ class Module:
         """
         Returns
         -------
-        float 
+        float
             rate of words into module. As a fraction of a
             clock cycle.
 
@@ -178,8 +181,8 @@ class Module:
         """
         Returns
         -------
-        float 
-            rate of words out of the module. As a fraction 
+        float
+            rate of words out of the module. As a fraction
             of a clock cycle.
 
             default is 1.0
@@ -190,10 +193,10 @@ class Module:
         """
         Returns
         -------
-        int 
-            calculates the number of clock cycles latency 
+        int
+            calculates the number of clock cycles latency
             it takes for the module to process a featuremap.
-            First latency in and latency out is calculated, 
+            First latency in and latency out is calculated,
             then the latency of the module is the largest of
             the two.
         """
@@ -205,19 +208,19 @@ class Module:
         """
         Returns
         -------
-        int 
+        int
            depth of the pipeline for the module in clock
            cycles.
 
            default is 0.
         """
-        return 0 
+        return 0
 
     def rsc(self):
         """
         Returns
         -------
-        dict 
+        dict
             estimated resource usage of the module. Uses the
             resource coefficients for the estimate.
         """
@@ -232,9 +235,9 @@ class Module:
         """
         functional model of the module. Used for verification
         of hardware modules.
-        
+
         Returns
         -------
-        np.array 
+        np.array
         """
         return data
