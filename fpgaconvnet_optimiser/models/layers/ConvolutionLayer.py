@@ -142,14 +142,14 @@ class ConvolutionLayer(Layer):
             rates_graph[0,0] = 1
             rates_graph[0,1] = 1
         else:
-            rates_graph[0,0] = self.modules['sliding_window'].rate_in(0)
-            rates_graph[0,1] = self.modules['sliding_window'].rate_out(0)
+            rates_graph[0,0] = self.modules['sliding_window'].rate_in()
+            rates_graph[0,1] = self.modules['sliding_window'].rate_out()
         # fork
-        rates_graph[1,1] = self.modules['fork'].rate_in(0)
-        rates_graph[1,2] = self.modules['fork'].rate_out(0)
+        rates_graph[1,1] = self.modules['fork'].rate_in()
+        rates_graph[1,2] = self.modules['fork'].rate_out()
         # conv
-        rates_graph[2,2] = self.modules['conv'].rate_in(0)
-        rates_graph[2,3] = self.modules['conv'].rate_out(0)
+        rates_graph[2,2] = self.modules['conv'].rate_in()
+        rates_graph[2,3] = self.modules['conv'].rate_out()
         # accum
         rates_graph[3,3] = self.modules['accum'].rate_in(0)
         rates_graph[3,4] = self.modules['accum'].rate_out(0)

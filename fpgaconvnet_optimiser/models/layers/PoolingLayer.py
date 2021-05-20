@@ -19,7 +19,7 @@ class PoolingLayer(Layer):
             k_size      =2,
             stride      =2,
             pad         =0,
-            fine        =1,
+            fine        =1
         ):
 
         # initialise parent class
@@ -108,11 +108,11 @@ class PoolingLayer(Layer):
     def rates_graph(self):
         rates_graph = np.zeros( shape=(2,3) , dtype=float )
         # sliding_window
-        rates_graph[0,0] = self.modules['sliding_window'].rate_in(0)
-        rates_graph[0,1] = self.modules['sliding_window'].rate_out(0)
+        rates_graph[0,0] = self.modules['sliding_window'].rate_in()
+        rates_graph[0,1] = self.modules['sliding_window'].rate_out()
         # pool
-        rates_graph[1,1] = self.modules['pool'].rate_in(0)
-        rates_graph[1,2] = self.modules['pool'].rate_out(0)
+        rates_graph[1,1] = self.modules['pool'].rate_in()
+        rates_graph[1,2] = self.modules['pool'].rate_out()
 
         return rates_graph
 

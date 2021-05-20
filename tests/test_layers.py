@@ -43,7 +43,6 @@ class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/pooling/config_12.json",
     )
     def test_layer_configurations(self, config_path):
-
         # open configuration
         with open(config_path, "r") as f:
             config = json.load(f)
@@ -59,7 +58,6 @@ class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
             stride=config["stride"],
             pad=config["pad"],
         )
-
         # run tests
         self.run_test_dimensions(layer)
         self.run_test_rates(layer)
@@ -88,12 +86,10 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/convolution/config_19.json",
     )
     def test_layer_configurations(self, config_path):
-
         # open configuration
         with open(config_path, "r") as f:
             config = json.load(f)
 
-        # initialise layer
         layer = ConvolutionLayer(
             config["filters"],
             config["rows"],
@@ -107,6 +103,36 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
             pad=config["pad"],
             fine=config["fine"],
         )
+
+        # run tests
+        self.run_test_dimensions(layer)
+        self.run_test_rates(layer)
+
+@ddt.ddt
+class TestSplitLayer(TestLayerTemplate,unittest.TestCase):
+
+    @ddt.data(
+        "tests/configs/layers/split/config_0.json",
+    )
+    def test_layer_configurations(self, config_path):
+
+        # open configuration
+        with open(config_path, "r") as f:
+            config = json.load(f)
+
+        # initialise layer
+        layer = SplitLayer(
+            config["rows"],
+            config["cols"],
+            config["channels"],
+            config["coarse"],
+            ports_out=config["ports_out"]
+        )
+
+        # run tests
+        self.run_test_dimensions(layer)
+        self.run_test_rates(layer)
+
 
         # run tests
         self.run_test_dimensions(layer)

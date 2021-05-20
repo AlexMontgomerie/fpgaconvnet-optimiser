@@ -42,6 +42,15 @@ class TestModuleTemplate():
         self.assertGreaterEqual(rsc["BRAM"], 0.0)
 
 
+    def run_test_resources(self, module):
+
+        rsc = module.rsc()
+        self.assertGreaterEqual(rsc["LUT"], 0.0)
+        self.assertGreaterEqual(rsc["FF"], 0.0)
+        self.assertGreaterEqual(rsc["DSP"], 0.0)
+        self.assertGreaterEqual(rsc["BRAM"], 0.0)
+
+
 @ddt.ddt
 class TestForkModule(TestModuleTemplate,unittest.TestCase):
 

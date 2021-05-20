@@ -113,14 +113,14 @@ class InnerProductLayer(Layer):
         rates_graph[0,0] = self.modules['fork'].rate_in(0)
         rates_graph[0,1] = self.modules['fork'].rate_out(0)
         # conv
-        rates_graph[1,1] = self.modules['conv'].rate_in(0)
-        rates_graph[1,2] = self.modules['conv'].rate_out(0)
+        rates_graph[1,1] = self.modules['conv'].rate_in()
+        rates_graph[1,2] = self.modules['conv'].rate_out()
         # accum
-        rates_graph[2,2] = self.modules['accum'].rate_in(0)
-        rates_graph[2,3] = self.modules['accum'].rate_out(0)
+        rates_graph[2,2] = self.modules['accum'].rate_in()
+        rates_graph[2,3] = self.modules['accum'].rate_out()
         # glue
-        rates_graph[3,3] = self.modules['glue'].rate_in(0)
-        rates_graph[3,4] = self.modules['glue'].rate_out(0)
+        rates_graph[3,3] = self.modules['glue'].rate_in()
+        rates_graph[3,4] = self.modules['glue'].rate_out()
 
         return rates_graph
 
