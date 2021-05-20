@@ -46,17 +46,17 @@ class SplitLayer(Layer):
         ports_out: int
             number of ports out of the layer
         coarse_in: list int
-            number of parallel streams per port into the layer.    
+            number of parallel streams per port into the layer.
         coarse_out: NEED TO DEFINE
-           TODO 
+           TODO
         data_width: int
-            bitwidth of featuremap pixels 
+            bitwidth of featuremap pixels
         modules: dict
-            dictionary of `module` instances that make 
+            dictionary of `module` instances that make
             up the layer. These modules are used for the
             resource and performance models of the layer.
         """
-        
+
         # parameters
         self.coarse = coarse
 
@@ -112,7 +112,7 @@ class SplitLayer(Layer):
         rates_graph[0,1] = self.modules['fork'].rate_out(0)
 
         return rates_graph
-        
+
     def resource(self):
 
         # get module resources
@@ -129,15 +129,33 @@ class SplitLayer(Layer):
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
-        for i in range(self.coarse_in):
-            cluster.add_node(pydot.Node( "_".join([name,"split",str(i)]), label="split" ))
+        for i in range(self.coarse):
+            cluster.add_node(pydot.Node( "_".join([name,"fork",str(i)]), label="fork" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"split",str(i)]) for i in range(self.coarse_in) ]
-        nodes_out = [ "_".join([name,"split",str(i)]) for i in range(self.ports_out) ]
+        nodes_in  = [ "_".join([name,"fork",str(i)]) for i in range(self.coarse) ]
+        nodes_out = [ "_".join([name,"fork",str(i)]) for i in range(self.ports_out*self.coarse) ]
 
         return cluster, nodes_in, nodes_out
 
-    #TODO: workout if there's something in torch that supports this
-    #def functional_model(self, data, batch_size=1):
+    def functional_model(self, data, batch_size=1):
+        assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
+
+
+        out = np.ndarray((
+            self.rows,
+            self.cols,
+            self.channels,
+            self.coarse),dtype=float)
+
+        for index,_ in np.ndenumerate(out):
+            out[index] = data[
+              index[0],
+              index[1],
+              index[2],
+              index[3]]
+
+        return out
 
