@@ -21,14 +21,16 @@ from fpgaconvnet_optimiser.models.layers import Layer
 class ExitConditionLayer(Layer):
     def __init__(
             self,
-            dim,
-            ctrledges, #expecting list
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
+            ctrledges: [str], #expecting list
             cond_type   = 'top1',
-            coarse_in   = 1,
-            coarse_out  = 1,
             data_width  = 16
         ):
-        Layer.__init__(self, dim, coarse_in, coarse_out, data_width)
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
         self.ctrledges = ctrledges
         self.cond_type = cond_type

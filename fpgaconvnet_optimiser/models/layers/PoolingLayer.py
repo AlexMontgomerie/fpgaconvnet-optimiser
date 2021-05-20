@@ -19,7 +19,7 @@ class PoolingLayer(Layer):
             k_size      =2,
             stride      =2,
             pad         =0,
-            fine        =1
+            fine        =1,
         ):
 
         # initialise parent class
@@ -52,8 +52,8 @@ class PoolingLayer(Layer):
         #self.load_coef()
 
         # switching activity
-        self.sa     = sa
-        self.sa_out = sa_out
+        #self.sa     = sa
+        #self.sa_out = sa_out
 
     def rows_out(self, port_index):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"

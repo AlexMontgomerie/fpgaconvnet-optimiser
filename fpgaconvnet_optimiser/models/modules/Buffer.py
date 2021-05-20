@@ -23,15 +23,18 @@ import os
 class Buffer(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             ctrledge,
-            #filters,
-            #groups,
             drop_mode   =True,
             data_width=16
         ):
+        # module name
+        self.name = "buff"
+
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.ctrledge = ctrledge

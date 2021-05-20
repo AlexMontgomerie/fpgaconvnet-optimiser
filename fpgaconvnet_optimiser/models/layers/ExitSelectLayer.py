@@ -16,13 +16,16 @@ from fpgaconvnet_optimiser.models.layers import Layer
 class ExitSelectLayer(Layer):
     def __init__(
             self,
-            dim,
-            ctrledge,
-            coarse_in   =1,
-            coarse_out  =1,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
+            ctrledge: str,
             data_width  =16,
         ):
-        Layer.__init__(self, dim, coarse_in, coarse_out, data_width)
+        # initialise parent class
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
         #ctrledge links to exit condition layer
         self.ctrledge = ctrledge

@@ -30,14 +30,17 @@ from fpgaconvnet_optimiser.models.layers import Layer
 class BufferLayer(Layer):
     def __init__(
             self,
-            dim,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
             ctrledge,
             drop_mode   =True,
-            coarse_in   =1,
-            coarse_out  =1,
             data_width  =16,
         ):
-        Layer.__init__(self, dim, coarse_in, coarse_out, data_width)
+        # initialise parent class
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
         #ctrledge links to exit condition layer
         self.ctrledge = ctrledge
@@ -45,7 +48,7 @@ class BufferLayer(Layer):
 
         #init modules
         self.modules = {
-                "buffer"    : Buffer(dim, ctrledge, data_width)
+                "buffer" : Buffer(rows,cols,channels, ctrledge, data_width)
         }
         self.update()
 
@@ -53,20 +56,20 @@ class BufferLayer(Layer):
     def layer_info(self,parameters,batch_size=1):
         parameters.batch_size   = batch_size
         parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
+        parameters.rows_in      = self.rows_in(0)
+        parameters.cols_in      = self.cols_in(0)
+        parameters.channels_in  = self.channels_in0()
+        parameters.rows_out     = self.rows_out(0)
+        parameters.cols_out     = self.cols_out(0)
+        parameters.channels_out = self.channels_out(0)
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
 
     ## UPDATE MODULES ##
     def update(self):
-        self.modules['buffer'].rows     = self.rows_in()
-        self.modules['buffer'].cols     = self.cols_in()
-        self.modules['buffer'].channels = self.channels_in()
+        self.modules['buffer'].rows     = self.rows_in(0)
+        self.modules['buffer'].cols     = self.cols_in(0)
+        self.modules['buffer'].channels = self.channels_in(0)
         #TODO work out if channels = int(self.channels/self.coarse_in)
 
 
@@ -74,8 +77,8 @@ class BufferLayer(Layer):
     def rates_graph(self):
         rates_graph = np.zeros( shape=(1,2) , dtype=float )
         #buffer
-        rates_graph[0,0] = self.modules['buffer'].rate_in()
-        rates_graph[0,1] = self.modules['buffer'].rate_out()
+        rates_graph[0,0] = self.modules['buffer'].rate_in(0)
+        rates_graph[0,1] = self.modules['buffer'].rate_out(0)
         return rates_graph
 
     def update_coarse_in(self, coarse_in):
@@ -113,9 +116,9 @@ class BufferLayer(Layer):
     def functional_model(self, data, ctrl_drop):
         #Buffer is not an ONNX or pytorch op
         # check input dimensionality
-        assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
+        assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
 
         out = np.zeros((
             self.rows,

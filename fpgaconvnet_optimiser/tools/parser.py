@@ -21,7 +21,7 @@ from fpgaconvnet_optimiser.models.layers import LRNLayer
 from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 #EE layers
 from fpgaconvnet_optimiser.models.layers import BufferLayer
-#from fpgaconvnet_optimiser.models.layers import SplitLayer
+from fpgaconvnet_optimiser.models.layers import SplitLayer
 from fpgaconvnet_optimiser.models.layers import ExitConditionLayer
 from fpgaconvnet_optimiser.models.layers import ExitSelectLayer
 
@@ -344,7 +344,14 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
             if len(ctrlout) == 0:
                 raise NameError("Control edges not found")
             print("CTRL OUT", ctrlout)
-            graph.nodes[name]['hw'] = ExitConditionLayer([0,0,0], ctrlout)
+            graph.nodes[name]['hw'] = ExitConditionLayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
+                ctrlout
+            )
             continue
         #early exit layer
         if graph.nodes[name]['type'] == LAYER_TYPE.If:
@@ -352,7 +359,14 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
             #will need to generalise assumptions for >2 exits
             #graph - two dataflow inputs, pick either or on hw level
             ctrl_origin, _ = find_ctrl_origin(graph, ctrledges, name)
-            graph.nodes[name]['hw'] = ExitSelectLayer([0,0,0], ctrl_origin)
+            graph.nodes[name]['hw'] = ExitSelectLayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
+                ctrl_origin
+            )
             continue
         print(name, node.op_type)
         raise NameError
@@ -370,8 +384,16 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
             #maybe do a size calc here?
             #might need to specify link from EC to here?
             ctrl_origin, EE_flag = find_ctrl_origin(graph, ctrledges, name)
-            #ASSUMPTION: then branch corresponds to EE
-            graph.nodes[name]['hw'] = BufferLayer([0,0,0], ctrl_origin, drop_mode=EE_flag)
+            #ASSUMPTION: then_branch corresponds to EE
+            graph.nodes[name]['hw'] = BufferLayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
+                ctrl_origin,
+                drop_mode=EE_flag
+            )
             continue
         print(name, graph.nodes[name]['type'])
         raise NameError
