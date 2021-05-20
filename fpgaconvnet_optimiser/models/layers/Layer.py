@@ -159,6 +159,22 @@ class Layer:
         assert(port_index < self.ports_out)
         return self.modules[next(reversed(self.modules))].channels_out()
 
+    def rates_graph(self):
+
+
+        # create the rates graph
+        rates_graph = np.zeros(shape=(len(self.modules.keys()),
+                                      len(self.modules.keys())) , dtype=float )
+
+        # iterate over modules
+        for i, module in enumerate(self.modules.keys()):
+            # update rates_graph
+            rates_graph[i,i] = self.modules[module].rate_in()
+            rates_graph[i,i+1] = self.modules[module].rate_out()
+
+        # return rates_graph
+        return rates_graph
+
     def rate_in(self, port_index=0):
         """
         Parameters
