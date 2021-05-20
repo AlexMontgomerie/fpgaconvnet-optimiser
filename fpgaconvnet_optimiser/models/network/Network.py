@@ -230,19 +230,7 @@ class Network():
         return latency + (math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"]
 
     def get_throughput(self):
-        interval = 0
-        pipelining_allowed = False
-        if len(self.cluster) >= len(self.partitions):
-            pipelining_allowed = True
-            for partition in self.partitions:
-                if partition.wr_factor > 1:
-                    pipelining_allowed = False
-                if interval < partition.get_interval():
-                    interval = partition.get_interval()
-        if pipelining_allowed:
-            return 1/interval*self.platform["freq"]*1000000
-        else :
-            return float(self.batch_size)/self.get_latency()
+        return float(self.batch_size)/self.get_latency()
 
     def visualise(self, output_path):
         g = pydot.Dot(graph_type='digraph')
