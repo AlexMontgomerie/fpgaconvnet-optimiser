@@ -93,7 +93,7 @@ def build_graph(model):
             graph.nodes[name]['inputs'] = { "weights": "", "bias": "" }
 
         #add subgraphs to the network
-        if _layer_type(node.op_type) == LAYER_TYPE.If:
+        if _layer_type(node.op_type) == LAYER_TYPE.If: #TODO extend for multi layer subgraphs
             ifnode = [name, None, None, None]
             #access the subgraphs
             for subgraph in node.attribute:
@@ -111,6 +111,9 @@ def build_graph(model):
                     subname = onnx_helper._name(subnode)
                     # add sub graph node to graph
                     graph.add_node(subname, type=_layer_type(subnode.op_type), hw=None, inputs={} )
+                    if _layer_type(subnode.op_type) in [ LAYER_TYPE.Convolution, \
+                            LAYER_TYPE.InnerProduct ]:
+                        graph.nodes[subname]['inputs'] = { "weights": "", "bias": "" }
                     last_name=subname
                 exitedges.append((last_name, name)) #dataflow from last node in branch to If op
             ctrledges.append(ifnode)
@@ -122,21 +125,25 @@ def build_graph(model):
         # add edges into node
         for input_node in node.input:
             # add initializers
-            if onnx_helper.get_model_initializer(model, input_node) is not None:
+            if onnx_helper.get_model_initializer(model, input_node, submodels=submodels) is not None:
                 # get input details
-                input_details = onnx_helper.get_model_input(model, input_node)
+                input_details = onnx_helper.get_model_input(model, input_node, submodels=submodels)
                 # convolution inputs
                 if graph.nodes[name]["type"] == LAYER_TYPE.Convolution:
                     if len(input_details.type.tensor_type.shape.dim) == 4:
                         graph.nodes[name]['inputs']['weights'] = input_node
-                    if len(input_details.type.tensor_type.shape.dim) == 1:
+                    elif len(input_details.type.tensor_type.shape.dim) == 1:
                         graph.nodes[name]['inputs']['bias'] = input_node
+                    else:
+                        raise Exception("Unexpected dimension")
                 # inner product inputs
                 if graph.nodes[name]["type"] == LAYER_TYPE.InnerProduct:
                     if len(input_details.type.tensor_type.shape.dim) == 2:
                         graph.nodes[name]['inputs']['weights'] = input_node
-                    if len(input_details.type.tensor_type.shape.dim) == 1:
+                    elif len(input_details.type.tensor_type.shape.dim) == 1:
                         graph.nodes[name]['inputs']['bias'] = input_node
+                    else:
+                        raise Exception("Unexpected dimension")
                 continue
             input_node = onnx_helper._format_name(input_node)
             if input_node != name:
@@ -485,4 +492,4 @@ def parse_net(filepath,view=True):
     for node in graph.nodes:
         graph.nodes[node]['hw'].update()
 
-    return model, graph, ctrledges
+    return model, submodels, graph, ctrledges
