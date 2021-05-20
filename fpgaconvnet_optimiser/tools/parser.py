@@ -9,8 +9,7 @@ import onnx.numpy_helper
 import networkx as nx
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
-#import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
-import onnx_helper #TODO MAKE SURE TO CHANGE BACK
+import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
 
 from fpgaconvnet_optimiser.models.layers import BatchNormLayer
 from fpgaconvnet_optimiser.models.layers import ConvolutionLayer
@@ -25,8 +24,7 @@ from fpgaconvnet_optimiser.models.layers import SplitLayer
 from fpgaconvnet_optimiser.models.layers import ExitConditionLayer
 from fpgaconvnet_optimiser.models.layers import ExitSelectLayer
 
-#from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
-from layer_enum import LAYER_TYPE #TODO MAKE SURE TO CHANGE BACK
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 def _layer_type(op_type):
     layer_types = {
@@ -88,9 +86,6 @@ def build_graph(model):
     for node in model.graph.node:
         # get name of node
         name = onnx_helper._name(node)
-
-        print(name, ":", node.op_type)
-
         # add node to graph
         graph.add_node( name, type=_layer_type(node.op_type), hw=None, inputs={} )
         if _layer_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
@@ -98,12 +93,9 @@ def build_graph(model):
 
         #add subgraphs to the network
         if _layer_type(node.op_type) == LAYER_TYPE.If:
-            print("IFNODE", name)
             ifnode = [name, None, None, None]
             #access the subgraphs
             for subgraph in node.attribute:
-                print("attr: ", subgraph.name)
-
                 submodels.append(subgraph) #record link to submodels
                 subnode_head = onnx_helper._name(subgraph.g.node[0])
                 if subgraph.name == "then_branch":
@@ -111,13 +103,11 @@ def build_graph(model):
                 elif subgraph.name == "else_branch":
                     ifnode[2] = subnode_head
                 else:
-                    print("Incorrect branch names")
-                    raise NameError
+                    raise NameError("Incorrect branch names")
 
                 last_name = None
                 for subnode in subgraph.g.node:
                     subname = onnx_helper._name(subnode)
-                    print(subname, ":", subnode.op_type)
                     # add sub graph node to graph
                     graph.add_node(subname, type=_layer_type(subnode.op_type), hw=None, inputs={} )
                     last_name=subname
@@ -157,7 +147,6 @@ def build_graph(model):
                 if output_node != name:
                     edges.append((name,output_node))
     # add edges to graph
-    #print("EDGES\n",edges)
     for edge in edges:
         graph.add_edge(*edge)
     # return graph
@@ -168,12 +157,9 @@ def add_split_nodes(graph, ctrledges):
     splitnodes = []
     for node in graph.nodes:
         successors = graphs.get_next_nodes(graph, node)
-        #print(successors)
         if len(successors) > 1: #general split node placement
             splitnodes.append((node, successors))
-    print("splitnodes:", splitnodes)
-
-    save_nodes = []
+    save_nodes = [] #store the split nodes for later use (not part of model)
     for i,(node,successors) in enumerate(splitnodes):
         splitname = "split_" + str(i)
         graph.add_node(splitname, type=LAYER_TYPE.Split, hw=None, inputs={} )
@@ -200,14 +186,13 @@ def add_buffer_nodes(graph, ctrledges):
         save_nodes.append(buffername)
         return buffername
 
-    save_nodes = []
+    save_nodes = [] #store the buffer nodes for later use (not part of model)
     i=0
     for branch_start in ctrledges:
-        #then branch = [1], else branch = [2]
         buffname = _add_buffer_nodes(graph, ctrledges, branch_start[1], i, save_nodes)
-        branch_start[1] = buffname
+        branch_start[1] = buffname #then_branch
         buffname = _add_buffer_nodes(graph, ctrledges, branch_start[2], i+1, save_nodes)
-        branch_start[2] = buffname
+        branch_start[2] = buffname #else_branch
         i+=2
     return save_nodes
 
@@ -227,27 +212,22 @@ def update_crtledges(graph, ctrledges):
 def find_ctrl_origin(graph, ctrledges, node):
     for ctrl in ctrledges:
         if node == ctrl[1]:
-            #then branch link so EE
-            return ctrl[0], True
+            return ctrl[0], True #then branch link so EE
         elif node == ctrl[2]:
-            #else branch link so not EE
-            return ctrl[0], False
-        elif node == ctrl[3]: #for linking exit selct layer
-            #bit of a hack
-            return ctrl[0], None
+            return ctrl[0], False #else branch link so not EE
+        elif node == ctrl[3]: #for linking exit select layer
+            return ctrl[0], None #TODO tidy this up
     raise Exception("Node has no control input")
 
-def add_hardware(model, submodels, graph, ctrledges, other_nodes):
+def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
     # iterate over nodes in graph
     all_nodes = [*model.graph.node]
     for submodel in submodels:
         for subnode in submodel.g.node:
             all_nodes.append(subnode)
     for node in all_nodes:
-        # get node name
-        name = onnx_helper._name(node)
-        # check if node in graph
-        if not name in graph.nodes():
+        name = onnx_helper._name(node) # get node name
+        if not name in graph.nodes(): # check if node in graph
             continue
         # Convolution layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Convolution:
@@ -343,7 +323,6 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                     ctrlout = ctrl[1:]
             if len(ctrlout) == 0:
                 raise NameError("Control edges not found")
-            print("CTRL OUT", ctrlout)
             graph.nodes[name]['hw'] = ExitConditionLayer(
                 0, # initialise rows to 0
                 0, # initialise cols to 0
@@ -368,11 +347,10 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 ctrl_origin
             )
             continue
-        print(name, node.op_type)
-        raise NameError
+        raise NameError(name, node.op_type)
 
     #add hardware for the non-ONNX nodes
-    for name in other_nodes:
+    for name in hw_only_nodes:
         #split layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Split:
             #has input and minimum two outputs
@@ -381,7 +359,7 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 0, # initialise cols to 0
                 0, # initialise channels to 0
                 1, # initialise coarse to 1
-                ports_out = 1, #initialise with 1
+                ports_out = 2, #TODO make this variable
             )
             continue
         #buffer layer
@@ -401,11 +379,10 @@ def add_hardware(model, submodels, graph, ctrledges, other_nodes):
                 drop_mode=EE_flag
             )
             continue
-        print(name, graph.nodes[name]['type'])
-        raise NameError
+        raise NameError(name, graph.nodes[name]['type'])
 
 
-def add_dimensions(model, graph):
+def add_dimensions(model, submodels, graph):
     # add input dimensions
     input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
     input_rows      = int(model.graph.input[0].type.tensor_type.shape.dim[2].dim_value)
@@ -418,35 +395,46 @@ def add_dimensions(model, graph):
     # iterate over layers in model
     nodes = list(graph.nodes())
     nodes.remove(input_node)
-    print("node list\n", graph.nodes)
+
+    def _find_valid_prev_node(graph, node):
+        prev_nodes = graphs.get_prev_nodes(graph, node)
+        if len(prev_nodes) > 1:
+            raise Exception("Multiple inputs not currently supported")
+        if graph.nodes[prev_nodes[0]]['type'] in [LAYER_TYPE.Split, LAYER_TYPE.Buffer]:
+            return _find_valid_prev_node(graph, prev_nodes[0]) #go round again
+        else:
+            return prev_nodes[0]
+
     for node in nodes:
-        print("add_dimensions() node:", node)
         # find previous node
         prev_nodes = graphs.get_prev_nodes(graph, node)
-        for prev_node in prev_nodes: # TODO: support parallel networks
-            print("add_dimensions() prev_node:", prev_node)
-            # get previous node output dimensions
-            dim = onnx_helper._out_dim(model, prev_node)
-            # update input dimensions
-            graph.nodes[node]['hw'].channels[0] = dim[0]
-            graph.nodes[node]['hw'].rows[0]     = dim[1]
-            graph.nodes[node]['hw'].cols[0]     = dim[2]
+        # TODO: support parallel networks
+        if len(prev_nodes) > 1 and graph.nodes[node]['type'] != LAYER_TYPE.If:
+            #If layer has 2 dataflow inputs of identical shape - so use the first
+            raise Exception("Multiple inputs not currently supported")
+        prev_node = prev_nodes[0]
+        #split and buffer layers won't have value info - so use prev prev nodes.
+        if graph.nodes[prev_node]['type'] in [LAYER_TYPE.Split, LAYER_TYPE.Buffer]:
+            prev_node = _find_valid_prev_node(graph, prev_node)
+        # get previous node output dimensions
+        dim = onnx_helper._out_dim(model, submodels, prev_node)
+        # update input dimensions
+        graph.nodes[node]['hw'].channels[0] = dim[0]
+        graph.nodes[node]['hw'].rows[0]     = dim[1]
+        graph.nodes[node]['hw'].cols[0]     = dim[2]
 
 def parse_net(filepath,view=True):
-    print("GOT HERE")
     # load onnx model
     model = onnx_helper.load(filepath)
 
     # get graph
     submodels, graph, ctrledges, exitedges = build_graph(model)
-    print("parse_net(): CTRL EDGES\n", ctrledges)
 
     # remove input node
     remove_nodes = []
     for node in graph.nodes:
         if "type" not in graph.nodes[node]:
             remove_nodes.append(node)
-    #print("parse_net(): REMOVING", remove_nodes)
     for node in remove_nodes:
         graph.remove_node(node)
 
@@ -466,30 +454,25 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.ReduceMax)
 
     #add in split and buffer/offchip store layer nodes
-    other_nodes = add_split_nodes(graph, ctrledges)
-    #print("updated edges-split", graph.edges)
-    other_nodes += add_buffer_nodes(graph, ctrledges)
-    #print("updated edges-buffer\n", graph.edges)
-    print("Other nodes",other_nodes)
+    hw_only_nodes = add_split_nodes(graph, ctrledges)
+    hw_only_nodes += add_buffer_nodes(graph, ctrledges)
 
     #shift control edge start from If to Greater (the layer standing in as EC)
     #append the ctrl edge from the Greater to If and remove the data edge
     update_crtledges(graph, ctrledges)
-    print("updated ctrledges", ctrledges)
 
     #determine Early Exit points (Identity operations, edge to exit)
     for eedge in exitedges:
         graph.add_edge(*eedge)
     #remove pass through node
     filter_node_types(graph, LAYER_TYPE.Identity)
-    print("updated edges-exits,identity\n", graph.edges)
     #TODO separate softmax layer from other layers in model
 
     # add hardware to graph
-    add_hardware(model, submodels, graph, ctrledges, other_nodes)
+    add_hardware(model, submodels, graph, ctrledges, hw_only_nodes)
 
     # add layer dimensions
-    add_dimensions(model, graph)
+    add_dimensions(model, submodels, graph)
 
     # update all layers
     for node in graph.nodes:

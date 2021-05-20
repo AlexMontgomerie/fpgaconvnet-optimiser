@@ -25,8 +25,14 @@ class ExitSelectLayer(Layer):
             data_width  =16,
         ):
         # initialise parent class
-        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
+        #rows, cols, channels will be the same for both inputs
+        super().__init__(   [rows,rows],
+                            [cols,cols],
+                            [channels,channels],
+                            [coarse_in,coarse_in],
+                            [coarse_out,coarse_out])
 
+        #index 0 is then_branch, index 1 is else_branch
         #ctrledge links to exit condition layer
         self.ctrledge = ctrledge
 
@@ -37,16 +43,18 @@ class ExitSelectLayer(Layer):
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
-        parameters.batch_size   = batch_size
-        parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
-        parameters.coarse_in    = self.coarse_in
-        parameters.coarse_out   = self.coarse_out
+        #TODO
+        #parameters.batch_size   = batch_size
+        #parameters.buffer_depth = self.buffer_depth
+        #parameters.rows_in      = self.rows_in()
+        #parameters.cols_in      = self.cols_in()
+        #parameters.channels_in  = self.channels_in()
+        #parameters.rows_out     = self.rows_out()
+        #parameters.cols_out     = self.cols_out()
+        #parameters.channels_out = self.channels_out()
+        #parameters.coarse_in    = self.coarse_in
+        #parameters.coarse_out   = self.coarse_out
+        return
 
     ## UPDATE MODULES ##
     def update(self): #TODO
@@ -90,9 +98,12 @@ class ExitSelectLayer(Layer):
     def functional_model(self, EEdata, LEdata, ctrl_pass):
         #Exit select is not an ONNX or pytorch op
         # check input dimensionality
-        assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
+        assert EEdata.shape[0] == self.rows    , "ERROR: invalid row dimension"
+        assert EEdata.shape[1] == self.cols    , "ERROR: invalid column dimension"
+        assert EEdata.shape[2] == self.channels, "ERROR: invalid channel dimension"
+        assert LEdata.shape[0] == self.rows    , "ERROR: invalid row dimension"
+        assert LEdata.shape[1] == self.cols    , "ERROR: invalid column dimension"
+        assert LEdata.shape[2] == self.channels, "ERROR: invalid channel dimension"
 
         if ctrl_pass:
             return EEdata

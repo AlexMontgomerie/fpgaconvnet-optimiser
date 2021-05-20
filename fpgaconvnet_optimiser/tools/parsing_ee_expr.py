@@ -33,8 +33,14 @@ def main():
     #attempt to parse the graph and see what errors
     filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
     #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
-    parser.parse_net(filepath, view=False) #check what view does
+    model, graph, ctrledges = parser.parse_net(filepath, view=False) #check what view does
 
+    print(graph.nodes)
+    print(graph.edges)
+    print(ctrledges)
+
+    for node in graph.nodes:
+        print(graph.nodes[node]['hw'])
 
 if __name__ == "__main__":
     main()

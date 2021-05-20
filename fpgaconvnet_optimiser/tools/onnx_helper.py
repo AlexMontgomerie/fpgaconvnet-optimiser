@@ -153,18 +153,30 @@ def get_model_node(model, name, submodels=[]):
         for subnode in sm.g.node: #g used in subgraphs for graph
             if _name(subnode) == name: # formatted match
                 return subnode
-    print("Node name not in graphs")
-    raise NameError
+    raise NameError("Node name not in graphs")
 
-def get_model_value_info(model, name):
+def get_model_value_info(model, name, submodels=[]):
     for node in model.graph.value_info:
         if _format_name(node.name) == name: # formatted match
             return node
+    for sm in submodels: #look through submodels
+        for subnode in sm.g.value_info: #g used in subgraphs for graph
+            if _format_name(subnode.name) == name: # formatted match
+                return subnode
 
 def get_model_input(model, name):
     for node in model.graph.input:
         if node.name == name: # exact match
             return node
+
+def get_model_output(model, name, submodels=[]):
+    for node in model.graph.output:
+        if node.name == name:
+            return node
+    for sm in submodels: #look through submodels
+        for subnode in sm.g.output: #g used in subgraphs for graph
+            if _format_name(subnode.name) == name: # formatted match
+                return subnode
 
 def get_model_initializer(model, name, to_tensor=True):
     for node in model.graph.initializer: #works with subgraphs
@@ -181,9 +193,12 @@ def _format_attr(attribute):
             attr_out[attr.name] = [ int(i) for i in attr.ints ]
     return attr_out
 
-def _out_dim(model, name):
+def _out_dim(model, submodels, name):
     dim = [0,0,0]
-    value_info = get_model_value_info(model, name)
+    value_info = get_model_value_info(model, name, submodels)
+    if value_info == None:
+        #try looking through outputs - required for subgraphs
+        value_info = get_model_output(model, name, submodels)
     if len(value_info.type.tensor_type.shape.dim) == 4:
         #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
         dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
@@ -196,5 +211,3 @@ def _out_dim(model, name):
         dim[1] = 1 # rows
         dim[2] = 1 # cols
         return dim
-
-
