@@ -13,22 +13,21 @@ from fpgaconvnet_optimiser.models.layers import Layer
 class ConvolutionLayer(Layer):
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
-            filters,
+            filters: int,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
             k_size      =3,
             stride      =1,
             groups      =1,
             pad         =0,
-            coarse_in   =1,
-            coarse_out  =1,
             fine        =1,
-            data_width  =16,
-            sa          =0.5,
-            sa_out      =0.5
         ):
-        Layer.__init__(self, [rows], [cols], [channels], [coarse_in], [coarse_out], data_width)
+
+        # initialise parent class
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
         # update flags
         self.flags['channel_dependant'] = True
@@ -42,8 +41,8 @@ class ConvolutionLayer(Layer):
         self.stride     = stride
         self.groups     = groups
         self.pad        = pad
-        self.pad_top    = pad - (self.rows[0] - k_size + 2*pad) % stride
-        self.pad_right  = pad - (self.cols[0] - k_size + 2*pad) % stride
+        self.pad_top    = pad - (self.rows_in(0) - k_size + 2*pad) % stride
+        self.pad_right  = pad - (self.cols_in(0) - k_size + 2*pad) % stride
         self.pad_bottom = pad
         self.pad_left   = pad
         self.fine       = fine
@@ -51,32 +50,34 @@ class ConvolutionLayer(Layer):
 
         # init modules
         self.modules = {
-            "sliding_window" : SlidingWindow(rows, cols, channels, k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, data_width),
-            "fork"           : Fork(self.rows_out(0), self.cols_out(0), self.filters,k_size,coarse_out),
-            "conv"           : Conv(self.rows_out(0), self.cols_out(0), self.filters,filters,fine,k_size,groups),
-            "accum"          : Accum(self.rows_out(0), self.cols_out(0), self.filters,filters,groups),
-            "glue"           : Glue(self.rows_out(0), self.cols_out(0), self.filters,filters,coarse_in,coarse_out)
+            "sliding_window" : SlidingWindow(self.rows_in(0), self.cols_in(0), self.channels_in(0), k_size, stride,
+                self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width),
+            "fork"           : Fork(self.rows_out(0), self.cols_out(0), self.filters, k_size, self.coarse_out),
+            "conv"           : Conv(self.rows_out(0), self.cols_out(0), self.filters, filters, fine, k_size, groups),
+            "accum"          : Accum(self.rows_out(0), self.cols_out(0), self.filters, filters, groups),
+            "glue"           : Glue(self.rows_out(0), self.cols_out(0), self.filters, filters, self.coarse_in[0], self.coarse_out[0])
         }
         self.update()
         #self.load_coef()
 
-        # switching activity
-        self.sa     = sa
-        self.sa_out = sa_out
-
-    def rows_out(self):
+    def rows_out(self, port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return int(math.floor((self.rows_in(0)-self.k_size+2*self.pad)/self.stride)+1)
 
-    def cols_out(self):
+    def cols_out(self, port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return int(math.floor((self.cols_in(0)-self.k_size+2*self.pad)/self.stride)+1)
 
-    def channels_out(self):
+    def channels_out(self, port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return self.filters
 
-    def rate_in(self,index):
+    def rate_in(self,port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
 
-    def rate_out(self,index):
+    def rate_out(self,port_index):
+        assert port_index == 0, "convolution layers are only allowed a single port"
         return abs(self.balance_module_rates(self.rates_graph())[4,5])
 
     ## LAYER INFO ##
@@ -141,14 +142,14 @@ class ConvolutionLayer(Layer):
             rates_graph[0,0] = 1
             rates_graph[0,1] = 1
         else:
-            rates_graph[0,0] = self.modules['sliding_window'].rate_in(0)
-            rates_graph[0,1] = self.modules['sliding_window'].rate_out(0)
+            rates_graph[0,0] = self.modules['sliding_window'].rate_in()
+            rates_graph[0,1] = self.modules['sliding_window'].rate_out()
         # fork
-        rates_graph[1,1] = self.modules['fork'].rate_in(0)
-        rates_graph[1,2] = self.modules['fork'].rate_out(0)
+        rates_graph[1,1] = self.modules['fork'].rate_in()
+        rates_graph[1,2] = self.modules['fork'].rate_out()
         # conv
-        rates_graph[2,2] = self.modules['conv'].rate_in(0)
-        rates_graph[2,3] = self.modules['conv'].rate_out(0)
+        rates_graph[2,2] = self.modules['conv'].rate_in()
+        rates_graph[2,3] = self.modules['conv'].rate_out()
         # accum
         rates_graph[3,3] = self.modules['accum'].rate_in(0)
         rates_graph[3,4] = self.modules['accum'].rate_out(0)
@@ -158,17 +159,19 @@ class ConvolutionLayer(Layer):
 
         return rates_graph
 
-    def get_coarse_in_feasible(self,wr_factor=1):
+    def get_coarse_in_feasible(self,port_index,wr_factor=1):
+        assert port_index == 0
         return self.get_factors(int(self.channels_in(0)/(self.groups*wr_factor)))
 
-    def get_coarse_out_feasible(self,wr_factor=1):
+    def get_coarse_out_feasible(self,port_index,wr_factor=1):
+        assert port_index == 0
         return self.get_factors(int(self.channels_out(0)/(self.groups*wr_factor)))
 
     def update_coarse_in(self, coarse_in):
-        self.coarse_in  = coarse_in
+        self.coarse_in[0]  = coarse_in
 
     def update_coarse_out(self, coarse_out):
-        self.coarse_out = coarse_out
+        self.coarse_out[0] = coarse_out
 
     def get_fine_feasible(self):
         #return self.get_factors(int(self.k_size*self.k_size))
@@ -178,7 +181,7 @@ class ConvolutionLayer(Layer):
         return self.get_factors(int(self.filters/(self.groups*self.coarse_out[0])))
 
     def get_parameters_size(self):
-        weights_size = self.channels[0] * int( self.filters / self.groups ) * self.k_size * self.k_size
+        weights_size = self.channels_in(0) * int( self.filters / self.groups ) * self.k_size * self.k_size
         bias_size = 0
         return {
             "weights"   : weights_size,
@@ -186,7 +189,7 @@ class ConvolutionLayer(Layer):
         }
 
     def get_operations(self):
-        return self.k_size*self.k_size*self.channels_in()*self.filters*self.rows_out()*self.cols_out()
+        return self.k_size*self.k_size*self.channels_in(0)*self.filters*self.rows_out(0)*self.cols_out(0)
 
     def resource(self):
 
@@ -206,7 +209,7 @@ class ConvolutionLayer(Layer):
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # weight usage
-        n_filters = float(self.filters*self.channels[0]*self.k_size*self.k_size)/float(self.fine*self.groups*self.coarse_in[0]*self.coarse_out[0])
+        n_filters = float(self.filters*self.channels_in(0)*self.k_size*self.k_size)/float(self.fine*self.groups*self.coarse_in[0]*self.coarse_out[0])
         weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in[0]*self.coarse_out[0]*self.fine
 
         # Total
@@ -264,9 +267,9 @@ class ConvolutionLayer(Layer):
 
     def functional_model(self,data,weights,bias,batch_size=1):
 
-        assert data.shape[0] == self.rows[0]    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols[0]    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels[0], "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
         assert weights.shape[1] == int(self.channels[0]/self.groups), "ERROR (weights): invalid channel dimension"

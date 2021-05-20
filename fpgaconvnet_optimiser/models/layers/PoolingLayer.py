@@ -10,25 +10,25 @@ from fpgaconvnet_optimiser.models.layers import Layer
 class PoolingLayer(Layer):
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int,
+            coarse_out: int,
             pool_type   ='max',
             k_size      =2,
             stride      =2,
             pad         =0,
-            coarse_in   =1,
-            coarse_out  =1,
-            fine        =1,
-            data_width  =16,
-            sa          =0.5,
-            sa_out      =0.5
+            fine        =1
         ):
-        Layer.__init__(self, [rows], [cols], [channels], [coarse_in], [coarse_out], data_width)
+
+        # initialise parent class
+        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
 
         # update flags
         self.flags['transformable'] = True
 
+        # update parameters
         self.k_size     = k_size
         self.stride     = stride
         self.pad        = pad
@@ -44,8 +44,9 @@ class PoolingLayer(Layer):
 
         # init modules
         self.modules = {
-            "sliding_window" : SlidingWindow(rows, cols, channels, k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, data_width),
-            "pool"           : Pool(rows, cols, channels, k_size)
+            "sliding_window" : SlidingWindow(self.rows_in(0), self.cols_in(0), self.channels_in(0),
+                k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width),
+            "pool"           : Pool(self.rows_in(0), self.cols_in(0), self.channels_in(0), k_size)
         }
         self.update()
         #self.load_coef()
@@ -54,16 +55,20 @@ class PoolingLayer(Layer):
         self.sa     = sa
         self.sa_out = sa_out
 
-    def rows_out(self):
-        return int(math.ceil((self.rows_in()-self.k_size+2*self.pad)/self.stride)+1)
+    def rows_out(self, port_index):
+        assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
+        return int(math.ceil((self.rows_in(0)-self.k_size+2*self.pad)/self.stride)+1)
 
-    def cols_out(self):
-        return int(math.ceil((self.cols_in()-self.k_size+2*self.pad)/self.stride)+1)
+    def cols_out(self, port_index):
+        assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
+        return int(math.ceil((self.cols_in(0)-self.k_size+2*self.pad)/self.stride)+1)
 
-    def rate_in(self, index):
+    def rate_in(self, port_index):
+        assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
 
-    def rate_out(self, index):
+    def rate_out(self, port_index):
+        assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return abs(self.balance_module_rates(self.rates_graph())[1,2])
 
     ## LAYER INFO ##
@@ -103,11 +108,11 @@ class PoolingLayer(Layer):
     def rates_graph(self):
         rates_graph = np.zeros( shape=(2,3) , dtype=float )
         # sliding_window
-        rates_graph[0,0] = self.modules['sliding_window'].rate_in(0)
-        rates_graph[0,1] = self.modules['sliding_window'].rate_out(0)
+        rates_graph[0,0] = self.modules['sliding_window'].rate_in()
+        rates_graph[0,1] = self.modules['sliding_window'].rate_out()
         # pool
-        rates_graph[1,1] = self.modules['pool'].rate_in(0)
-        rates_graph[1,2] = self.modules['pool'].rate_out(0)
+        rates_graph[1,1] = self.modules['pool'].rate_in()
+        rates_graph[1,2] = self.modules['pool'].rate_out()
 
         return rates_graph
 

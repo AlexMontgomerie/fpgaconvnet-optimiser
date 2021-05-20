@@ -20,6 +20,10 @@ class Pool(Module):
             pool_type='max',
             data_width=16
         ):
+        
+        # module name
+        self.name = "pool"
+ 
         # init module
         Module.__init__(self, rows, cols, channels, data_width)
 
@@ -28,8 +32,8 @@ class Pool(Module):
         self.pool_type = pool_type
 
         # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/pool_rsc_coef.npy"))
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/pool_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -43,6 +47,7 @@ class Pool(Module):
             1,
             self.data_width,
             self.data_width*self.k_size*self.k_size,
+            self.data_width*self.rows*self.cols*self.channels,
         ]
 
     def module_info(self):
@@ -58,12 +63,14 @@ class Pool(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self):
+    def rsc(self,coef=None):
+        if coef == None:
+            coef = self.rsc_coef
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
           "BRAM" : 0,
           "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     '''

@@ -13,6 +13,8 @@ import numpy as np
 from fpgaconvnet_optimiser.optimiser import SimulatedAnnealing
 from fpgaconvnet_optimiser.optimiser import Improve
 
+import fpgaconvnet_optimiser.tools.graphs as graphs
+
 def main():
     parser = argparse.ArgumentParser(description="Optimiser Script")
     parser.add_argument('-n','--name',metavar='PATH',required=True,
@@ -104,6 +106,10 @@ def main():
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
 
+
+    #for partition in net.partitions:
+    #    graphs.print_graph(partition.graph)
+    
     # run optimiser
     net.run_optimiser()
 

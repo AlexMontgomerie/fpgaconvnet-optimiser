@@ -33,6 +33,15 @@ class TestModuleTemplate():
         self.assertGreaterEqual(module.rate_out(), 0.0)
         self.assertLessEqual(module.rate_out(), 1.0)
 
+    def run_test_resources(self, module):
+
+        rsc = module.rsc()
+        self.assertGreaterEqual(rsc["LUT"], 0.0)
+        self.assertGreaterEqual(rsc["FF"], 0.0)
+        self.assertGreaterEqual(rsc["DSP"], 0.0)
+        self.assertGreaterEqual(rsc["BRAM"], 0.0)
+
+
 @ddt.ddt
 class TestForkModule(TestModuleTemplate,unittest.TestCase):
 
@@ -43,7 +52,7 @@ class TestForkModule(TestModuleTemplate,unittest.TestCase):
             config = json.load(f)
 
         # initialise module
-        module = Fork([config["channels"],config["rows"],config["cols"]],
+        module = Fork(config["rows"],config["cols"],config["channels"],
                 config["kernel_size"],
                 config["coarse"])
 
@@ -51,7 +60,6 @@ class TestForkModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
-
 @ddt.ddt
 class TestAccumModule(TestModuleTemplate,unittest.TestCase):
 
@@ -62,14 +70,13 @@ class TestAccumModule(TestModuleTemplate,unittest.TestCase):
             config = json.load(f)
 
         # initialise module
-        module = Accum([config["channels"],config["rows"],config["cols"]],
+        module = Accum(config["rows"],config["cols"],config["channels"],
                 config["filters"],config["groups"])
 
         # run tests
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
-
         # additional checks
         self.assertGreater(module.filters,0)
 
@@ -83,13 +90,14 @@ class TestConvModule(TestModuleTemplate,unittest.TestCase):
             config = json.load(f)
 
         # initialise module
-        module = Conv([config["channels"],config["rows"],config["cols"]],
+        module = Conv(config["rows"],config["cols"],config["channels"],
                 config["filters"],config["fine"],config["kernel_size"],config["group"])
 
         # run tests
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestGlueModule(TestModuleTemplate,unittest.TestCase):
@@ -101,13 +109,14 @@ class TestGlueModule(TestModuleTemplate,unittest.TestCase):
             config = json.load(f)
 
         # initialise module
-        module = Glue([config["channels"],config["rows"],config["cols"]],
+        module = Glue(config["rows"],config["cols"],config["channels"],
                 config["filters"],config["coarse_in"],config["coarse_out"])
 
         # run tests
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestSlidingWindowModule(TestModuleTemplate,unittest.TestCase):
@@ -119,7 +128,7 @@ class TestSlidingWindowModule(TestModuleTemplate,unittest.TestCase):
             config = json.load(f)
 
         # initialise module
-        module = SlidingWindow([config["channels"],config["rows"],config["cols"]],
+        module = SlidingWindow(config["rows"],config["cols"],config["channels"],
                 config["kernel_size"],config["stride"],config["pad_top"],
                 config["pad_right"],config["pad_bottom"],config["pad_left"])
 
@@ -127,6 +136,7 @@ class TestSlidingWindowModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestPoolModule(TestModuleTemplate,unittest.TestCase):
@@ -138,13 +148,14 @@ class TestPoolModule(TestModuleTemplate,unittest.TestCase):
             config = json.load(f)
 
         # initialise module
-        module = Pool([config["channels"],config["rows"],config["cols"]],
+        module = Pool(config["rows"],config["cols"],config["channels"],
                 config["kernel_size"])
 
         # run tests
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestSqueezeModule(TestModuleTemplate,unittest.TestCase):
@@ -156,13 +167,14 @@ class TestSqueezeModule(TestModuleTemplate,unittest.TestCase):
             config = json.load(f)
 
         # initialise module
-        module = Squeeze([config["channels"],config["rows"],config["cols"]],
+        module = Squeeze(config["rows"],config["cols"],config["channels"],
                 config["coarse_in"],config["coarse_out"])
 
         # run tests
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 @ddt.ddt
 class TestReLUModule(TestModuleTemplate,unittest.TestCase):
@@ -174,11 +186,12 @@ class TestReLUModule(TestModuleTemplate,unittest.TestCase):
             config = json.load(f)
 
         # initialise module
-        module = ReLU([config["channels"],config["rows"],config["cols"]])
+        module = ReLU(config["rows"],config["cols"],config["channels"])
 
         # run tests
         self.run_test_methods_exist(module)
         self.run_test_dimensions(module)
         self.run_test_rates(module)
+        self.run_test_resources(module)
 
 

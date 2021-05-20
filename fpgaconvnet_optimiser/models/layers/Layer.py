@@ -2,13 +2,13 @@
 
 """
 
-import pydot
-import numpy as np
-import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2 
-from google.protobuf.json_format import MessageToDict
-from functools import reduce
 import os
 import math
+from typing import List
+from functools import reduce
+import pydot
+from google.protobuf.json_format import MessageToDict
+import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
 
 class Layer:
     """
@@ -16,11 +16,11 @@ class Layer:
     """
     def __init__(
             self,
-            rows,
-            cols,
-            channels,
-            coarse_in,
-            coarse_out,
+            rows: List[int],
+            cols: List[int],
+            channels: List[int],
+            coarse_in: List[int],
+            coarse_out: List[int],
             ports_in=1,
             ports_out=1,
             data_width=16
@@ -54,13 +54,13 @@ class Layer:
         coarse_out: list int
             number of parallel streams per port out of the layer.
         data_width: int
-            bitwidth of featuremap pixels 
+            bitwidth of featuremap pixels
         modules: dict
-            dictionary of `module` instances that make 
+            dictionary of `module` instances that make
             up the layer. These modules are used for the
             resource and performance models of the layer.
         """
-        
+
         # flags
         self.flags = {
             "multi_input"       : False,
@@ -299,7 +299,7 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in,
+            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in[0],
             "DSP"   : 0
         }
 
@@ -319,20 +319,22 @@ class Layer:
         return self.get_factors(int(self.channels_out(port_index)/wr_factor))
 
     def update_coarse_in(self, coarse_in):
-        self.coarse_in  = coarse_in
-        self.coarse_out = coarse_in
+        self.coarse_in[0]  = coarse_in
+        self.coarse_out[0] = coarse_in
 
     def update_coarse_out(self, coarse_out):
-        self.coarse_in  = coarse_out
-        self.coarse_out = coarse_out
+        self.coarse_in[0]  = coarse_out
+        self.coarse_out[0] = coarse_out
 
     def load_coef(self):
-        for module in self.modules:
-            self.modules[module].load_coef(
-                os.path.join(
-                    os.path.dirname(__file__),
-                    "../../coefficients/{}_rsc_coef.npy".format(module))
-            )
+        pass
+        # for module in self.modules:
+        #     self.modules[module].load_coef(
+        #         os.path.join(
+        #             os.path.dirname(__file__),
+        #             "../../coefficients/{}_rsc_coef.npy".format(module))
+        #     )
+        
 
     def update(self):
         pass

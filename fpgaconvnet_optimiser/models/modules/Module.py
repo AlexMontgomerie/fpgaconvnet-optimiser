@@ -3,7 +3,9 @@ Base class for all hardware module models.
 '''
 
 import numpy as np
+import os
 import copy
+from typing import List
 
 class Module:
     """
@@ -20,7 +22,13 @@ class Module:
         so the `rows`, `cols` and `channels` attributes are representative
         of the tensor if it was flattened to three dimensions.
     """
-    def __init__(self,dim,data_width=16):
+    def __init__(
+            self,
+            rows: int,
+            cols: int,
+            channels: int,
+            data_width=16
+        ):
         """
         Parameters
         ----------
@@ -54,9 +62,11 @@ class Module:
         self.data_width = data_width
 
         # coefficients
-        self.static_coef  = [ 0 ]
-        self.dynamic_coef = [ 0 ]
-        self.rsc_coef     = [ 0,0,0,0 ]
+        self.rsc_coef = {}
+        rsc_types = ["FF","LUT","DSP","BRAM"]
+        for rsc_type in rsc_types:
+            self.rsc_coef[rsc_type] = np.load(os.path.join(os.path.dirname(__file__),
+                f"../../coefficients/{self.name}_{rsc_type.lower()}.npy"))
 
     def module_info(self):
         """
