@@ -2,7 +2,7 @@
     {
         "platform":"examples/platforms/zc706.json",
         "connections_in":   [0],
-        "id":                1,
+        "id":                0,
         "connections_out":  [0]
     }
 ]

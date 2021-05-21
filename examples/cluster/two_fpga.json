@@ -1,14 +1,14 @@
 [
     {
         "platform":"examples/platforms/zc706.json",
-        "connections_in":   [0],
-        "id":                1,
-        "connections_out":  [2]
+        "connections_in":   [2],
+        "id":                0,
+        "connections_out":  [1]
     },
     {
         "platform":"examples/platforms/zc706.json",
-        "connections_in":   [1],
-        "id":                2,
-        "connections_out":  [0]
+        "connections_in":   [0],
+        "id":                1,
+        "connections_out":  [2]
     }
 ]
