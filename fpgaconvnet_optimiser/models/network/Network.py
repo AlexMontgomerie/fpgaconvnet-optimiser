@@ -95,9 +95,9 @@ class Network():
         self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
         self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
         #self.update_cluster()
-        self.update_partition_map()
         # update partitions
         self.update_partitions()
+        
     
     # import transforms
     ## partitioning transform
@@ -138,6 +138,8 @@ class Network():
     from fpgaconvnet_optimiser.models.network.update import update_coarse_in_out_partition
     from fpgaconvnet_optimiser.models.network.update import update_cluster
     from fpgaconvnet_optimiser.models.network.update import update_partition_map
+    from fpgaconvnet_optimiser.models.network.update import update_partition_index
+
 
     # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node 

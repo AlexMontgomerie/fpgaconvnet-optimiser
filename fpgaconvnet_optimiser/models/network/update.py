@@ -114,13 +114,6 @@ def update_cluster(self, cluster_path):
         self.cluster[platform['id']]   = copy.deepcopy(temp_platform)
 
 
-def update_partition_map(self): 
-    #self.partitionmap = {partition.get_id(): partition.get_id() % len(self.cluster) for partition in self.partitions}
-    self.partitionmap = {partition.get_id(): partition.platform["connections_out"] for partition in self.partitions}
-    
-def update_partition_connection(self): 
-    self.partitionmap = {partition.get_id(): partition.platform["connections_out"] for partition in self.partitions}
-
 def update_partition_index(self):
     for id,partition,  in enumerate(self.partitions):
         partition.set_id(id)

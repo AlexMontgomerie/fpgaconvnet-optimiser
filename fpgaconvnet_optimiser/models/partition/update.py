@@ -9,7 +9,3 @@ def update_modules(self):
 def update_coefficients(self):
     for node in self.graph.nodes():
         self.graph.nodes[node]['hw'].load_coef()
-
-def update_partition_index(self):
-    for partition, id in enumerate(self.partitions):
-        partition.set_id(id)
