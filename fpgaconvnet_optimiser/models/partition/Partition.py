@@ -1,5 +1,6 @@
 import pydot
 import fpgaconvnet_optimiser.tools.graphs as graphs
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 class Partition():
 
@@ -117,7 +118,9 @@ class Partition():
         # add clusters
         edge_labels = {}
         for node in self.graph:
-            node_cluster, nodes_in, nodes_out = self.graph.nodes[node]['hw'].visualise(node)
+            #node doesn't provide useful names for pytorch output
+            nname = str(node) + "-" + str(self.graph.nodes[node]['type'])[11:]
+            node_cluster, nodes_in, nodes_out = self.graph.nodes[node]['hw'].visualise(nname)
             edge_labels[node] = {
                 "nodes_in"  : nodes_in,
                 "nodes_out" : nodes_out
@@ -126,7 +129,9 @@ class Partition():
         # create edges
         for node in self.graph:
             for edge in graphs.get_next_nodes(self.graph,node):
-                for i in range(self.graph.nodes[node]['hw'].coarse_out):
-                    cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i] ,edge_labels[edge]["nodes_in"][i]))
+                #split layer nodes out duplicated at layer level
+                for i in range(self.graph.nodes[node]['hw'].coarse_out[0]):
+                    cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i],
+                                    edge_labels[edge]["nodes_in"][i]))
         # return cluster
         return cluster

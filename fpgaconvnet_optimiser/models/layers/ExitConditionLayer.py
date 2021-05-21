@@ -79,15 +79,15 @@ class ExitConditionLayer(Layer):
     def visualise(self,name): #TODO replace 'mod' with actual modules used
         cluster = pydot.Cluster(name,label=name)
 
-        for i in range(self.coarse_in):
+        for i in range(self.coarse_in[0]):
             cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
 
-        for i in range(self.coarse_out):
+        for i in range(self.coarse_out[0]):
             cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_in) ]
-        nodes_out = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_out) ]
+        nodes_in  = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_in[0]) ]
+        nodes_out = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_out[0]) ]
 
         return cluster, nodes_in, nodes_out
 

@@ -75,6 +75,9 @@ def vis_expr():
 
     test_net = Network(name, filepath) #rest as defaults
 
+    test_outpath = "/home/benubu/phd/test_out-DIFF-NAME.png"
+    test_net.visualise(test_outpath)
+
 
 def main():
     parser = argparse.ArgumentParser(description="script for running experiments")
