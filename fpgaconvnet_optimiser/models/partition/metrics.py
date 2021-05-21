@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import fpgaconvnet_optimiser.tools.graphs as graphs
 import fpgaconvnet_optimiser.tools.matrix as matrix
@@ -53,6 +54,28 @@ def get_bandwidth_out(self,freq):
     rate = workload / (interval*streams) 
     # get bandwidth (GB/s)
     return (rate*streams*self.data_width*freq)/8000
+
+def get_comm_interval_in(self):
+    # get the interval for the partition
+    bandwidth = self.platform['platform']["comm_bandwidth"]
+    # get workload and streams out 
+    input_node = graphs.get_input_nodes(self.graph)[0]
+    workload = self.graph.nodes[input_node]["hw"].workload_in(0)
+    # calculate rate from interval
+    interval =  math.ceil(workload*self.data_width*self.platform['platform']["freq"] / (bandwidth*1000000000))
+    # get bandwidth (GB/s)
+    return interval
+
+def get_comm_interval_out(self):
+    # get the interval for the partition
+    bandwidth = self.platform['platform']["comm_bandwidth"]
+    # get workload and streams out 
+    output_node = graphs.get_output_nodes(self.graph)[0]
+    workload = self.graph.nodes[output_node]["hw"].workload_in(0)
+    # interval from bandwidth and workload
+    interval = math.ceil(workload*self.data_width*self.platform['platform']["freq"] / (bandwidth*1000000000))
+    return interval
+
 
 
 def get_total_operations(self):
