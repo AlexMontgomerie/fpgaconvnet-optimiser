@@ -77,6 +77,9 @@ class Network():
                 'BRAM'  : 0
             }
         }
+        # partitions
+        self.partitions = [Partition(copy.deepcopy(self.graph),copy.deepcopy(self.platform),0)]
+
         # cluster definition: if left empty the
         self.cluster = {0: 
                             {

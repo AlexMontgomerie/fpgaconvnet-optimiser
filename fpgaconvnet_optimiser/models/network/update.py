@@ -7,7 +7,9 @@ def update_partitions(self):
     # update modules
     for node in self.graph.nodes():
         self.graph.nodes[node]['hw'].update()
- 
+    # update partition platforms
+    for i,partition in enumerate(self.partitions):
+        partition.platform = self.cluster[i%len(self.cluster)]
     # remove all auxiliary layers
     for partition_index in range(len(self.partitions)):
 
@@ -16,7 +18,9 @@ def update_partitions(self):
 
     # update coarse in and out of partition to avoid mismatch
     self.update_coarse_in_out_partition()
- 
+    self.update_partition_index()
+    #self.update_partition_map()
+
     # update partitions 
     for partition_index in range(len(self.partitions)):
 
@@ -107,8 +111,16 @@ def update_cluster(self, cluster_path):
         temp_platform['connections_out']    = platform['connections_out']
         temp_platform['name']               = platform_specification['name']+"_{id:03d}".format(id=temp_platform['id'])
         temp_platform['platform']           = platform_specification
-        self.cluster[len(self.cluster)]   = copy.deepcopy(temp_platform)
+        self.cluster[platform['id']]   = copy.deepcopy(temp_platform)
 
 
-def update_partition_map(self):
-    self.partitionmap = {partition.get_id(): partition.get_id() % len(self.cluster) + 1 for partition in self.partitions}
+def update_partition_map(self): 
+    #self.partitionmap = {partition.get_id(): partition.get_id() % len(self.cluster) for partition in self.partitions}
+    self.partitionmap = {partition.get_id(): partition.platform["connections_out"] for partition in self.partitions}
+    
+def update_partition_connection(self): 
+    self.partitionmap = {partition.get_id(): partition.platform["connections_out"] for partition in self.partitions}
+
+def update_partition_index(self):
+    for id,partition,  in enumerate(self.partitions):
+        partition.set_id(id)

@@ -6,18 +6,20 @@ class Partition():
     def __init__(
             self, 
             graph,
-            id,  
+            platform,
+            id,
             ports_in=1,
             ports_out=1,
             streams_in=1,
             streams_out=1,
             batch_size=1,
-            wr_factor=1
+            wr_factor=1,
+            
         ):
         self.id = id
         ## graph for partition
         self.graph = graph
-        
+        self.platform = platform
         ## ports
         self.ports_in   = ports_in
         self.ports_out  = ports_out
@@ -88,11 +90,12 @@ class Partition():
     from fpgaconvnet_optimiser.models.partition.metrics import get_total_operations
     from fpgaconvnet_optimiser.models.partition.metrics import get_bandwidth_in
     from fpgaconvnet_optimiser.models.partition.metrics import get_bandwidth_out
+    from fpgaconvnet_optimiser.models.partition.metrics import get_comm_interval_in
+    from fpgaconvnet_optimiser.models.partition.metrics import get_comm_interval_out
 
     # update
     from fpgaconvnet_optimiser.models.partition.update import update_modules
     from fpgaconvnet_optimiser.models.partition.update import update_coefficients
-    from fpgaconvnet_optimiser.models.partition.update import update_partition_index
 
     def get_resource_usage(self):
         # initialise resource usage at 0
