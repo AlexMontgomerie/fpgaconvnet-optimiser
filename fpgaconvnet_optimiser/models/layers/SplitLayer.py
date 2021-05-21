@@ -92,6 +92,21 @@ class SplitLayer(Layer):
         self.modules['fork'].channels = int(self.channels[0]/self.coarse)
         self.modules['fork'].coarse   = self.ports_out
 
+    def rows_out(self, port_index=0):
+        #rows are the same for both outputs
+        #currently there isn't a separate rows dim for >1 ports
+        return super().rows_out(0)
+
+    def cols_out(self, port_index=0):
+        #rows are the same for both outputs
+        #currently there isn't a separate rows dim for >1 ports
+        return super().cols_out(0)
+
+    def channels_out(self, port_index=0):
+        #rows are the same for both outputs
+        #currently there isn't a separate rows dim for >1 ports
+        return super().channels_out(0)
+
     def update_coarse_in(self, coarse_in, port_index=0):
         self.coarse = coarse_in
         self.coarse_in[0] = self.coarse

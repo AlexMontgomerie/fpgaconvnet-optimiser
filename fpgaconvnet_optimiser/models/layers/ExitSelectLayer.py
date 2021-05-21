@@ -22,6 +22,7 @@ class ExitSelectLayer(Layer):
             coarse_in: int,
             coarse_out: int,
             ctrledge: str,
+            ports_in    = 2,
             data_width  =16,
         ):
         # initialise parent class
@@ -35,6 +36,7 @@ class ExitSelectLayer(Layer):
         #index 0 is then_branch, index 1 is else_branch
         #ctrledge links to exit condition layer
         self.ctrledge = ctrledge
+        self.ports_in = ports_in
 
         #init modules
         self.modules = {
