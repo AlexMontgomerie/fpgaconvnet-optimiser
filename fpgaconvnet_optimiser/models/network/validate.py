@@ -81,9 +81,13 @@ def check_communication_bandwidth(self):
     # get memory bandwidth
     comm_bw = self.platform["comm_bandwidth"]
     # iterate over partitions
-    for partition in self.partitions:
+    for id,partition in enumerate(self.partitions):
         # get bandwidth in and out
-        bandwidth_in = partition.get_bandwidth_in(self.platform["freq"])
-        bandwidth_out = partition.get_bandwidth_out(self.platform["freq"])
+        bandwidth_in = 0
+        bandwidth_out = 0
+        if id != 0 and partition.platform['connections_in'][0] != partition.platform["id"] and partition.platform['connections_in']!=[]:
+            bandwidth_in = partition.get_bandwidth_in(self.platform["freq"])
+        if partition.platform['connections_out'][0]!= partition.platform["id"] and partition.platform['connections_out']!=[]:
+            bandwidth_out = partition.get_bandwidth_out(self.platform["freq"])
         # check within platform memory bounds
         assert (bandwidth_in+bandwidth_out) <= comm_bw, "Required bandwidth is greater than communication bandwidth"
