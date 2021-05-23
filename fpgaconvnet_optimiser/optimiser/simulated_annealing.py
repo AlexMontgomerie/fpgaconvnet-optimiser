@@ -143,5 +143,9 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # reduce temperature
             self.T *= self.cool
         self.get_multi_fpga_throughput()
+        self.get_max_interval()
         print("Latency:{}, Reconfiguration time: {}".format(self.get_latency(),(math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"]))
+        
+        for i,partition in enumerate(self.partitions):
+            print("Partition {} has communication interval in:{},out:{},through:{}".format(i, partition.get_comm_interval_in(),partition.get_comm_interval_out(),partition.get_interval()))
         print(len(self.partitions))

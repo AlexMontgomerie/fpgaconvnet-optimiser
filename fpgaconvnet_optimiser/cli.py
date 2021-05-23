@@ -49,7 +49,7 @@ def main():
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
-    shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
+    #shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
     # load optimiser config
@@ -83,10 +83,10 @@ def main():
 
     # update platform information
     net.update_platform(args.platform_path)
-    
+
     # update cluster information
     net.update_cluster(args.cluster_path)
-
+    print(net.platform)
     # specify optimiser objective
     if args.objective == "throughput":
         net.objective  = 1 
@@ -130,4 +130,7 @@ def main():
     
     # create scheduler
     net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+    
+    # create_csv_report
+    net.create_csv_report('/'.join(args.output_path.split('/run_')[0].split('/')[:-1]))
 
