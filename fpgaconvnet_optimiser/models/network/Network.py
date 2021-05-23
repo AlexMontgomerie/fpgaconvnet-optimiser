@@ -160,7 +160,14 @@ class Network():
     from fpgaconvnet_optimiser.models.network.metrics import get_cluster_latency
     from fpgaconvnet_optimiser.models.network.metrics import get_throughput
     from fpgaconvnet_optimiser.models.network.metrics import get_multi_fpga_throughput
+    from fpgaconvnet_optimiser.models.network.metrics import get_max_interval
+    from fpgaconvnet_optimiser.models.network.metrics import get_cluster_interval
+    from fpgaconvnet_optimiser.models.network.metrics import get_single_sample_latency
 
+
+
+    #tools
+    from fpgaconvnet_optimiser.models.network.tools import get_next_partition
     """
 
     """
