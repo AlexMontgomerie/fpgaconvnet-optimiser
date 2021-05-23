@@ -1,0 +1,122 @@
+[
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [19],
+        "id":                0,
+        "connections_out":  [1]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [0],
+        "id":                1,
+        "connections_out":  [2]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [1],
+        "id":                2,
+        "connections_out":  [3]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [2],
+        "id":                3,
+        "connections_out":  [4]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [3],
+        "id":                4,
+        "connections_out":  [5]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [4],
+        "id":                5,
+        "connections_out":  [6]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [5],
+        "id":                6,
+        "connections_out":  [7]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [6],
+        "id":                7,
+        "connections_out":  [8]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [7],
+        "id":                8,
+        "connections_out":  [9]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [8],
+        "id":                9,
+        "connections_out":  [10]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [9],
+        "id":                10,
+        "connections_out":  [11]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [10],
+        "id":                11,
+        "connections_out":  [12]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [11],
+        "id":                12,
+        "connections_out":  [13]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [12],
+        "id":                13,
+        "connections_out":  [14]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [13],
+        "id":                14,
+        "connections_out":  [15]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [14],
+        "id":                15,
+        "connections_out":  [16]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [15],
+        "id":                16,
+        "connections_out":  [17]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [16],
+        "id":                17,
+        "connections_out":  [18]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [17],
+        "id":                18,
+        "connections_out":  [19]
+    },
+    {
+        "platform":"examples/platforms/zc706.json",
+        "connections_in":   [18],
+        "id":                19,
+        "connections_out":  [0]
+    }
+]
