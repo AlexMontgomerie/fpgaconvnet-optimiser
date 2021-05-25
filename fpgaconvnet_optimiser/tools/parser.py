@@ -460,8 +460,6 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.Cast)
     filter_node_types(graph, LAYER_TYPE.Squeeze)
     filter_node_types(graph, LAYER_TYPE.Shape)
-    #TODO softmax needed for exit condition, remove filter when ONNX input updated
-    filter_node_types(graph, LAYER_TYPE.Softmax)
     filter_node_types(graph, LAYER_TYPE.LRN)
 
     #remove ReduceMax since it's implied as part of the EC
@@ -479,6 +477,7 @@ def parse_net(filepath,view=True):
     for eedge in exitedges:
         graph.add_edge(*eedge)
     #remove pass through node
+    filter_node_types(graph, LAYER_TYPE.Softmax)
     filter_node_types(graph, LAYER_TYPE.Identity)
     #TODO separate softmax layer from other layers in model
 

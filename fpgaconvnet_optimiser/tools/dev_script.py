@@ -33,7 +33,10 @@ def parser_expr():
     print("Parser experiments")
 
     #attempt to parse the graph and see what errors
-    filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
+    #exits BEFORE softmax
+    #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
+    #exits AFTER softmax
+    filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
     #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
     model, submodels, graph, ctrledges = \
         parser.parse_net(filepath, view=False) #check what view does
@@ -66,7 +69,10 @@ def parser_expr():
 
 def vis_expr():
     print("Visualiser experiments")
-    filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
+    #exits BEFORE softmax
+    #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
+    #exits AFTER softmax
+    filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
     #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
 
     #taking filepath as model_path
@@ -75,7 +81,7 @@ def vis_expr():
 
     test_net = Network(name, filepath) #rest as defaults
 
-    test_outpath = "/home/benubu/phd/test_out-DIFF-NAME.png"
+    test_outpath = "/home/benubu/phd/test_out-sftmx.png"
     test_net.visualise(test_outpath)
 
 
