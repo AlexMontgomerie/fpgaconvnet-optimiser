@@ -14,3 +14,7 @@ from .SlidingWindow import SlidingWindow
 from .Squeeze import Squeeze
 #EE modules
 from .Buffer import Buffer
+from .ReduceMax import ReduceMax
+from .Compare import Compare
+from .Exponential import Exponential
+from .Div import Div

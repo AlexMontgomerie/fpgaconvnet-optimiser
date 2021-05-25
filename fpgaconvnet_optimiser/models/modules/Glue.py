@@ -1,7 +1,7 @@
 """
-The Glue module is used to combine streams 
-used for channel parallelism in the 
-Convolution layer together. 
+The Glue module is used to combine streams
+used for channel parallelism in the
+Convolution layer together.
 
 .. figure:: ../../../figures/glue_diagram.png
 """
@@ -22,10 +22,10 @@ class Glue(Module):
             coarse_out,
             data_width=16
         ):
-        
+
         # module name
         self.name = "glue"
- 
+
         # init module
         Module.__init__(self,rows,cols,channels,data_width)
 
@@ -37,6 +37,12 @@ class Glue(Module):
         # load resource coefficients
         # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
         #     "../../coefficients/glue_rsc_coef.npy"))
+        rsc_types = ['bram', 'lut', 'dsp', 'ff']
+        self.rsc_coef = {}
+        for rsc_t in rsc_types:
+            filename = "../../coefficients/glue_" + rsc_t + ".npy"
+            filersc = np.load(os.path.join(os.path.dirname(__file__), filename))
+            self.rsc_coef[rsc_t.upper()] = filersc
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [

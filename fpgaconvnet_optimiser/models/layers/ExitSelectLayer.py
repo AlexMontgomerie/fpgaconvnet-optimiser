@@ -31,7 +31,7 @@ class ExitSelectLayer(Layer):
                             [cols,cols],
                             [channels,channels],
                             [coarse_in,coarse_in],
-                            [coarse_out,coarse_out])
+                            [coarse_out])
 
         #index 0 is then_branch, index 1 is else_branch
         #ctrledge links to exit condition layer
@@ -86,14 +86,14 @@ class ExitSelectLayer(Layer):
         cluster = pydot.Cluster(name,label=name)
 
         for i in range(self.coarse_in[0]):
-            cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
+            cluster.add_node(pydot.Node( "_".join([name,"tmp",str(i)]), label="tmp" ))
 
         for i in range(self.coarse_out[0]):
-            cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
+            cluster.add_node(pydot.Node( "_".join([name,"tmp",str(i)]), label="tmp" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_in[0]) ]
-        nodes_out = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_out[0]) ]
+        nodes_in  = [ "_".join([name,"tmp",str(i)]) for i in range(self.coarse_in[0]) ]
+        nodes_out = [ "_".join([name,"tmp",str(i)]) for i in range(self.coarse_out[0]) ]
 
         return cluster, nodes_in, nodes_out
 

@@ -1,10 +1,10 @@
 """
-The purpose of the accumulation (Accum) module is 
-to perform the channel-wise accumulation of the 
-dot product result from the output of the 
+The purpose of the accumulation (Accum) module is
+to perform the channel-wise accumulation of the
+dot product result from the output of the
 convolution (Conv) module.  As the data is coming
-into the module filter-first, the separate filter 
-accumulations are buffered until they complete 
+into the module filter-first, the separate filter
+accumulations are buffered until they complete
 their accumulation across channels.
 
 .. figure:: ../../../figures/accum_diagram.png
@@ -28,7 +28,7 @@ class Accum(Module):
 
         # module name
         self.name = "accum"
-        
+
         # init module
         Module.__init__(self,rows,cols,channels,data_width)
 
@@ -39,6 +39,12 @@ class Accum(Module):
         # load resource coefficients
         #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
         #    "../../coefficients/accum_rsc_coef.npy"))
+        rsc_types = ['bram', 'lut', 'dsp', 'ff']
+        self.rsc_coef = {}
+        for rsc_t in rsc_types:
+            filename = "../../coefficients/accum_" + rsc_t + ".npy"
+            filersc = np.load(os.path.join(os.path.dirname(__file__), filename))
+            self.rsc_coef[rsc_t.upper()] = filersc
 
     def utilisation_model(self):
         bram_acc_buffer_size =  (self.filters/self.groups)*self.data_width
@@ -88,11 +94,11 @@ class Accum(Module):
         acc_buffer =  (self.filters/self.groups)
         acc_fifo_bram = 0
         if acc_buffer*self.data_width >= 512:
-            acc_buffer_fifo_data = math.ceil( (acc_buffer*data_width)/18000) 
+            acc_buffer_fifo_data = math.ceil( (acc_buffer*data_width)/18000)
             acc_buffer_fifo_addr = math.ceil( math.log(acc_buffer,2) )
             #acc_fifo_bram = max(acc_buffer_fifo_data, acc_buffer_fifo_addr)
             acc_fifo_bram = acc_buffer_fifo_data
-        acc_buffer_bram = math.ceil( (acc_buffer*data_width)/18000) 
+        acc_buffer_bram = math.ceil( (acc_buffer*data_width)/18000)
         return {
           "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
           #"BRAM" : int(np.dot(self.utilisation_model(), coef["BRAM"])),

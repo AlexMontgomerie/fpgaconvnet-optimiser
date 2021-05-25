@@ -15,16 +15,22 @@ class ReLU(Module):
             channels,
             data_width=16
         ):
-        
+
         # module name
         self.name = "relu"
- 
+
         # init module
         Module.__init__(self,rows,cols,channels,data_width)
 
         # load resource coefficients
         #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
         #    "../../coefficients/relu_rsc_coef.npy"))
+        rsc_types = ['bram', 'lut', 'dsp', 'ff']
+        self.rsc_coef = {}
+        for rsc_t in rsc_types:
+            filename = "../../coefficients/relu_" + rsc_t + ".npy"
+            filersc = np.load(os.path.join(os.path.dirname(__file__), filename))
+            self.rsc_coef[rsc_t.upper()] = filersc
 
     def module_info(self):
         return {
