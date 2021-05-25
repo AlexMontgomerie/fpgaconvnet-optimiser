@@ -296,6 +296,16 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
                 1, # initialise coarse out to 1
             )
             continue
+        # Softmax Layer
+        if graph.nodes[name]['type'] == LAYER_TYPE.Softmax:
+            graph.nodes[name]['hw'] = SoftMaxLayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
+            )
+            continue
         #top1 exit criterion layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Greater:
             #need to have some idea of the hw layer for EC
@@ -455,10 +465,12 @@ def parse_net(filepath,view=True,data_width=16,weight_width=8,biases_width=16,ac
     #determine Early Exit points (Identity operations, edge to exit)
     for eedge in exitedges:
         graph.add_edge(*eedge)
-    #remove pass through node
-    filter_node_types(graph, LAYER_TYPE.Softmax)
-    filter_node_types(graph, LAYER_TYPE.Identity)
+
     #TODO separate softmax layer from other layers in model
+    #filter_node_types(graph, LAYER_TYPE.Softmax)
+
+    #remove pass through node
+    filter_node_types(graph, LAYER_TYPE.Identity)
 
     # add hardware to graph
     add_hardware(model, submodels, graph, ctrledges, hw_only_nodes,

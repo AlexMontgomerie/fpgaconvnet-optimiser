@@ -81,14 +81,6 @@ class BufferLayer(Layer):
         rates_graph[0,1] = self.modules['buffer'].rate_out(0)
         return rates_graph
 
-    def update_coarse_in(self, coarse_in):
-        self.coarse_in  = coarse_in
-
-    def update_coarse_out(self, coarse_out):
-        self.coarse_out = coarse_out
-
-    #def get_weights_reloading_feasible(self):
-
     def resource(self):
 
         buff_rsc    = self.modules['buffer'].rsc()
@@ -109,7 +101,7 @@ class BufferLayer(Layer):
 
         # get nodes in and out
         nodes_in  = [ "_".join([name,"buff",str(i)]) for i in range(self.coarse_in[0]) ]
-        nodes_out = nodes_in
+        nodes_out = [ "_".join([name,"buff",str(i)]) for i in range(self.coarse_out[0]) ]
 
         return cluster, nodes_in, nodes_out
 

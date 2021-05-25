@@ -12,12 +12,16 @@ from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 def add_squeeze(self):
     # find mismatching streams
     streams_matrix = matrix.get_streams_matrix(self.graph)
+    #print(streams_matrix)
     edge_list = matrix.get_edge_list_matrix(self.graph)
+    #print(edge_list)
     err = np.sum(streams_matrix,axis=1)
+    #print(err)
     # iterate over stream difference
     for edge in range(err.shape[0]):
         # mismatch
         if err[edge] != 0:
+            print("Found mismatch")
             # add node to graph
             start_name = onnx_helper.gen_layer_name(self.graph, edge_list[edge][0])
             end_name   = onnx_helper.gen_layer_name(self.graph, edge_list[edge][1])
@@ -57,21 +61,29 @@ def add_squeeze(self):
         # add edge to graph
         self.graph.add_edge(new_node,input_node)
     # check difference in output streams
-    output_node = graphs.get_output_nodes(self.graph)[0]
-    if self.streams_out != self.graph.nodes[output_node]['hw'].streams_out():
-        # add node to graph
-        new_node  = "_".join(["squeeze",output_node])
-        # add node to node info
-        self.graph.add_node(new_node,type=LAYER_TYPE.Squeeze,
-            hw=SqueezeLayer(
-                self.graph.nodes[output_node]['hw'].rows_out(),
-                self.graph.nodes[output_node]['hw'].cols_out(),
-                self.graph.nodes[output_node]['hw'].channels_out(),
-                self.graph.nodes[output_node]['hw'].streams_out(),
-                self.streams_out
-            )
-        )
-        self.graph.add_edge(output_node,new_node)
+    output_nodes = graphs.get_output_nodes(self.graph)
+    for output_node in output_nodes:
+
+        if self.graph.nodes[output_node]['type'] == LAYER_TYPE.Greater:
+            #DO NOT ADD SQUEEZE LAYER - TODO check need for sink layers
+            #Output of the exit condition is a control signal not data
+            continue
+        else:
+
+            if self.streams_out != self.graph.nodes[output_node]['hw'].streams_out():
+                # add node to graph
+                new_node  = "_".join(["squeeze",output_node])
+                # add node to node info
+                self.graph.add_node(new_node,type=LAYER_TYPE.Squeeze,
+                    hw=SqueezeLayer(
+                        self.graph.nodes[output_node]['hw'].rows_out(),
+                        self.graph.nodes[output_node]['hw'].cols_out(),
+                        self.graph.nodes[output_node]['hw'].channels_out(),
+                        self.graph.nodes[output_node]['hw'].streams_out(),
+                        self.streams_out
+                    )
+                )
+                self.graph.add_edge(output_node,new_node)
 
 def remove_squeeze(self):
     # get input and output graphs
@@ -97,4 +109,3 @@ def remove_squeeze(self):
             self.graph.add_edge(prev_node,next_node)
     # remove squeeze nodes
     self.graph.remove_nodes_from(remove_nodes)
-

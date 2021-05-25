@@ -15,3 +15,7 @@ from .Squeeze import Squeeze
 from .Bias import Bias
 #EE modules
 from .Buffer import Buffer
+from .ReduceMax import ReduceMax
+from .Compare import Compare
+from .Exponential import Exponential
+from .Div import Div

@@ -113,8 +113,8 @@ class Partition():
                 cluster.add_edge(pydot.Edge(edge_labels[ctrl[0]]["nodes_out"][0],
                                             edge_labels[ctrl[i]]["nodes_in"][0],
                                             color='red'))
-                print(edge_labels[ctrl[0]]["nodes_out"])
-                print(edge_labels[ctrl[i]]["nodes_in"])
+                #print(edge_labels[ctrl[0]]["nodes_out"])
+                #print(edge_labels[ctrl[i]]["nodes_in"])
         # return cluster
         return cluster
 
