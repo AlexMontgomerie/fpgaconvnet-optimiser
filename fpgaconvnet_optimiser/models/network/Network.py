@@ -56,8 +56,8 @@ class Network():
         self.connections_matrix = matrix.get_connections_matrix(self.graph)
         self.workload_matrix    = matrix.get_workload_matrix(self.graph)
 
-        # partitions
-        self.partitions = [Partition(copy.deepcopy(self.graph))]
+        # partitions, TODO check if deep copy needed for ctrl
+        self.partitions = [Partition(copy.deepcopy(self.graph), self.ctrledges)]
 
         # platform
         self.platform = {

@@ -82,12 +82,13 @@ class ExitConditionLayer(Layer):
         for i in range(self.coarse_in[0]):
             cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
 
-        for i in range(self.coarse_out[0]):
-            cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
+        #for i in range(self.coarse_out[0]):
+        #    cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
 
         # get nodes in and out
         nodes_in  = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_in[0]) ]
         nodes_out = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_out[0]) ]
+        #nodes_out = [ "_".join([name,"mod",str(i)]) for i in range(len(self.ctrledges)) ]
 
         return cluster, nodes_in, nodes_out
 

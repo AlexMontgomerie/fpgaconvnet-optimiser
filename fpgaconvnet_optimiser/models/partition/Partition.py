@@ -7,6 +7,7 @@ class Partition():
     def __init__(
             self,
             graph,
+            ctrledges,
             ports_in=1,
             ports_out=1,
             streams_in=1,
@@ -17,6 +18,8 @@ class Partition():
 
         ## graph for partition
         self.graph = graph
+        ## control flow edges for graph
+        self.ctrledges = ctrledges
 
         ## ports
         self.ports_in   = ports_in
@@ -133,5 +136,16 @@ class Partition():
                 for i in range(self.graph.nodes[node]['hw'].coarse_out[0]):
                     cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i],
                                     edge_labels[edge]["nodes_in"][i]))
+        #control edges
+        #print(self.ctrledges)
+        #for node in self.graph:
+        for ctrl in self.ctrledges:
+            for i in range(1,4): #index 1,2,3 of the ctrl edge
+                #TODO fix assumption that each in-out pair has only one node
+                cluster.add_edge(pydot.Edge(edge_labels[ctrl[0]]["nodes_out"][0],
+                                            edge_labels[ctrl[i]]["nodes_in"][0],
+                                            color='red'))
+                print(edge_labels[ctrl[0]]["nodes_out"])
+                print(edge_labels[ctrl[i]]["nodes_in"])
         # return cluster
         return cluster
