@@ -28,8 +28,9 @@ def get_cluster_latency(self,cluster,freq):
         interval = partition.get_interval()
         if partition.get_id() < len(self.partitions):
             #print("N partitions:{},partition_id{}".format(len(self.partitions),partition.get_id()))
-            comm_interval_out = partition.get_comm_interval_out()
-            next_comm_interval_in = self.partitions[self.get_next_partition(partition.get_id())].get_comm_interval_in()
+            two_way_communication = partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0
+            comm_interval_out = partition.get_comm_interval_out(comm_in=two_way_communication)
+            next_comm_interval_in = self.partitions[self.get_next_partition(partition.get_id())].get_comm_interval_in(comm_out=two_way_communication)
             max_interval = max(max_interval,interval,comm_interval_out,next_comm_interval_in) 
         else:
             max_interval = max(max_interval,interval)
@@ -73,8 +74,9 @@ def get_single_sample_latency(self):
         interval = partition.get_interval()
         if partition.get_id() < len(self.partitions):
             #print("N partitions:{},partition_id{}".format(len(self.partitions),partition.get_id()))
-            comm_interval_out = partition.get_comm_interval_out()
-            next_comm_interval_in = self.partitions[self.get_next_partition(partition.get_id())].get_comm_interval_in()
+            two_way_communication=partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0
+            comm_interval_out = partition.get_comm_interval_out(two_way_communication)
+            next_comm_interval_in = self.partitions[self.get_next_partition(partition.get_id())].get_comm_interval_in(two_way_communication)
             max_interval = max(max_interval,interval,comm_interval_out,next_comm_interval_in) 
         else:
             max_interval = max(max_interval,interval)
@@ -109,9 +111,11 @@ def get_cluster_interval(self,cluster):
             # get the interval for the partition
         interval = partition.get_interval()
         if (partition.get_id() < len(self.partitions) and partition.platform["connections_out"][0]!=partition.platform["id"]):
+            
             #print("N partitions:{},partition_id{}".format(len(self.partitions),partition.get_id()))
-            comm_interval_out = partition.get_comm_interval_out()
-            next_comm_interval_in = self.partitions[self.get_next_partition(partition.get_id())].get_comm_interval_in()
+            two_way_communication = partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0
+            comm_interval_out = partition.get_comm_interval_out(two_way_communication)
+            next_comm_interval_in = self.partitions[self.get_next_partition(partition.get_id())].get_comm_interval_in(two_way_communication)
             max_interval = max(max_interval,interval,comm_interval_out,next_comm_interval_in) 
         else:
             max_interval = max(max_interval,interval)
