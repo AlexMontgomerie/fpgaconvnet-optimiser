@@ -55,25 +55,35 @@ def get_bandwidth_out(self,freq):
     # get bandwidth (GB/s)
     return (rate*streams*self.data_width*freq)/8000
 
-def get_comm_interval_in(self):
+def get_comm_interval_in(self,comm_out=1):
     # get the interval for the partition
     bandwidth = self.platform['platform']["comm_bandwidth"]
     # get workload and streams out 
     input_node = graphs.get_input_nodes(self.graph)[0]
     workload = self.graph.nodes[input_node]["hw"].workload_in(0)
     # calculate rate from interval
-    interval =  math.ceil(workload*self.data_width*self.platform['platform']["freq"] / (bandwidth*1000000000))
+    frequency = self.platform['platform']["freq"] 
+    if comm_out:
+        remaining_bandwidth = bandwidth-self.get_bandwidth_out(frequency)
+    else:
+        remaining_bandwidth = bandwidth
+    interval =  math.ceil(workload*self.data_width*frequency / (remaining_bandwidth*1000))
     # get bandwidth (GB/s)
     return interval
 
-def get_comm_interval_out(self):
+def get_comm_interval_out(self,comm_in=1):
     # get the interval for the partition
     bandwidth = self.platform['platform']["comm_bandwidth"]
     # get workload and streams out 
     output_node = graphs.get_output_nodes(self.graph)[0]
     workload = self.graph.nodes[output_node]["hw"].workload_in(0)
     # interval from bandwidth and workload
-    interval = math.ceil(workload*self.data_width*self.platform['platform']["freq"] / (bandwidth*1000000000))
+    frequency=self.platform['platform']["freq"] 
+    if comm_in:
+        remaining_bandwidth = bandwidth-self.get_bandwidth_in(frequency)
+    else:
+        remaining_bandwidth = bandwidth
+    interval = math.ceil(workload*self.data_width*frequency / (remaining_bandwidth*1000))
     return interval
 
 
