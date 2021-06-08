@@ -24,9 +24,6 @@ jobs:
       run: |
         sudo apt-get install protobuf-compiler libprotoc-dev
         python setup.py install
-        cd examples/models
-        ./get_example_models.sh
-        cd ../..
     - name: Run Tests
       run: |
           python -m coverage run --source=fpgaconvnet_optimiser -m unittest discover tests/
