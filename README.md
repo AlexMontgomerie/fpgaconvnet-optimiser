@@ -14,7 +14,8 @@ The following programs are required:
 To install this package, run from this directory the following:
 
 ```
-python setup.py install
+sudo apt-get install protobuf-compiler libprotoc-dev
+python -m pip install .
 ```
 
 ## Optimiser Framework
