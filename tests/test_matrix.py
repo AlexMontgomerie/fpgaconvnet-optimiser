@@ -1,3 +1,4 @@
+import glob
 import unittest
 import ddt
 import fpgaconvnet_optimiser.tools.matrix as matrix
@@ -9,15 +10,7 @@ import scipy
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 
-NETWORKS = [
-    "examples/models/lenet.onnx",
-    "examples/models/alexnet.onnx",
-    "examples/models/vgg16.onnx",
-    "examples/models/caffenet.onnx",
-    "examples/models/caffenet.onnx",
-]
-
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 CONNECTION MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -25,9 +18,9 @@ CONNECTION MATRIX
 @ddt.ddt
 class TestConnectionMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    # @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
-
         # graph definition
         _, graph = parser.parse_net(model_path,view=False)
 
@@ -39,11 +32,11 @@ class TestConnectionMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(connections_matrix.shape[0],n_edges)
         self.assertEqual(connections_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(connections_matrix),n_nodes-1)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 STREAMS MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,7 +45,7 @@ STREAMS MATRIX
 @ddt.ddt
 class TestStreamsMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
@@ -66,11 +59,11 @@ class TestStreamsMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(streams_matrix.shape[0],n_edges)
         self.assertEqual(streams_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(streams_matrix),n_nodes-1)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 RATES MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -78,7 +71,7 @@ RATES MATRIX
 @ddt.ddt
 class TestRatesMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
@@ -92,11 +85,11 @@ class TestRatesMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(rates_matrix.shape[0],n_edges)
         self.assertEqual(rates_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(rates_matrix),n_nodes-1)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 RATES BALANCED MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -121,7 +114,7 @@ class TestBalancedRatesMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(balanced_rates_matrix.shape[0],n_edges)
         self.assertEqual(balanced_rates_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(balanced_rates_matrix),n_nodes-1)
 
@@ -137,13 +130,13 @@ class TestBalancedRatesMatrix(unittest.TestCase):
                         ratio            = np.nan_to_num(rates_matrix[row_index,col_index] / rates_matrix[i,col_index])
                         ratio_balanced   = np.nan_to_num(balanced_rates_matrix[row_index,col_index] / balanced_rates_matrix[i,col_index])
                         self.assertAlmostEqual(ratio,ratio_balanced)
-        
+
         # check the edges all have the same rate
         for row_index in range(rates_matrix.shape[0]):
             self.assertEqual(np.sum(balanced_rates_matrix[row_index,:]), 0.0)
 """
 
-"""    
+"""
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 WORKLOAD MATRIX
@@ -153,7 +146,7 @@ WORKLOAD MATRIX
 @ddt.ddt
 class TestWorkloadMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
@@ -167,7 +160,7 @@ class TestWorkloadMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(workload_matrix.shape[0],n_edges)
         self.assertEqual(workload_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(workload_matrix),n_nodes-1)
 
@@ -175,7 +168,7 @@ class TestWorkloadMatrix(unittest.TestCase):
         for i in range(workload_matrix.shape[0]):
             self.assertEqual(np.sum(workload_matrix[i,:]),0)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 TOPOLOGY MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,7 +177,7 @@ TOPOLOGY MATRIX
 @ddt.ddt
 class TestTopologyMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
@@ -198,11 +191,11 @@ class TestTopologyMatrix(unittest.TestCase):
         # check dimension of matrix
         self.assertEqual(topology_matrix.shape[0],n_edges)
         self.assertEqual(topology_matrix.shape[1],n_nodes)
-        
+
         # check rank of matrix
         self.assertEqual(matrix_rank(topology_matrix),n_nodes-1)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 INTERVAL MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -211,7 +204,7 @@ INTERVAL MATRIX
 @ddt.ddt
 class TestIntervalMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
