@@ -1,9 +1,9 @@
 # fpgaConvNet Optimiser
 
-![testing](https://github.com/AlexMontgomerie/fpgaconvnet-optimiser/actions/workflows/integration-testing.yml/badge.svg)
+![build](https://github.com/AlexMontgomerie/fpgaconvnet-optimiser/actions/workflows/integration-testing.yml/badge.svg)
+[![codecov](https://codecov.io/gh/AlexMontgomerie/fpgaconvnet-optimiser/branch/master/graph/badge.svg?token=AQ3NWNZX04)](https://codecov.io/gh/AlexMontgomerie/fpgaconvnet-optimiser)
 
-
-This repo contains code for optimising the mapping a Convolutional Neural Network (CNN) model to an FPGA. Hardware-specific transforms are applied to the model, producing a hardware description that can be used by a hardware backend, such as [fpgaConvNet HLS](https://github.com/AlexMontgomerie/fpgaconvnet-hls). The generated architecture is streaming-based, and optimised for the specific hardware platform. 
+This repo contains code for optimising the mapping a Convolutional Neural Network (CNN) model to an FPGA. Hardware-specific transforms are applied to the model, producing a hardware description that can be used by a hardware backend, such as [fpgaConvNet HLS](https://github.com/AlexMontgomerie/fpgaconvnet-hls). The generated architecture is streaming-based, and optimised for the specific hardware platform.
 
 ## Setup
 
@@ -19,7 +19,7 @@ python setup.py install
 
 ## Optimiser Framework
 
-The main tool is the optimisation script which generates an optimised hardware topology for a given model and platform. There are several components needed for this: a model of the hardware, transforms that map the model to the hardware and an optimisation scheme that chooses the best mapping. These will be outlined later. 
+The main tool is the optimisation script which generates an optimised hardware topology for a given model and platform. There are several components needed for this: a model of the hardware, transforms that map the model to the hardware and an optimisation scheme that chooses the best mapping. These will be outlined later.
 To use the optimiser, an example of running it using the `run_optimiser.py` script for VGG16 is as follows:
 
 ```Shell
@@ -31,7 +31,7 @@ python -m fpgaconvnet_optimiser --name vgg16 \
     --objective throughput \
     --transforms fine weights_reloading coarse partition \
     --optimiser simulated_annealing \
-    --optimiser_config_path examples/optimiser_example.yml 
+    --optimiser_config_path examples/optimiser_example.yml
 ```
 
 This will generate the following files:
@@ -60,7 +60,7 @@ In order to do the CNN to hardware mapping, a model of the hardware is needed. T
   - Batch Normalization
   - Convolution
   - Inner Product
-  - Pooling 
+  - Pooling
   - ReLU
 - __Partition:__ Partitions make up a sub-graph of the CNN model network. They are comprised of layers. A single partition fits on an FPGA at a time, and partitions are changed by reconfiguring the FPGA.
 - __Network:__ This is the entire CNN model described through hardware. A network contains partitions and information on how to execute them.
@@ -80,7 +80,7 @@ In order to find the optimal mapping, transforms are used to manipulate the perf
 
 Finally, optimisations schemes are used to explore the transform design space and find an optimal mapping for a given hardware platform. The optimisation schemes implemented are the following:
 
-- __Simulated Annealing:__ Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function. 
+- __Simulated Annealing:__ Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function.
 - __Improve:__ Chooses the hardware component causing a bottleneck and performs the same decision as simulated annealing.
 
 ## Citations
