@@ -1,5 +1,5 @@
-import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2 
-from google.protobuf import text_format
+import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
+from google.protobuf.text_format import MessageToString
 from google.protobuf.json_format import MessageToJson
 import numpy as np
 import os
@@ -23,14 +23,14 @@ def get_model_output_node(self, partition_index):
     return onnx_helper.get_model_node(self.model, output_node).output[0]
 
 def save_all_partitions(self,filepath): # TODO: update
-    # create protocol buffer 
+    # create protocol buffer
     partitions = fpgaconvnet_pb2.partitions()
     # iterate over partions
     for i in range(len(self.partitions)):
         # create partition
         partition = partitions.partition.add()
         # add partition info
-        partition.id = i 
+        partition.id = i
         partition.ports = 1 # TODO
         partition.input_node  = self.get_model_input_node(i) #self.partitions[i]['input_nodes'][0]
         partition.output_node = self.get_model_output_node(i) #self.partitions[i]['output_nodes'][0]
@@ -53,7 +53,7 @@ def save_all_partitions(self,filepath): # TODO: update
                 layer.node_in   = prev_nodes[0]
                 stream_in.name  = "_".join([prev_nodes[0].replace("/","_"), node.replace("/","_")])
             stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_in
-            # add stream(s) out 
+            # add stream(s) out
             stream_out = layer.streams_out.add()
             next_nodes = graphs.get_next_nodes(self.partitions[i].graph, node)
             if not next_nodes:
@@ -63,16 +63,16 @@ def save_all_partitions(self,filepath): # TODO: update
                 layer.node_out  = next_nodes[0]
                 stream_out.name = "_".join([node.replace("/","_"), next_nodes[0].replace("/","_")])
             stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_out
-            # add parameters 
+            # add parameters
             self.partitions[i].graph.nodes[node]['hw'].layer_info(layer.parameters, batch_size=self.partitions[i].batch_size)
             # add weights key
             if self.partitions[i].graph.nodes[node]['type'] in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
                 layer.weights_path = self.partitions[i].graph.nodes[node]['inputs']['weights']
                 layer.bias_path    = self.partitions[i].graph.nodes[node]['inputs']['bias']
-    
-    # save protobuf message
-    with open(os.path.join(filepath,f"{self.name}.prototxt"),"w") as f:
-        f.write(text_format.MessageToString(partitions))
+
+    # # save protobuf message
+    # with open(os.path.join(filepath,f"{self.name}.prototxt"),"w") as f:
+    #     f.write(MessageToString(partitions))
 
     # save in JSON format
     with open(os.path.join(filepath,f"{self.name}.json"),"w") as f:
