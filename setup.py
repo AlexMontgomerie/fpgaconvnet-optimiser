@@ -33,5 +33,6 @@ setuptools.setup(
         "pydot>=1.4.2",
         "onnxoptimizer>=0.2.5",
         "ddt>=1.4.2",
+        "coverage==5.5",
     ]
 )
