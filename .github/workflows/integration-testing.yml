@@ -29,4 +29,7 @@ jobs:
         cd ../..
     - name: Run Tests
       run: |
-          python -m unittest discover tests/
+          python -m coverage run --source=fpgaconvnet_optimiser -m unittest discover tests/
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
