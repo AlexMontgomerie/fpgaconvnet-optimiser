@@ -66,10 +66,10 @@ class ConvolutionLayer(Layer):
         # handle pad
         if isinstance(pad, int):
             pad = [
-                    pad - (self.rows_in() - k_size[0] + 2*pad) % stride[0],
+                    pad - (self.rows[0] - k_size[0] + 2*pad) % stride[0],
                     pad,
                     pad,
-                    pad - (self.cols_in() - k_size[1] + 2*pad) % stride[1],
+                    pad - (self.cols[0] - k_size[1] + 2*pad) % stride[1],
                 ]
         elif isinstance(pad, list):
             assert len(pad) == 4, "Must specify four pad dimensions"
@@ -93,8 +93,16 @@ class ConvolutionLayer(Layer):
         self.filters = filters
 
         # init modules
-        self.modules["sliding_window"] = SlidingWindow(self.rows_in(), self.cols_in(), self.channels_in(), k_size, stride
-                self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width)
+        self.modules["sliding_window"] = SlidingWindow(self.rows[0],
+                                                       self.cols[0],
+                                                       self.channels[0],
+                                                       k_size,
+                                                       stride,
+                                                       self.pad_top,
+                                                       self.pad_right,
+                                                       self.pad_bottom,
+                                                       self.pad_left,
+                                                       self.data_width)
         self.modules["fork"] = Fork(self.rows_out(), self.cols_out(), self.filters, k_size, self.coarse_out)
         self.modules["conv"] = Conv(self.rows_out(), self.cols_out(), self.filters, filters, fine, k_size, groups)
         self.modules["accum"] = Accum(self.rows_out(), self.cols_out(), self.filters, filters, groups)
@@ -102,26 +110,6 @@ class ConvolutionLayer(Layer):
 
         self.update()
         #self.load_coef()
-
-    def rows_out(self, port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        return self.modules[next(reversed(self.modules))].rows_out()
-
-    def cols_out(self, port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        return self.modules[next(reversed(self.modules))].cols_out()
-
-    def channels_out(self, port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        return self.filters
-
-    def rate_in(self,port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        return abs(self.balance_module_rates(self.rates_graph())[0,0])
-
-    def rate_out(self,port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        return abs(self.balance_module_rates(self.rates_graph())[4,5])
 
     def streams_in(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
