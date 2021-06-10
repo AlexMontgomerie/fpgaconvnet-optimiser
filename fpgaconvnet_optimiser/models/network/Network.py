@@ -6,7 +6,7 @@ import math
 import numpy as np
 import networkx as nx
 
-from google.protobuf import text_format
+from google.protobuf import json_format
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2
 
 import fpgaconvnet_optimiser.tools.parser as parser
@@ -31,19 +31,19 @@ class Network():
     def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0):
 
         ## percentage resource allocation
-        self.rsc_allocation = 0.7 
+        self.rsc_allocation = 0.7
 
         ## bitwidths
         self.data_width     = 16
         self.weight_width   = 8
-        self.acc_width      = 30 
+        self.acc_width      = 30
 
         # network name
         self.name = name
 
         # initialise variables
         self.batch_size = batch_size
- 
+
         # load network
         self.model, self.graph = parser.parse_net(network_path, view=False)
 
@@ -79,10 +79,10 @@ class Network():
         # all types of layers
         self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
         self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
- 
+
         # update partitions
         self.update_partitions()
-    
+
     # import transforms
     ## partitioning transform
     from fpgaconvnet_optimiser.transforms.partition import check_parallel_block
@@ -90,13 +90,13 @@ class Network():
     from fpgaconvnet_optimiser.transforms.partition import get_all_vertical_splits
     from fpgaconvnet_optimiser.transforms.partition import get_all_horizontal_merges
     from fpgaconvnet_optimiser.transforms.partition import get_all_vertical_merges
-    from fpgaconvnet_optimiser.transforms.partition import split_horizontal 
+    from fpgaconvnet_optimiser.transforms.partition import split_horizontal
     from fpgaconvnet_optimiser.transforms.partition import split_vertical
-    from fpgaconvnet_optimiser.transforms.partition import merge_horizontal 
+    from fpgaconvnet_optimiser.transforms.partition import merge_horizontal
     from fpgaconvnet_optimiser.transforms.partition import merge_vertical
-    from fpgaconvnet_optimiser.transforms.partition import split_horizontal_complete 
-    from fpgaconvnet_optimiser.transforms.partition import split_vertical_complete 
-    from fpgaconvnet_optimiser.transforms.partition import split_complete 
+    from fpgaconvnet_optimiser.transforms.partition import split_horizontal_complete
+    from fpgaconvnet_optimiser.transforms.partition import split_vertical_complete
+    from fpgaconvnet_optimiser.transforms.partition import split_complete
     from fpgaconvnet_optimiser.transforms.partition import merge_horizontal_complete
     from fpgaconvnet_optimiser.transforms.partition import merge_vertical_complete
     from fpgaconvnet_optimiser.transforms.partition import merge_complete
@@ -121,10 +121,10 @@ class Network():
     from fpgaconvnet_optimiser.models.network.update import update_coarse_in_out_partition
 
     # represent
-    from fpgaconvnet_optimiser.models.network.represent import get_model_input_node 
-    from fpgaconvnet_optimiser.models.network.represent import get_model_output_node 
+    from fpgaconvnet_optimiser.models.network.represent import get_model_input_node
+    from fpgaconvnet_optimiser.models.network.represent import get_model_output_node
     from fpgaconvnet_optimiser.models.network.represent import save_all_partitions
-    
+
     # validate
     from fpgaconvnet_optimiser.models.network.validate import check_ports
     from fpgaconvnet_optimiser.models.network.validate import check_resources
@@ -141,7 +141,7 @@ class Network():
 
         # for sequential networks, our worst-case memory usage is
         # going to be both the largest input and output featuremap pair
-        
+
         # get the largest input featuremap size
         max_input_size = 0
         max_output_size = 0
@@ -188,7 +188,7 @@ class Network():
         # get layer type
         layer_type = fpgaconvnet_optimiser.tools.layer_enum.from_proto_layer_type(layer_proto.type)
         # get dimensions
-        dims = [ 
+        dims = [
                 layer_proto.parameters.channels_in,
                 layer_proto.parameters.rows_in,
                 layer_proto.parameters.cols_in
@@ -205,7 +205,7 @@ class Network():
                 coarse_in   =layer_proto.parameters.coarse_in,
                 coarse_out  =layer_proto.parameters.coarse_out
             )
-        
+
         # Inner Product Layer
         if layer_type == LAYER_TYPE.InnerProduct:
             return InnerProductLayer(dims,
@@ -213,7 +213,7 @@ class Network():
                 coarse_in   =layer_proto.parameters.coarse_in,
                 coarse_out  =layer_proto.parameters.coarse_out
             )
-        
+
         # Pooling layer
         if layer_type == LAYER_TYPE.Pooling:
             return PoolingLayer(dims,
@@ -224,7 +224,7 @@ class Network():
                 coarse_in   =layer_proto.parameters.coarse_in,
                 coarse_out  =layer_proto.parameters.coarse_out
             )
-        
+
         # ReLU Layer
         if layer_type == LAYER_TYPE.ReLU:
             # create relu layer hardware
@@ -232,7 +232,7 @@ class Network():
                 coarse_in   =layer_proto.parameters.coarse_in,
                 coarse_out  =layer_proto.parameters.coarse_out
             )
-    
+
         # Squeeze Layer
         if layer_type == LAYER_TYPE.Squeeze:
             # create relu layer hardware
@@ -240,12 +240,12 @@ class Network():
                 coarse_in   =layer_proto.parameters.coarse_in,
                 coarse_out  =layer_proto.parameters.coarse_out
             )
-             
+
     def load_network(self, network_path):
         # load the prototxt file
         partitions = fpgaconvnet_optimiser.proto.fpgaconvnet_pb2.partitions()
         with open(network_path, "r") as f:
-            text_format.Parse(f.read(), partitions)
+            json_format.Parse(f.read(), partitions)
         # delete current partitions
         self.partitions = []
         # iterate over partitions
