@@ -29,6 +29,7 @@ def create_report(self, output_path):
             }
         }
     }
+    report["groups"] = self.groups
     # add information for each partition
     report["partitions"] = {}
     for i in range(len(self.partitions)):
@@ -73,15 +74,20 @@ def create_report(self, output_path):
 
 def create_csv_report(self,output_path):
     with open(output_path+"/summary.csv", 'a', newline='') as file:
-        fieldnames = ['Cluster Size', 'Throughput(actual)','Throughput(interval)','Latency','SingleSampleLatency','Reconfiguration Time','DSP','BRAM','MaxBandwidthIn','MaxBandwidthOut','MaxBandwidth','MemoryEstimate','MaxInterval','NumPartitions']
+        fieldnames = ['Cluster Size','Batch Size', 'Throughput(Cluster grouping)','Throughput(FPGA grouping)','Throughput(interval)','Throughput(single)','Latency(Cluster grouping)','Latency(FPGA grouping)','Latency(single)','Latency(SingleSampleLatency)','Reconfiguration Time','DSP','BRAM','MaxBandwidthIn','MaxBandwidthOut','MaxBandwidth','MemoryEstimate','MaxInterval','NumPartitions']
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         if os.path.getsize(output_path+"/summary.csv")==0:
             writer.writeheader()
-        writer.writerow({'Cluster Size':len(self.cluster),                  
-                         'Throughput(actual)':self.get_throughput(),
+        writer.writerow({'Cluster Size':len(self.cluster),
+                         'Batch Size':self.batch_size,                  
+                         'Throughput(Cluster grouping)':self.get_cluster_grouping_throughput(),
+                         'Throughput(FPGA grouping)':self.get_fpga_grouping_throughput(),
                          'Throughput(interval)':self.get_multi_fpga_throughput(),
-                         'Latency':self.get_latency(),
-                         'SingleSampleLatency':self.get_single_sample_latency(),
+                         'Throughput(single)':self.get_throughput(),
+                         'Latency(Cluster grouping)':self.get_cluster_grouping_single_sample_latency(),
+                         'Latency(FPGA grouping)':self.get_fpga_grouping_single_sample_latency(),
+                         'Latency(single)':self.get_latency(),
+                         'Latency(SingleSampleLatency)':self.get_single_sample_latency(),
                          'Reconfiguration Time':(math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"],
                          'DSP':max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ]),
                          'BRAM':max([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ]),
@@ -91,4 +97,5 @@ def create_csv_report(self,output_path):
                          'MemoryEstimate':self.get_memory_usage_estimate(),
                          'MaxInterval':self.get_max_interval(),
                          'NumPartitions':len(self.partitions)})
+
 

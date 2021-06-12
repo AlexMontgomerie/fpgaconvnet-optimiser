@@ -150,6 +150,8 @@ def split_horizontal(self, partition_index, edge):
     self.partitions[partition_index].apply_weights_reloading_transform()
     self.partitions[partition_index+1].apply_weights_reloading_transform()
     #self.partitions[partition_index+1].apply_max_weights_reloading()
+    #print("Split {}".format(partition_index))
+    self.update_partition_index()
 
 def split_vertical(self, partition_index, nodes):
     # remove weights reloading transform
@@ -179,6 +181,8 @@ def merge_horizontal(self,partition_index_a,partition_index_b):
     self.partitions[partition_index_b].apply_max_weights_reloading()
     # remove last partition
     del self.partitions[partition_index_b]
+    #print("Merged {},{}".format(partition_index_a,partition_index_b))
+    self.update_partition_index()
 
 def merge_vertical(self, partition_index_a, partition_index_b):
     # remove weights reloading transform
@@ -192,6 +196,7 @@ def merge_vertical(self, partition_index_a, partition_index_b):
     self.partitions[partition_index_a].apply_max_weights_reloading()
     # remove last partition
     del self.partitions[partition_index_b]
+
 
 def split_horizontal_complete(self):
     # function to find a horizontal split

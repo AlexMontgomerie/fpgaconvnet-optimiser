@@ -9,7 +9,7 @@ import argparse
 import shutil
 import random
 import numpy as np
-
+import time
 from fpgaconvnet_optimiser.optimiser.simulated_annealing import SimulatedAnnealing
 from fpgaconvnet_optimiser.optimiser.improve import Improve
 
@@ -29,8 +29,8 @@ def main():
         help='Batch size')
     parser.add_argument('--objective',choices=['throughput','latency'],required=True,
         help='Optimiser objective')
-    parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition'],
-        default=['fine','coarse','weights_reloading','partition'],
+    parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition','group'],
+        default=['fine','coarse','weights_reloading','partition','group'],
         help='network transforms')
     parser.add_argument('--optimiser',choices=['simulated_annealing','improve'],default='improve',
         help='Optimiser strategy')
@@ -42,8 +42,10 @@ def main():
     args = parser.parse_args()
 
     # setup seed
-    random.seed(args.seed)
-    np.random.seed(args.seed)
+    seed=time.time()*(10**9)
+    print("Seed:",int(seed)%1000000)
+    random.seed(int(seed)%1000000)
+    np.random.seed(int(seed)%1000000)
 
     # copy input files to the output path
     if not os.path.exists(args.output_path):
@@ -86,7 +88,9 @@ def main():
 
     # update cluster information
     net.update_cluster(args.cluster_path)
+    net.init_groups()
     print(net.platform)
+
     # specify optimiser objective
     if args.objective == "throughput":
         net.objective  = 1 
@@ -98,6 +102,9 @@ def main():
 
     # specify available transforms
     net.transforms = args.transforms
+    if len(net.cluster)==1:
+        net.transforms.remove("group")
+    print(net.transforms)
 
     # initialize graph
     ## completely partition graph

@@ -45,7 +45,7 @@ class Optimiser(Network):
             'power'      : float("inf")
         }
 
-        self.transforms = ['coarse','fine','partition','weights_reloading']
+        self.transforms = ['coarse','fine','partition','weights_reloading','group']
 
     def get_cost(self):
         """
@@ -66,7 +66,7 @@ class Optimiser(Network):
             return self.get_latency()
         # Throughput objective
         elif self.objective == THROUGHPUT:
-            return -self.get_throughput()
+            return -self.get_cluster_grouping_throughput()
         # Power objective
         elif self.objective == POWER:
             return self.get_power_average()    
@@ -135,6 +135,9 @@ class Optimiser(Network):
             self.partitions[partition_index].remove_squeeze()
             self.apply_random_partition(partition_index)
             return
+        if transform == 'group':
+            self.apply_random_grouping()
+            #print(self.groups)
 
     def optimiser_status(self):
         """

@@ -42,14 +42,14 @@ Randomly chooses a transform and hardware component to change. The change is acc
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
         sys.stdout.write("\033[K")
-        print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-            temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
+        print("TEMP:\t {temp:0.4}, COST:\t {cost:0.4},{test:0.4} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
+            temp=self.T,cost=cost,test=self.get_throughput(),objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
     def run_optimiser(self, log=True):
        
         # update all partitions
         self.update_partitions()
-
+        self.update_partition_index()
         # Setup
         cost = self.get_cost()       
 
@@ -95,6 +95,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             
             # Save previous iteration
             partitions = copy.deepcopy(self.partitions)
+            groups = copy.deepcopy(self.groups)
 
             # several iterations per cool down
             for _ in range(self.iterations):
@@ -121,6 +122,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
             
                 ## Update partitions
                 self.update_partitions()
+                #print("Mid run partitions:",len(self.partitions))
+                #print("Mid run groups    :",self.groups)
 
             # Check resources
             try: 
@@ -128,24 +131,32 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 self.check_constraints()
             except AssertionError:
                 # revert to previous state
+                self.groups = groups
                 self.partitions = partitions
                 continue
 
             # Simulated annealing descision
             if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
                 # revert to previous state
+
+                self.groups = groups
                 self.partitions = partitions
 
             # update cost
             if self.DEBUG:
                 self.optimiser_status()
-
             # reduce temperature
             self.T *= self.cool
+
         self.get_multi_fpga_throughput()
         self.get_max_interval()
         print("Latency:{}, Reconfiguration time: {}".format(self.get_latency(),(math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"]))
-        
+        print(self.groups)
         for i,partition in enumerate(self.partitions):
-            print("Partition {} has communication interval in:{},out:{},through:{}".format(i, partition.get_comm_interval_in(),partition.get_comm_interval_out(),partition.get_interval()))
+            print("Partition {} has communication interval in:{},out:{},through:{}, bandwidth in:{}, out:{}".format(i, 
+                                                                                                                    partition.get_comm_interval_in(partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0),
+                                                                                                                    partition.get_comm_interval_out(partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0),
+                                                                                                                    partition.get_interval(),
+                                                                                                                    partition.get_bandwidth_in(self.platform["freq"]),
+                                                                                                                    partition.get_bandwidth_out(self.platform["freq"])))
         print(len(self.partitions))

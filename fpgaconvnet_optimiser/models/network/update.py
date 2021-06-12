@@ -1,3 +1,6 @@
+from fpgaconvnet_optimiser.models.network.tools import get_group_id
+import math
+from fpgaconvnet_optimiser.transforms import group
 import json
 import copy
 import fpgaconvnet_optimiser.tools.graphs as graphs
@@ -115,5 +118,45 @@ def update_cluster(self, cluster_path):
 
 
 def update_partition_index(self):
+    #find_merges_and_splits
+    if len(self.cluster)>1:
+        for id,partition,  in enumerate(self.partitions):
+            if (id<partition.get_id()):
+                for group_id,group in self.groups.items():
+                    if group_id > self.get_group_id(id):
+                        if len(group)!=0:
+                            group.insert(0,group[0]-1)
+                            group.pop()
+                self.groups[self.get_group_id(id)].pop()
+                break
+            if (id>partition.get_id()):
+                group = self.groups[self.get_group_id(partition.get_id())]
+                group.append(group[len(group)-1]+1)
+                for group_id,group in self.groups.items():
+                    if group_id > self.get_group_id(id):
+                        if len(group)!=0:
+                            group.append(group[len(group)-1]+1)
+                            group.pop(0)
+                break 
+        if len(self.partitions) < sum([len(group)for _, group in self.groups.items()]):
+            #print("FOUND IT")
+            self.groups[self.get_group_id(len(self.partitions))].pop()
     for id,partition,  in enumerate(self.partitions):
+        #if (id!=partition.get_id()):
+        #    print("Partition:{},{}".format(id,partition.get_id()))
+            
         partition.set_id(id)
+
+
+def init_groups(self):
+    #print(len(self.partitions))
+    print(self.cluster)
+    if len(self.groups)==1 or len(self.groups)==0:
+        self.groups=dict()
+        for cluster in range(len(self.cluster)):
+            self.groups.setdefault(cluster, []) 
+        self.groups[0].append(0)
+    else:
+        for cluster in range(len(self.cluster)-len(self.groups)):
+            self.groups.setdefault(cluster+len(self.groups), []) 
+    print(self.groups)

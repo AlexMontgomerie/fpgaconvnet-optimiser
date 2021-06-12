@@ -103,6 +103,7 @@ class Improve(Optimiser):
 
             # Save previous iteration
             partitions = copy.deepcopy(self.partitions)
+            groups = copy.deepcopy(self.groups)
 
             # several iterations per cool down
             for _ in range(self.iterations):
@@ -140,12 +141,14 @@ class Improve(Optimiser):
             except AssertionError:
                 # revert to previous state
                 self.partitions = partitions
+                self.groups = groups
                 continue
 
             # Simulated annealing descision
             if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
                 # revert to previous state
                 self.partitions = partitions
+                self.groups = groups
 
             # update cost
             if self.DEBUG:

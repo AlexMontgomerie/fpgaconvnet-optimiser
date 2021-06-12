@@ -88,6 +88,8 @@ class Network():
                                 "connections_in":[0]
                             },
                         }
+        self.grouping_method="FGPA"
+        self.groups = {} # FPGA id key, list of partitions values
         # int:int map with partition index as key and platform index as value 
         self.partitionmap = {partition.get_id():1 for partition in self.partitions}
 
@@ -117,6 +119,10 @@ class Network():
     from fpgaconvnet_optimiser.transforms.partition import merge_vertical_complete
     from fpgaconvnet_optimiser.transforms.partition import merge_complete
     from fpgaconvnet_optimiser.transforms.partition import apply_random_partition
+    
+    from fpgaconvnet_optimiser.transforms.group import  switch_group
+    from fpgaconvnet_optimiser.transforms.group import  apply_random_grouping
+    from fpgaconvnet_optimiser.transforms.group import  get_possible_switches
 
     # import reporting functions
     from fpgaconvnet_optimiser.models.network.report import create_report
@@ -138,6 +144,7 @@ class Network():
     from fpgaconvnet_optimiser.models.network.update import update_coarse_in_out_partition
     from fpgaconvnet_optimiser.models.network.update import update_cluster
     from fpgaconvnet_optimiser.models.network.update import update_partition_index
+    from fpgaconvnet_optimiser.models.network.update import init_groups
 
 
     # represent
@@ -168,6 +175,8 @@ class Network():
 
     #tools
     from fpgaconvnet_optimiser.models.network.tools import get_next_partition
+    from fpgaconvnet_optimiser.models.network.tools import get_group_id
+
     """
 
     """
