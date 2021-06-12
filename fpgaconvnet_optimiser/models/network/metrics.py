@@ -26,7 +26,7 @@ def get_cluster_latency(self,cluster,freq):
     for i,partition in enumerate(cluster):
             # get the interval for the partition
         interval = partition.get_interval()
-        if partition.get_id() < len(self.partitions):
+        if partition.get_id() < len(self.partitions)-1 and len(cluster)>1:
             #print("N partitions:{},partition_id{}".format(len(self.partitions),partition.get_id()))
             two_way_communication = partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0
             comm_interval_out = partition.get_comm_interval_out(comm_in=two_way_communication)
@@ -46,6 +46,37 @@ def get_cluster_latency(self,cluster,freq):
     return latency
 
 def get_latency(self):
+        latency = 0
+        # iterate over partitions:
+        for partition in self.partitions:
+            # accumulate latency for each partition
+            latency += partition.get_latency(self.platform["freq"])
+        # return the total latency as well as reconfiguration time
+        return latency + (len(self.partitions)-1)*self.platform["reconf_time"]
+
+def get_single_sample_latency(self):
+        latency = 0
+        # iterate over partitions:
+        for partition in self.partitions:
+            # accumulate latency for each partition
+            if partition.get_id()<len(self.partitions)-1:
+                latency += partition.get_latency(self.platform["freq"])
+            else:
+                interval=partition.get_interval()
+                batch_size= self.batch_size
+                frequency =self.platform["freq"]
+                # get pipeline depth of partition
+                input_node = graphs.get_input_nodes(partition.graph)[0]
+                pipeline_depth = partition.get_pipeline_depth(input_node) # TODO: find max of all input nodes
+                # return the latency (in seconds)
+                wr_factor   = partition.wr_factor
+                size_wr     = partition.size_wr
+                latency += (pipeline_depth*wr_factor + (wr_factor-1)*(size_wr+batch_size*interval))/(frequency*1000000)
+
+        # return the total latency as well as reconfiguration time
+        return latency + (len(self.partitions)-1)*self.platform["reconf_time"]
+
+def get_cluster_grouping_batch_latency(self):
     latency = 0
     # iterate over partitions:
     for i in range(math.ceil(len(self.partitions)/len(self.cluster))):
@@ -55,7 +86,7 @@ def get_latency(self):
     # return the total latency as well as reconfiguration time
     return latency + (math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"]
 
-def get_single_sample_latency(self):
+def get_cluster_grouping_single_sample_latency(self):
     latency = 0
     frequency = self.platform["freq"]
     # Get cluster latency for first n-1 clusters
@@ -64,15 +95,15 @@ def get_single_sample_latency(self):
         # accumulate latency for each partition
         cluster = self.partitions[i*len(self.cluster):min((i+1)*len(self.cluster),len(self.partitions))]
         latency += self.get_cluster_latency(cluster,frequency)
-
+        print(i)
     # Get latency for last cluster
     last_cluster = self.partitions[(n_clusters-1)*len(self.cluster):len(self.partitions)]
     batch_size = self.batch_size
-    max_interval=0        
+    max_interval = 0        
     for i,partition in enumerate(last_cluster):
             # get the interval for the partition
         interval = partition.get_interval()
-        if partition.get_id() < len(self.partitions):
+        if partition.get_id() < len(self.partitions)-1:
             #print("N partitions:{},partition_id{}".format(len(self.partitions),partition.get_id()))
             two_way_communication=partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0
             comm_interval_out = partition.get_comm_interval_out(two_way_communication)
@@ -80,6 +111,7 @@ def get_single_sample_latency(self):
             max_interval = max(max_interval,interval,comm_interval_out,next_comm_interval_in) 
         else:
             max_interval = max(max_interval,interval)
+        print("max interval:",max_interval,i,partition.get_id())
         # get pipeline depth of partition
         input_node = graphs.get_input_nodes(partition.graph)[0]
         pipeline_depth = partition.get_pipeline_depth(input_node) # TODO: find max of all input nodes
@@ -87,12 +119,15 @@ def get_single_sample_latency(self):
         wr_factor   = partition.wr_factor
         size_wr     = partition.size_wr
         latency += (pipeline_depth*wr_factor + (wr_factor-1)*(size_wr+batch_size*interval))/(frequency*1000000)
-    latency += max_interval/(frequency*1000000)
+    #latency += max_interval/(frequency*1000000)
     # return the total latency as well as reconfiguration time
     return latency + (math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"]
 
 def get_throughput(self):
     return float(self.batch_size)/self.get_latency()
+
+def get_cluster_grouping_throughput(self):
+    return float(self.batch_size)/self.get_cluster_grouping_batch_latency()
 
 def get_max_interval(self):
     max_interval=0
@@ -110,7 +145,7 @@ def get_cluster_interval(self,cluster):
     for i,partition in enumerate(cluster):
             # get the interval for the partition
         interval = partition.get_interval()
-        if (partition.get_id() < len(self.partitions) and partition.platform["connections_out"][0]!=partition.platform["id"]):
+        if (partition.get_id() < len(self.partitions) and len(cluster)>1 and partition.platform["connections_out"][0]!=partition.platform["id"]):
             
             #print("N partitions:{},partition_id{}".format(len(self.partitions),partition.get_id()))
             two_way_communication = partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0
@@ -120,3 +155,49 @@ def get_cluster_interval(self,cluster):
         else:
             max_interval = max(max_interval,interval)
     return max_interval
+
+
+def get_group_latency(self,group_index):
+    latency = 0
+    for partition_id in self.groups[group_index]:
+        if partition_id==len(self.partitions):
+            print("Group:",self.groups)
+        partition=self.partitions[partition_id]
+        latency += partition.get_latency(self.platform["freq"])
+    latency += (len(self.groups[group_index])-1)*self.platform["reconf_time"]
+    return latency
+
+def get_fpga_grouping_latency(self):
+    latency=0
+    for group in self.groups:
+        latency+=self.get_group_latency(group)
+    return latency
+
+def get_fpga_grouping_throughput(self):
+    max_latency=0
+    for group in self.groups:
+        max_latency=max(max_latency,self.get_group_latency(group))
+    return self.batch_size/max_latency
+
+def get_fpga_grouping_single_sample_latency(self):
+    latency=0
+    print(self.groups)
+    for group_id in self.groups:
+        if group_id<len(self.groups)-1:
+            latency += self.get_group_latency(group_id)
+        else:
+            for partition_id in self.groups[group_id]:
+                partition=self.partitions[partition_id]
+                if partition_id<len(self.partitions)-1:
+                    latency += partition.get_latency(self.platform["freq"])
+                else:
+                    interval = partition.get_interval()
+                    input_node = graphs.get_input_nodes(partition.graph)[0]
+                    pipeline_depth = partition.get_pipeline_depth(input_node) # TODO: find max of all input nodes
+                    # return the latency (in seconds)
+                    wr_factor   = partition.wr_factor
+                    size_wr     = partition.size_wr
+                    latency += (pipeline_depth*wr_factor + (wr_factor-1)*(size_wr+self.batch_size*interval))/(self.platform["freq"]*1000000)
+
+    #latency += (len(self.partitions)-len(self.groups))*self.platform["reconf_time"]
+    return latency

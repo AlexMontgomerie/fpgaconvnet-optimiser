@@ -1,0 +1,1 @@
+def get_communication_enabled(self):

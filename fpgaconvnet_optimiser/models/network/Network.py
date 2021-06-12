@@ -147,6 +147,7 @@ class Network():
     from fpgaconvnet_optimiser.models.network.update import init_groups
 
 
+
     # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node 
     from fpgaconvnet_optimiser.models.network.represent import get_model_output_node 
@@ -164,12 +165,24 @@ class Network():
 
     # metrics 
     from fpgaconvnet_optimiser.models.network.metrics import get_latency
-    from fpgaconvnet_optimiser.models.network.metrics import get_cluster_latency
+    from fpgaconvnet_optimiser.models.network.metrics import get_single_sample_latency
+
     from fpgaconvnet_optimiser.models.network.metrics import get_throughput
     from fpgaconvnet_optimiser.models.network.metrics import get_multi_fpga_throughput
+
+    from fpgaconvnet_optimiser.models.network.metrics import get_group_latency
+    from fpgaconvnet_optimiser.models.network.metrics import get_fpga_grouping_latency
+    from fpgaconvnet_optimiser.models.network.metrics import get_fpga_grouping_throughput
+    from fpgaconvnet_optimiser.models.network.metrics import get_fpga_grouping_single_sample_latency
+    from fpgaconvnet_optimiser.models.network.metrics import get_cluster_latency
     from fpgaconvnet_optimiser.models.network.metrics import get_max_interval
-    from fpgaconvnet_optimiser.models.network.metrics import get_cluster_interval
-    from fpgaconvnet_optimiser.models.network.metrics import get_single_sample_latency
+    from fpgaconvnet_optimiser.models.network.metrics import get_cluster_interval   
+    from fpgaconvnet_optimiser.models.network.metrics import get_cluster_grouping_batch_latency
+    from fpgaconvnet_optimiser.models.network.metrics import get_cluster_grouping_throughput
+    from fpgaconvnet_optimiser.models.network.metrics import get_cluster_grouping_single_sample_latency
+
+
+
 
 
 
