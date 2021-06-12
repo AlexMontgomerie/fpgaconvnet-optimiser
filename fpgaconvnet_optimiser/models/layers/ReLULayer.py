@@ -69,9 +69,9 @@ class ReLULayer(Layer):
 
         # instantiate relu layer
         relu_layer = torch.nn.ReLU()
-        
+
         # return output featuremap
         data = np.moveaxis(data, -1, 0)
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return relu_layer(torch.from_numpy(data)).detach().numpy()
 
