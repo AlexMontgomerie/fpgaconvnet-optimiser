@@ -100,6 +100,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # Cooling Loop
         T_start = self.T
         for partition_index in range(len(self.partitions)):
+            if not self.partitions[partition_index].need_optimise:
+                continue
             self.T = T_start
             while self.T_min < self.T:
                 

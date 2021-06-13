@@ -287,6 +287,8 @@ class Optimiser(Network):
         for partition_index, teacher_partition in enumerate(teacher_partitions.partition):
             student_partition = self.partitions[partition_index]
             student_partition.remove_weights_reloading_transform()
+            # save run time
+            student_partition.need_optimise = False
         
         self.update_partitions()
 

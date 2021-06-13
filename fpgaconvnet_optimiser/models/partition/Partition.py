@@ -63,6 +63,8 @@ class Partition():
         #self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
         #self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
 
+        self.need_optimise = True
+
 
     ## fine transform
     from fpgaconvnet_optimiser.transforms.fine import apply_random_fine_layer 
@@ -166,7 +168,8 @@ class Partition():
     def reset(self):
         self.remove_squeeze()
         self.remove_weights_reloading_transform()
-
+        self.need_optimise = True
+        
         for node in self.graph.nodes():
             self.graph.nodes[node]["hw"].update_coarse_in(1)
             self.graph.nodes[node]["hw"].update_coarse_out(1)             
