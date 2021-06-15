@@ -9,6 +9,7 @@ import onnx
 import networkx as nx
 #import onnxoptimizer as optimizer
 import argparse
+from datetime import datetime as dt
 
 #import fpgaconvnet_optimiser.tools.graphs as graphs
 import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
@@ -34,10 +35,13 @@ def parser_expr():
 
     #attempt to parse the graph and see what errors
     #exits BEFORE softmax
-    #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
     #exits AFTER softmax
-    filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
-    #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
+    #Removed softmax layer before exit results - only used for exit condition
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-lessOps-trained.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
+
     model, submodels, graph, ctrledges = \
         parser.parse_net(filepath, view=False) #check what view does
 
@@ -70,10 +74,12 @@ def parser_expr():
 def vis_expr():
     print("Visualiser experiments")
     #exits BEFORE softmax
-    #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
     #exits AFTER softmax
-    filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
-    #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
+    #Removed softmax layer before exit results - only used for exit condition
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-lessOps-trained.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
 
     #taking filepath as model_path
     name = 'branchynet' #taking name as branchynet
@@ -81,7 +87,9 @@ def vis_expr():
 
     test_net = Network(name, filepath) #rest as defaults
 
-    test_outpath = "/home/benubu/phd/test_out-new-mods-sftmx.png"
+    timestamp = dt.now().strftime("%Y-%m-%d_%H%M%S")
+    test_outpath = "/home/localadmin/phd/opt-vis-outputs/test_out-sftmxCmp"
+    test_outpath += "-" + timestamp + ".png"
     test_net.visualise(test_outpath)
 
 

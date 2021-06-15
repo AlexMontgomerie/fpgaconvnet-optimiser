@@ -19,3 +19,5 @@ from .ReduceMax import ReduceMax
 from .Compare import Compare
 from .Exponential import Exponential
 from .Div import Div
+from .SoftMaxSum import SoftMaxSum
+from .ExitMerge import ExitMerge

@@ -33,14 +33,13 @@ class BufferLayer(Layer):
             rows: int,
             cols: int,
             channels: int,
-            coarse_in: int,
-            coarse_out: int,
+            coarse: int,
             ctrledge,
             drop_mode   =True,
             data_width  =16,
         ):
         # initialise parent class
-        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out])
+        super().__init__([rows],[cols],[channels],[coarse],[coarse])
 
         #ctrledge links to exit condition layer
         self.ctrledge = ctrledge
@@ -62,8 +61,8 @@ class BufferLayer(Layer):
         parameters.rows_out     = self.rows_out(0)
         parameters.cols_out     = self.cols_out(0)
         parameters.channels_out = self.channels_out(0)
-        parameters.coarse_in    = self.coarse_in
-        parameters.coarse_out   = self.coarse_out
+        parameters.coarse_in    = self.coarse_in[0]
+        parameters.coarse_out   = self.coarse_in[0]
 
     ## UPDATE MODULES ##
     def update(self):
@@ -87,10 +86,10 @@ class BufferLayer(Layer):
 
         # Total
         return {
-            "LUT"  :  buff_rsc['LUT']*self.coarse_in,
-            "FF"   :  buff_rsc['FF']*self.coarse_in,
-            "BRAM" :  buff_rsc['BRAM']*self.coarse_in,
-            "DSP" :   buff_rsc['DSP']*self.coarse_in,
+            "LUT"  :  buff_rsc['LUT']*self.coarse_in[0],
+            "FF"   :  buff_rsc['FF']*self.coarse_in[0],
+            "BRAM" :  buff_rsc['BRAM']*self.coarse_in[0],
+            "DSP" :   buff_rsc['DSP']*self.coarse_in[0],
         }
 
     def visualise(self,name):
@@ -105,26 +104,25 @@ class BufferLayer(Layer):
 
         return cluster, nodes_in, nodes_out
 
-    def functional_model(self, data, ctrl_drop):
+    def functional_model(self, data, ctrl_drop, batch_size=1): #TODO implement batch size
         #Buffer is not an ONNX or pytorch op
         # check input dimensionality
-        assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == batch_size          , "ERROR: invalid mismatched batch"
+        assert data.shape[1] == self.rows_in(0)     , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols_in(0)     , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.channels_in(0) , "ERROR: invalid channel dimension"
 
-        out = np.zeros((
-            self.rows,
-            self.cols,
-            self.channels),dtype=float)
+        data_out=[]
+        for b, ctrl in zip(data, ctrl_drop):
+            if self.drop_mode: #non-inverted
+                if ctrl == 1.0:
+                    continue
+                else:
+                    data_out.append(b) #pass through
+            else: #inverted
+                if not ctrl == 1.0:
+                    continue
+                else:
+                    data_out.append(b) #pass through
 
-        if self.drop_mode: #non-inverted
-            if ctrl_drop:
-                return out
-            else:
-                return data #pass through
-        else: #inverted
-            if not ctrl_drop:
-                return out
-            else:
-                return data #pass through
-
+        return np.asarray(data_out)

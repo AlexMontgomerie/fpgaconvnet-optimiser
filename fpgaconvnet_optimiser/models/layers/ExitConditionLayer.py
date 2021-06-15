@@ -40,7 +40,6 @@ class ExitConditionLayer(Layer):
         #update flags
 
         #init modules
-        #TODO
         self.modules = {
             'redmx'  : ReduceMax(self.rows_in(0), self.cols_in(0), self.channels_in(0)),
             'cmp'   : Compare(self.rows_in(0), self.cols_in(0), self.channels_in(0), threshold)
@@ -63,11 +62,11 @@ class ExitConditionLayer(Layer):
         parameters.coarse_out   = self.coarse_out
 
     def update(self): #TODO
-        # exp TODO check channels are correct
+        # TODO check channels are correct
         self.modules['redmx'].rows     = self.rows_in(0)
         self.modules['redmx'].cols     = self.cols_in(0)
         self.modules['redmx'].channels = int(self.channels[0]/self.coarse_in[0])
-        # div
+
         self.modules['cmp'].rows     = self.rows_in(0)
         self.modules['cmp'].cols     = self.cols_in(0)
         self.modules['cmp'].channels = int(self.channels[0]/self.coarse_in[0])

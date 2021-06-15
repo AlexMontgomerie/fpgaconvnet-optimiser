@@ -78,29 +78,34 @@ class Compare(Module):
           "FF"   : 0
         }
 
-    def functional_model(self, data):
+    def functional_model(self, exp_max_set, exp_sum_set):
+        #exp_max is the value from reduce max
+        #exp_sum is from the sum of exponentials
         # check input dimensionality
-        assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-
-        if self.cmp_type == 'gt':
-            if data > self.threshold:
-                return 1
-            else:
-                return 0
-        elif self.cmp_type == 'ge':
-            if data >= self.threshold:
-                return 1
-            else:
-                return 0
-        elif self.cmp_type == 'lt':
-            if data < self.threshold:
-                return 1
-            else:
-                return 0
-        elif self.cmp_type == 'le':
-            if data <= self.threshold:
-                return 1
-            else:
-                return 0
+        #assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
+        #assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
+        #assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
+        out = []
+        thr_set = np.array(exp_sum_set) * self.threshold
+        for (exp_max, thr) in zip(exp_max_set, thr_set):
+            if self.cmp_type == 'gt':
+                if exp_max > thr:
+                    out.append( 1.0)
+                else:
+                    out.append( 0.0)
+            elif self.cmp_type == 'ge':
+                if exp_max >= thr:
+                    out.append( 1.0)
+                else:
+                    out.append( 0.0)
+            elif self.cmp_type == 'lt':
+                if exp_max < thr:
+                    out.append( 1.0)
+                else:
+                    out.append( 0.0)
+            elif self.cmp_type == 'le':
+                if exp_max <= thr:
+                    out.append( 1.0)
+                else:
+                    out.append( 0.0)
+        return np.array(out)

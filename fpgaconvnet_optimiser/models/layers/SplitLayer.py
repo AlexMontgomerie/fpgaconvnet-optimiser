@@ -192,17 +192,16 @@ class SplitLayer(MultiPortLayer):
 
 
         out = np.ndarray((
-            self.rows,
-            self.cols,
-            self.channels,
-            self.coarse),dtype=float)
+            self.rows_in(0),
+            self.cols_in(0),
+            self.channels_in(0),
+            self.ports_out),dtype=float)
 
         for index,_ in np.ndenumerate(out):
             out[index] = data[
               index[0],
               index[1],
-              index[2],
-              index[3]]
+              index[2]]
 
         return out
 

@@ -11,6 +11,8 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import torch
+import torch.nn as nn
 
 class ReduceMax(Module):
     def __init__(
