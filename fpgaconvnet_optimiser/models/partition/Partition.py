@@ -23,7 +23,7 @@ class Partition():
         ## ports
         self.ports_in   = ports_in
         self.ports_out  = ports_out
-
+        
         ## streams in and out
         self.streams_in  = streams_in
         self.streams_out = streams_out
@@ -49,7 +49,7 @@ class Partition():
 
         # update model coefficients
         self.update_coefficients()
-
+        #print(self.graph)
         # node and edge lists
         #self.node_list = list(self.graph.nodes())
         #self.edge_list = list(self.graph.edges())

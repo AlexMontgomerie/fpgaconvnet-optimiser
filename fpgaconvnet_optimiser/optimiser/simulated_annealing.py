@@ -131,6 +131,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 self.check_constraints()
             except AssertionError:
                 # revert to previous state
+                #print("ERROR: Exceeds resource usage")
                 self.groups = groups
                 self.partitions = partitions
                 continue
@@ -151,7 +152,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
         self.get_multi_fpga_throughput()
         self.get_max_interval()
         print("Latency:{}, Reconfiguration time: {}".format(self.get_latency(),(math.ceil(len(self.partitions)/len(self.cluster))-1)*self.platform["reconf_time"]))
-        print(self.groups)
+        #print(self.groups)
         for i,partition in enumerate(self.partitions):
             print("Partition {} has communication interval in:{},out:{},through:{}, bandwidth in:{}, out:{}".format(i, 
                                                                                                                     partition.get_comm_interval_in(partition.get_id()!=len(self.partitions)-1 and partition.get_id()!=0),

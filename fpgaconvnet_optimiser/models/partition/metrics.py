@@ -67,7 +67,7 @@ def get_comm_interval_in(self,comm_out=1):
         remaining_bandwidth = bandwidth-self.get_bandwidth_out(frequency)
     else:
         remaining_bandwidth = bandwidth
-    interval =  math.ceil(workload*self.data_width*frequency / (remaining_bandwidth*1000))
+    interval = workload*self.data_width*frequency*4 / (remaining_bandwidth*1000)
     # get bandwidth (GB/s)
     return interval
 
@@ -76,14 +76,14 @@ def get_comm_interval_out(self,comm_in=1):
     bandwidth = self.platform['platform']["comm_bandwidth"]
     # get workload and streams out 
     output_node = graphs.get_output_nodes(self.graph)[0]
-    workload = self.graph.nodes[output_node]["hw"].workload_in(0)
+    workload = self.graph.nodes[output_node]["hw"].workload_out(0)
     # interval from bandwidth and workload
     frequency=self.platform['platform']["freq"] 
     if comm_in:
         remaining_bandwidth = bandwidth-self.get_bandwidth_in(frequency)
     else:
         remaining_bandwidth = bandwidth
-    interval = math.ceil(workload*self.data_width*frequency / (remaining_bandwidth*1000))
+    interval = workload*self.data_width*frequency*4 / (remaining_bandwidth*1000)
     return interval
 
 

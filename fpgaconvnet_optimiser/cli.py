@@ -9,6 +9,7 @@ import argparse
 import shutil
 import random
 import numpy as np
+import time
 
 from fpgaconvnet_optimiser.optimiser import SimulatedAnnealing
 from fpgaconvnet_optimiser.optimiser import Improve
@@ -25,6 +26,8 @@ def main():
         help='Path to cluster information')
     parser.add_argument('-o','--output_path',metavar='PATH',required=True,
         help='Path to output directory')
+    parser.add_argument('-net','--network_load_path',metavar='PATH',required=True,
+        help='Path to network load directory')
     parser.add_argument('-b','--batch_size',metavar='N',type=int,default=1,required=False,
         help='Batch size')
     parser.add_argument('--objective',choices=['throughput','latency'],required=True,
@@ -85,11 +88,12 @@ def main():
 
     # update platform information
     net.update_platform(args.platform_path)
-
+    
     # update cluster information
     net.update_cluster(args.cluster_path)
     net.init_groups()
-    print(net.platform)
+    #print(net.platform)
+    #net.load_network(args.network_load_path)
 
     # specify optimiser objective
     if args.objective == "throughput":
@@ -104,13 +108,15 @@ def main():
     net.transforms = args.transforms
     if len(net.cluster)==1:
         net.transforms.remove("group")
-    print(net.transforms)
+    #print(net.transforms)
+    if len(net.groups[0])==0:
+        net.groups[0].append(0)
 
     # initialize graph
-    ## completely partition graph
+    # completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
         net.split_complete()
-
+#
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
         for partition_index in range(len(net.partitions)):
@@ -125,6 +131,10 @@ def main():
     # find the best batch_size
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
+    print(net.groups)
+    # create_csv_report
+    net.print_throughput()
+    net.create_csv_report('/'.join(args.output_path.split('/run_')[0].split('/')[:-1]),args.output_path.split('/run_')[1])
 
     # visualise network
     net.visualise(os.path.join(args.output_path,"topology.png"))
@@ -138,6 +148,4 @@ def main():
     # create scheduler
     net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
     
-    # create_csv_report
-    net.create_csv_report('/'.join(args.output_path.split('/run_')[0].split('/')[:-1]))
 

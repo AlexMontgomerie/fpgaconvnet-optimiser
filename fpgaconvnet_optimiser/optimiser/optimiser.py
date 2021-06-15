@@ -66,7 +66,7 @@ class Optimiser(Network):
             return self.get_latency()
         # Throughput objective
         elif self.objective == THROUGHPUT:
-            return -self.get_cluster_grouping_throughput()
+            return -self.get_fpga_grouping_throughput()
         # Power objective
         elif self.objective == POWER:
             return self.get_power_average()    

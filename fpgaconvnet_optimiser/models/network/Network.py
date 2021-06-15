@@ -45,6 +45,8 @@ class Network():
         # initialise variables
         self.batch_size = batch_size
 
+        self.batch_comm = True
+
         # load network
         self.model, self.graph = parser.parse_net(network_path, view=False)
 
@@ -77,7 +79,6 @@ class Network():
         }
         # partitions
         self.partitions = [Partition(copy.deepcopy(self.graph),copy.deepcopy(self.platform),0)]
-
         # cluster definition: if left empty the
         self.cluster = {0: 
                             {
@@ -126,6 +127,7 @@ class Network():
     # import reporting functions
     from fpgaconvnet_optimiser.models.network.report import create_report
     from fpgaconvnet_optimiser.models.network.report import create_csv_report
+    from fpgaconvnet_optimiser.models.network.report import print_throughput
 
     # import scheduling functions
     from fpgaconvnet_optimiser.models.network.scheduler import get_partition_order
@@ -308,9 +310,17 @@ class Network():
                 if layer.node_out != layer.name:
                     graph.add_edge(layer.name, layer.node_out)
             # add partition
-            new_partition = Partition(graph)
+            new_partition = Partition(graph,copy.deepcopy(self.cluster[0]),i)
             # update partition attributes
             new_partition.wr_factor = int(partition.weights_reloading_factor)
             new_partition.wr_layer  = partition.weights_reloading_layer
             self.partitions.append(new_partition)
+            self.groups[0].append(new_partition.get_id())
+            #graphs.print_graph(new_partition.graph)
+            new_partition.batch_size = self.batch_size
+
+        
+        #print(self.groups)
+        #print("{} partitions loaded:".format(len(self.partitions)))
+        #self.update_partitions()
 

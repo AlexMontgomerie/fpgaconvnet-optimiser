@@ -14,6 +14,7 @@ def get_possible_switches(self):
                 switch_pairs.append({"partition_id":group[0],"target_group":id-1})
             if id<len(self.groups)-1:
                 switch_pairs.append({"partition_id":group[len(group)-1],"target_group":id+1})
+    #print(switch_pairs)
     return switch_pairs
 
 def switch_group(self,partition_id,target_group_id):

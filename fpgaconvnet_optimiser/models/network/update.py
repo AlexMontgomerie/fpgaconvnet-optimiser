@@ -146,17 +146,18 @@ def update_partition_index(self):
         #    print("Partition:{},{}".format(id,partition.get_id()))
             
         partition.set_id(id)
+    #print(self.groups)
 
 
 def init_groups(self):
     #print(len(self.partitions))
-    print(self.cluster)
+    #print(self.cluster)
     if len(self.groups)==1 or len(self.groups)==0:
         self.groups=dict()
         for cluster in range(len(self.cluster)):
             self.groups.setdefault(cluster, []) 
-        self.groups[0].append(0)
+        #self.groups[0].append(0)
     else:
         for cluster in range(len(self.cluster)-len(self.groups)):
             self.groups.setdefault(cluster+len(self.groups), []) 
-    print(self.groups)
+    #print(self.groups)

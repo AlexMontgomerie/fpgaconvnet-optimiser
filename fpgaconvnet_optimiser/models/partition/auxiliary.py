@@ -82,6 +82,8 @@ def remove_squeeze(self):
     if self.graph.nodes[input_node]['type'] == LAYER_TYPE.Squeeze:
         self.graph.remove_node(input_node)
     # remove input squeeze module
+    #print("Trying to remove squeeze in partition",self.get_id())
+    #graphs.print_graph(self.graph)
     output_node = graphs.get_output_nodes(self.graph)[0]
     if self.graph.nodes[output_node]['type'] == LAYER_TYPE.Squeeze:
         self.graph.remove_node(output_node)
