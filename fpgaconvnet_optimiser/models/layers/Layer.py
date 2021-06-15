@@ -285,8 +285,8 @@ class Layer:
         return self.data_width
 
     def get_latency(self):
-        latency_in  = max([ abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for i in self.ports_in ])
-        latency_out = max([ abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i))) for i in self.ports_out ])
+        latency_in  = max([ abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for i in range(self.ports_in) ])
+        latency_out = max([ abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i))) for i in range(self.ports_out) ])
         return max(latency_in,latency_out)
 
     def pipeline_depth(self):
