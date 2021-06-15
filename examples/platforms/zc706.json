@@ -4,7 +4,7 @@
   "BRAM" : 1090,
   "FF"   : 437200,
   "LUT"  : 218600,
-  "freq"          : 150000000,
+  "freq"          : 150,
   "reconf_time"   : 0.08255,
   "mem_bandwidth" : 9.6,
   "comm_bandwidth": 0.956,

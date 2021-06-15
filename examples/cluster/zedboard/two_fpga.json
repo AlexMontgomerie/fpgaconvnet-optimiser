@@ -1,0 +1,14 @@
+[
+    {
+        "platform":"examples/platforms/zedboard.json",
+        "connections_in":   [2],
+        "id":                0,
+        "connections_out":  [1]
+    },
+    {
+        "platform":"examples/platforms/zedboard.json",
+        "connections_in":   [0],
+        "id":                1,
+        "connections_out":  [2]
+    }
+]

@@ -1,0 +1,8 @@
+[
+    {
+        "platform":"examples/platforms/zedboard.json",
+        "connections_in":   [0],
+        "id":                0,
+        "connections_out":  [0]
+    }
+]
