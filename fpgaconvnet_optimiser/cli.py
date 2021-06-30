@@ -59,7 +59,7 @@ def main():
     # load optimiser config
     with open(args.optimiser_config_path,"r") as f:
         optimiser_config = yaml.load(f)
-    
+
     # load network
     if args.optimiser == "improve":
         # create network
@@ -88,7 +88,7 @@ def main():
                 cool=float(optimiser_config["annealing"]["cool"]),
                 iterations=int(optimiser_config["annealing"]["iterations"]),
                 transforms_config=optimiser_config["transforms"])
-    
+
     # turn on debugging
     net.DEBUG = True
 
@@ -101,7 +101,7 @@ def main():
 
     # specify optimiser objective
     if args.objective == "throughput":
-        net.objective  = 1 
+        net.objective  = 1
     if args.objective == "latency":
         net.objective  = 0
 
@@ -115,7 +115,7 @@ def main():
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
         net.split_complete()
-    
+
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
         for partition_index in range(len(net.partitions)):
@@ -146,6 +146,6 @@ def main():
 
     # save all partitions
     net.save_all_partitions(args.output_path)
-    
+
     # create scheduler
     net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))

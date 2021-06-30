@@ -34,7 +34,7 @@ def apply_random_coarse_layer(self, layer):
     """
     # get possible coarse folding
     coarse_types = ["coarse_in", "coarse_out"]
-    if self.graph.nodes[layer]['hw'].flags["has_groups"]:
+    if self.graph.nodes[layer]['hw'].flags["multi_groups"]:
         coarse_types.append("coarse_group")
     # choose coarse in or coarse out
     coarse_type = random.choice(coarse_types)

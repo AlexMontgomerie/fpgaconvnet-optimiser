@@ -102,15 +102,6 @@ class SplitLayer(Layer):
         assert(port_index < self.ports_out)
         self.coarse = coarse_out
 
-        ### RATES ###
-    def rates_graph(self):
-        rates_graph = np.zeros( shape=(1,2) , dtype=float)
-        # fork
-        rates_graph[0,0] = self.modules['fork'].rate_in(0)
-        rates_graph[0,1] = self.modules['fork'].rate_out(0)
-
-        return rates_graph
-
     def resource(self):
 
         # get module resources

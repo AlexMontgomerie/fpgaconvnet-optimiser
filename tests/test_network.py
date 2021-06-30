@@ -1,3 +1,4 @@
+import glob
 import unittest
 import ddt
 
@@ -8,14 +9,6 @@ from numpy.linalg import matrix_rank
 import scipy
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
-
-NETWORKS = [
-    "examples/models/lenet.onnx",
-    "examples/models/alexnet.onnx",
-    "examples/models/vgg16.onnx",
-    "examples/models/caffenet.onnx",
-    "examples/models/caffenet.onnx",
-]
 
 PLATFORM = "examples/platforms/zedboard.json"
 
@@ -32,7 +25,7 @@ class TestNetworkTemplate():
 @ddt.ddt
 class TestNetwork(TestNetworkTemplate, unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_network(self, network_path):
         # initialise network
         net = Network("test", network_path)

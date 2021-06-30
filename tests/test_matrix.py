@@ -1,3 +1,4 @@
+import glob
 import unittest
 import ddt
 import fpgaconvnet_optimiser.tools.matrix as matrix
@@ -9,13 +10,6 @@ import scipy
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 
-NETWORKS = [
-    "examples/models/lenet.onnx",
-    "examples/models/alexnet.onnx",
-    "examples/models/vgg16.onnx",
-    "examples/models/caffenet.onnx",
-]
-
 """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 CONNECTION MATRIX
@@ -24,9 +18,9 @@ CONNECTION MATRIX
 @ddt.ddt
 class TestConnectionMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    # @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
-
         # graph definition
         _, graph = parser.parse_net(model_path,view=False)
 
@@ -51,7 +45,7 @@ STREAMS MATRIX
 @ddt.ddt
 class TestStreamsMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
@@ -77,7 +71,7 @@ RATES MATRIX
 @ddt.ddt
 class TestRatesMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
@@ -141,7 +135,6 @@ RATES BALANCED MATRIX
 #             self.assertEqual(np.sum(balanced_rates_matrix[row_index,:]), 0.0)
 
 """
-
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 WORKLOAD MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -150,7 +143,7 @@ WORKLOAD MATRIX
 @ddt.ddt
 class TestWorkloadMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
@@ -182,7 +175,7 @@ TOPOLOGY MATRIX
 @ddt.ddt
 class TestTopologyMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition
@@ -209,7 +202,7 @@ INTERVAL MATRIX
 @ddt.ddt
 class TestIntervalMatrix(unittest.TestCase):
 
-    @ddt.data(*NETWORKS)
+    @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
 
         # graph definition

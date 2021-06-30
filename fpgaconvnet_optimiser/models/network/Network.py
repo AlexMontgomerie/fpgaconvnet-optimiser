@@ -6,7 +6,7 @@ import math
 import numpy as np
 import networkx as nx
 
-from google.protobuf import text_format
+from google.protobuf import json_format
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2
 
 import fpgaconvnet_optimiser.tools.parser as parser
@@ -43,7 +43,6 @@ class Network():
 
         # initialise variables
         self.batch_size = batch_size
-
         self.fuse_bn = fuse_bn
 
         # load network
@@ -260,7 +259,7 @@ class Network():
         # load the prototxt file
         partitions = fpgaconvnet_optimiser.proto.fpgaconvnet_pb2.partitions()
         with open(network_path, "r") as f:
-            text_format.Parse(f.read(), partitions)
+            json_format.Parse(f.read(), partitions)
         # delete current partitions
         self.partitions = []
         # iterate over partitions

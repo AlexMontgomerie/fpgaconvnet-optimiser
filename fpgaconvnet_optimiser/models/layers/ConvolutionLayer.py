@@ -41,7 +41,7 @@ class ConvolutionLayer(Layer):
         # update flags
         self.flags["channel_dependant"] = True
         self.flags["transformable"] = True
-        self.flags["has_groups"] = True
+        self.flags["multi_groups"] = True
 
         # change coarse to be scalar
         self.coarse_in = coarse_in
@@ -93,8 +93,10 @@ class ConvolutionLayer(Layer):
         self.filters = filters
 
         # init modules
-        self.modules["sliding_window"] = SlidingWindow(self.rows_in(), self.cols_in(), self.channels_in(), k_size, stride
-                self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width)
+        self.modules["sliding_window"] = SlidingWindow(rows, cols, channels, k_size, stride,
+                                                       self.pad_top, self.pad_right,
+                                                       self.pad_bottom, self.pad_left,
+                                                       self.data_width)
         self.modules["fork"] = Fork(self.rows_out(), self.cols_out(), self.filters, k_size, self.coarse_out)
         self.modules["conv"] = Conv(self.rows_out(), self.cols_out(), self.filters, filters, fine, k_size, groups)
         self.modules["accum"] = Accum(self.rows_out(), self.cols_out(), self.filters, filters, groups)
@@ -105,23 +107,15 @@ class ConvolutionLayer(Layer):
 
     def rows_out(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
-        return self.modules[next(reversed(self.modules))].rows_out()
+        return int(math.floor((self.rows_in()-self.k_size[0]+self.pad_top+self.pad_bottom)/self.stride[0])+1)
 
     def cols_out(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
-        return self.modules[next(reversed(self.modules))].cols_out()
+        return int(math.floor((self.cols_in()-self.k_size[1]+self.pad_left+self.pad_right)/self.stride[1])+1)
 
     def channels_out(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
         return self.filters
-
-    def rate_in(self,port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        return abs(self.balance_module_rates(self.rates_graph())[0,0])
-
-    def rate_out(self,port_index=0):
-        assert port_index == 0, "convolution layers are only allowed a single port"
-        return abs(self.balance_module_rates(self.rates_graph())[4,5])
 
     def streams_in(self, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
@@ -138,6 +132,9 @@ class ConvolutionLayer(Layer):
     def update_coarse_out(self, coarse_out, port_index=0):
         assert port_index == 0, "convolution layers are only allowed a single port"
         self.coarse_out = coarse_out
+
+    def update_coarse_group(self, coarse_group):
+        self.coarse_group = coarse_group
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
@@ -200,31 +197,6 @@ class ConvolutionLayer(Layer):
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
         self.modules['glue'].data_width = self.acc_width
-
-    ### RATES ###
-    def rates_graph(self):
-        rates_graph = np.zeros( shape=(5,6) , dtype=float )
-        # sliding_window
-        if self.k_size == 1:
-            rates_graph[0,0] = 1
-            rates_graph[0,1] = 1
-        else:
-            rates_graph[0,0] = self.modules['sliding_window'].rate_in()
-            rates_graph[0,1] = self.modules['sliding_window'].rate_out()
-        # fork
-        rates_graph[1,1] = self.modules['fork'].rate_in()
-        rates_graph[1,2] = self.modules['fork'].rate_out()
-        # conv
-        rates_graph[2,2] = self.modules['conv'].rate_in()
-        rates_graph[2,3] = self.modules['conv'].rate_out()
-        # accum
-        rates_graph[3,3] = self.modules['accum'].rate_in()
-        rates_graph[3,4] = self.modules['accum'].rate_out()
-        # glue
-        rates_graph[4,4] = self.modules['glue'].rate_in()
-        rates_graph[4,5] = self.modules['glue'].rate_out()
-
-        return rates_graph
 
     def get_coarse_in_feasible(self,port_index=0,wr_factor=1):
         assert port_index == 0, "convolution layers are only allowed a single port"

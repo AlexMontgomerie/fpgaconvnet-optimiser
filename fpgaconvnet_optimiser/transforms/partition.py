@@ -60,8 +60,12 @@ def get_all_horizontal_splits(self,partition_index):
             self.partitions[partition_index].graph.nodes[split[0]]["type"],
             self.partitions[partition_index].graph.nodes[split[1]]["type"]
         ]
-        if layer_types in self.transforms_config["partition"]["allowed_partitions"]:
+        if "partition" in self.transforms_config:
+            if layer_types in self.transforms_config["partition"]["allowed_partitions"]:
+                filtered_horizontal_splits.append(split)
+        else:
             filtered_horizontal_splits.append(split)
+
     # return the filtered splits
     return filtered_horizontal_splits
 
@@ -92,7 +96,7 @@ def get_all_horizontal_merges(self,partition_index):
                 if next_node in graphs.get_input_nodes(self.partitions[i].graph):
                     # check that this is a complete block
                     if ( self.partitions[i].graph.out_degree(next_node) ==
-                            self.graph.out_degree(next_node) ) or
+                            self.graph.out_degree(next_node) ) or \
                             ( self.graph.out_degree(next_node) == 1 ):
                         return (partition_index,i)
         return ()
@@ -100,7 +104,7 @@ def get_all_horizontal_merges(self,partition_index):
     # check that if it's a concat layer, it's complete
     if self.graph.in_degree(output_node) > 1:
         if ( self.partitions[partition_index].graph.in_degree(output_node) ==
-                self.graph.in_degree(output_node) ) or
+                self.graph.in_degree(output_node) ) or \
                 ( self.graph.out_degree(output_node) == 1 ):
             partition_pairs[0] = _find_next_partition()
     else:
@@ -117,16 +121,16 @@ def get_all_horizontal_merges(self,partition_index):
                     continue
                 if prev_node in graphs.get_output_nodes(self.partitions[i].graph):
                     # check that this is a complete block
-                    if ( self.partitions[i].graph.in_degree(prev_node) ==
-                            self.graph.in_degree(prev_node) ) or
-                            ( self.graph.out_degree(next_node) == 1 ):
+                    if ( self.partitions[i].graph.in_degree(prev_node) == \
+                            self.graph.in_degree(prev_node) ) or \
+                            ( self.graph.out_degree(prev_node) == 1 ):
                         return (i,partition_index)
         return ()
 
     # check that if it's a split layer, it's complete
     if self.graph.out_degree(input_node) > 1:
-        if self.partitions[partition_index].graph.out_degree(input_node) ==
-                self.graph.out_degree(input_node) or
+        if self.partitions[partition_index].graph.out_degree(input_node) == \
+                self.graph.out_degree(input_node) or \
                 ( self.graph.out_degree(next_node) == 1 ):
             partition_pairs[1] = _find_prev_partition()
     else:
@@ -291,7 +295,9 @@ def merge_complete(self):
 def apply_random_partition(self, partition_index):
    # choose randomly between merge or split
     ## split partition
-    transform_type = random.choice(self.transforms_config["partition"]["allowed_type"])
+    transform_type = random.choice(["split", "merge"])
+    if "partition" in self.transforms_config:
+        transform_type = random.choice(self.transforms_config["partition"]["allowed_type"])
     if transform_type == 'split':
         ## get all possible splits
         horizontal_splits = self.get_all_horizontal_splits(partition_index)

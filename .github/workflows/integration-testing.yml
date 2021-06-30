@@ -1,0 +1,34 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.7.x'
+    - name: Install dependencies
+      run: |
+        sudo apt-get install protobuf-compiler libprotoc-dev
+        python setup.py install
+    - name: Run Tests
+      run: |
+          python -m coverage run --source=fpgaconvnet_optimiser -m unittest discover tests/
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN  }}
+

@@ -11,6 +11,7 @@ import pydot
 import collections
 from google.protobuf.json_format import MessageToDict
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
+import numpy as np
 
 class Layer:
     """
@@ -107,7 +108,7 @@ class Layer:
             row dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.modules[next(iter(self.modules))].rows_in()
+        return self.rows[port_index]
 
     def cols_in(self, port_index=0):
         """
@@ -117,7 +118,7 @@ class Layer:
             column dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.modules[next(iter(self.modules))].cols_in()
+        return self.cols[port_index]
 
     def channels_in(self, port_index=0):
         """
@@ -127,7 +128,7 @@ class Layer:
             channel dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.modules[next(iter(self.modules))].channels_in()
+        return self.channels[port_index]
 
     def rows_out(self, port_index=0):
         """
@@ -137,7 +138,7 @@ class Layer:
             row dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.modules[next(reversed(self.modules))].rows_out()
+        return self.rows[port_index]
 
     def cols_out(self, port_index=0):
         """
@@ -147,7 +148,7 @@ class Layer:
             column dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.modules[next(reversed(self.modules))].cols_out()
+        return self.cols[port_index]
 
     def channels_out(self, port_index=0):
         """
@@ -157,14 +158,13 @@ class Layer:
             channel dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.modules[next(reversed(self.modules))].channels_out()
+        return self.channels[port_index]
 
     def rates_graph(self):
 
-
         # create the rates graph
         rates_graph = np.zeros(shape=(len(self.modules.keys()),
-                                      len(self.modules.keys())) , dtype=float )
+                                      len(self.modules.keys())+1) , dtype=float )
 
         # iterate over modules
         for i, module in enumerate(self.modules.keys()):
@@ -191,7 +191,7 @@ class Layer:
             default is 1.0
         """
         assert(port_index < self.ports_in)
-        return abs(self.balance_module_rates(self.rates_graph()[0,0]))
+        return abs(self.balance_module_rates(self.rates_graph())[0,0])
 
     def rate_out(self, port_index=0):
         """
@@ -210,7 +210,7 @@ class Layer:
         """
         assert(port_index < self.ports_out)
         return abs(self.balance_module_rates(
-            self.rates_graph()[len(self.modules.keys())-1,len(self.modules.keys())]))
+            self.rates_graph())[len(self.modules.keys())-1,len(self.modules.keys())])
 
     def streams_in(self, port_index=0):
         """
@@ -386,7 +386,7 @@ class Layer:
         # convert to dictionary
         return MessageToDict(parameter, preserving_proto_field_name=True)
 
-    def visualise(self,name): # TODO: add standard method of creating visualisation
+    def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
         for i in range(self.coarse_in[0]):
@@ -394,10 +394,10 @@ class Layer:
 
         return cluster, "_".join([name,"edge"]), "_".join([name,"edge"])
 
-    def functional_model(self,data,batch_size=1): # TODO: just leave empty
+    def functional_model(self,data,batch_size=1):
         return
 
-    def balance_module_rates(self,rate_graph): # TODO: need to verify this method
+    def balance_module_rates(self,rate_graph):
 
         rate_ratio = [ abs(rate_graph[i,i+1]/rate_graph[i,i]) for i in range(rate_graph.shape[0]) ]
 

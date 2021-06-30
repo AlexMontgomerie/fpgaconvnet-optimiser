@@ -75,13 +75,12 @@ class PoolingLayer(Layer):
             self.fine = self.k_size[0] * self.k_size[1]
 
         # init modules
-        self.modules = {
-            "sliding_window" : SlidingWindow(self.rows_in(), self.cols_in(), self.channels_in(),
-                self.k_size, self.stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width),
-            "pool"           : Pool(self.rows_in(), self.cols_in(), self.channels_in(), k_size)
-        }
+        self.modules["sliding_window"] = SlidingWindow(rows, cols, channels, self.k_size, self.stride,
+                    self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, self.data_width)
+        self.modules["pool"] = Pool(rows, cols, channels, k_size)
+
+        # update layer
         self.update()
-        #self.load_coef()
 
     def rows_out(self, port_index=0):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
@@ -90,14 +89,6 @@ class PoolingLayer(Layer):
     def cols_out(self, port_index=0):
         assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
         return int(math.ceil((self.cols_in()-self.k_size[1]+self.pad_left+self.pad_right)/self.stride[1])+1)
-
-    def rate_in(self, port_index=0):
-        assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
-        return abs(self.balance_module_rates(self.rates_graph())[0,0])
-
-    def rate_out(self, port_index=0):
-        assert port_index == 0, "ERROR: Pooling layers can only have 1 port"
-        return abs(self.balance_module_rates(self.rates_graph())[1,2])
 
     def streams_in(self, port_index=0):
         assert(port_index < self.ports_in)
@@ -148,18 +139,6 @@ class PoolingLayer(Layer):
         self.modules['pool'].rows     = self.rows_out()
         self.modules['pool'].cols     = self.cols_out()
         self.modules['pool'].channels = int(self.channels_in()/self.coarse)
-
-    ### RATES ### TODO
-    def rates_graph(self):
-        rates_graph = np.zeros( shape=(2,3) , dtype=float )
-        # sliding_window
-        rates_graph[0,0] = self.modules['sliding_window'].rate_in()
-        rates_graph[0,1] = self.modules['sliding_window'].rate_out()
-        # pool
-        rates_graph[1,1] = self.modules['pool'].rate_in()
-        rates_graph[1,2] = self.modules['pool'].rate_out()
-
-        return rates_graph
 
     def get_fine_feasible(self):
         return [1]
