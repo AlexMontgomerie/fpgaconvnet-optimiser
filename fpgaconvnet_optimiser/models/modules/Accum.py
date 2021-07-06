@@ -41,12 +41,7 @@ class Accum(Module):
     def utilisation_model(self):
         bram_acc_buffer_size =  (self.filters/self.groups)*self.data_width
         return np.array([
-            1,
-            #self.data_width,
-            self.data_width*self.groups,
-            self.data_width*(self.channels/self.groups),
-            bram_acc_buffer_size,
-            math.ceil( (bram_acc_buffer_size)/18000),
+            1
         ])
 
     def channels_in(self):

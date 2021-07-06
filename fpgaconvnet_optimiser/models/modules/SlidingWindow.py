@@ -83,17 +83,20 @@ class SlidingWindow(Module):
         #     "../../coefficients/sliding_window_rsc_coef.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*(self.k_size-1),
-            self.data_width*self.k_size*(self.k_size-1),
-            (self.k_size-1)*(((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width < 512 else 0,
-            (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width >= 512 else 0,
-            self.k_size*(self.k_size-1)*(self.channels+1)*self.data_width  if self.channels*self.data_width < 512 else 0,
-            self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000) if self.channels*self.data_width >= 512 else 0,
-            self.data_width*self.k_size*self.k_size*self.channels
-        ]
+        linebufferfifo_amount=self.k_size-1
+        linebufferfifo_depth=(self.cols)*(self.channels)
+        linebufferfifo_depth2=((self.cols+self.pad_left+self.pad_right))*(self.channels)+1
+        windowcachefifo_amount=(self.k_size)*(self.k_size-1)
+        windowcachefifo_depth=self.channels
+        return {
+            "LUT"   : np.array([(self.k_size)*(self.k_size-1),self.k_size-1,(self.rows+self.pad_bottom-1),self.channels*(self.k_size-1),(self.rows+self.pad_bottom-1)*self.k_size]),
+            "FF"    : np.array([(self.k_size)*(self.k_size-1), self.pad_bottom,self.rows+self.pad_bottom-1]),
+            "DSP"   : np.array([1]),
+            "BRAM"  : np.array([linebufferfifo_amount*math.ceil(linebufferfifo_depth2/1024),windowcachefifo_amount*math.ceil(windowcachefifo_depth/1024)])
+        }
+        
+        
+
 
     def rows_out(self):
         return int((self.rows_in()-self.k_size+self.pad_top+self.pad_bottom)/self.stride+1)
@@ -171,10 +174,10 @@ class SlidingWindow(Module):
             bram_frame_buffer = max(bram_frame_buffer_data, bram_frame_buffer_addr)
             #bram_frame_buffer = bram_frame_buffer_data
         return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : bram_line_buffer+bram_frame_buffer + self.k_size*self.k_size,
+          "LUT"  : int(np.dot(self.utilisation_model()["LUT"], coef["LUT"])),
+          "BRAM" : int(np.dot(self.utilisation_model()["BRAM"], coef["BRAM"])),
           "DSP"  : 0,
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
+          "FF"   : int(np.dot(self.utilisation_model()["FF"], coef["FF"])),
         }
 
     def functional_model(self, data):
