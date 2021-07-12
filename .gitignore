@@ -25,3 +25,4 @@ dist/
 **.pyc
 
 .coverage
+examples/models
