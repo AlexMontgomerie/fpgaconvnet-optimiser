@@ -137,10 +137,9 @@ class Partition():
                     cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i],
                                     edge_labels[edge]["nodes_in"][i]))
         #control edges
-        #print(self.ctrledges)
-        #for node in self.graph:
         for ctrl in self.ctrledges:
-            for i in range(1,4): #index 1,2,3 of the ctrl edge
+            #for i in range(1,4): #index 1,2,3 of the ctrl edge list
+            for i in range(1,3): #index 1,2 of the ctrl edge list
                 #TODO fix assumption that each in-out pair has only one node
                 cluster.add_edge(pydot.Edge(edge_labels[ctrl[0]]["nodes_out"][0],
                                             edge_labels[ctrl[i]]["nodes_in"][0],

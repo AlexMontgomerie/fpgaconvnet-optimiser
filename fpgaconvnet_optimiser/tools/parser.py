@@ -23,6 +23,7 @@ from fpgaconvnet_optimiser.models.layers import BufferLayer
 from fpgaconvnet_optimiser.models.layers import SplitLayer
 from fpgaconvnet_optimiser.models.layers import ExitConditionLayer
 from fpgaconvnet_optimiser.models.layers import ExitSelectLayer
+from fpgaconvnet_optimiser.models.layers import SoftMaxCmpLayer
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
@@ -94,7 +95,8 @@ def build_graph(model):
 
         #add subgraphs to the network
         if _layer_type(node.op_type) == LAYER_TYPE.If: #TODO extend for multi layer subgraphs
-            ifnode = [name, None, None, None]
+            #ifnode = [name, None, None, None] #NOTE implied connection to ID pipeline
+            ifnode = [name, None, None] #NOTE exit select has no ctrl input
             #access the subgraphs
             for subgraph in node.attribute:
                 submodels.append(subgraph) #record link to submodels
@@ -204,7 +206,7 @@ def add_buffer_nodes(graph, ctrledges):
         i+=2
     return save_nodes
 
-def update_crtledges(graph, ctrledges):
+def update_ctrledges(graph, ctrledges):
     #ASSUMPTION: that target layer will be immediate predecessor
     for node in ctrledges: #will perform at each If op
         #ctrledges[i][0] is the If node
@@ -214,17 +216,17 @@ def update_crtledges(graph, ctrledges):
         if graph.nodes[predec[0]]["type"] not in [LAYER_TYPE.Greater]:
             raise Exception("Other layer types not supported")
         graph.remove_edge(predec[0], node[0]) #remove dataflow edge
-        node[3] = node[0] #set If op to have ctrl edge
+        #node[3] = node[0] #set If op to have ctrl edge
         node[0] = predec[0] #Replace with predecessor
 
 def find_ctrl_origin(graph, ctrledges, node):
     for ctrl in ctrledges:
         if node == ctrl[1]:
-            return ctrl[0], True #then branch link so EE
+            return ctrl[0], False #then branch link so EE
         elif node == ctrl[2]:
-            return ctrl[0], False #else branch link so not EE
-        elif node == ctrl[3]: #for linking exit select layer
-            return ctrl[0], None #TODO tidy this up
+            return ctrl[0], True #else branch link so not EE
+        #elif node == ctrl[3]: #for linking exit select layer
+        #    return ctrl[0], None #TODO tidy this up
     raise Exception("Node has no control input")
 
 def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
@@ -328,7 +330,7 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                 1, # initialise coarse out to 1
             )
             continue
-        # Softmax Layer
+        # Softmax Layer #NOTE not currently used
         if graph.nodes[name]['type'] == LAYER_TYPE.Softmax:
             graph.nodes[name]['hw'] = SoftMaxLayer(
                 0, # initialise rows to 0
@@ -347,7 +349,8 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                     ctrlout = ctrl[1:]
             if len(ctrlout) == 0:
                 raise NameError("Control edges not found")
-            graph.nodes[name]['hw'] = ExitConditionLayer(
+            #graph.nodes[name]['hw'] = ExitConditionLayer(
+            graph.nodes[name]['hw'] = SoftMaxCmpLayer(
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
@@ -355,20 +358,21 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                 1, # initialise coarse out to 1
                 ctrlout
             )
+            #threshold : TODO extract theshold from onnx
             continue
-        #early exit layer
+        #ExitSelect/merging layer
         if graph.nodes[name]['type'] == LAYER_TYPE.If:
             #with two exits it makes sense to pull from the if
             #will need to generalise assumptions for >2 exits
             #graph - two dataflow inputs, pick either or on hw level
-            ctrl_origin, _ = find_ctrl_origin(graph, ctrledges, name)
+            #ctrl_origin, _ = find_ctrl_origin(graph, ctrledges, name)
             graph.nodes[name]['hw'] = ExitSelectLayer(
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
                 1, # initialise coarse in to 1
                 1, # initialise coarse out to 1
-                ctrl_origin
+                #ctrl_origin
             )
             continue
         raise NameError(name, node.op_type)
@@ -397,8 +401,7 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 1
-                1, # initialise coarse out to 1
+                1, # initialise coarse to 1
                 ctrl_origin,
                 drop_mode=EE_flag
             )
@@ -481,14 +484,14 @@ def parse_net(filepath,view=True):
 
     #shift control edge start from If to Greater (the layer standing in as EC)
     #append the ctrl edge from the Greater to If and remove the data edge
-    update_crtledges(graph, ctrledges)
+    update_ctrledges(graph, ctrledges)
 
     #determine Early Exit points (Identity operations, edge to exit)
     for eedge in exitedges:
         graph.add_edge(*eedge)
 
-    #TODO separate softmax layer from other layers in model
-    #filter_node_types(graph, LAYER_TYPE.Softmax)
+    #NOTE Currently using integrated softmax and comparison layer
+    filter_node_types(graph, LAYER_TYPE.Softmax)
 
     #remove pass through node
     filter_node_types(graph, LAYER_TYPE.Identity)

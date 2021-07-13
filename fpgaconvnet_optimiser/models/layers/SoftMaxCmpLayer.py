@@ -115,6 +115,8 @@ class SoftMaxCmpLayer(Layer):
             cluster.add_node(pydot.Node( "_".join([name,"cmp",str(i)]), label="cmp" ))
             cluster.add_edge(pydot.Edge( "_".join([name,"redmx",str(i)]),
                                          "_".join([name,"cmp",str(i)]) ))
+            cluster.add_edge(pydot.Edge( "_".join([name,"sm_sum",str(i)]),
+                                         "_".join([name,"cmp",str(i)]) ))
 
             cluster.add_node(pydot.Node( "_".join([name,"fork_o",str(i)]), label="fork_o" ))
             cluster.add_edge(pydot.Edge( "_".join([name,"cmp",str(i)]),
@@ -122,7 +124,7 @@ class SoftMaxCmpLayer(Layer):
 
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"redmx",str(i)]) for i in range(self.coarse_in[0]) ]
+        nodes_in  = [ "_".join([name,"exp",str(i)]) for i in range(self.coarse_in[0]) ]
         #nodes_out = [ "_".join([name,"cmp",str(i)]) for i in range(self.coarse_out[0]) ]
         nodes_out = [ "_".join([name,"fork_o",str(i)]) for i in range(len(self.ctrledges)) ]
 
