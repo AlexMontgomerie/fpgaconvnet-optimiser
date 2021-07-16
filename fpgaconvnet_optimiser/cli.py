@@ -1,7 +1,7 @@
 """
 A command line interface for running the optimiser for given networks
 """
-
+import warnings # Remove warnings
 import os
 import yaml
 import json
@@ -14,6 +14,7 @@ from fpgaconvnet_optimiser.optimiser import SimulatedAnnealing
 from fpgaconvnet_optimiser.optimiser import Improve
 
 def main():
+    warnings.filterwarnings("ignore") # Remove warnings
     parser = argparse.ArgumentParser(description="Optimiser Script")
     parser.add_argument('-n','--name',metavar='PATH',required=True,
         help='network name')
@@ -36,6 +37,8 @@ def main():
         help='Configuration file (.yml) for optimiser')
     parser.add_argument('--seed',metavar='N',type=int,default=1234567890,
         help='Seed for the optimiser run')
+    parser.add_argument('-c', '--csv', metavar='PATH', required=False, default="",
+        help='Path to output annealing CSV file')
 
     args = parser.parse_args()
 
@@ -70,7 +73,8 @@ def main():
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
                 cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]))
+                iterations=int(optimiser_config["annealing"]["iterations"]),
+                csv_path=args.csv)
 
     # turn on debugging
     net.DEBUG = True

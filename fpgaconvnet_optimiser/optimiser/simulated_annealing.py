@@ -17,7 +17,7 @@ class SimulatedAnnealing(Optimiser):
 Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
     """
     
-    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10):
+    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10,csv_path=""):
 
         # Initialise Network
         Optimiser.__init__(self,name,network_path)
@@ -29,12 +29,20 @@ Randomly chooses a transform and hardware component to change. The change is acc
         self.cool       = cool
         self.iterations = iterations
 
+        #Optionsl CSV output path
+        self.csv_path = csv_path
+
+
     def optimiser_status(self):
         # objective
         objectives = ['latency','throughput']
         objective  = objectives[self.objective]
-        # cost 
+
+        # cost
         cost = self.get_cost()
+        latency = self.get_latency()
+        throughput = self.get_throughput()
+
         # Resources
         resources = [ partition.get_resource_usage() for partition in self.partitions ]
         BRAM = max([ resource['BRAM'] for resource in resources ])
@@ -42,8 +50,25 @@ Randomly chooses a transform and hardware component to change. The change is acc
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
         sys.stdout.write("\033[K")
+
         print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
             temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
+
+        #More internal information written to csv
+        if self.csv_path!="":
+
+            # Resource averages
+            BRAM_AVG = sum([resource['BRAM'] for resource in resources]) / len(resources)
+            DSP_AVG = sum([resource['DSP'] for resource in resources]) / len(resources)
+            LUT_AVG = sum([resource['LUT'] for resource in resources]) / len(resources)
+            FF_AVG = sum([resource['FF'] for resource in resources]) / len(resources)
+
+            csv_file = open(self.csv_path, 'a')
+            # CSV output format
+            csv_file.write("{temp}, {cost}, {BRAM}, {BRAM_AVG}, {DSP}, {DSP_AVG}, {LUT}, {LUT_AVG}, {FF}, {FF_AVG}, {LATENCY}, {THROUGHPUT}\n".format(
+                temp=self.T, cost=cost, BRAM=int(BRAM), BRAM_AVG=BRAM_AVG, DSP=int(DSP), DSP_AVG=DSP_AVG, LUT=int(LUT),
+                LUT_AVG=LUT_AVG, FF=int(FF), FF_AVG=FF_AVG, LATENCY=latency, THROUGHPUT=throughput, end='\n'))
+            csv_file.close()
 
     def run_optimiser(self, log=True):
        

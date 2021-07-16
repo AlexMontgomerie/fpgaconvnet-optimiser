@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+#Run from Optimiser root directory
+
+#Process arguments
+#	while getopts ":lhi" opt; do
+#	  case ${opt} in
+#	    l ) # process option l
+#	      ;;
+#	    h ) # process option h
+#	      ;;
+#	    i ) # process option i
+#	      ;;
+#	    \? ) echo "Usage:"
+#	      ;;
+#	  esac
+#	done
+#	shift $((OPTIND -1))
+
+
+#Annealing parameters
+	T=3
+	T_min=1
+	k=0.01
+	cool=0.98
+	iterations=50
+
+#Sweeping variable (supports floating point)
+	type="T"    #Select variable type to sweep: T | T_min | k | cool | iterations
+	scale="log" #Scales lin | log
+	min=10	    #Starting value
+	max=100	    #Final value
+	delta=2    #Increment by (lin) multiply by (log)
+
+#Constant initialisation
+	platform_path="examples/platforms/zc706.json"
+	batch_size=512
+	objective="throughput"  # throughput | latency
+	name="Annealing"
+	output_path="outputs/annealing"
+
+#Select model to explore
+	#model_path="examples/models/lenet.onnx"
+	#model_path="examples/models/alexnet.onnx"
+	#model_path="examples/models/caffenet.onnx"
+	#model_path="examples/models/mobilenet2.onnx"
+	#model_path="examples/models/resnet18.onnx"
+	model_path="examples/models/single_layer.onnx"
+	#model_path="examples/models/vgg16.onnx"
+
+#Make output path
+	mkdir -p $output_path
+	#chmod 777 -R $output_path
+
+#Check if output exists and make new output file
+	i=0
+	csv="${output_path}/run${i}.csv"
+
+	while [ -f $csv ]; do
+		i=$(($i+1))
+		csv="${output_path}/run${i}.csv"
+	done
+
+#Logarithms
+  if [ "$scale" = "log" ]; then
+    min=$(echo "l(${min})" | bc -l)
+    max=$(echo "l(${max})" | bc -l)
+    delta=$(echo "l(${delta})" | bc -l)
+  fi
+
+#Var initialisation
+	var=$min
+	#csv="${output_path}/run3.csv"
+	echo $csv
+
+#Main loop
+while (( $(echo  "${var}<${max}" | bc -l) )); do
+
+	#Exponentiate if necessary
+	varlog=$var
+
+	if [ "$scale" = "log" ]; then
+		varlog=$(echo "e(${varlog})" | bc -l)
+	fi
+
+	#Round down for integer "iterations" parameter
+	if  [ "$type" = "iterations" ]
+	then
+		varlog=`echo "scale=0; ${varlog} / 1" | bc`
+	fi
+
+	#Decide which to update
+	case "$type" in
+		T)
+		   T=$varlog
+		   ;;
+		T_min)
+		   T_min=$varlog
+		   ;;
+		k)
+		   k=$varlog
+		   ;;
+		cool)
+		   cool=$varlog
+		   ;;
+		iterations)
+		   iterations=$varlog
+		   ;;
+		*)
+		   echo "Invalid parameter type"
+	esac
+
+	#Echo parameters
+	echo "Running with T:${T}, T_min:${T_min}, k:${k}, cool:${cool}, iterations:${iterations}"
+	printf "\n Running with T:${T}, T_min:${T_min}, k:${k}, cool:${cool}, iterations:${iterations}" >> $csv
+	echo "Temp, Cost, BRAM, BRAM_AVG, DSP, DSP_AVG, LUT, LUT_AVG, FF, FF_AVG, LATENCY, THROUGHPUT" >> $csv
+
+	#Generate config file for run
+	# shellcheck disable=SC2059
+	printf "transforms:
+    fine:
+        apply_transform: true
+        probability: 0.25
+        start_complete: false
+    coarse:
+        apply_transform: true
+        probability: 0.25
+    weights_reloading:
+        apply_transform: true 
+        probability: 0.25
+        start_max: true
+    partition:
+        apply_transform: true
+        probability: 0.25
+        start_complete: true
+annealing:
+    T: ${T}
+    T_min: ${T_min}
+    k: ${k}
+    cool: ${cool}
+    iterations: ${iterations}" > $output_path/config.yml
+
+	#Run optimiser
+	python -W ignore -m fpgaconvnet_optimiser -n $name \
+	    -m $model_path \
+	    -p $platform_path \
+	    -o $output_path \
+	    -b $batch_size \
+	    --objective $objective \
+	    --transforms fine weights_reloading coarse partition \
+	    --optimiser simulated_annealing \
+	    --optimiser_config_path $output_path/config.yml \
+	    --csv ${csv}
+
+	#Update loop variable
+	var=`echo "${var}+${delta}"| bc`
+
+done
+
+echo "Runs complete"
