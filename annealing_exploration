@@ -70,7 +70,7 @@
 #Var initialisation
 	var=$min
 	#csv="${output_path}/run3.csv"
-	echo $csv
+	echo "Saving output to ${csv}"
 
 #Main loop
 while (( $(echo  "${var}<${max}" | bc -l) )); do
@@ -88,7 +88,7 @@ while (( $(echo  "${var}<${max}" | bc -l) )); do
 		varlog=`echo "scale=0; ${varlog} / 1" | bc`
 	fi
 
-	#Decide which to update
+	#Decide which variable to update
 	case "$type" in
 		T)
 		   T=$varlog
@@ -109,7 +109,7 @@ while (( $(echo  "${var}<${max}" | bc -l) )); do
 		   echo "Invalid parameter type"
 	esac
 
-	#Echo parameters
+	#Display/write current parameters
 	echo "Running with T:${T}, T_min:${T_min}, k:${k}, cool:${cool}, iterations:${iterations}"
 	printf "\n Running with T:${T}, T_min:${T_min}, k:${k}, cool:${cool}, iterations:${iterations}" >> $csv
 	echo "Temp, Cost, BRAM, BRAM_AVG, DSP, DSP_AVG, LUT, LUT_AVG, FF, FF_AVG, LATENCY, THROUGHPUT" >> $csv
