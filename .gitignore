@@ -29,3 +29,5 @@ dist/
 examples/models
 
 **.dcp
+**/tools/tmp/*
+modelop.txt

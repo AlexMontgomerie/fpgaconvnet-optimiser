@@ -48,7 +48,13 @@ def to_proto_layer_type(layer_type):
         LAYER_TYPE.ReLU         : fpgaconvnet_pb2.layer.layer_type.RELU,
         LAYER_TYPE.Squeeze      : fpgaconvnet_pb2.layer.layer_type.SQUEEZE,
         LAYER_TYPE.Concat       : fpgaconvnet_pb2.layer.layer_type.CONCAT,
-        LAYER_TYPE.BatchNorm    : fpgaconvnet_pb2.layer.layer_type.BATCH_NORM
+        LAYER_TYPE.BatchNorm    : fpgaconvnet_pb2.layer.layer_type.BATCH_NORM,
+        LAYER_TYPE.If           : fpgaconvnet_pb2.layer.layer_type.IF,
+        LAYER_TYPE.ReduceMax    : fpgaconvnet_pb2.layer.layer_type.REDUCEMAX,
+        LAYER_TYPE.Greater      : fpgaconvnet_pb2.layer.layer_type.GREATER,
+        LAYER_TYPE.Identity     : fpgaconvnet_pb2.layer.layer_type.IDENTITY,
+        LAYER_TYPE.Split        : fpgaconvnet_pb2.layer.layer_type.SPLIT,
+        LAYER_TYPE.Buffer       : fpgaconvnet_pb2.layer.layer_type.BUFFER
     }
     return layer_types.get(layer_type, lambda: "Invalid Layer Type")
 
@@ -61,6 +67,12 @@ def from_proto_layer_type(layer_type):
         fpgaconvnet_pb2.layer.layer_type.SQUEEZE       : LAYER_TYPE.Squeeze,
         fpgaconvnet_pb2.layer.layer_type.CONCAT        : LAYER_TYPE.Concat,
         fpgaconvnet_pb2.layer.layer_type.BATCH_NORM    : LAYER_TYPE.BatchNorm,
+        fpgaconvnet_pb2.layer.layer_type.IF            : LAYER_TYPE.If       ,
+        fpgaconvnet_pb2.layer.layer_type.REDUCEMAX     : LAYER_TYPE.ReduceMax,
+        fpgaconvnet_pb2.layer.layer_type.GREATER       : LAYER_TYPE.Greater,
+        fpgaconvnet_pb2.layer.layer_type.IDENTITY      : LAYER_TYPE.Identity,
+        fpgaconvnet_pb2.layer.layer_type.SPLIT         : LAYER_TYPE.Split,
+        fpgaconvnet_pb2.layer.layer_type.BUFFER        : LAYER_TYPE.Buffer
     }
     return layer_types.get(layer_type, lambda: "Invalid Layer Type")
 

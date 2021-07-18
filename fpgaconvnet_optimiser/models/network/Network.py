@@ -127,6 +127,10 @@ class Network():
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node
     from fpgaconvnet_optimiser.models.network.represent import get_model_output_node
     from fpgaconvnet_optimiser.models.network.represent import save_all_partitions
+    from fpgaconvnet_optimiser.models.network.represent import save_partition_subgraphs
+    from fpgaconvnet_optimiser.models.network.represent import gen_layer_name
+    from fpgaconvnet_optimiser.models.network.represent import add_stream_in
+    from fpgaconvnet_optimiser.models.network.represent import add_stream_out
 
     from fpgaconvnet_optimiser.models.network.validate import check_ports
     from fpgaconvnet_optimiser.models.network.validate import check_resources

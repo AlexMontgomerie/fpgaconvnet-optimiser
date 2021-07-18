@@ -5,6 +5,7 @@ from numpy.linalg import matrix_rank
 import networkx as nx
 from networkx.algorithms.dag import ancestors
 from networkx.algorithms.dag import descendants
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 def print_graph(graph):
     for node, edges in graph.adjacency():
@@ -15,7 +16,12 @@ def get_input_nodes(graph):
     return [ edge for edge, deg in graph.in_degree() if not deg ]
 
 def get_output_nodes(graph):
-    return [ edge for edge, deg in graph.out_degree() if not deg ]
+    # get nodes with no dataflow output
+    output_nodes = [ edge for edge, deg in graph.out_degree() if not deg ]
+    if len(output_nodes) == 1:
+        return output_nodes
+    fout = list(filter(lambda node: graph.nodes[node]['type'] not in [LAYER_TYPE.Greater], output_nodes))
+    return fout
 
 def get_next_nodes(graph, node):
     return list(graph.successors(node))
@@ -45,13 +51,13 @@ def split_graph_vertical(graph,nodes):
     left_nodes = []
     for node in nodes[0]:
         left_nodes.extend( get_next_nodes_all(graph,node) )
-    left_nodes.extend(input_node) 
+    left_nodes.extend(input_node)
     left_graph = graph.subgraph(left_nodes).copy()
     # find right side graph
     right_nodes = []
     for node in nodes[1]:
         right_nodes.extend( get_next_nodes_all(graph,node) )
-    right_nodes.extend(input_node) 
+    right_nodes.extend(input_node)
     right_graph = graph.subgraph(right_nodes).copy()
     return left_graph, right_graph
 
@@ -83,16 +89,16 @@ def view_graph(graph,filepath):
     for node in graph:
         if graph.nodes[node]['type'] == LAYER_TYPE.Concat:
             layer_info = graph.nodes[node]['hw'].layer_info()
-            node_type  = layer_info['type']            
-            rows       = layer_info['rows']            
-            cols       = layer_info['cols']            
+            node_type  = layer_info['type']
+            rows       = layer_info['rows']
+            cols       = layer_info['cols']
             channels   = str(layer_info['channels'])
         else:
             layer_info = graph.nodes[node]['hw'].layer_info()
-            node_type  = layer_info['type']            
-            rows       = layer_info['rows']            
-            cols       = layer_info['cols']            
-            channels   = layer_info['channels']            
+            node_type  = layer_info['type']
+            rows       = layer_info['rows']
+            cols       = layer_info['cols']
+            channels   = layer_info['channels']
         g.add_node(pydot.Node(node,
             label="{{ {node}|type: {type} \n dim: [{rows}, {cols}, {channels}]  }}".format(
             node=node,
