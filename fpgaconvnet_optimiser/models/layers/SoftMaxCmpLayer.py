@@ -20,7 +20,7 @@ class SoftMaxCmpLayer(Layer):
             coarse_out: int,
             #size_in #number of values to softmax over
             ctrledges: [str], #expecting list
-            threshold = 0.5,  #TODO remove default, for the comparison module
+            threshold,
             cond_type   = 'top1',
             data_width  = 16
         ):
@@ -45,19 +45,30 @@ class SoftMaxCmpLayer(Layer):
 
         self.update()
 
+    def rows_out(self, port_index):
+        return 1
+    def cols_out(self, port_index):
+        return 1
+    def channels_out(self, port_index):
+        return self.ctrl_out_size #TODO fix for coarse layer
+
     def layer_info(self,parameters,batch_size=1):
         parameters.batch_size   = batch_size
         parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
-        parameters.coarse       = self.coarse_in
-        parameters.coarse_in    = self.coarse_in
-        parameters.coarse_out   = self.coarse_out
+        parameters.rows_in      = self.rows_in(0)
+        parameters.rows_in      = self.rows_in(0)
+        parameters.cols_in      = self.cols_in(0)
+        parameters.channels_in  = self.channels_in(0)
+        parameters.rows_out     = self.rows_out(0)
+        parameters.cols_out     = self.cols_out(0)
+        parameters.channels_out = self.channels_out(0)+1#NOTE implied connection to ID pipeline
+        parameters.coarse       = self.coarse_in[0]
+        parameters.coarse_in    = self.coarse_in[0]
+        parameters.coarse_out   = self.coarse_out[0]
+        parameters.threshold    = self.threshold
+        parameters.ctrl_out_size = self.ctrl_out_size+1 #NOTE implied connection to ID pipeline
+        parameters.ctrledges.extend(self.ctrledges) #NOTE list to repeated
+
 
     def update(self): #TODO
         # TODO check channels are correct

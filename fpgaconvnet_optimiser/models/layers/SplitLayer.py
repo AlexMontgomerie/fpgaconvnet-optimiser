@@ -73,7 +73,7 @@ class SplitLayer(Layer):
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1) :
-        parameters.batchsize = batch_size
+        parameters.batch_size = batch_size
         parameters.buffer_depth = self.buffer_depth
         parameters.rows_in      = self.rows_in(0)
         parameters.cols_in      = self.cols_in(0)
@@ -83,6 +83,7 @@ class SplitLayer(Layer):
         parameters.channels_out = self.channels_out(0)
         parameters.coarse_in    = self.coarse
         parameters.coarse_out   = self.coarse
+        parameters.ports_out    = self.ports_out
 
     ## UPDATE MODULES ##
     def update(self):

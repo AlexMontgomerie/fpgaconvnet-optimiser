@@ -146,6 +146,12 @@ def build_graph(model):
                         graph.nodes[name]['inputs']['bias'] = input_node
                     else:
                         raise Exception("Unexpected dimension")
+
+                if graph.nodes[name]["type"] == LAYER_TYPE.Greater:
+                    if len(input_details.type.tensor_type.shape.dim) == 1:
+                        graph.nodes[name]['inputs']['constant'] = input_node
+                    else:
+                        raise Exception("Unexpected dimension")
                 continue
             input_node = onnx_helper._format_name(input_node)
             if input_node != name:
@@ -171,7 +177,7 @@ def add_split_nodes(graph, ctrledges):
             splitnodes.append((node, successors))
     save_nodes = [] #store the split nodes for later use (not part of model)
     for i,(node,successors) in enumerate(splitnodes):
-        splitname = "split_" + str(i)
+        splitname = "split" + str(i)
         graph.add_node(splitname, type=LAYER_TYPE.Split, hw=None, inputs={} )
         for succ in successors:
             graph.remove_edge(node, succ)
@@ -186,7 +192,7 @@ def add_buffer_nodes(graph, ctrledges):
         predec = graphs.get_prev_nodes(graph, node)
         if len(predec) > 1:
             raise Exception("Multiple predecessors not supported")
-        buffername = "buffer_" + str(instance)
+        buffername = "buffer" + str(instance)
         graph.add_node(buffername, type=LAYER_TYPE.Buffer, hw=None, inputs={} )
         #insert buffer layer
         graph.remove_edge(predec[0], node)
@@ -243,7 +249,7 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
         if graph.nodes[name]['type'] == LAYER_TYPE.Convolution:
             # get number of filters
             weights_input = graph.nodes[name]["inputs"]["weights"]
-            weights_dim = onnx_helper.get_model_input(model,weights_input)
+            weights_dim = onnx_helper.get_model_input(model,weights_input,submodels)
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             # get node attributes
             attr = onnx_helper._format_attr(node.attribute)
@@ -270,7 +276,7 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
         if graph.nodes[name]['type'] == LAYER_TYPE.InnerProduct:
             # get number of filters
             weights_input = graph.nodes[name]["inputs"]["weights"]
-            weights_dim = onnx_helper.get_model_input(model,weights_input)
+            weights_dim = onnx_helper.get_model_input(model,weights_input,submodels)
             matmul_flag = False
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             if graph.nodes[name]["inputs"]["bias"] == "":
@@ -349,6 +355,10 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                     ctrlout = ctrl[1:]
             if len(ctrlout) == 0:
                 raise NameError("Control edges not found")
+
+            const_input = graph.nodes[name]["inputs"]["constant"]
+            const_val = onnx_helper.get_model_initializer(model, const_input, submodels)
+            threshold = float(const_val[0]) #NOTE change from numpy float to python float
             #graph.nodes[name]['hw'] = ExitConditionLayer(
             graph.nodes[name]['hw'] = SoftMaxCmpLayer(
                 0, # initialise rows to 0
@@ -356,9 +366,9 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                 0, # initialise channels to 0
                 1, # initialise coarse in to 1
                 1, # initialise coarse out to 1
-                ctrlout
+                ctrlout,
+                threshold
             )
-            #threshold : TODO extract theshold from onnx
             continue
         #ExitSelect/merging layer
         if graph.nodes[name]['type'] == LAYER_TYPE.If:

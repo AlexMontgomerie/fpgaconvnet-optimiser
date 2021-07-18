@@ -30,17 +30,9 @@ import fpgaconvnet_optimiser.tools.parser as parser
 from fpgaconvnet_optimiser.models.network import Network
 from fpgaconvnet_optimiser.models.partition import Partition
 
-def parser_expr():
-    print("Parser experiments")
-
+def parser_expr(filepath):
     #attempt to parse the graph and see what errors
-    #exits BEFORE softmax
-    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
-    #exits AFTER softmax
-    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
-    #Removed softmax layer before exit results - only used for exit condition
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-lessOps-trained.onnx"
-    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
+    print("Parser experiments")
 
     model, submodels, graph, ctrledges = \
         parser.parse_net(filepath, view=False) #check what view does
@@ -71,15 +63,8 @@ def parser_expr():
             print("INPUT DEETS:", input_details) #outputs type info - only if input
             print("RAW NODE:", input_node) #just outputs the name/number
 
-def vis_expr():
+def vis_expr(filepath):
     print("Visualiser experiments")
-    #exits BEFORE softmax
-    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
-    #exits AFTER softmax
-    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
-    #Removed softmax layer before exit results - only used for exit condition
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-lessOps-trained.onnx"
-    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
 
     #taking filepath as model_path
     name = 'branchynet' #taking name as branchynet
@@ -92,17 +77,84 @@ def vis_expr():
     test_outpath += "-" + timestamp + ".png"
     test_net.visualise(test_outpath)
 
+def output_network(filepath, is_branchy):
+    #save the json files
+    print("outputing experiments for backend")
+
+    # create a new network
+    if is_branchy:
+        net = Network("branchynet", filepath)
+    else:
+        net = Network("testnet", filepath)
+
+    # load from json format
+    #net.load_network(".json") #for loading previous network config
+    net.batch_size = 1 #256
+    net.update_platform("/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zedboard.json")
+    # update partitions
+    net.update_partitions()
+    # create report
+    #net.create_report("report.json") # for resrc usage
+
+    #timestamp = dt.now().strftime("%Y-%m-%d_%H%M%S")
+    print("Saving Network")
+    net.save_all_partitions("tmp") # NOTE saves as one partition
+    #net.get_schedule_csv("scheduler.csv") #for scheduler for running on board
+
+    if is_branchy:
+        # split into partitions for timing
+        # NOTE partitions are incomplete but are correct otherwise
+        print("Saving branchynet FOR PROFILING LATENCY")
+        net.save_partition_subgraphs("tmp", partition_index=0)
 
 def main():
     parser = argparse.ArgumentParser(description="script for running experiments")
-    parser.add_argument('--expr',choices=['parser','vis'],
+    parser.add_argument('--expr',choices=['parser','vis', 'out'],
                         help='for testing parser or vis')
     args = parser.parse_args()
 
+    #exits BEFORE softmax
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
+    #exits AFTER softmax
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
+    #Removed softmax layer before exit results - only used for exit condition
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-lessOps-trained.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
+
+    #switched pool to floor mode, adjusted FC layers to match resulting sizes
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/ceil_false.onnx"
+
+    #switched pool to floor mode, adjusted FC layers to match resulting sizes, adjusted conv layer padding to fit
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match.onnx"
+
+    #changed conv to no bias, normalised data set
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match_trained_norm.onnx"
+    # raised threshold, removed bias from conv and FC layers
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match_trained_norm_thr_high.onnx"
+
+    # just the first exit, trained, normed, no bias, for branchynet
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_first_exit.onnx"
+
+    # just the second exit, trained, normed, no bias, for branchynet
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_second_exit.onnx"
+
+    # just a trained, fc layer, normed, no bias, for mnist
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/fc_layer.onnx"
+
+    # just a trained, fc layer, normed, WITH bias, for mnist
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/fc_layer_bias.onnx"
+
+    #lenet example filepath
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/lenet.onnx"
+
     if args.expr == 'parser':
-        parser_expr()
+        parser_expr(filepath)
     elif args.expr == 'vis':
-        vis_expr()
+        vis_expr(filepath)
+    elif args.expr == 'out':
+        output_network(filepath, False)
+    elif args.expr == 'out_brn':
+        output_network(filepath, True)
     else:
         raise NameError("Experiment doesn\'t exist")
 

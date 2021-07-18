@@ -1,8 +1,10 @@
 syntax = "proto2";
 
 message stream {
-    required string name    = 1;
-    required int32  coarse  = 2;
+    required string name        = 1;
+    required int32  coarse      = 2;
+    optional bool   ctrl        = 3;
+    optional bool   split       = 4;
 }
 
 message parameter {
@@ -28,6 +30,14 @@ message parameter {
     optional int32 fine         = 18;
     required int32 buffer_depth  = 19 [default = 2];
     optional bool  matmul_flag   = 31;
+    //Early Exit additions
+    optional string ctrledge        = 22;
+    optional bool drop_mode         = 23;
+    optional int32 ports_in         = 24;
+    optional int32 ports_out        = 25;
+    optional float threshold        = 26;
+    optional int32 ctrl_out_size    = 27;
+    repeated string ctrledges       = 28;
 }
 
 message layer {
@@ -36,8 +46,8 @@ message layer {
     repeated stream streams_out = 3;
     required parameter parameters = 7;
 
-    required string node_in = 8;
-    required string node_out = 9;
+    repeated string node_in = 8;
+    repeated string node_out = 9;
 
     enum layer_type {
         CONVOLUTION     = 0;
@@ -48,6 +58,12 @@ message layer {
         CONCAT          = 5;
         BATCH_NORM      = 6;
         SPLIT           = 7;
+        //EE additions
+        IF              = 8;
+        REDUCEMAX       = 9;
+        GREATER         = 10;
+        IDENTITY        = 11;
+        BUFFER          = 12;
     }
     
     required layer_type type = 4;

@@ -72,10 +72,10 @@ class InnerProductLayer(Layer):
         parameters.buffer_depth = self.buffer_depth
         parameters.rows_in      = self.rows_in(0)
         parameters.cols_in      = self.cols_in(0)
-        parameters.channels_in  = self.channels_in0()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
+        parameters.channels_in  = self.channels_in(0)
+        parameters.rows_out     = self.rows_out(0)
+        parameters.cols_out     = self.cols_out(0)
+        parameters.channels_out = self.channels_out(0)
         parameters.coarse_in    = self.coarse_in[0]
         parameters.coarse_out   = self.coarse_out[0]
         parameters.filters      = self.filters
