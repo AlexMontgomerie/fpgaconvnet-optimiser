@@ -11,17 +11,18 @@ class ReLULayer(Layer):
     def __init__(
             self,
             dim,
-            data_width  =16,
             coarse_in   =1,
             coarse_out  =1,
             sa          =0.5,
-            sa_out      =0.5
+            sa_out      =0.5,
+            data_width  =16,
+            batch_size   =256
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
 
         # init modules
         self.modules = {
-            "relu" : ReLU(dim)
+            "relu" : ReLU(dim,batch_size,data_width)
         }
         self.update()
 
@@ -69,9 +70,9 @@ class ReLULayer(Layer):
 
         # instantiate relu layer
         relu_layer = torch.nn.ReLU()
-        
+
         # return output featuremap
         data = np.moveaxis(data, -1, 0)
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return relu_layer(torch.from_numpy(data)).detach().numpy()
 

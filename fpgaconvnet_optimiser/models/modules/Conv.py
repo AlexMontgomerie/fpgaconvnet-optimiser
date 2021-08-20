@@ -8,7 +8,7 @@ on-chip weights storage.
 
 .. figure:: ../../../figures/conv_diagram.png
 """
-
+import joblib
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
@@ -25,7 +25,9 @@ class Conv(Module):
             fine,
             k_size,
             groups,
-            data_width=16
+            data_width=16,
+            acc_width=30,
+            weight_width=30
         ):
         """
         Parameters
@@ -65,10 +67,22 @@ class Conv(Module):
         self.groups  = groups
         self.fine    = fine
         self.k_size  = k_size
-
-        # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/conv_rsc_coef.npy"))
+        self.data_width=data_width
+        self.acc_width=acc_width
+        self.weight_width=weight_width
+        RSC_TYPES=["LUT", "FF", "BRAM", "DSP"]
+        self.rsc_buildmodel = {
+        }
+        self.rsc_coef = {
+        }        
+        #for rsc in RSC_TYPES:
+            #self.rsc_buildmodel[rsc]=joblib.load("/home/wz2320/fpgaconvnet-optimiser/fpgaconvnet_optimiser/coefficients/conv_"+str(rsc))  
+        #for rsc in RSC_TYPES:
+              #self.rsc_coef[rsc]=np.load(os.path.join(os.path.dirname(__file__),"../../coefficients/conv_"+str(rsc).lower()+".npy"))
+        self.rsc_buildmodel['LUT']=joblib.load("/home/wz2320/fpgaconvnet-optimiser/fpgaconvnet_optimiser/coefficients/conv_"+'LUT(randomforest)')
+        self.rsc_buildmodel['FF']=joblib.load("/home/wz2320/fpgaconvnet-optimiser/fpgaconvnet_optimiser/coefficients/conv_"+'FF(randomforest)')
+        self.rsc_buildmodel['BRAM']=joblib.load("/home/wz2320/fpgaconvnet-optimiser/fpgaconvnet_optimiser/coefficients/conv_"+'BRAM(randomforest)') 
+        self.rsc_coef['DSP']=np.load(os.path.join(os.path.dirname(__file__),"../../coefficients/conv_"+str('DSP').lower()+".npy"))                         
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -80,13 +94,67 @@ class Conv(Module):
             self.data_width*sa_out*freq*rate*self.fine/float(self.k_size*self.k_size),
         ]
 
+    def utilisation_model1(self): 
+        if self.data_width<=4 or self.weight_width<=4:
+              coefficient=0
+        elif self.data_width<=8 and self.weight_width<=8:
+              coefficient=0
+        elif  (self.data_width<=28 and self.weight_width<=18) or (self.data_width<=18 and self.weight_width<=28):
+              coefficient=1
+        elif  (self.data_width>=30 and self.weight_width<=18 and self.weight_width>=6) or (self.data_width<=18 and self.weight_width>=6 and self.weight_width>=30):
+              coefficient=2              
+        elif  (self.data_width<=24 or self.weight_width<=24) and self.data_width+self.weight_width>=42:
+              coefficient=2
+        else:
+              coefficient=4  
+        a=self.k_size*self.channels*self.filters  
+        b=self.channels*self.filters
+        if self.fine==self.k_size:
+          if a<=2048:
+               coeff=1
+          if a<=4096:
+               coeff=2
+          elif a<=8192:
+                coeff=5  
+          elif a<=16384:
+                coeff=9
+          else :
+                coeff=18  
+        elif self.fine==self.k_size*self.k_size:
+          if b<=2048:
+               coeff=1
+          if b<=4096:
+               coeff=2
+          else :
+               coeff=5  
+        else:
+            coeff=9                                       
+                                                   
+        return {
+            "LUT"   : np.array([1,math.log(self.filters,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
+            "FF"    : np.array([1,math.log(self.filters,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
+            "DSP"   : np.array([coefficient*self.fine if self.fine>=self.k_size else 1]),
+            "BRAM"  : np.array([coeff*self.fine if self.weight_width<=16 else 2*coeff*self.fine])
+                }
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*self.fine,
-            self.data_width
-        ]
+        if self.data_width<=4 or self.weight_width<=4:
+              coefficient=0
+        elif self.data_width<=8 and self.weight_width<=8:
+              coefficient=0
+        elif  (self.data_width<=28 and self.weight_width<=18) or (self.data_width<=18 and self.weight_width<=28):
+              coefficient=1
+        elif  (self.data_width>=30 and self.weight_width<=18 and self.weight_width>=6) or (self.data_width<=18 and self.weight_width>=6 and self.weight_width>=30):
+              coefficient=2              
+        elif  (self.data_width<=24 or self.weight_width<=24) and self.data_width+self.weight_width>=42:
+              coefficient=2
+        else:
+              coefficient=4        
+        return {
+            "LUT"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.weight_width,self.filters,self.fine,self.k_size]),
+            "FF"    : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.weight_width,self.filters,self.fine,self.k_size]),
+            "DSP"   : np.array([coefficient*self.fine if self.fine>=self.k_size else 1]),
+            "BRAM"  : np.array([self.channels,self.weight_width,self.filters,self.fine,self.k_size])
+        }                   
 
     def channels_out(self):
         return int(self.filters/float(self.groups))
@@ -115,16 +183,37 @@ class Conv(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self,coef=None): # TODO: improve DSP utilisation for different bitwidths
+    def rsc1(self,coef=None): # TODO: improve DSP utilisation for different bitwidths
         if coef == None:
             coef = self.rsc_coef
         return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : 0,
-          "DSP"  : self.fine+1,
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
+          "LUT"  : int(np.dot(self.utilisation_model()["LUT"], coef["LUT"])),
+          "BRAM" : int(np.dot(self.utilisation_model()["BRAM"], coef["BRAM"])),
+          "DSP"  : int(np.dot(self.utilisation_model()["DSP"], coef["DSP"])),
+          "FF"   : int(np.dot(self.utilisation_model()["FF"], coef["FF"])),
         }
 
+    def rsc(self,buildmodel=None,coef=None):
+        if buildmodel == None:          
+              buildmodel = self.rsc_buildmodel     
+        if coef == None:          
+              coef = self.rsc_coef           
+        return {
+          "LUT"  : int(buildmodel["LUT"].predict(self.utilisation_model()["LUT"].reshape(1, -1))),
+          "FF"   : int(buildmodel["FF"].predict(self.utilisation_model()["FF"].reshape(1, -1))),          
+          "BRAM" : int(buildmodel["BRAM"].predict(self.utilisation_model()["BRAM"].reshape(1, -1))),
+          "DSP"  : int(np.dot(self.utilisation_model()["DSP"], coef["DSP"]))
+        }      
+        
+    def rsc2(self,buildmodel=None,scaler=None):
+        if buildmodel == None:          
+              buildmodel = self.rsc_buildmodel         
+        return {
+          "LUT"  : int(buildmodel["LUT"].predict(scaler["LUT"].transform(self.utilisation_model()["LUT"].reshape(1, -1)))),
+          "FF"   : int(buildmodel["FF"].predict(scaler["FF"].transform(self.utilisation_model()["FF"].reshape(1, -1)))),          
+          "BRAM" : int(buildmodel["BRAM"].predict(scaler["BRAM"].transform(self.utilisation_model()["BRAM"].reshape(1, -1)))),
+          "DSP"  : int(buildmodel["DSP"].predict(scaler["DSP"].transform(self.utilisation_model()["DSP"].reshape(1, -1))))
+        }          
     '''
     FUNCTIONAL MODEL
     '''

@@ -208,6 +208,37 @@ BALANCED RATES MATRIX
 """
 
 def get_balanced_rates_matrix(graph,node_list=[],edge_list=[]):
+    
+    ## get un-balanced rates graph
+    #rates_matrix = get_rates_matrix(graph,node_list=node_list,edge_list=edge_list)
+
+    ## get adjacent module rate ratios
+    #rate_ratio = [ abs(rates_matrix[i,i+1]/rates_matrix[i,i]) for i in range(rates_matrix.shape[0]) ]
+    #print(rate_ratio)
+
+    ## iterate backwards from last edge in matrix
+    #for layer in range(rates_matrix.shape[0]-1,0,-1):
+
+    #    # check for mismatch in adjacent nodes
+    #    if abs(rates_matrix[layer,layer]) > abs(rates_matrix[layer-1,layer]):
+    #        # propogate forward
+    #        for j in range(layer,rates_matrix.shape[0]):
+    #                if(abs(rates_matrix[j,j]) <= abs(rates_matrix[j-1,j])):
+    #                    break
+    #                rates_matrix[j,j]   = abs(rates_matrix[j-1,j])
+    #                rates_matrix[j,j+1] = -rates_matrix[j,j]*rate_ratio[j]
+
+    #    elif abs(rates_matrix[layer,layer]) < abs(rates_matrix[layer-1,layer]):
+    #        # propogate backward
+    #        for j in range(layer-1,0,-1):
+    #                if(abs(rates_matrix[j+1,j+1]) >= abs(rates_matrix[j,j+1])):
+    #                    break
+    #                rates_matrix[j,j+1] = -abs(rates_matrix[j+1,j+1])
+    #                rates_matrix[j,j]   = -rates_matrix[j,j+1]/rate_ratio[j]
+
+    ##return balanced rates matrix
+    #return rates_matrix
+
     # get connections matrix
     connections_matrix = get_connections_matrix(graph,node_list=node_list,edge_list=edge_list)
     # get the interval

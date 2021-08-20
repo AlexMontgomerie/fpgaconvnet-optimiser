@@ -45,8 +45,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
         print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
             temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
-    def run_optimiser(self, log=True):
-       
+    def run_optimiser(self, log=True):          
         # update all partitions
         self.update_partitions()
 
@@ -63,8 +62,10 @@ Randomly chooses a transform and hardware component to change. The change is acc
             print("ERROR: Exceeds resource usage (trying to find valid starting point)")
         
         # Attempt to find a good starting point
+        print(START_LOOP)
         if not start:
             for i in range(START_LOOP):
+                print('The %dth iteration' %(i))
                 transform = random.choice(self.transforms)
                 self.apply_transform(transform)
                 self.update_partitions()
@@ -81,8 +82,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             self.check_constraints()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
-            return
-         
+            return         
         # Cooling Loop
         while self.T_min < self.T:
             
@@ -91,7 +91,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
             # get the current cost
             cost = self.get_cost()
-            
+          
             # Save previous iteration
             partitions = copy.deepcopy(self.partitions)
 
@@ -117,18 +117,20 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)
-            
+                
                 ## Update partitions
                 self.update_partitions()
-
+  
             # Check resources
-            try: 
-                self.check_resources()
+
+            try:        
+                self.check_resources()               
                 self.check_constraints()
             except AssertionError:
                 # revert to previous state
                 self.partitions = partitions
                 continue
+                  
 
             # Simulated annealing descision
             if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
@@ -138,6 +140,6 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # update cost
             if self.DEBUG:
                 self.optimiser_status()
-
+                
             # reduce temperature
             self.T *= self.cool

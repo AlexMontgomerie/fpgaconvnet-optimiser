@@ -22,9 +22,12 @@ class ConvolutionLayer(Layer):
             coarse_in   =1,
             coarse_out  =1,
             fine        =1,
-            data_width  =16,
             sa          =0.5,
-            sa_out      =0.5
+            sa_out      =0.5,
+            data_width  =16,
+            acc_width   =30,
+            weight_width=16,
+            batch_size  =256               
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
 
@@ -33,7 +36,9 @@ class ConvolutionLayer(Layer):
         self.flags['transformable']     = True
 
         # weight width
-        self.weight_width = 8
+        self.data_width = data_width
+        self.acc_width = acc_width
+        self.weight_width = weight_width
 
         # init variables
         self.k_size     = k_size
@@ -54,11 +59,11 @@ class ConvolutionLayer(Layer):
         ]
         # init modules
         self.modules = {
-            "sliding_window" : SlidingWindow(dim, k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, data_width),
-            "fork"           : Fork(dim_out,k_size,coarse_out),
-            "conv"           : Conv(dim_out,filters,fine,k_size,groups),
-            "accum"          : Accum(dim_out,filters,groups),
-            "glue"           : Glue(dim_out,filters,coarse_in,coarse_out)
+            "sliding_window" : SlidingWindow(dim, k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left,data_width),
+            "fork"           : Fork(dim_out,k_size,coarse_out,batch_size,data_width),
+            "conv"           : Conv(dim_out,filters,fine,k_size,groups,data_width,acc_width,weight_width),
+            "accum"          : Accum(dim_out,filters,groups,data_width),
+            "glue"           : Glue(dim_out,filters,coarse_in,coarse_out,data_width,acc_width)
         }
         self.update()
         #self.load_coef()
@@ -108,14 +113,18 @@ class ConvolutionLayer(Layer):
     ## UPDATE MODULES ##
     def update(self): 
         # sliding window
+        #print("the amount of channels is %d" %(self.channels)) 
+        #print("the amount of coarse_in is %d" %(self.coarse_in))        
         self.modules['sliding_window'].rows     = self.rows_in()
         self.modules['sliding_window'].cols     = self.cols_in()
         self.modules['sliding_window'].channels = int(self.channels/self.coarse_in)
+        #print("the amount of sw_channels is %d" %(self.modules['sliding_window'].channels))         
         # fork
         self.modules['fork'].rows     = self.rows_out()
         self.modules['fork'].cols     = self.cols_out()
         self.modules['fork'].channels = int(self.channels/self.coarse_in)
         self.modules['fork'].coarse   = self.coarse_out
+        self.modules['fork'].data_width = self.data_width
         # conv
         self.modules['conv'].rows     = self.rows_out()
         self.modules['conv'].cols     = self.cols_out()

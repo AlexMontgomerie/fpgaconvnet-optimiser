@@ -7,11 +7,11 @@ import fpgaconvnet_optimiser.tools.matrix as matrix
 
 def check_ports(self):
     # check each partition
-    for p in self.partitions:
+    for partition in self.partitions:
         # verify that the number of input ports are not exceeded
-        if len(graphs.get_nodes_in(p.graph)) > self.platform['ports']:
+        if len(graphs.get_input_nodes(partition.graph)) > self.platform['ports']:
             return False
-        if len(graphs.get_nodes_out(p.graph)) > self.platform['ports']:
+        if len(graphs.get_output_nodes(partition.graph)) > self.platform['ports']:
             return False
     return True
 
@@ -20,8 +20,8 @@ def check_resources(self):
     for partition in self.partitions:
         # get the resource usage for the platform
         partition_resource_usage = partition.get_resource_usage()
-        #assert partition_resource_usage['FF']   <= (self.platform['constraints']['FF'])
-        #assert partition_resource_usage['LUT']  <= (self.platform['constraints']['LUT'])
+        assert partition_resource_usage['FF']   <= (self.platform['constraints']['FF']), "ERROR: FF usage exceeded"
+        assert partition_resource_usage['LUT']  <= (self.platform['constraints']['LUT']), "ERROR: LUT usage exceeded"
         assert partition_resource_usage['DSP']  <= (self.rsc_allocation*self.platform['constraints']['DSP']) , "ERROR: DSP usage exceeded"
         assert partition_resource_usage['BRAM'] <= (self.rsc_allocation*self.platform['constraints']['BRAM']), "ERROR: BRAM usage exceeded"
 
@@ -59,3 +59,16 @@ def check_partitions(self):
     for p in self.partitions:
         pass
 
+def check_memory_bandwidth(self):
+    # get memory bandwidth
+    mem_bw = min(
+        self.platform["freq"]*self.platform["port_width"]/8000,
+        self.platform["mem_bandwidth"]
+    )
+    # iterate over partitions
+    for partition in self.partitions:
+        # get bandwidth in and out
+        bandwidth_in = partition.get_bandwidth_in(self.platform["freq"])
+        bandwidth_out = partition.get_bandwidth_out(self.platform["freq"])
+        # check within platform memory bounds
+        assert (bandwidth_in+bandwidth_out) <= mem_bw, "Required memory bandwidth is greater than memory bandwidth"

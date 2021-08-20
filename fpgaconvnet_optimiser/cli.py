@@ -10,8 +10,8 @@ import shutil
 import random
 import numpy as np
 
-from fpgaconvnet_optimiser.optimiser.simulated_annealing import SimulatedAnnealing
-from fpgaconvnet_optimiser.optimiser.improve import Improve
+from fpgaconvnet_optimiser.optimiser import SimulatedAnnealing
+from fpgaconvnet_optimiser.optimiser import Improve
 
 def main():
     parser = argparse.ArgumentParser(description="Optimiser Script")
@@ -53,7 +53,7 @@ def main():
     # load optimiser config
     with open(args.optimiser_config_path,"r") as f:
         optimiser_config = yaml.load(f)
-    
+
     # load network
     if args.optimiser == "improve":
         # create network
@@ -84,7 +84,7 @@ def main():
 
     # specify optimiser objective
     if args.objective == "throughput":
-        net.objective  = 1 
+        net.objective  = 1
     if args.objective == "latency":
         net.objective  = 0
 
@@ -98,7 +98,7 @@ def main():
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
         net.split_complete()
-    
+
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
         for partition_index in range(len(net.partitions)):
@@ -115,13 +115,13 @@ def main():
     #    net.get_optimal_batch_size()
 
     # visualise network
-    net.visualise(os.path.join(args.output_path,"topology.png"))
+    #net.visualise(os.path.join(args.output_path,"topology.png"))
 
     # create report
     net.create_report(os.path.join(args.output_path,"report.json"))
 
     # save all partitions
     net.save_all_partitions(args.output_path)
-    
+
     # create scheduler
     net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))

@@ -9,7 +9,7 @@ their accumulation across channels.
 
 .. figure:: ../../../figures/accum_diagram.png
 """
-
+import joblib
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
@@ -21,7 +21,7 @@ class Accum(Module):
             dim,
             filters,
             groups,
-            data_width=30
+            data_width=16
         ):
 
         # module name
@@ -33,16 +33,22 @@ class Accum(Module):
         # init variables
         self.filters = filters
         self.groups  = groups
+        self.data_width=data_width
+        RSC_TYPES=["LUT", "FF", "BRAM", "DSP"]
+        self.rsc_buildmodel = {
+            }
+        for rsc in RSC_TYPES:
+            self.rsc_buildmodel[rsc]=joblib.load("/home/wz2320/fpgaconvnet-optimiser/fpgaconvnet_optimiser/coefficients/accum_"+str(rsc)+'(randomforest)')         
+           
 
-        # load resource coefficients
-        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #    "../../coefficients/accum_rsc_coef.npy"))
 
     def utilisation_model(self):
-        bram_acc_buffer_size =  (self.filters/self.groups)*self.data_width
-        return np.array([
-            1
-        ])
+        return {
+            "LUT"   : np.array([self.filters,self.groups,self.data_width,self.cols,self.rows,self.channels]),
+            "FF"    : np.array([self.filters,self.groups,self.data_width,self.cols,self.rows,self.channels]),
+            "DSP"   : np.array([self.filters,self.groups,self.data_width,self.cols,self.rows,self.channels]),
+            "BRAM"  : np.array([self.filters,self.groups,self.data_width,self.cols,self.rows,self.channels]),
+        }
 
     def channels_in(self):
         return int((self.channels*self.filters)/(self.groups))
@@ -71,28 +77,37 @@ class Accum(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self,coef=None):
-        if coef == None:
-            coef = self.rsc_coef
+    def rsc(self,buildmodel=None):
+        #if coef == None:
+            #coef = self.rsc_coef
         # streams
         #bram_input_buffer = math.ceil( ((self.channels*self.filters+1)*self.data_width)/18000)
         #bram_acc_buffer   = math.ceil( ((self.groups*self.filters+1)*self.data_width)/18000)
-        data_width = 30
-        acc_buffer =  (self.filters/self.groups)
-        acc_fifo_bram = 0
-        if acc_buffer*self.data_width >= 512:
-            acc_buffer_fifo_data = math.ceil( (acc_buffer*data_width)/18000) 
-            acc_buffer_fifo_addr = math.ceil( math.log(acc_buffer,2) )
+        #data_width = 30
+        #acc_buffer =  (self.filters/self.groups)
+        #acc_fifo_bram = 0
+        #if acc_buffer*self.data_width >= 512:
+          #  acc_buffer_fifo_data = math.ceil( (acc_buffer*data_width)/18000) 
+          #  acc_buffer_fifo_addr = math.ceil( math.log(acc_buffer,2) )
             #acc_fifo_bram = max(acc_buffer_fifo_data, acc_buffer_fifo_addr)
-            acc_fifo_bram = acc_buffer_fifo_data
-        acc_buffer_bram = math.ceil( (acc_buffer*data_width)/18000) 
+          #  acc_fifo_bram = acc_buffer_fifo_data
+        #acc_buffer_bram = math.ceil( (acc_buffer*data_width)/18000)    
+        if buildmodel == None:                  
+            buildmodel = self.rsc_buildmodel         
         return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          #"BRAM" : int(np.dot(self.utilisation_model(), coef["BRAM"])),
-          "BRAM" : acc_fifo_bram,# + acc_fifo_bram,
-          "DSP"  : 0,
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
+          "LUT"  : int(buildmodel["LUT"].predict(self.utilisation_model()["LUT"].reshape(1, -1))),
+          "BRAM" : int(buildmodel["BRAM"].predict(self.utilisation_model()["BRAM"].reshape(1, -1))),
+          "DSP"  : int(buildmodel["DSP"].predict(self.utilisation_model()["DSP"].reshape(1, -1))),
+          "FF"   : int(buildmodel["FF"].predict(self.utilisation_model()["FF"].reshape(1, -1))),
         }
+
+    
+#        return {
+#          "LUT"  : int(np.dot(self.utilisation_model()["LUT"], coef["LUT"])),
+#          "BRAM" : int(np.dot(self.utilisation_model()["BRAM"], coef["BRAM"])),
+#          "DSP"  : 0,
+#          "FF"   : int(np.dot(self.utilisation_model()["FF"], coef["FF"])),
+#        }
 
     def functional_model(self,data):
         # check input dimensionality

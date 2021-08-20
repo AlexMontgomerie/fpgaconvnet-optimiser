@@ -53,8 +53,7 @@ class Improve(Optimiser):
         print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
             temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
-    def run_optimiser(self, log=True):
-       
+    def run_optimiser(self, log=True):      
         # update all partitions
         self.update_partitions()
 
@@ -69,7 +68,8 @@ class Improve(Optimiser):
             start = True
         except AssertionError as error:
             print("ERROR: Exceeds resource usage (trying to find valid starting point)")
-        
+            
+      
         # Attempt to find a good starting point
         if not start:
             for i in range(START_LOOP):

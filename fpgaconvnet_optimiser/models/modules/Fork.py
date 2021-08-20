@@ -19,6 +19,7 @@ class Fork(Module):
             dim,
             k_size,
             coarse,
+            batch_size,
             data_width=16
         ):
         
@@ -31,10 +32,18 @@ class Fork(Module):
         # init variables
         self.k_size = k_size
         self.coarse = coarse
+        self.batch_size=batch_size
 
-        # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/fork_rsc_coef.npy"))
+        #load resource coefficients
+        RSC_TYPES=["LUT", "FF", "BRAM", "DSP"]
+        self.rsc_coef = {
+            "LUT"   : np.array([]),
+            "FF"    : np.array([]),
+            "DSP"   : np.array([]),
+            "BRAM"  : np.array([])
+        }
+        for rsc in RSC_TYPES:
+              self.rsc_coef[rsc]=np.load(os.path.join(os.path.dirname(__file__),"../../coefficients/fork_"+str(rsc).lower()+".npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -44,11 +53,124 @@ class Fork(Module):
         ]
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width*self.k_size*self.k_size,
-            self.data_width*self.k_size*self.k_size*self.coarse
-        ]
+        if self.channels*self.rows*self.cols*self.batch_size<2**18+1:
+            if self.k_size==1:
+                if self.coarse==1:
+                    LUT=12
+                else:
+                    LUT=14   
+            if self.k_size==2:
+                if self.coarse==1:
+                    LUT=14
+                else:
+                    LUT=13
+            else:
+                if self.coarse==1:
+                    LUT=13
+                else:
+                    LUT=20      
+        elif self.channels*self.rows*self.cols*self.batch_size<2**19+1:
+            if self.k_size==1:
+                if self.coarse==1:
+                    LUT=13
+                else:
+                    LUT=13   
+            if self.k_size==2:
+                if self.coarse==1:
+                    LUT=13
+                else:
+                    LUT=16
+            else:
+                if self.coarse==1:
+                    LUT=16
+                else:
+                    LUT=21      
+        elif self.channels*self.rows*self.cols*self.batch_size<2**20+1:
+            if self.k_size==1:
+                if self.coarse==1:
+                    LUT=12
+                else:
+                    LUT=13   
+            if self.k_size==2:
+                if self.coarse==1:
+                    LUT=13
+                else:
+                    LUT=14
+            else:
+                if self.coarse==1:
+                    LUT=15
+                else:
+                    LUT=20 
+        elif self.channels*self.rows*self.cols*self.batch_size<2**21+1:
+            if self.k_size==1:
+                if self.coarse==1:
+                    LUT=12
+                else:
+                    LUT=12   
+            if self.k_size==2:
+                if self.coarse==1:
+                    LUT=14
+                else:
+                    LUT=14
+            else:
+                if self.coarse==1:
+                    LUT=15
+                else:
+                    LUT=21       
+        elif self.channels*self.rows*self.cols*self.batch_size<2**22+1:
+            if self.k_size==1:
+                if self.coarse==1:
+                    LUT=12
+                else:
+                    LUT=12   
+            if self.k_size==2:
+                if self.coarse==1:
+                    LUT=13
+                else:
+                    LUT=17
+            else:
+                if self.coarse==1:
+                    LUT=17
+                else:
+                    LUT=21  
+        elif self.channels*self.rows*self.cols*self.batch_size<2**23+1:
+            if self.k_size==1:
+                if self.coarse==1:
+                    LUT=14
+                else:
+                    LUT=14   
+            if self.k_size==2:
+                if self.coarse==1:
+                    LUT=14
+                else:
+                    LUT=17
+            else:
+                if self.coarse==1:
+                    LUT=16
+                else:
+                    LUT=22  
+        else:
+            if self.k_size==1:
+                if self.coarse==1:
+                    LUT=14
+                else:
+                    LUT=14   
+            if self.k_size==2:
+                if self.coarse==1:
+                    LUT=14
+                else:
+                    LUT=16
+            else:
+                if self.coarse==1:
+                    LUT=19
+                else:
+                    LUT=22                                                                                                                                                                                                                                                                
+        return {
+            "LUT"   : np.array([1,LUT]),
+            "FF"    : np.array([1,2+math.ceil(math.log(self.channels*self.rows*self.cols*self.batch_size,2))]),
+            "DSP"   : np.array([1]),
+            "BRAM"  : np.array([1])
+        }
 
     def module_info(self):
         return {
@@ -64,13 +186,13 @@ class Fork(Module):
         }
 
     def rsc(self,coef=None):
-        if coef == None:
+       if coef == None:
             coef = self.rsc_coef
-        return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : 0,
+       return {
+          "LUT"  : int(np.dot(self.utilisation_model()["LUT"], coef["LUT"])),
+          "BRAM" : int(np.dot(self.utilisation_model()["BRAM"], coef["BRAM"])),
           "DSP"  : 0,
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
+          "FF"   : int(np.dot(self.utilisation_model()["FF"], coef["FF"])),
         }
 
     '''

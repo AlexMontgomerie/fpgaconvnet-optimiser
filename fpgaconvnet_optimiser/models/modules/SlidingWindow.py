@@ -77,25 +77,84 @@ class SlidingWindow(Module):
         self.pad_right  = pad_right
         self.pad_bottom = pad_bottom
         self.pad_left   = pad_left
-
-        # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/sliding_window_rsc_coef.npy"))
+        self.data_width  =data_width
+        RSC_TYPES=["LUT", "FF", "BRAM", "DSP"]
+        self.rsc_coef = {
+            "LUT"   : np.array([]),
+            "FF"    : np.array([]),
+            "DSP"   : np.array([]),
+            "BRAM"  : np.array([])
+        }
+        for rsc in RSC_TYPES:
+              self.rsc_coef[rsc]=np.load(os.path.join("/home/wz2320/fpgaconvnet-optimiser/fpgaconvnet_optimiser/coefficients/sliding_window_"+str(rsc).lower()+".npy"))
 
     def utilisation_model(self):
         linebufferfifo_amount=self.k_size-1
-        linebufferfifo_depth=(self.cols)*(self.channels)
-        linebufferfifo_depth2=((self.cols+self.pad_left+self.pad_right))*(self.channels)+1
+        linebufferfifo_depth=(self.cols+self.pad_left+self.pad_right)*(self.channels)
         windowcachefifo_amount=(self.k_size)*(self.k_size-1)
         windowcachefifo_depth=self.channels
+        if linebufferfifo_depth>1023:
+            linebuffer1=2*(2**math.floor(math.log(linebufferfifo_depth/1024,2)))
+        else:
+            linebuffer1=1
+            
+        if linebufferfifo_depth>2047:
+            linebuffer2=  5*(2**(math.floor(math.log(linebufferfifo_depth/1024,2))-1))
+        elif linebufferfifo_depth>1023:
+            linebuffer2= 3 
+        else:
+            linebuffer2= 2
+            
+        if linebufferfifo_depth>4095:
+            linebuffer3=  5*(2**(math.floor(math.log(linebufferfifo_depth/1024,2))-2))
+        elif linebufferfifo_depth>2047:
+            linebuffer3= 3 
+        elif linebufferfifo_depth>1023:
+            linebuffer3= 2 
+        else:
+            linebuffer3= 1
+            
+        if linebufferfifo_depth>8191:
+            linebuffer4=  5*(2**(math.floor(math.log(linebufferfifo_depth/1024,2))-3))
+        elif linebufferfifo_depth>4095:
+            linebuffer4= 3 
+        elif linebufferfifo_depth>2047:
+            linebuffer4= 2 
+        else:
+            linebuffer4= 1
+            
+        if linebufferfifo_depth>4095:
+            linebuffer5=2*(2**(math.floor(math.log(linebufferfifo_depth/1024,2))-2))
+        else:
+            linebuffer5=1
+            
+        if linebufferfifo_depth>1023:
+            linebuffer0=4*(2**math.floor(math.log(linebufferfifo_depth/1024,2)))
+        else:
+            linebuffer0=2            
+            
+        if self.data_width>27:
+            linebuffer=linebuffer0
+        elif self.data_width>18:
+            linebuffer=linebuffer2        
+        elif self.data_width>13:
+            linebuffer=linebuffer1
+        elif self.data_width>9:
+            linebuffer=linebuffer3
+        elif self.data_width>4:
+            linebuffer=linebuffer4    
+        else:
+            linebuffer=linebuffer5               
         return {
-            "LUT"   : np.array([(self.k_size)*(self.k_size-1),self.k_size-1,(self.rows+self.pad_bottom-1),self.channels*(self.k_size-1),(self.rows+self.pad_bottom-1)*self.k_size]),
-            "FF"    : np.array([(self.k_size)*(self.k_size-1), self.pad_bottom,self.rows+self.pad_bottom-1]),
+            "LUT"   : np.array([1,(4+2*self.data_width)*(self.k_size)*(self.k_size),(self.k_size)*(self.k_size-1)*(2*self.data_width+math.floor(math.log(self.channels,2))), (self.k_size-1)*(2*self.data_width+math.floor(math.log(self.channels*self.cols,2))),(self.k_size)*(self.k_size-1),(self.k_size-1)]),
+            "FF"    : np.array([1,(4+2*self.data_width)*(self.k_size)*(self.k_size),(self.k_size)*(self.k_size-1)*(2*self.data_width+math.floor(math.log(self.channels,2))), (self.k_size-1)*(2*self.data_width+math.floor(math.log(self.channels*self.cols,2))),(self.k_size)*(self.k_size-1),(self.k_size-1)]),
             "DSP"   : np.array([1]),
-            "BRAM"  : np.array([linebufferfifo_amount*math.ceil(linebufferfifo_depth2/1024),windowcachefifo_amount*math.ceil(windowcachefifo_depth/1024)])
-        }
+            "BRAM"  : np.array([linebufferfifo_amount*linebuffer, windowcachefifo_amount])
+            #"BRAM"  : np.array([2**(math.ceil(self.data_width/18)-1)*linebufferfifo_amount*linebuffer1 , windowcachefifo_amount])
+            #"BRAM"  : np.array([linebufferfifo_amount*math.ceil(linebufferfifo_depth/1024), windowcachefifo_amount*math.ceil(windowcachefifo_depth/1024)])
+                }
         
-        
+        #linebufferfifo_amount*math.ceil(linebufferfifo_depth/1024),windowcachefifo_amount*math.ceil(windowcachefifo_depth/1024),
 
 
     def rows_out(self):

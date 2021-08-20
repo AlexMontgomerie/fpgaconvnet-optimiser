@@ -35,5 +35,7 @@ setuptools.setup(
         "ddt>=1.4.2",
         "sklearn",
         "matplotlib",
+        "coverage==5.5",
+
     ]
 )

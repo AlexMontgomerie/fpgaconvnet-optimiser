@@ -102,7 +102,7 @@ class Optimiser(Network):
             name of node to apply transform. Must be within
             `self.partitions[partition_index].graph`
         """
-
+        print(transform)
         # choose random partition index if not given
         if partition_index == None:
             partition_index = random.randint(0,len(self.partitions)-1)

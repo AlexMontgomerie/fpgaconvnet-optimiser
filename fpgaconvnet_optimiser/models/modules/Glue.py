@@ -5,7 +5,7 @@ Convolution layer together.
 
 .. figure:: ../../../figures/glue_diagram.png
 """
-
+import joblib
 from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
@@ -18,7 +18,8 @@ class Glue(Module):
             filters,
             coarse_in,
             coarse_out,
-            data_width=16
+            data_width=16,
+            acc_width=30
         ):
         
         # module name
@@ -31,10 +32,14 @@ class Glue(Module):
         self.filters    = filters
         self.coarse_in  = coarse_in
         self.coarse_out = coarse_out
+        self.data_width = data_width
+        self.acc_width= acc_width
+        RSC_TYPES=["LUT", "FF", "BRAM", "DSP"]
+        self.rsc_buildmodel = {
+            }
+        for rsc in RSC_TYPES:
+            self.rsc_buildmodel[rsc]=joblib.load("/home/wz2320/fpgaconvnet-optimiser/fpgaconvnet_optimiser/coefficients/glue_"+str(rsc)+'(randomforest)')        
 
-        # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/glue_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -44,13 +49,20 @@ class Glue(Module):
             self.data_width*self.sa_in*freq*rate*self.coarse_out
         ]
 
+    #def utilisation_model(self):
+        #return {
+            #"LUT"   : np.array([self.coarse_in*self.coarse_out,math.ceil(np.log2(self.filters/self.coarse_out))]),
+            #"FF"    : np.array([self.coarse_in*self.coarse_out,math.ceil(np.log2(self.filters/self.coarse_out))]),
+            #"DSP"   : np.array([1]),
+            #"BRAM"  : np.array([1])
+        #}
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width,
-            self.data_width*self.coarse_in*self.coarse_out,
-            self.data_width*self.coarse_out
-        ]
+        return {
+            "LUT"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "FF"    : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "DSP"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "BRAM"  : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+        }      
 
     def channels_in(self):
         return self.filters*self.coarse_in
@@ -75,14 +87,23 @@ class Glue(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self, coef=None):
-        if coef == None:
-            coef = self.rsc_coef
+    #def rsc(self, coef=None):
+        #if coef == None:
+            #coef = self.rsc_coef
+        #return {
+          #"LUT"  : int(np.dot(self.utilisation_model()["LUT"], coef["LUT"])),
+          #"BRAM" : int(np.dot(self.utilisation_model()["BRAM"], coef["BRAM"])),
+          #"DSP"  : 0,
+          #"FF"   : int(np.dot(self.utilisation_model()["FF"], coef["FF"])),
+        #}
+    def rsc(self,buildmodel=None):
+        if buildmodel == None:                   
+            buildmodel = self.rsc_buildmodel         
         return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : 0,
-          "DSP"  : 0,
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
+          "LUT"  : int(buildmodel["LUT"].predict(self.utilisation_model()["LUT"].reshape(1, -1))),
+          "BRAM" : int(buildmodel["BRAM"].predict(self.utilisation_model()["BRAM"].reshape(1, -1))),
+          "DSP"  : int(buildmodel["DSP"].predict(self.utilisation_model()["DSP"].reshape(1, -1))),
+          "FF"   : int(buildmodel["FF"].predict(self.utilisation_model()["FF"].reshape(1, -1))),
         }
 
     '''

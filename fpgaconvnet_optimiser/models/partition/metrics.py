@@ -31,24 +31,29 @@ def get_latency(self,freq):
     return ( (interval*batch_size+pipeline_depth)*wr_factor + (wr_factor-1)*size_wr )/(freq*1000000) 
 
 def get_bandwidth_in(self,freq):
-    # get the slowest rate
-    rates_matrix = matrix.get_rates_matrix(self.graph)
-    rate = np.max(np.absolute(rates_matrix))
-    # get workload of input
+    # get the interval for the partition
+    interval = self.get_interval()
+    # get workload and streams in 
     input_node = graphs.get_input_nodes(self.graph)[0]
-    workload_in = self.graph.nodes[input_node]["hw"].workload_in(0)
+    workload = self.graph.nodes[input_node]["hw"].workload_in(0)
+    streams = self.streams_in
+    # calculate rate from interval
+    rate = workload / (interval*streams) 
     # get bandwidth (GB/s)
-    return (workload_in*self.streams_in*freq)/(rate*1000)
+    return (rate*streams*self.data_width*freq)/8000
 
 def get_bandwidth_out(self,freq):
-    # get the slowest rate
-    rates_matrix = matrix.get_rates_matrix(self.graph)
-    rate = np.max(np.absolute(rates_matrix))
-    # get workload of input
+    # get the interval for the partition
+    interval = self.get_interval()
+    # get workload and streams out 
     output_node = graphs.get_output_nodes(self.graph)[0]
-    workload_out = self.graph.nodes[output_node]["hw"].workload_out(0)
+    workload = self.graph.nodes[output_node]["hw"].workload_in(0)
+    streams = self.streams_out
+    # calculate rate from interval
+    rate = workload / (interval*streams) 
     # get bandwidth (GB/s)
-    return (workload_out*self.streams_out*freq)/(rate*1000)
+    return (rate*streams*self.data_width*freq)/8000
+
 
 def get_total_operations(self):
     return sum([self.graph.nodes[node]['hw'].get_operations() for node in self.graph.nodes])
