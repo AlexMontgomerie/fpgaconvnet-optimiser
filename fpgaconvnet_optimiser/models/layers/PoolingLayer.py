@@ -36,7 +36,7 @@ class PoolingLayer(Layer):
         self.pad_left   = pad
         self.fine       = fine
         self.pool_type  = pool_type
- 
+
         if pool_type == 'max':
             self.fine = self.k_size * self.k_size
 
@@ -60,7 +60,7 @@ class PoolingLayer(Layer):
 
     def rate_in(self, index):
         return abs(self.balance_module_rates(self.rates_graph())[0,0])
-    
+
     def rate_out(self, index):
         return abs(self.balance_module_rates(self.rates_graph())[1,2])
 
@@ -85,7 +85,7 @@ class PoolingLayer(Layer):
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
-  
+
     ## UPDATE MODULES ##
     def update(self):
         # sliding window
@@ -110,13 +110,13 @@ class PoolingLayer(Layer):
         return rates_graph
 
     def get_fine_feasible(self):
-        return [1] 
+        return [1]
 
     def resource(self):
 
         sw_rsc      = self.modules['sliding_window'].rsc()
         pool_rsc    = self.modules['pool'].rsc()
-        
+
         # Total
         return {
             "LUT"  :  sw_rsc['LUT']*self.coarse_in +
@@ -153,8 +153,8 @@ class PoolingLayer(Layer):
 
         # instantiate pooling layer
         pooling_layer = torch.nn.MaxPool2d(self.k_size, stride=self.stride, padding=self.pad)
-        
+
         # return output featuremap
         data = np.moveaxis(data, -1, 0)
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return pooling_layer(torch.from_numpy(data)).detach().numpy()

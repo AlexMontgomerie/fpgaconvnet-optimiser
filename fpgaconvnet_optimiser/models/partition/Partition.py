@@ -4,8 +4,8 @@ import fpgaconvnet_optimiser.tools.graphs as graphs
 class Partition():
 
     def __init__(
-            self, 
-            graph, 
+            self,
+            graph,
             ports_in=1,
             ports_out=1,
             streams_in=1,
@@ -16,7 +16,7 @@ class Partition():
 
         ## graph for partition
         self.graph = graph
-        
+
         ## ports
         self.ports_in   = ports_in
         self.ports_out  = ports_out
@@ -27,7 +27,7 @@ class Partition():
 
         ## weights reloading
         self.wr_layer   = self.get_wr_layer()
-        self.wr_factor  = wr_factor 
+        self.wr_factor  = wr_factor
 
         ## featuremap size
         self.size_in    = 0
@@ -38,7 +38,7 @@ class Partition():
         self.port_width     = 64
         self.data_width     = 16
         self.weight_width   = 8
-        self.acc_width      = 30 
+        self.acc_width      = 30
 
         # maximum streams in and out (TODO: turn into function calls)
         self.max_streams_in     = self.ports_in*int(self.port_width/self.data_width)
@@ -54,23 +54,23 @@ class Partition():
         # matrices
         #self.connections_matrix = matrix.get_connections_matrix(self.graph)
         #self.workload_matrix    = matrix.get_workload_matrix(self.graph)
-       
+
         # all types of layers
         #self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
         #self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
 
 
     ## fine transform
-    from fpgaconvnet_optimiser.transforms.fine import apply_random_fine_layer 
-    from fpgaconvnet_optimiser.transforms.fine import apply_complete_fine 
+    from fpgaconvnet_optimiser.transforms.fine import apply_random_fine_layer
+    from fpgaconvnet_optimiser.transforms.fine import apply_complete_fine
 
     ## weights reloading transform
     from fpgaconvnet_optimiser.transforms.weights_reloading import get_wr_layer
     from fpgaconvnet_optimiser.transforms.weights_reloading import get_weights_reloading_factors
-    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_random_weights_reloading 
-    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_max_weights_reloading 
-    from fpgaconvnet_optimiser.transforms.weights_reloading import remove_weights_reloading_transform 
-    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_weights_reloading_transform 
+    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_random_weights_reloading
+    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_max_weights_reloading
+    from fpgaconvnet_optimiser.transforms.weights_reloading import remove_weights_reloading_transform
+    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_weights_reloading_transform
 
     ## coarse transform
     from fpgaconvnet_optimiser.transforms.coarse import apply_random_coarse_layer
@@ -105,9 +105,9 @@ class Partition():
             # get the resource usage of the node
             resource_usage_node = self.graph.nodes[node]['hw'].resource()
             # update total resource usage for partition
-            resource_usage['FF']    += resource_usage_node['FF'] 
-            resource_usage['LUT']   += resource_usage_node['LUT'] 
-            resource_usage['DSP']   += resource_usage_node['DSP'] 
+            resource_usage['FF']    += resource_usage_node['FF']
+            resource_usage['LUT']   += resource_usage_node['LUT']
+            resource_usage['DSP']   += resource_usage_node['DSP']
             resource_usage['BRAM']  += resource_usage_node['BRAM']
         # return resource usage for partition
         return resource_usage

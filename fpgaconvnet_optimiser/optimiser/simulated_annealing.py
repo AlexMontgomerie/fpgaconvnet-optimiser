@@ -16,7 +16,7 @@ class SimulatedAnnealing(Optimiser):
     """
 Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
     """
-    
+
     def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10):
 
         # Initialise Network
@@ -33,7 +33,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # objective
         objectives = ['latency','throughput']
         objective  = objectives[self.objective]
-        # cost 
+        # cost
         cost = self.get_cost()
         # Resources
         resources = [ partition.get_resource_usage() for partition in self.partitions ]
@@ -46,22 +46,22 @@ Randomly chooses a transform and hardware component to change. The change is acc
             temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
     def run_optimiser(self, log=True):
-       
+
         # update all partitions
         self.update_partitions()
 
         # Setup
-        cost = self.get_cost()       
+        cost = self.get_cost()
 
         start = False
 
-        try: 
+        try:
             self.check_resources()
             self.check_constraints()
             start = True
         except AssertionError as error:
             print("ERROR: Exceeds resource usage (trying to find valid starting point)")
-        
+
         # Attempt to find a good starting point
         if not start:
             for i in range(START_LOOP):
@@ -76,22 +76,22 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 except AssertionError as error:
                     pass
 
-        try: 
+        try:
             self.check_resources()
             self.check_constraints()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
             return
-         
+
         # Cooling Loop
         while self.T_min < self.T:
-            
+
             # update partitions
             self.update_partitions()
 
             # get the current cost
             cost = self.get_cost()
-            
+
             # Save previous iteration
             partitions = copy.deepcopy(self.partitions)
 
@@ -111,18 +111,18 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
                 ## Choose a random partition
                 partition_index = random.randint(0,len(self.partitions)-1)
- 
+
                 ## Choose a random node in partition
                 node = random.choice(list(self.partitions[partition_index].graph))
-                
+
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)
-            
+
                 ## Update partitions
                 self.update_partitions()
 
             # Check resources
-            try: 
+            try:
                 self.check_resources()
                 self.check_constraints()
             except AssertionError:

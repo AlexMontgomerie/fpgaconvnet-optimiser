@@ -106,7 +106,7 @@ class ConvolutionLayer(Layer):
         parameters.pad_left     = self.pad_left
 
     ## UPDATE MODULES ##
-    def update(self): 
+    def update(self):
         # sliding window
         self.modules['sliding_window'].rows     = self.rows_in()
         self.modules['sliding_window'].cols     = self.cols_in()
@@ -136,7 +136,7 @@ class ConvolutionLayer(Layer):
         self.modules['glue'].coarse_out = self.coarse_out
 
 
-    ### RATES ### 
+    ### RATES ###
     def rates_graph(self):
         rates_graph = np.zeros( shape=(5,6) , dtype=float )
         # sliding_window
@@ -155,7 +155,7 @@ class ConvolutionLayer(Layer):
         # accum
         rates_graph[3,3] = self.modules['accum'].rate_in()
         rates_graph[3,4] = self.modules['accum'].rate_out()
-        # glue 
+        # glue
         rates_graph[4,4] = self.modules['glue'].rate_in()
         rates_graph[4,5] = self.modules['glue'].rate_out()
 
@@ -279,17 +279,17 @@ class ConvolutionLayer(Layer):
         assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
 
         # instantiate convolution layer
-        convolution_layer = torch.nn.Conv2d(self.channels, self.filters, self.k_size, 
+        convolution_layer = torch.nn.Conv2d(self.channels, self.filters, self.k_size,
                 stride=self.stride, padding=self.pad, groups=self.groups)
 
         # update weights
         convolution_layer.weight = torch.nn.Parameter(torch.from_numpy(weights))
-        
+
         # update bias
         convolution_layer.bias = torch.nn.Parameter(torch.from_numpy(bias))
-        
+
         # return output featuremap
         data = np.moveaxis(data, -1, 0)
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return convolution_layer(torch.from_numpy(data)).detach().numpy()
 
