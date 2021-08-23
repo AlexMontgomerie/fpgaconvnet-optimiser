@@ -44,19 +44,6 @@ class Fork(Module):
         #    "../../coefficients/fork_rsc_coef.npy"))
         #os.chdir(work_dir)
 
-        # dynamic power model
-        self.dynamic_model = lambda freq, rate, sa_in, sa_out : [
-            self.data_width*freq,
-            self.data_width*sa_in*freq*rate*self.k_size[0]*self.k_size[1],
-            self.data_width*sa_in*freq*rate*self.k_size[0]*self.k_size[1]*self.coarse
-        ]
- 
-        # utilisation model
-        self.utilisation_model = lambda : [
-            1,
-            self.data_width*self.k_size[0]*self.k_size[1],
-            self.data_width*self.k_size[0]*self.k_size[1]*self.coarse
-        ]
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
             self.data_width*freq,
@@ -65,8 +52,11 @@ class Fork(Module):
         ]
 
     def utilisation_model(self):
+        assert self.data_width == 16
         return [
             1,
+            math.log2(self.rows*self.cols*self.channels),
+            self.data_width,
             self.data_width*self.k_size[0]*self.k_size[1],
             self.data_width*self.k_size[0]*self.k_size[1]*self.coarse
         ]

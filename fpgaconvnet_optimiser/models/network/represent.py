@@ -54,7 +54,7 @@ def save_all_partitions(self,filepath,input_output_from_model=True): # TODO: upd
                 stream_in.name   = "in"
             else :
                 stream_in.name   = "_".join([prev_nodes[0].replace("/","_"), node.replace("/","_")])
-            stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_in
+            stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_in * self.partitions[i].graph.nodes[node]['hw'].coarse_group
             # add stream(s) out 
             stream_out = layer.streams_out.add()
             next_nodes = graphs.get_next_nodes(self.partitions[i].graph, node)
@@ -62,7 +62,7 @@ def save_all_partitions(self,filepath,input_output_from_model=True): # TODO: upd
                 stream_out.name   = "out"
             else:
                 stream_out.name   = "_".join([node.replace("/","_"), next_nodes[0].replace("/","_")])
-            stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_out
+            stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_out * self.partitions[i].graph.nodes[node]['hw'].coarse_group
             # add parameters 
             self.partitions[i].graph.nodes[node]['hw'].layer_info(layer.parameters, batch_size=self.partitions[i].batch_size)
             # add weights key

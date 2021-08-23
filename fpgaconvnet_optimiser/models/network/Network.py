@@ -20,7 +20,7 @@ class Network():
     def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True):
 
         ## percentage resource allocation
-        self.rsc_allocation = 0.7 
+        self.rsc_allocation = 0.75 
 
         ## bitwidths
         self.data_width     = data_width
@@ -76,6 +76,7 @@ class Network():
     # import transforms
     ## partitioning transform
     from fpgaconvnet_optimiser.transforms.partition import check_parallel_block
+    from fpgaconvnet_optimiser.transforms.partition import check_config_allowed_partitions 
     from fpgaconvnet_optimiser.transforms.partition import get_all_horizontal_splits
     from fpgaconvnet_optimiser.transforms.partition import get_all_vertical_splits
     from fpgaconvnet_optimiser.transforms.partition import get_all_horizontal_merges

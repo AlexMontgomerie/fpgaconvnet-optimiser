@@ -3,6 +3,7 @@ from fpgaconvnet_optimiser.models.modules import Conv
 from fpgaconvnet_optimiser.models.modules import Fork
 from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
+from fpgaconvnet_optimiser.models.modules import FIFO
 from fpgaconvnet_optimiser.models.layers import Layer
 
 import numpy as np
@@ -26,6 +27,7 @@ class InnerProductLayer(Layer):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
 
         self.weight_width = weight_width
+        self.acc_width = acc_width
 
         # update flags
         self.flags['channel_dependant'] = True
@@ -42,7 +44,7 @@ class InnerProductLayer(Layer):
         # init modules
         self.modules = {
             "fork"           : Fork( [self.channels,self.rows,self.cols]    ,[1,1],coarse_out,data_width),
-            "conv"           : Conv( [self.channels*self.rows*self.cols,1,1],filters,1,[1,1],1,data_width,weight_width),
+            "conv"           : Conv( [self.channels*self.rows*self.cols,1,1],filters,1,[1,1],1,data_width,weight_width,acc_width),
             "accum"          : Accum([self.channels*self.rows*self.cols,1,1],filters,1,acc_width),
             "glue"           : Glue( [self.channels*self.rows*self.cols,1,1],filters,coarse_in,coarse_out,data_width)
         }
@@ -143,37 +145,52 @@ class InnerProductLayer(Layer):
   
     def resource(self):
 
+        # instances
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
         accum_rsc   = self.modules['accum'].rsc()
-        if int(self.channels/self.coarse_in) == 1:
-            accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         glue_rsc    = self.modules['glue'].rsc()
-        if self.coarse_in == 1:
-            glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
-        # TODO: add to modules instead
-        n_filters = float(self.filters*self.channels*self.rows*self.cols)/float(self.coarse_in*self.coarse_out)
-        weights_bram_usage = int(math.ceil(self.weight_width*n_filters/18000))*self.coarse_in*self.coarse_out
+        # stream
+        fork_out = FIFO([1,1,1], self.coarse_in*self.coarse_out, self.buffer_depth, self.data_width)
+        fork_out_rsc = fork_out.rsc()
+        conv_out = FIFO([1,1,1], self.coarse_in*self.coarse_out, self.buffer_depth, self.acc_width)
+        conv_out_rsc = conv_out.rsc()
+        accum_out = FIFO([1,1,1], self.coarse_in*self.coarse_out, int(self.modules['accum'].filters / self.modules['accum'].groups + 1), self.acc_width)
+        accum_out_rsc = accum_out.rsc()
+
+        if int(self.channels/self.coarse_in) == 1:
+            accum_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+            accum_out_rsc = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #if self.coarse_in == 1:
+        #    glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # Total
         return {
             "LUT"  :  fork_rsc['LUT']*self.coarse_in +
                       conv_rsc['LUT']*self.coarse_in*self.coarse_out +
                       accum_rsc['LUT']*self.coarse_in*self.coarse_out +
-                      glue_rsc['LUT'],
+                      glue_rsc['LUT'] +
+                      fork_out_rsc['LUT'] +
+                      conv_out_rsc['LUT'] +
+                      accum_out_rsc['LUT'],
             "FF"   :  fork_rsc['FF']*self.coarse_in +
                       conv_rsc['FF']*self.coarse_in*self.coarse_out +
                       accum_rsc['FF']*self.coarse_in*self.coarse_out +
-                      glue_rsc['FF'],
+                      glue_rsc['FF'] +
+                      fork_out_rsc['FF'] +
+                      conv_out_rsc['FF'] +
+                      accum_out_rsc['FF'],
             "BRAM" :  fork_rsc['BRAM']*self.coarse_in +
                       conv_rsc['BRAM']*self.coarse_in*self.coarse_out +
-                      accum_rsc['BRAM']*self.coarse_out +
+                      accum_rsc['BRAM']*self.coarse_in*self.coarse_out +
                       glue_rsc['BRAM'] +
-                      weights_bram_usage,
+                      fork_out_rsc['BRAM'] +
+                      conv_out_rsc['BRAM'] +
+                      accum_out_rsc['BRAM'],
             "DSP"  :  fork_rsc['DSP']*self.coarse_in +
                       conv_rsc['DSP']*self.coarse_in*self.coarse_out +
-                      accum_rsc['DSP']*self.coarse_out +
+                      accum_rsc['DSP']*self.coarse_in*self.coarse_out +
                       glue_rsc['DSP']
         }
 

@@ -43,7 +43,7 @@ def add_squeeze(self):
     input_node  = graphs.get_input_nodes(self.graph)[0]
     if self.streams_in != self.graph.nodes[input_node]['hw'].coarse_in * self.graph.nodes[input_node]['hw'].coarse_group:
         # add node to graph
-        new_node  = "_".join([input_node,"squeeze"])
+        new_node  = "_".join(["squeeze",input_node])
         # add node to node info
         self.graph.add_node(new_node, type=LAYER_TYPE.Squeeze,
             hw=SqueezeLayer(
@@ -63,7 +63,7 @@ def add_squeeze(self):
     output_node = graphs.get_output_nodes(self.graph)[0]
     if self.streams_out != self.graph.nodes[output_node]['hw'].coarse_out * self.graph.nodes[output_node]['hw'].coarse_group:
         # add node to graph
-        new_node  = "_".join(["squeeze",output_node])
+        new_node  = "_".join([output_node,"squeeze"])
         # add node to node info
         self.graph.add_node(new_node,type=LAYER_TYPE.Squeeze,
             hw=SqueezeLayer(

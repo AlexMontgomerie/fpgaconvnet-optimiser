@@ -16,6 +16,7 @@ import os
 import sys
 
 from fpgaconvnet_optimiser.tools.onnx_helper import _pair
+from fpgaconvnet_optimiser.tools.hls_helper import stream_rsc
 
 class SlidingWindow(Module):
     """
@@ -93,16 +94,32 @@ class SlidingWindow(Module):
         #os.chdir(work_dir)
 
     def utilisation_model(self):
+        assert self.data_width == 16
+
+        line_size = ((self.cols+self.pad_left+self.pad_right)*self.channels+1)
+        line_buffer_rsc = stream_rsc(self.data_width, line_size)
+
+        # window buffer
+        window_depth = (self.channels+1)
+        window_buffer_rsc = stream_rsc(self.data_width, window_depth)
+
         return [
             1,
+            math.log2(self.rows+self.pad_bottom+self.pad_top),
+            math.log2(self.cols+self.pad_left+self.pad_right),
+            math.log2(self.channels),
+            math.log2(self.stride[0]),
+            math.log2(self.stride[1]),
+            self.data_width,
             self.data_width*self.k_size[0]*self.k_size[1],
             self.data_width*(self.k_size[0]-1),
             self.data_width*self.k_size[0]*(self.k_size[1]-1),
-            (self.k_size[0]-1)*(((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width < 512 else 0,
-            (self.k_size[0]-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width >= 512 else 0,
-            self.k_size[0]*(self.k_size[1]-1)*(self.channels+1)*self.data_width  if self.channels*self.data_width < 512 else 0,
-            self.k_size[0]*(self.k_size[1]-1)*math.ceil( ((self.channels+1)*self.data_width)/18000) if self.channels*self.data_width >= 512 else 0,
-            self.data_width*self.k_size[0]*self.k_size[1]*self.channels
+            self.data_width*self.k_size[0]*self.k_size[1]*self.channels,
+            (self.k_size[0]-1)*(((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width) if line_buffer_rsc['BRAM'] == 0 else 0,          
+            (self.k_size[0]-1)*line_buffer_rsc['BRAM'],
+            self.k_size[0]*(self.k_size[1]-1)*(self.channels+1)*self.data_width  if window_buffer_rsc['BRAM'] == 0 else 0,
+            self.k_size[0]*(self.k_size[1]-1)*window_buffer_rsc['BRAM']
+
         ]
 
     def rows_out(self):
@@ -162,29 +179,21 @@ class SlidingWindow(Module):
         """
         if coef == None:
             coef = self.rsc_coef
-        # stream
-        data_width = 18
+
         # line buffer
         line_size = ((self.cols+self.pad_left+self.pad_right)*self.channels+1)
-        bram_line_buffer = 0
-        if line_size*self.data_width >= 512:
-            bram_line_buffer_data = (self.k_size[0]-1)*math.ceil(line_size*data_width/18000)
-            bram_line_buffer_addr = (self.k_size[0]-1)*math.ceil(math.log(line_size,2))
-            bram_line_buffer = max(bram_line_buffer_data, bram_line_buffer_addr)
-            #bram_line_buffer = bram_line_buffer_data
-        # frame buffer
-        frame_size = (self.channels+1)
-        bram_frame_buffer = 0
-        if frame_size*self.data_width >= 512:
-            bram_frame_buffer_data = self.k_size[0]*(self.k_size[1]-1)*math.ceil(frame_size*data_width/18000)
-            bram_frame_buffer_addr = self.k_size[0]*(self.k_size[1]-1)*math.ceil(math.log(frame_size,2))
-            bram_frame_buffer = max(bram_frame_buffer_data, bram_frame_buffer_addr)
-            #bram_frame_buffer = bram_frame_buffer_data
+        line_buffer_rsc = stream_rsc(self.data_width, line_size)
+
+        # window buffer
+        window_depth = (self.channels+1)
+        window_buffer_rsc = stream_rsc(self.data_width, window_depth)
+
         return {
           "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : bram_line_buffer+bram_frame_buffer + self.k_size[0]*self.k_size[1],
+          "BRAM" : line_buffer_rsc['BRAM']*(self.k_size[0]-1) + 
+                   window_buffer_rsc['BRAM']*self.k_size[0]*(self.k_size[1]-1),
           "DSP"  : 0,
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"]))
         }
 
     def functional_model(self, data):

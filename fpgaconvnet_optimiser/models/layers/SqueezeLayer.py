@@ -1,4 +1,5 @@
 from fpgaconvnet_optimiser.models.layers import Layer
+from fpgaconvnet_optimiser.models.modules import FIFO
 
 import pydot
 import numpy as np
@@ -46,4 +47,9 @@ class SqueezeLayer(Layer):
         # return module
         return cluster, nodes_in, nodes_out
 
+    def resource(self):        
+        # streams
+        channel_cache = FIFO([1,1,1], self.channels_in(), self.buffer_depth, self.data_width)
+        channel_cache_rsc = channel_cache.rsc()
+        return channel_cache_rsc
 

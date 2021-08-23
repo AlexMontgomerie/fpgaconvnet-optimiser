@@ -93,14 +93,14 @@ def fix_coarse(self):
     for node in self.graph.nodes():
         # check if coarse in is greater than max feasible coarse in
         coarse_in = self.graph.nodes[node]['hw'].coarse_in
-        coarse_in_max = self.graph.nodes[node]['hw'].get_coarse_in_feasible()[-1]
+        coarse_in_max = max(self.graph.nodes[node]['hw'].get_coarse_in_feasible())
         self.graph.nodes[node]['hw'].update_coarse_in(min(coarse_in,coarse_in_max))
         # check if coarse out is greater than max feasible coarse out
         coarse_out = self.graph.nodes[node]['hw'].coarse_out
-        coarse_out_max = self.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
+        coarse_out_max = max(self.graph.nodes[node]['hw'].get_coarse_out_feasible())
         self.graph.nodes[node]['hw'].update_coarse_out(min(coarse_out,coarse_out_max))            
         # check if coarse group is greater than max feasible coarse out
         coarse_group = self.graph.nodes[node]['hw'].coarse_group
-        coarse_group_max = self.graph.nodes[node]['hw'].get_coarse_group_feasible()[-1]
+        coarse_group_max = max(self.graph.nodes[node]['hw'].get_coarse_group_feasible())
         self.graph.nodes[node]['hw'].update_coarse_group(min(coarse_group,coarse_group_max))
             

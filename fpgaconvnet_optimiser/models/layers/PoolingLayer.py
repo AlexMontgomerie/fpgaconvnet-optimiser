@@ -5,6 +5,7 @@ import pydot
 
 from fpgaconvnet_optimiser.models.modules import SlidingWindow
 from fpgaconvnet_optimiser.models.modules import Pool
+from fpgaconvnet_optimiser.models.modules import FIFO
 from fpgaconvnet_optimiser.models.layers import Layer
 
 from fpgaconvnet_optimiser.tools.onnx_helper import _pair, _quadruple
@@ -121,17 +122,25 @@ class PoolingLayer(Layer):
 
     def resource(self):
 
+        # instances
         sw_rsc      = self.modules['sliding_window'].rsc()
         pool_rsc    = self.modules['pool'].rsc()
+
+        # streams
+        sw_out = FIFO([1,1,1], self.coarse_in*self.k_size[0]*self.k_size[1], self.buffer_depth, self.data_width)
+        sw_out_rsc = sw_out.rsc()
         
         # Total
         return {
             "LUT"  :  sw_rsc['LUT']*self.coarse_in +
-                      pool_rsc['LUT']*self.coarse_in,
+                      pool_rsc['LUT']*self.coarse_in + 
+                      sw_out_rsc['LUT'],
             "FF"   :  sw_rsc['FF']*self.coarse_in +
-                      pool_rsc['FF']*self.coarse_in,
+                      pool_rsc['FF']*self.coarse_in + 
+                      sw_out_rsc['FF'],
             "BRAM" :  sw_rsc['BRAM']*self.coarse_in +
-                      pool_rsc['BRAM']*self.coarse_in,
+                      pool_rsc['BRAM']*self.coarse_in+ 
+                      sw_out_rsc['BRAM'],
             "DSP" :   sw_rsc['DSP']*self.coarse_in +
                       pool_rsc['DSP']*self.coarse_in
         }

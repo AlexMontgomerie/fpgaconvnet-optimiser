@@ -8,6 +8,7 @@ from fpgaconvnet_optimiser.models.modules import Conv
 from fpgaconvnet_optimiser.models.modules import Fork
 from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
+from fpgaconvnet_optimiser.models.modules import FIFO
 from fpgaconvnet_optimiser.models.layers import Layer
 
 from fpgaconvnet_optimiser.tools.onnx_helper import _pair, _quadruple
@@ -41,8 +42,8 @@ class ConvolutionLayer(Layer):
         self.flags['channel_dependant'] = True
         self.flags['transformable']     = True
 
-        # weight width
         self.weight_width = weight_width
+        self.acc_width = acc_width
 
         # init variables
         self.k_size     = k_size
@@ -66,9 +67,9 @@ class ConvolutionLayer(Layer):
         self.modules = {
             "sliding_window" : SlidingWindow(dim, k_size, stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left, data_width),
             "fork"           : Fork(dim_out,k_size,coarse_out,data_width),
-            "conv"           : Conv(dim_out,filters,fine,k_size,groups,data_width,weight_width),
+            "conv"           : Conv(dim_out,filters,fine,k_size,groups,data_width,weight_width,acc_width),
             "accum"          : Accum(dim_out,filters,groups,acc_width),
-            "glue"           : Glue(dim_out,filters,coarse_in,coarse_out,data_width)
+            "glue"           : Glue(dim_out,filters,coarse_in,coarse_out,coarse_group,data_width)
         }
         self.update()
         #self.load_coef()
@@ -146,13 +147,13 @@ class ConvolutionLayer(Layer):
         self.modules['glue'].filters    = int(self.filters/self.coarse_group) 
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
-
+        self.modules['glue'].coarse_group = self.coarse_group
 
     ### RATES ### 
     def rates_graph(self):
         rates_graph = np.zeros( shape=(5,6) , dtype=float )
         # sliding_window
-        if self.k_size == 1:
+        if self.k_size[0] == 1 and self.k_size[1] == 1:
             rates_graph[0,0] = 1
             rates_graph[0,1] = 1
         else:
@@ -210,48 +211,71 @@ class ConvolutionLayer(Layer):
 
     def resource(self):
 
+        # instances
         sw_rsc      = self.modules['sliding_window'].rsc()
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
         accum_rsc   = self.modules['accum'].rsc()
         glue_rsc    = self.modules['glue'].rsc()
 
-        if self.k_size == 1:
+        # streams
+        sw_out = FIFO([1,1,1], self.coarse_in*self.coarse_group*self.k_size[0]*self.k_size[1], self.buffer_depth, self.data_width)
+        sw_out_rsc = sw_out.rsc()
+        fork_out = FIFO([1,1,1], self.coarse_in*self.coarse_group*self.coarse_out*self.k_size[0]*self.k_size[1], self.buffer_depth, self.data_width)
+        fork_out_rsc = fork_out.rsc()
+        conv_out = FIFO([1,1,1], self.coarse_in*self.coarse_group*self.coarse_out, self.buffer_depth, self.acc_width)
+        conv_out_rsc = conv_out.rsc()
+        accum_out = FIFO([1,1,1], self.coarse_in*self.coarse_group*self.coarse_out, int(self.modules['accum'].filters / self.modules['accum'].groups + 1), self.acc_width)
+        accum_out_rsc = accum_out.rsc()
+
+        if self.k_size[0] == 1 and self.k_size[1] == 1:
             sw_rsc      = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if self.coarse_out == 1:
-            fork_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if int(self.channels/(self.coarse_in*self.coarse_group)) == 1:
-            accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if self.coarse_in == 1:
-            glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+            sw_out_rsc  = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #if self.coarse_out == 1:
+        #    fork_rsc     = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #    fork_out_rsc = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #if int(self.channels/(self.coarse_in*self.group)) == 1:
+        #    accum_rsc     = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #    accum_out_rsc = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #if self.coarse_in == 1:
+        #    glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
-        # weight usage
-        n_filters = float(self.filters/self.groups*self.channels*self.k_size[0]*self.k_size[1])/float(self.fine*self.coarse_in*self.coarse_out*self.coarse_group)
-        weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in*self.coarse_out*self.coarse_group*self.fine
-
+        #print(sw_rsc['FF'],fork_rsc['FF'],conv_rsc['FF'],accum_rsc['FF'],glue_rsc['FF'])
+        #print(sw_out_rsc['FF'],fork_out_rsc['FF'],conv_out_rsc['FF'],accum_out_rsc['FF'])
         # Total
         return {
             "LUT"  :  sw_rsc['LUT']*self.coarse_in*self.coarse_group +
                       fork_rsc['LUT']*self.coarse_in*self.coarse_group +
                       conv_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['LUT']*self.coarse_group,
+                      glue_rsc['LUT'] +
+                      sw_out_rsc['LUT'] +
+                      fork_out_rsc['LUT'] +
+                      conv_out_rsc['LUT'] +
+                      accum_out_rsc['LUT'],
             "FF"   :  sw_rsc['FF']*self.coarse_in*self.coarse_group +
                       fork_rsc['FF']*self.coarse_in*self.coarse_group +
                       conv_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['FF']*self.coarse_group,
+                      glue_rsc['FF'] +
+                      sw_out_rsc['FF'] +
+                      fork_out_rsc['FF'] +
+                      conv_out_rsc['FF'] +
+                      accum_out_rsc['FF'],
             "BRAM" :  sw_rsc['BRAM']*self.coarse_in*self.coarse_group +
                       fork_rsc['BRAM']*self.coarse_in*self.coarse_group +
                       conv_rsc['BRAM']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      accum_rsc['BRAM']*self.coarse_out*self.coarse_group +
-                      glue_rsc['BRAM']*self.coarse_group +
-                      weights_bram_usage,
+                      accum_rsc['BRAM']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      glue_rsc['BRAM'] +
+                      sw_out_rsc['BRAM'] +
+                      fork_out_rsc['BRAM'] +
+                      conv_out_rsc['BRAM'] +
+                      accum_out_rsc['BRAM'],
             "DSP" :   sw_rsc['DSP']*self.coarse_in*self.coarse_group +
                       fork_rsc['DSP']*self.coarse_in*self.coarse_group +
                       conv_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['DSP']*self.coarse_group
+                      glue_rsc['DSP']
         }
 
     def visualise(self,name):

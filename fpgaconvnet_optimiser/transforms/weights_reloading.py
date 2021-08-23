@@ -114,3 +114,5 @@ def apply_weights_reloading_transform(self):
             ## get channels and reduce by wr factor
             channels = self.graph.nodes[layer]['hw'].channels
             self.graph.nodes[layer]['hw'].channels = int(channels/self.wr_factor)
+        
+        self.fix_coarse()

@@ -19,6 +19,7 @@ class Glue(Module):
             filters,
             coarse_in,
             coarse_out,
+            coarse_group,
             data_width=16
         ):
         
@@ -32,6 +33,7 @@ class Glue(Module):
         self.filters    = filters
         self.coarse_in  = coarse_in
         self.coarse_out = coarse_out
+        self.coarse_group = coarse_group
 
         # load resource coefficients
         #work_dir = os.getcwd()
@@ -49,11 +51,15 @@ class Glue(Module):
         ]
 
     def utilisation_model(self):
+        assert self.data_width == 16
+
         return [
             1,
             self.data_width,
+            self.data_width*self.coarse_in,
             self.data_width*self.coarse_in*self.coarse_out,
-            self.data_width*self.coarse_out
+            self.data_width*self.coarse_in*self.coarse_group,
+            self.data_width*self.coarse_in*self.coarse_out*self.coarse_group
         ]
 
     def channels_in(self):
@@ -63,7 +69,7 @@ class Glue(Module):
         return self.filters
 
     def get_latency(self):
-        return self.rows *self.cols *self.filters / self.coarse_out
+        return self.rows *self.cols *self.filters / (self.coarse_out * self.coarse_group)
 
     def module_info(self):
         return {

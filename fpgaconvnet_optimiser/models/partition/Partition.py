@@ -149,21 +149,26 @@ class Partition():
         input_node  = graphs.get_input_nodes(self.graph)[0]
         max_compute_latency = self.max_compute_node_latency()
 
-        for node in self.graph.nodes():
-            if self.graph.nodes[node]["type"] == LAYER_TYPE.InnerProduct:
-                return False
-
         return self.graph.nodes[input_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[input_node]["hw"].get_latency() > max_compute_latency 
     
     def is_output_memory_bound(self):
         output_node  = graphs.get_output_nodes(self.graph)[0]
         max_compute_latency = self.max_compute_node_latency()
 
+        return self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[output_node]["hw"].get_latency() > max_compute_latency 
+
+    def is_mergeable(self):
+        conv_count = 0
         for node in self.graph.nodes():
             if self.graph.nodes[node]["type"] == LAYER_TYPE.InnerProduct:
                 return False
-
-        return self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[output_node]["hw"].get_latency() > max_compute_latency 
+            if self.graph.nodes[node]["type"] == LAYER_TYPE.Convolution:
+                conv_count += 1
+        
+        if conv_count >= 2:
+            return False
+            
+        return True
 
     def reset(self):
         self.remove_squeeze()

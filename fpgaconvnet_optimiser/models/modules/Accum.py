@@ -11,6 +11,7 @@ their accumulation across channels.
 """
 
 from fpgaconvnet_optimiser.models.modules import Module
+from fpgaconvnet_optimiser.tools.hls_helper import stable_array_rsc
 import numpy as np
 import math
 import os
@@ -43,14 +44,18 @@ class Accum(Module):
         #os.chdir(work_dir)
 
     def utilisation_model(self):
-        bram_acc_buffer_size =  (self.filters/self.groups)*self.data_width
+        assert self.data_width == 30
+
+        acc_buffer_size =  int(self.filters/self.groups) if int(self.channels/self.groups) > 1 else 0
+        acc_buffer_rsc = stable_array_rsc(self.data_width, acc_buffer_size)
         return np.array([
             1,
-            #self.data_width,
-            self.data_width*self.groups,
-            self.data_width*(self.channels/self.groups),
-            bram_acc_buffer_size,
-            math.ceil( (bram_acc_buffer_size)/18000),
+            math.log2(self.rows*self.cols*self.groups),
+            math.log2(self.channels/self.groups),
+            math.log2(self.filters/self.groups),
+            self.data_width,
+            self.data_width*acc_buffer_size if acc_buffer_rsc['BRAM'] == 0 else 0,
+            acc_buffer_rsc['BRAM']
         ])
 
     def channels_in(self):
@@ -83,21 +88,14 @@ class Accum(Module):
     def rsc(self,coef=None):
         if coef == None:
             coef = self.rsc_coef
-        # streams
-        #bram_input_buffer = math.ceil( ((self.channels*self.filters+1)*self.data_width)/18000)
-        #bram_acc_buffer   = math.ceil( ((self.groups*self.filters+1)*self.data_width)/18000)
-        acc_buffer =  (self.filters/self.groups)
-        acc_fifo_bram = 0
-        if acc_buffer*self.data_width >= 512:
-            acc_buffer_fifo_data = math.ceil( (acc_buffer*self.data_width)/18000)
-            acc_buffer_fifo_addr = math.ceil( math.log(acc_buffer,2) )
-            #acc_fifo_bram = max(acc_buffer_fifo_data, acc_buffer_fifo_addr)
-            acc_fifo_bram = acc_buffer_fifo_data
-        acc_buffer_bram = math.ceil( (acc_buffer*self.data_width)/18000)
+
+        acc_buffer_size =  int(self.filters/self.groups) if int(self.channels/self.groups) > 1 else 0
+        acc_buffer_rsc = stable_array_rsc(self.data_width, acc_buffer_size)
+
         return {
           "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
           #"BRAM" : int(np.dot(self.utilisation_model(), coef["BRAM"])),
-          "BRAM" : acc_fifo_bram,# + acc_fifo_bram,
+          "BRAM" : acc_buffer_rsc['BRAM'],
           "DSP"  : 0,
           "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }

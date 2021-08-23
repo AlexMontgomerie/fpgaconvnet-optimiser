@@ -16,6 +16,7 @@ import os
 import sys
 
 from fpgaconvnet_optimiser.tools.onnx_helper import _pair
+from fpgaconvnet_optimiser.tools.hls_helper import stable_array_rsc
 
 class Conv(Module):
     """
@@ -29,7 +30,8 @@ class Conv(Module):
             k_size,
             groups,
             data_width=16,
-            weight_width=8
+            weight_width=8,
+            acc_width=30
         ):
         """
         Parameters
@@ -73,6 +75,7 @@ class Conv(Module):
         self.k_size  = k_size
 
         self.weight_width = weight_width
+        self.acc_width = acc_width
 
         # load resource coefficients
         #work_dir = os.getcwd()
@@ -92,11 +95,22 @@ class Conv(Module):
         ]
 
     def utilisation_model(self):
+        assert self.data_width == 16 and self.weight_width == 8
+
+        n_filters = float(self.filters*self.channels/self.groups*self.k_size[0]*self.k_size[1])/self.fine
+        weights_rsc = stable_array_rsc(self.weight_width, n_filters)
         return [
             1,
-            self.data_width*self.k_size[0]*self.k_size[1],
-            self.data_width*self.fine,
-            self.data_width
+            math.log2(self.rows*self.cols),
+            math.log2(int(self.channels/self.groups)),
+            math.log2(int(self.filters/self.groups)),
+            self.data_width,
+            self.data_width*self.k_size[0] if self.k_size[0] > 1 else 0,
+            self.data_width*self.k_size[1] if self.k_size[1] > 1 else 0,
+            self.data_width*self.k_size[0]*self.k_size[1] if self.k_size[0] > 1 or self.k_size[1] > 1 else 0,
+            self.data_width*self.fine if self.fine > 1 else 0,
+            self.weight_width*n_filters*self.fine if weights_rsc['BRAM'] == 0 else 0,
+            weights_rsc['BRAM']
         ]
 
     def channels_out(self):
@@ -129,9 +143,13 @@ class Conv(Module):
     def rsc(self,coef=None): # TODO: improve DSP utilisation for different bitwidths
         if coef == None:
             coef = self.rsc_coef
+
+        n_filters = float(self.filters*self.channels/self.groups*self.k_size[0]*self.k_size[1])/self.fine
+        weights_rsc = stable_array_rsc(self.weight_width, n_filters)
+
         return {
           "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : 0,
+          "BRAM" : weights_rsc["BRAM"]*self.fine,
           "DSP"  : self.fine * math.ceil((self.weight_width + self.data_width) / 48), #https://github.com/Xilinx/finn/blob/4fee6ffd8e13f91314ec9086e9ce9b2ea9de15c7/src/finn/custom_op/fpgadataflow/streamingfclayer_batch.py#L368,
           "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }

@@ -61,7 +61,7 @@ class Layer:
         }
 
         # buffer depth
-        self.buffer_depth = 0
+        self.buffer_depth = 2
 
         # parameters
         self.rows       = dim[1]
@@ -281,7 +281,7 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth*self.data_width/18000)*self.coarse_in,
+            "BRAM"  : 0,#math.ceil(self.buffer_depth*self.data_width/18000)*self.coarse_in,
             "DSP"   : 0
         }
 
@@ -388,6 +388,7 @@ class Layer:
         return rate_graph
 
     def get_factors(self, n):
+        # unsorted !!
         return list(set(reduce(list.__add__, 
                     ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0))))
 
