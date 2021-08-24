@@ -108,7 +108,7 @@ class Layer:
             row dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.rows[port_index]
+        return self.modules[list(self.modules.keys())[0]].rows_in()
 
     def cols_in(self, port_index=0):
         """
@@ -118,7 +118,7 @@ class Layer:
             column dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.cols[port_index]
+        return self.modules[list(self.modules.keys())[0]].cols_in()
 
     def channels_in(self, port_index=0):
         """
@@ -128,7 +128,7 @@ class Layer:
             channel dimension of the input featuremap
         """
         assert(port_index < self.ports_in)
-        return self.channels[port_index]
+        return self.modules[list(self.modules.keys())[0]].channels_in()
 
     def rows_out(self, port_index=0):
         """
@@ -138,7 +138,7 @@ class Layer:
             row dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.rows[port_index]
+        return self.modules[list(self.modules.keys())[-1]].rows_out()
 
     def cols_out(self, port_index=0):
         """
@@ -148,7 +148,7 @@ class Layer:
             column dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.cols[port_index]
+        return self.modules[list(self.modules.keys())[-1]].cols_out()
 
     def channels_out(self, port_index=0):
         """
@@ -158,7 +158,7 @@ class Layer:
             channel dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return self.channels[port_index]
+        return self.modules[list(self.modules.keys())[-1]].channels_out()
 
     def rates_graph(self):
 
