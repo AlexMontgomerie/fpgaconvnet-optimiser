@@ -31,8 +31,9 @@ def main():
     print("Parser experiments")
 
     #attempt to parse the graph and see what errors
-    filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
-    #filepath = "/home/benubu/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf.onnx"
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/testnet_no-bias.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
     model, graph, ctrledges = parser.parse_net(filepath, view=False) #check what view does
 
     print(graph.nodes)
