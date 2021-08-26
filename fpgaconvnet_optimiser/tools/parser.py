@@ -30,6 +30,7 @@ def _layer_type(op_type):
     layer_types = {
         "Conv"      : LAYER_TYPE.Convolution,
         "Gemm"      : LAYER_TYPE.InnerProduct,
+        "MatMul"    : LAYER_TYPE.InnerProduct,
         "Relu"      : LAYER_TYPE.ReLU,
         "MaxPool"   : LAYER_TYPE.Pooling,
         "LRN"       : LAYER_TYPE.LRN,
@@ -478,4 +479,4 @@ def parse_net(filepath,view=True):
     for node in graph.nodes:
         graph.nodes[node]['hw'].update()
 
-    return model, graph
+    return model, graph, ctrledges
