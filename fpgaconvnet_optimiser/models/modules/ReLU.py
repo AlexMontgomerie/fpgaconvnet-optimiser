@@ -10,11 +10,17 @@ import os
 class ReLU(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             data_width=16
         ):
+        
+        # module name
+        self.name = "relu"
+ 
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # load resource coefficients
         #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
@@ -34,12 +40,22 @@ class ReLU(Module):
     def load_coef(self,rsc_coef_path):
         pass
 
-    def rsc(self):
+    def utilisation_model(self):
+        return [
+            1,
+            self.data_width,
+            self.data_width*self.rows*self.cols*self.channels
+        ]
+
+
+    def rsc(self, coef=None):
+        if coef == None:
+            coef = self.rsc_coef
         return {
-          "LUT"  : 0, # int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
           "BRAM" : 0,
           "DSP"  : 0,
-          "FF"   : 0 # int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     '''

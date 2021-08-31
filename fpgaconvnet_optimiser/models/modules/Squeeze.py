@@ -6,21 +6,27 @@ import os
 class Squeeze(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             coarse_out,
             coarse_in,
             data_width=16
         ):
+        
+        # module name
+        self.name = "squeeze"
+
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.coarse_out = coarse_out
         self.coarse_in  = coarse_in
 
-        # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/squeeze_rsc_coef.npy"))
+        # # load resource coefficients
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/squeeze_rsc_coef.npy"))
 
     def module_info(self):
         return {

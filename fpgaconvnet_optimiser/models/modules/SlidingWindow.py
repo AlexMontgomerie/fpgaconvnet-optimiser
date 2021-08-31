@@ -20,7 +20,9 @@ class SlidingWindow(Module):
     """
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             k_size,
             stride,
             pad_top,
@@ -32,9 +34,13 @@ class SlidingWindow(Module):
         """
         Parameters
         ----------
-        dim: list
-            dimensions of the input featuremap. Should contain
-            `channels`, `rows`, `cols` in that order.
+        rows: int
+            row dimension of the input feature map
+        cols: int
+            column dimension of input featuremap
+        channels: int
+            channel dimension of input featuremap
+
 
         Attributes
         ----------
@@ -63,8 +69,12 @@ class SlidingWindow(Module):
             to `LUT`, `BRAM`, `DSP` and `FF` resources in
             that order.
         """
+
+        # module name
+        self.name = "sliding_window"
+
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self, rows, cols, channels, data_width)
 
         # init variables
         self.k_size = k_size
@@ -75,15 +85,19 @@ class SlidingWindow(Module):
         self.pad_left   = pad_left
 
         # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/sliding_window_rsc_coef.npy"))
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/sliding_window_rsc_coef.npy"))
 
     def utilisation_model(self):
         return [
             1,
-            self.data_width,
             self.data_width*self.k_size*self.k_size,
-            self.data_width*(self.k_size-1)*self.cols*self.channels,
+            self.data_width*(self.k_size-1),
+            self.data_width*self.k_size*(self.k_size-1),
+            (self.k_size-1)*(((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width < 512 else 0,
+            (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width >= 512 else 0,
+            self.k_size*(self.k_size-1)*(self.channels+1)*self.data_width  if self.channels*self.data_width < 512 else 0,
+            self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000) if self.channels*self.data_width >= 512 else 0,
             self.data_width*self.k_size*self.k_size*self.channels
         ]
 
@@ -131,7 +145,7 @@ class SlidingWindow(Module):
         }
 
 
-    def rsc(self):
+    def rsc(self, coef=None):
         """
         the main resources are from the line and frame buffers.
         These use `BRAM` fifos.
@@ -142,18 +156,26 @@ class SlidingWindow(Module):
             estimated resource usage of the module. Uses the
             resource coefficients for the estimate.
         """
-        # streams
+        if coef == None:
+            coef = self.rsc_coef
+        # stream
+        data_width = 18
+        # line buffer
+        line_size = ((self.cols+self.pad_left+self.pad_right)*self.channels+1)
         bram_line_buffer = 0
         if self.channels > 1:
             bram_line_buffer = (self.k_size-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000)
         bram_frame_buffer = 0
-        if self.channels*self.data_width >= 512:
-            bram_frame_buffer = self.k_size*(self.k_size-1)*math.ceil( ((self.channels+1)*self.data_width)/18000)
+        if frame_size*self.data_width >= 512:
+            bram_frame_buffer_data = self.k_size*(self.k_size-1)*math.ceil(frame_size*data_width/18000)
+            bram_frame_buffer_addr = self.k_size*(self.k_size-1)*math.ceil(math.log(frame_size,2))
+            bram_frame_buffer = max(bram_frame_buffer_data, bram_frame_buffer_addr)
+            #bram_frame_buffer = bram_frame_buffer_data
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
-          "BRAM" : bram_line_buffer+bram_frame_buffer,
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
+          "BRAM" : bram_line_buffer+bram_frame_buffer + self.k_size*self.k_size,
           "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     def functional_model(self, data):

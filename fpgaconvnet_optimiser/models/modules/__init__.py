@@ -12,3 +12,5 @@ from .Pool import Pool
 from .ReLU import ReLU
 from .SlidingWindow import SlidingWindow
 from .Squeeze import Squeeze
+#EE modules
+from .Buffer import Buffer

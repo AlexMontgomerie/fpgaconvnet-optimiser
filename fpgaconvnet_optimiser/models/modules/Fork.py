@@ -16,21 +16,27 @@ import os
 class Fork(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             k_size,
             coarse,
             data_width=16
         ):
+        
+        # module name
+        self.name = "fork"
+ 
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.k_size = k_size
         self.coarse = coarse
 
         # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/fork_rsc_coef.npy"))
+        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
+        #     "../../coefficients/fork_rsc_coef.npy"))
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -59,12 +65,14 @@ class Fork(Module):
             'channels_out'  : self.channels_out()
         }
 
-    def rsc(self):
+    def rsc(self,coef=None):
+        if coef == None:
+            coef = self.rsc_coef
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
           "BRAM" : 0,
           "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     '''
