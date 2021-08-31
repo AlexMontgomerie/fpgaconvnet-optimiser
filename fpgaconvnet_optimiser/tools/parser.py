@@ -262,7 +262,12 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
             # get number of filters
             weights_input = graph.nodes[name]["inputs"]["weights"]
             weights_dim = onnx_helper.get_model_input(model,weights_input)
+            matmul_flag = False
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
+            if graph.nodes[name]["inputs"]["bias"] == "":
+                #no bias means matmul onnx operation
+                filters = int(weights_dim.type.tensor_type.shape.dim[1].dim_value)
+                matmul_flag = True
             # create inner product layer hardware
             graph.nodes[name]['hw'] = InnerProductLayer(
                 filters,
@@ -271,6 +276,7 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                 0, # initialise channels to 0
                 1, # initialise coarse in to 1
                 1, # initialise coarse out to 1
+                matmul_flag
             )
             continue
         # Pooling layer

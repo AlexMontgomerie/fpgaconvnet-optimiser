@@ -27,6 +27,7 @@ message parameter {
     optional int32 kernel_size  = 17;
     optional int32 fine         = 18;
     required int32 buffer_depth  = 19 [default = 2];
+    optional bool  matmul_flag   = 31;
 }
 
 message layer {
