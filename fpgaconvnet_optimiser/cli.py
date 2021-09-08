@@ -51,8 +51,9 @@ def main():
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
-    shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
-    shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
+    shutil.copy(args.optimiser_config_path, os.path.join(args.output_path,os.path.basename(args.optimiser_config_path)) )
+    #shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
+    #shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
     # load optimiser config
     with open(args.optimiser_config_path,"r") as f:
@@ -77,9 +78,9 @@ def main():
                 cool=float(optimiser_config["annealing"]["cool"]),
                 iterations=int(optimiser_config["annealing"]["iterations"]),
                 transforms_config=optimiser_config["transforms"])
-    elif optimiser == "greedy_partition":
+    elif args.optimiser == "greedy_partition":
         # create network
-        net = GreedyPartition(name, model_path,
+        net = GreedyPartition(args.name, args.model_path,
                 T=float(optimiser_config["annealing"]["T"]),
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
@@ -88,7 +89,7 @@ def main():
                 transforms_config=optimiser_config["transforms"])
     
     # turn on debugging
-    net.DEBUG = True
+    net.DEBUG = False
 
     # get platform
     with open(args.platform_path,'r') as f:
@@ -121,11 +122,9 @@ def main():
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
 
-    if bool(optimiser_config["annealing"]["starting_point_distillation"]):
+    if bool(optimiser_config["annealing"]["starting_point_distillation"]) and args.teacher_partition_path != None:
         net.update_partitions()
-        net.starting_point_distillation(args.teacher_partition_path)
-        net.update_partitions()
-        net.merge_memory_bound_partitions()
+        net.starting_point_distillation(args.teacher_partition_path, not run_optimiser)
         net.update_partitions()
 
     # run optimiser
@@ -133,6 +132,16 @@ def main():
 
     # update all partitions
     net.update_partitions()
+
+    if args.optimiser == "greedy_partition":
+        net.T = float(optimiser_config["annealing"]["T"])
+        for partition_index in range(len(net.partitions)):
+            net.partitions[partition_index].need_optimise = False
+
+        net.merge_memory_bound_partitions()
+        net.update_partitions()
+        net.run_optimiser()
+        net.update_partitions()
 
     # find the best batch_size
     #if args.objective == "throughput":
