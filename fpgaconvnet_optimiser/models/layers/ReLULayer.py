@@ -72,8 +72,8 @@ class ReLULayer(Layer):
             cluster.add_node(pydot.Node( "_".join([name,"relu",str(i)]), label="relu" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"relu",str(i)]) for i in range(self.coarse_in) ]
-        nodes_out = [ "_".join([name,"relu",str(i)]) for i in range(self.coarse_out) ]
+        nodes_in  = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_in()) ]
+        nodes_out = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_out()) ]
 
         return cluster, nodes_in, nodes_out
 

@@ -69,8 +69,8 @@ class SqueezeLayer(Layer):
         cluster.add_node(pydot.Node( "_".join([name,"squeeze"]), label="squeeze" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"squeeze"]) for i in range(self.coarse_in[0]) ]
-        nodes_out = [ "_".join([name,"squeeze"]) for i in range(self.coarse_out[0]) ]
+        nodes_in  = [ "_".join([name,"squeeze"]) for i in range(self.streams_in()) ]
+        nodes_out = [ "_".join([name,"squeeze"]) for i in range(self.streams_out()) ]
 
         # return module
         return cluster, nodes_in, nodes_out

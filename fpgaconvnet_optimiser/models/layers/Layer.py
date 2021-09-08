@@ -369,8 +369,8 @@ class Layer:
             'rows_in'       : self.rows_in(),
             'cols_in'       : self.cols_in(),
             'channels_in'   : self.channels_in(),
-            'size_in'       : int(self.workload_in(0)),
-            'size_out'      : int(self.workload_out(0)),
+            'size_in'       : int(self.workload_in()),
+            'size_out'      : int(self.workload_out()),
             'rows_out'      : self.rows_out(),
             'cols_out'      : self.cols_out(),
             'channels_out'  : self.channels_out()

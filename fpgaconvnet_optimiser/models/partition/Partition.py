@@ -130,7 +130,7 @@ class Partition():
         # create edges
         for node in self.graph:
             for edge in graphs.get_next_nodes(self.graph,node):
-                for i in range(self.graph.nodes[node]['hw'].coarse_out):
+                for i in range(self.graph.nodes[node]['hw'].streams_out()):
                     cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i] ,edge_labels[edge]["nodes_in"][i]))
         # return cluster
         return cluster

@@ -99,7 +99,7 @@ class InnerProductLayer(Layer):
         parameters.channels_out = self.channels_out()
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
-        parameters.filters      = self.filters
+        # parameters.filters      = self.filters
 
     ## UPDATE MODULES ##
     def update(self): # TODO: update all parameters

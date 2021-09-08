@@ -26,5 +26,6 @@ annealing:
     T: 10.0
     T_min: 0.00001
     k: 0.01
-    cool: 0.98
+    cool: 0.9
     iterations: 50
+    starting_point_distillation: false

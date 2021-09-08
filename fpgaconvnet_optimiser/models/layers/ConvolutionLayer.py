@@ -150,7 +150,7 @@ class ConvolutionLayer(Layer):
         parameters.coarse_out   = self.coarse_out
         parameters.coarse_group = self.coarse_group
         parameters.fine         = self.fine
-        parameters.filters      = self.filters
+        # parameters.filters      = self.filters
         parameters.kernel_size_x = self.k_size[0]
         parameters.kernel_size_y = self.k_size[1]
         parameters.stride_x = self.stride[0]
@@ -210,7 +210,6 @@ class ConvolutionLayer(Layer):
         return self.get_factors(int(self.groups))
 
     def get_fine_feasible(self):
-        #return self.get_factors(int(self.k_size*self.k_size))
         if self.k_size[0] != self.k_size[1]:
             assert(self.k_size[0] == 1 or self.k_size[1] == 1)
             return [ 1, max(self.k_size[0],self.k_size[1])]

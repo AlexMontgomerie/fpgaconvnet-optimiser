@@ -1,10 +1,10 @@
 """
 The Sliding Window module creates sequential windows of the
-incoming feature map. This module allows for efficient use 
-of the on-chip memory compared to full featuremap caching, 
-with only the required number of pixels buffered. This 
-stream of feature map windows is used for the convolution 
-and pooling functions. 
+incoming feature map. This module allows for efficient use
+of the on-chip memory compared to full featuremap caching,
+with only the required number of pixels buffered. This
+stream of feature map windows is used for the convolution
+and pooling functions.
 
 .. figure:: ../../../figures/sliding_window_diagram.png
 """
@@ -42,7 +42,7 @@ class SlidingWindow(Module):
             column dimension of input featuremap
         channels: int
             channel dimension of input featuremap
-       
+
 
         Attributes
         ----------
@@ -50,13 +50,13 @@ class SlidingWindow(Module):
             kernel size of the convolution layer.
         stride: int
             both row and column stride of the convolution layer.
-        pad_top: int 
+        pad_top: int
             zero padding for the top of the featuremap.
         pad_right: int
             zero padding for the right of the featuremap.
-        pad_bottom: int 
+        pad_bottom: int
             zero padding for the bottom of the featuremap.
-        pad_left: int 
+        pad_left: int
             zero padding for the left of the featuremap.
         rows: int
             row dimension of input featuremap
@@ -65,13 +65,13 @@ class SlidingWindow(Module):
         channels: int
             channel dimension of input featuremap
         data_width: int
-            bitwidth of featuremap pixels (default is 16) 
+            bitwidth of featuremap pixels (default is 16)
         rsc_coef: list
             list of resource model coefficients. Corresponds
-            to `LUT`, `BRAM`, `DSP` and `FF` resources in 
+            to `LUT`, `BRAM`, `DSP` and `FF` resources in
             that order.
         """
-        
+
         # module name
         self.name = "sliding_window"
 
@@ -162,11 +162,11 @@ class SlidingWindow(Module):
     def rsc(self, coef=None):
         """
         the main resources are from the line and frame buffers.
-        These use `BRAM` fifos. 
+        These use `BRAM` fifos.
 
         Returns
         -------
-        dict 
+        dict
             estimated resource usage of the module. Uses the
             resource coefficients for the estimate.
         """

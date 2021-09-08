@@ -139,7 +139,7 @@ def main():
     #    net.get_optimal_batch_size()
 
     # visualise network
-    net.visualise(os.path.join(args.output_path,"topology.png"))
+    # net.visualise(os.path.join(args.output_path,"topology.png"))
 
     # create report
     net.create_report(os.path.join(args.output_path,"report.json"))
