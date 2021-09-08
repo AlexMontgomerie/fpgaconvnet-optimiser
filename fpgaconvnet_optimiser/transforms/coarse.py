@@ -14,6 +14,7 @@ import random
 import fpgaconvnet_optimiser.tools.graphs as graphs
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 from fpgaconvnet_optimiser.transforms.helper import get_factors
+import numpy as np
 
 transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
 
@@ -44,10 +45,10 @@ def apply_random_coarse_layer(self, layer):
         # get all feasible coarse in
         coarse_in_feasible = self.graph.nodes[layer]['hw'].get_coarse_in_feasible()
 
-        if self.graph.in_degree(layer) != 0:
-            prev_node = graphs.get_prev_nodes(self.graph,layer)[0]
-            if self.graph.nodes[prev_node]['hw'].groups != 1:
-                coarse_in_feasible = [ x for x in coarse_in_feasible if (x in get_factors(self.graph.nodes[prev_node]['hw'].groups))]
+        #if self.graph.in_degree(layer) != 0:
+        #    prev_node = graphs.get_prev_nodes(self.graph,layer)[0]
+        #    if self.graph.nodes[prev_node]['hw'].groups != 1:
+        #        coarse_in_feasible = [ x for x in coarse_in_feasible if (x in get_factors(self.graph.nodes[prev_node]['hw'].groups))]
 
         # if input layer, make sure streams aren't too large 
         #if layer in graphs.get_input_nodes(self.graph):
@@ -61,10 +62,10 @@ def apply_random_coarse_layer(self, layer):
         # get all feasible coarse out 
         coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()
 
-        if self.graph.out_degree(layer) != 0:
-            next_node = graphs.get_next_nodes(self.graph,layer)[0]
-            if self.graph.nodes[next_node]['hw'].groups != 1:
-                coarse_out_feasible = [ x for x in coarse_out_feasible if (x in get_factors(self.graph.nodes[next_node]['hw'].groups))]
+        #if self.graph.out_degree(layer) != 0:
+        #    next_node = graphs.get_next_nodes(self.graph,layer)[0]
+        #    if self.graph.nodes[next_node]['hw'].groups != 1:
+        #        coarse_out_feasible = [ x for x in coarse_out_feasible if (x in get_factors(self.graph.nodes[next_node]['hw'].groups))]
 
         # if output layer, make sure streams aren't too large 
         #if layer in graphs.get_output_nodes(self.graph):
@@ -103,4 +104,86 @@ def fix_coarse(self):
         coarse_group = self.graph.nodes[node]['hw'].coarse_group
         coarse_group_max = max(self.graph.nodes[node]['hw'].get_coarse_group_feasible())
         self.graph.nodes[node]['hw'].update_coarse_group(min(coarse_group,coarse_group_max))
-            
+
+
+def apply_more_coarse(self, coarse_in_first, fix_coarse):
+    self.remove_squeeze()
+
+    node_latencys = np.array([ self.graph.nodes[layer]['hw'].get_latency() \
+    for layer in graphs.ordered_node_list(self.graph) ])
+
+    node_index = np.argsort(node_latencys)[-1]
+    layer = graphs.ordered_node_list(self.graph)[node_index]
+    current_coarse_product = self.graph.nodes[layer]['hw'].coarse_group \
+                             * self.graph.nodes[layer]['hw'].coarse_in \
+                             * self.graph.nodes[layer]['hw'].coarse_out
+    
+    coarse_group_feasible = self.graph.nodes[layer]['hw'].get_coarse_group_feasible()
+
+    if self.graph.nodes[layer]['hw'].groups == 1:
+        coarse_in_feasible = self.graph.nodes[layer]['hw'].get_coarse_in_feasible()
+        coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()
+    else:
+        coarse_in_feasible = [1]
+        coarse_out_feasible = [1]
+
+    all_coarse_combination = []
+    if self.graph.nodes[layer]['type'] in transformable_layers:
+        for coarse_group in coarse_group_feasible:
+            for coarse_in in coarse_in_feasible:
+                for coarse_out in coarse_out_feasible:
+                    if fix_coarse:
+                        if coarse_in_first:
+                            if coarse_group*coarse_in*coarse_out > current_coarse_product \
+                            and coarse_group >= self.graph.nodes[layer]['hw'].coarse_group \
+                            and coarse_in >= self.graph.nodes[layer]['hw'].coarse_in \
+                            and coarse_out == self.graph.nodes[layer]['hw'].coarse_out:
+                                all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
+                        else:
+                            if coarse_group*coarse_in*coarse_out > current_coarse_product \
+                            and coarse_group >= self.graph.nodes[layer]['hw'].coarse_group \
+                            and coarse_in == self.graph.nodes[layer]['hw'].coarse_in \
+                            and coarse_out >= self.graph.nodes[layer]['hw'].coarse_out:
+                                all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
+                    else:
+                        if coarse_group*coarse_in*coarse_out > current_coarse_product:
+                            all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
+    
+    else:
+        for coarse_group in coarse_group_feasible:
+            for coarse_in in coarse_in_feasible:
+                coarse_out = coarse_in
+                if coarse_group*coarse_in*coarse_out > current_coarse_product \
+                   and coarse_group >= self.graph.nodes[layer]['hw'].coarse_group \
+                   and coarse_in >= self.graph.nodes[layer]['hw'].coarse_in:
+                    all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
+
+    
+    if len(all_coarse_combination) > 0:
+        all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[3]))
+        next_coarse_product = all_coarse_combination[0][3]
+        all_coarse_combination = list(filter(lambda x: x[3]==next_coarse_product, all_coarse_combination))
+        if coarse_in_first:
+            all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[2],x[1],x[0]))
+        else:
+            all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[1],x[2],x[0]))
+        selected_coarse_combination = all_coarse_combination[0]
+        self.graph.nodes[layer]['hw'].update_coarse_group(int(selected_coarse_combination[0]))
+        self.graph.nodes[layer]['hw'].update_coarse_in(int(selected_coarse_combination[1]))
+        self.graph.nodes[layer]['hw'].update_coarse_out(int(selected_coarse_combination[2]))
+
+        return True
+    else:
+        return False
+
+def apply_more_coarse_favour_coarse_in(self):
+    return apply_more_coarse(self, True, False)
+
+def apply_more_coarse_favour_coarse_out(self):
+    return apply_more_coarse(self, False, False)
+
+def apply_more_coarse_fix_coarse_out(self):
+    return apply_more_coarse(self, True, True)
+
+def apply_more_coarse_fix_coarse_in(self):
+    return apply_more_coarse(self, False, True)

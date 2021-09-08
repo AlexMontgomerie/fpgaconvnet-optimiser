@@ -68,7 +68,8 @@ class Partition():
 
     ## fine transform
     from fpgaconvnet_optimiser.transforms.fine import apply_random_fine_layer 
-    from fpgaconvnet_optimiser.transforms.fine import apply_complete_fine 
+    from fpgaconvnet_optimiser.transforms.fine import apply_complete_fine
+    from fpgaconvnet_optimiser.transforms.fine import apply_more_fine  
 
     ## weights reloading transform
     from fpgaconvnet_optimiser.transforms.weights_reloading import get_wr_layer
@@ -76,11 +77,15 @@ class Partition():
     from fpgaconvnet_optimiser.transforms.weights_reloading import apply_random_weights_reloading 
     from fpgaconvnet_optimiser.transforms.weights_reloading import apply_max_weights_reloading 
     from fpgaconvnet_optimiser.transforms.weights_reloading import remove_weights_reloading_transform 
-    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_weights_reloading_transform 
+    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_weights_reloading_transform
+    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_less_weight_reloading  
 
     ## coarse transform
     from fpgaconvnet_optimiser.transforms.coarse import apply_random_coarse_layer
     from fpgaconvnet_optimiser.transforms.coarse import fix_coarse
+    from fpgaconvnet_optimiser.transforms.coarse import apply_more_coarse
+    from fpgaconvnet_optimiser.transforms.coarse import apply_more_coarse_favour_coarse_in, apply_more_coarse_favour_coarse_out
+    from fpgaconvnet_optimiser.transforms.coarse import apply_more_coarse_fix_coarse_in, apply_more_coarse_fix_coarse_out
 
     # auxiliary layer functions
     from fpgaconvnet_optimiser.models.partition.auxiliary import add_squeeze
@@ -146,29 +151,27 @@ class Partition():
 
 
     def is_input_memory_bound(self):
-        input_node  = graphs.get_input_nodes(self.graph)[0]
         max_compute_latency = self.max_compute_node_latency()
 
-        return self.graph.nodes[input_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[input_node]["hw"].get_latency() > max_compute_latency 
+        for node in self.graph.nodes():
+            if self.graph.nodes[node]["type"] == LAYER_TYPE.Squeeze:
+                latency = self.graph.nodes[node]["hw"].get_latency()
+                if latency > max_compute_latency and self.graph.nodes[node]["hw"].coarse_in < self.graph.nodes[node]["hw"].coarse_out:
+                    return True
+
+        return False
+
     
     def is_output_memory_bound(self):
-        output_node  = graphs.get_output_nodes(self.graph)[0]
         max_compute_latency = self.max_compute_node_latency()
 
-        return self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[output_node]["hw"].get_latency() > max_compute_latency 
-
-    def is_mergeable(self):
-        conv_count = 0
         for node in self.graph.nodes():
-            if self.graph.nodes[node]["type"] == LAYER_TYPE.InnerProduct:
-                return False
-            if self.graph.nodes[node]["type"] == LAYER_TYPE.Convolution:
-                conv_count += 1
-        
-        if conv_count >= 2:
-            return False
-            
-        return True
+            if self.graph.nodes[node]["type"] == LAYER_TYPE.Squeeze:
+                latency = self.graph.nodes[node]["hw"].get_latency()
+                if latency > max_compute_latency and self.graph.nodes[node]["hw"].coarse_in > self.graph.nodes[node]["hw"].coarse_out:
+                    return True
+
+        return False
 
     def reset(self):
         self.remove_squeeze()

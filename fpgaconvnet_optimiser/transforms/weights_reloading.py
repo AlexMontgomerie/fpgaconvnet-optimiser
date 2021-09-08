@@ -10,6 +10,8 @@ import fpgaconvnet_optimiser.transforms.helper as helper
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
+import numpy as np
+
 transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
 
 def get_wr_layer(self):
@@ -18,10 +20,7 @@ def get_wr_layer(self):
         if self.graph.nodes[layer]['type'] == LAYER_TYPE.Concat:
             return None
         if self.graph.nodes[layer]['type'] in transformable_layers:
-            if self.graph.nodes[layer]["hw"].groups == 1:
-                return layer
-            else:
-                return None
+            return layer
         if self.graph.in_degree(layer) == 0:
             return None
         prev_node = graphs.get_prev_nodes(self.graph,layer)[0]
@@ -116,3 +115,20 @@ def apply_weights_reloading_transform(self):
             self.graph.nodes[layer]['hw'].channels = int(channels/self.wr_factor)
         
         self.fix_coarse()
+
+def apply_less_weight_reloading(self):
+    # get the weights reloading layer in partition
+    self.wr_layer = self.get_wr_layer()
+    wr_factor = self.wr_factor
+
+    if self.wr_layer and wr_factor > 1:
+        # remove weights reloading transform
+        self.remove_weights_reloading_transform()
+        sorted_wr_feasible = np.sort(self.graph.nodes[self.wr_layer]['hw'].get_weights_reloading_feasible())[::-1]
+        wr_factor_index = sorted_wr_feasible.tolist().index(wr_factor) + 1
+        self.wr_factor = int(sorted_wr_feasible[wr_factor_index])
+        # apply weights reloading transform
+        self.apply_weights_reloading_transform()
+        return True
+
+    return False

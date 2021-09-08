@@ -402,11 +402,8 @@ class Optimiser(Network):
 
     def merge_memory_bound_partitions(self):
 
-        def _is_mergeable(partition_1, partition_2):
-            latency_ratio = partition_1.max_compute_node_latency() * partition_1.wr_factor / partition_2.max_compute_node_latency()
-            return partition_1.is_mergeable() and partition_2.is_mergeable() and partition_1.wr_factor == 1#latency_ratio < 10 and latency_ratio > 0.1
-
         print("resolving memory bound partitions")
+        # todo: start from the end, while loop
         for _ in range(50):
             partitions = copy.deepcopy(self.partitions)
 
@@ -420,17 +417,15 @@ class Optimiser(Network):
                 horizontal_merges = self.get_all_horizontal_merges(partition_index)
                 self.update_partitions()
 
-                if partition.is_input_memory_bound() and horizontal_merges[1]:
-                    if _is_mergeable(self.partitions[horizontal_merges[1][0]],self.partitions[horizontal_merges[1][1]]):
-                        input_memory_bound.append(partition_index)
+                if partition.is_input_memory_bound() and horizontal_merges[1] and self.partitions[horizontal_merges[1][0]].wr_factor == 1 \
+                    or horizontal_merges[1] and partition.get_latency(self.platform["freq"]) < self.platform["reconf_time"]:
+                    input_memory_bound.append(partition_index)
 
-                if partition.is_output_memory_bound() and horizontal_merges[0]: 
-                    if _is_mergeable(self.partitions[horizontal_merges[0][0]],self.partitions[horizontal_merges[0][1]]):
-                        output_memory_bound.append(partition_index)
-
-
+                if partition.is_output_memory_bound() and horizontal_merges[0] and self.partitions[horizontal_merges[0][0]].wr_factor == 1 \
+                    or horizontal_merges[0] and partition.get_latency(self.platform["freq"]) < self.platform["reconf_time"]: 
+                    output_memory_bound.append(partition_index)
+  
             memory_bound = input_memory_bound + output_memory_bound
-
             if len(memory_bound) == 0:
                 self.partitions = partitions
                 break

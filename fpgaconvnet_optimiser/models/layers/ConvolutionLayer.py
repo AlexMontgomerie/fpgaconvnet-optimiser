@@ -199,7 +199,10 @@ class ConvolutionLayer(Layer):
 
 
     def get_weights_reloading_feasible(self):
-        return self.get_factors(int(self.filters/(self.groups*self.coarse_out)))
+        if self.groups == 1:
+            return self.get_factors(int(self.filters/(self.groups*self.coarse_out)))
+        else:
+            return [1]
 
     def get_parameters_size(self):
         weights_size = self.channels * int( self.filters / self.groups ) * self.k_size[0] * self.k_size[1]
