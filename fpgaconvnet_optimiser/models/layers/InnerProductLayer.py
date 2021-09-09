@@ -51,26 +51,6 @@ class InnerProductLayer(Layer):
         }
         self.update()
 
-    def rows_out(self, port_index=0):
-        assert port_index == 0, "inner product layers are only allowed a single port"
-        return 1
-
-    def cols_out(self, port_index=0):
-        assert port_index == 0, "inner product layers are only allowed a single port"
-        return 1
-
-    def channels_out(self, port_index=0):
-        assert port_index == 0, "inner product layers are only allowed a single port"
-        return self.filters
-
-    def rate_in(self, port_index=0):
-        assert port_index == 0, "inner product layers are only allowed a single port"
-        return abs(self.balance_module_rates(self.rates_graph())[0,0])
-
-    def rate_out(self, port_index=0):
-        assert port_index == 0, "inner product layers are only allowed a single port"
-        return abs(self.balance_module_rates(self.rates_graph())[3,4])
-
     def streams_in(self, port_index=0):
         assert port_index == 0, "inner product layers are only allowed a single port"
         return self.coarse_in
