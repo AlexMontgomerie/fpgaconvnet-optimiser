@@ -1,45 +1,32 @@
 """
-This module performs the max pooling function 
+This module performs the max pooling function
 across a kernel-size window of the feature map.
 
 .. figure:: ../../../figures/pool_max_diagram.png
 """
 
-from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
 import sys
 from typing import Union, List
+from dataclasses import dataclass, field
 
+from fpgaconvnet_optimiser.models.modules import Module
+
+@dataclass
 class Pool(Module):
-    def __init__(
-            self,
-            rows: int,
-            cols: int,
-            channels: int,
-            k_size: Union[List[int],int],
-            pool_type='max',
-            data_width=16
-        ):
-        
-        # module name
-        self.name = "pool"
- 
-        # init module
-        Module.__init__(self, rows, cols, channels, data_width)
+    kernel_size: Union[List[int],int]
+    pool_type: str = "max"
 
-        # handle kernel size
-        if isinstance(k_size, int):
-            k_size = [k_size, k_size]
-        elif isinstance(k_size, list):
-            assert len(k_size) == 2, "Must specify two kernel dimensions"
+    def __post_init__(self):
+        # format kernel size as a 2 element list
+        if isinstance(self.kernel_size, int):
+            self.kernel_size = [self.kernel_size, self.kernel_size]
+        elif isinstance(self.kernel_size, list):
+            assert len(self.kernel_size) == 2, "Must specify two kernel dimensions"
         else:
             raise TypeError
-
-        # init variables
-        self.k_size    = k_size
-        self.pool_type = pool_type
 
     def utilisation_model(self):
         return [
@@ -50,31 +37,13 @@ class Pool(Module):
         ]
 
     def module_info(self):
-        return {
-            'type'      : self.__class__.__name__.upper(),
-            'rows'      : self.rows_in(),
-            'cols'      : self.cols_in(),
-            'channels'  : self.channels_in(),
-            'pool_type'     :  0 if self.pool_type == 'max' else 1,
-            'kernel_size'   : self.k_size,
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
-
-    def rsc(self,coef=None):
-        if coef == None:
-            coef = self.rsc_coef
-        return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : 0,
-          "DSP"  : 0,
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
-        }
-
-    '''
-    FUNCTIONAL MODEL
-    '''
+        # get the base module fields
+        info = Module.module_info(self)
+        # add module-specific info fields
+        info["kernel_size"] = self.kernel_size
+        info["pool_type"] = 0 if self.pool_type == 'max' else 1
+        # return the info
+        return info
 
     def functional_model(self, data):
         # check input dimensionality

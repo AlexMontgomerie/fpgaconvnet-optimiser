@@ -1,39 +1,24 @@
 """
-The Glue module is used to combine streams 
-used for channel parallelism in the 
-Convolution layer together. 
+The Glue module is used to combine streams
+used for channel parallelism in the
+Convolution layer together.
 
 .. figure:: ../../../figures/glue_diagram.png
 """
 
-from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
 import sys
+from dataclasses import dataclass, field
 
+from fpgaconvnet_optimiser.models.modules import Module
+
+@dataclass
 class Glue(Module):
-    def __init__(
-            self,
-            rows: int,
-            cols: int,
-            channels: int,
-            filters: int,
-            coarse_in: int,
-            coarse_out: int,
-            data_width=16
-        ):
-        
-        # module name
-        self.name = "glue"
- 
-        # init module
-        Module.__init__(self,rows,cols,channels,data_width)
-
-        # init variables
-        self.filters    = filters
-        self.coarse_in  = coarse_in
-        self.coarse_out = coarse_out
+    filters: int
+    coarse_in: int
+    coarse_out: int
 
     def utilisation_model(self):
         return [
@@ -44,7 +29,7 @@ class Glue(Module):
         ]
 
     def channels_in(self):
-        return self.filters*self.coarse_in
+        return self.filters
 
     def channels_out(self):
         return self.filters
@@ -53,32 +38,14 @@ class Glue(Module):
         return self.rows *self.cols *self.filters / self.coarse_out
 
     def module_info(self):
-        return {
-            'type'      : self.__class__.__name__.upper(),
-            'rows'      : self.rows_in(),
-            'cols'      : self.cols_in(),
-            'channels'  : self.channels_in(),
-            'filters'   : self.filters,
-            'coarse_in'     : self.coarse_in,
-            'coarse_out'    : self.coarse_out,
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
-
-    def rsc(self, coef=None):
-        if coef == None:
-            coef = self.rsc_coef
-        return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : 0,
-          "DSP"  : 0,
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
-        }
-
-    '''
-    FUNCTIONAL MODEL
-    '''
+        # get the base module fields
+        info = Module.module_info(self)
+        # add module-specific info fields
+        info["filters"] = self.filters
+        info["coarse_in"] = self.coarse_in
+        info["coarse_out"] = self.coarse_out
+        # return the info
+        return info
 
     def functional_model(self,data):
         # check input dimensionality
