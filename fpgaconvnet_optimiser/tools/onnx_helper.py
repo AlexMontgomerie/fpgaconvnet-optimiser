@@ -222,3 +222,18 @@ def _out_dim(model, submodels, name):
         dim[1] = 1 # rows
         dim[2] = 1 # cols
         return dim
+
+def get_ValueInfoProto_from_node(graph, node, no_output=False):
+    # return ValueInfoProto associated with the node provided
+    # search the inputs,value_info,outputs
+    if no_output:
+        for seq in (graph.value_info, graph.input):
+            for VIP in seq:
+                if VIP.name == node.output[0]: #FIXME for multi outputs
+                    return VIP
+    else:
+        for seq in (graph.value_info, graph.output, graph.input):
+            for VIP in seq:
+                if VIP.name == node.output[0]: #FIXME for multi outputs
+                    return VIP
+    raise NameError("Node value info not found in graph\n", node)

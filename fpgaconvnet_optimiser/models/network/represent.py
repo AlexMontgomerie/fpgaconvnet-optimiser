@@ -14,25 +14,34 @@ from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 def get_model_input_node(self, partition_index):
     input_node = self.partitions[partition_index].input_nodes[0]
-    try:
-        while not onnx_helper.get_model_node(self.model, input_node, self.submodels):
-            input_node = graphs.get_next_nodes(self.partitions[partition_index].graph,input_node)[0]
-        return onnx_helper.get_model_node(self.model, input_node, self.submodels).input[0]
-    except NameError:
-        # input is not included in onnx data
-        # need to generate it manually for testing
-        return "NA"
+    while True:
+        try:
+            onnx_node = onnx_helper.get_model_node(self.model, input_node, self.submodels)
+            return onnx_node.input[0]
+        except NameError:
+            # input is not included in onnx data
+            # TODO: change this so that you get PREVIOUS node in ONNX graph
+            print("Finding next available ONNX op")
+            input_node = graphs.get_next_nodes(self.partitions[partition_index].graph,input_node)
+            if len(input_node) < 1:
+                return "NA"
+            input_node = input_node[0]
+
 
 def get_model_output_node(self, partition_index):
     output_node = self.partitions[partition_index].output_nodes[0]
-    try:
-        while not onnx_helper.get_model_node(self.model, output_node, self.submodels):
-            output_node = graphs.get_prev_nodes(self.partitions[partition_index].graph,output_node)[0]
-        return onnx_helper.get_model_node(self.model, output_node, self.submodels).output[0]
-    except NameError:
-        # output is not included in onnx data
-        # need to generate it manually for testing
-        return "NA"
+    while True:
+        try:
+            onnx_node = onnx_helper.get_model_node(self.model, output_node, self.submodels)
+            return onnx_node.output[0]
+        except NameError:
+            # output is not included in onnx data
+            # TODO: change this so that you get PREVIOUS node in ONNX graph
+            print("Finding previous available ONNX op")
+            output_node = graphs.get_prev_nodes(self.partitions[partition_index].graph,output_node)
+            if len(output_node) < 1:
+                return "NA"
+            output_node =output_node[0]
 
 def gen_layer_name(self, partition_index, layer_name): # layer in protobuf form
     layer_type = self.partitions[partition_index].graph.nodes[layer_name]['type']
