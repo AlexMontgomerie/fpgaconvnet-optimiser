@@ -77,7 +77,7 @@ def vis_expr(filepath):
     test_outpath += "-" + timestamp + ".png"
     test_net.visualise(test_outpath)
 
-def output_network(filepath, is_branchy):
+def output_network(filepath, is_branchy, save_name=None):
     #save the json files
     print("outputing experiments for backend")
 
@@ -85,7 +85,7 @@ def output_network(filepath, is_branchy):
     if is_branchy:
         net = Network("branchynet", filepath)
     else:
-        net = Network("testnet", filepath)
+        net = Network(save_name, filepath)
 
     # load from json format
     #net.load_network(".json") #for loading previous network config
@@ -109,8 +109,9 @@ def output_network(filepath, is_branchy):
 
 def main():
     parser = argparse.ArgumentParser(description="script for running experiments")
-    parser.add_argument('--expr',choices=['parser','vis', 'out'],
-                        help='for testing parser or vis')
+    parser.add_argument('--expr',choices=['parser','vis', 'out', 'out_brn'],
+                        help='for testing parser, vis or outputing network json')
+    parser.add_argument('--save_name', type=str, help='save name for json file')
     args = parser.parse_args()
 
     #exits BEFORE softmax
@@ -130,29 +131,56 @@ def main():
     #changed conv to no bias, normalised data set
     filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match_trained_norm.onnx"
     # raised threshold, removed bias from conv and FC layers
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match_trained_norm_thr_high.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match_trained_norm_thr_high.onnx"
 
     # just the first exit, trained, normed, no bias, for branchynet
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_first_exit.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_first_exit.onnx"
 
     # just the second exit, trained, normed, no bias, for branchynet
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_second_exit.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_second_exit.onnx"
 
     # just a trained, fc layer, normed, no bias, for mnist
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/fc_layer.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/fc_layer.onnx"
 
     # just a trained, fc layer, normed, WITH bias, for mnist
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/fc_layer_bias.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/fc_layer_bias.onnx"
 
     #lenet example filepath
     #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/lenet.onnx"
+
+    # pool and relu layer
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pool_relu_layers.onnx"
+
+    # conv pool relu fc
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/conv_pool_relu_fc.onnx"
+
+    # conv pool fc
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/conv_pool_fc.onnx"
+
+    # pool relu fc
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pool_relu_fc.onnx"
+
+    # conv 1 channel out, fc
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/conv_fc.onnx"
+
+    # conv 5 channel out, pool, relu
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/conv5c.onnx"
+
+    # conv 5 channel out, fc
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/conv5c_fc.onnx"
+
+    # conv 5 channel out, fc with bias (gemm)
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/conv5c_fc-bias.onnx"
+
+    #FC and conv have no bias, normalised data set, threshold at .9
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io-match_trained_norm_no-bias.onnx"
 
     if args.expr == 'parser':
         parser_expr(filepath)
     elif args.expr == 'vis':
         vis_expr(filepath)
     elif args.expr == 'out':
-        output_network(filepath, False)
+        output_network(filepath, False, args.save_name)
     elif args.expr == 'out_brn':
         output_network(filepath, True)
     else:
