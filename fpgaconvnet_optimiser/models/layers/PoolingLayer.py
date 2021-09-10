@@ -78,7 +78,7 @@ class PoolingLayer(Layer):
         parameters.rows_in      = self.rows_in(0)
         parameters.rows_in      = self.rows_in(0)
         parameters.cols_in      = self.cols_in(0)
-        parameters.channels_in  = self.channels_in0()
+        parameters.channels_in  = self.channels_in(0)
         parameters.rows_out     = self.rows_out(0)
         parameters.cols_out     = self.cols_out(0)
         parameters.channels_out = self.channels_out(0)

@@ -27,3 +27,5 @@ dist/
 
 .coverage
 examples/models
+**/tools/tmp/*
+modelop.txt

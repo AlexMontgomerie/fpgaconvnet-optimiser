@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto2',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x11\x66pgaconvnet.proto\"&\n\x06stream\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0e\n\x06\x63oarse\x18\x02 \x02(\x05\"\xa0\x03\n\tparameter\x12\x12\n\nbatch_size\x18\x14 \x02(\x05\x12\x0f\n\x07rows_in\x18\x01 \x02(\x05\x12\x0f\n\x07\x63ols_in\x18\x02 \x02(\x05\x12\x13\n\x0b\x63hannels_in\x18\x03 \x02(\x05\x12\x10\n\x08rows_out\x18\x04 \x02(\x05\x12\x10\n\x08\x63ols_out\x18\x05 \x02(\x05\x12\x14\n\x0c\x63hannels_out\x18\x06 \x02(\x05\x12\x11\n\tcoarse_in\x18\x07 \x02(\x05\x12\x12\n\ncoarse_out\x18\x08 \x02(\x05\x12\x0e\n\x06\x63oarse\x18\x15 \x01(\x05\x12\x0f\n\x07\x66ilters\x18\t \x01(\x05\x12\x0b\n\x03pad\x18\n \x01(\x05\x12\x0f\n\x07pad_top\x18\x0b \x01(\x05\x12\x11\n\tpad_right\x18\x0c \x01(\x05\x12\x12\n\npad_bottom\x18\r \x01(\x05\x12\x10\n\x08pad_left\x18\x0e \x01(\x05\x12\x0e\n\x06stride\x18\x0f \x01(\x05\x12\x0e\n\x06groups\x18\x10 \x01(\x05\x12\x13\n\x0bkernel_size\x18\x11 \x01(\x05\x12\x0c\n\x04\x66ine\x18\x12 \x01(\x05\x12\x17\n\x0c\x62uffer_depth\x18\x13 \x02(\x05:\x01\x32\x12\x13\n\x0bmatmul_flag\x18\x1f \x01(\x08\"\xda\x02\n\x05layer\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x1b\n\nstreams_in\x18\x02 \x03(\x0b\x32\x07.stream\x12\x1c\n\x0bstreams_out\x18\x03 \x03(\x0b\x32\x07.stream\x12\x1e\n\nparameters\x18\x07 \x02(\x0b\x32\n.parameter\x12\x0f\n\x07node_in\x18\x08 \x02(\t\x12\x10\n\x08node_out\x18\t \x02(\t\x12\x1f\n\x04type\x18\x04 \x02(\x0e\x32\x11.layer.layer_type\x12\x14\n\x0cweights_path\x18\x05 \x01(\t\x12\x11\n\tbias_path\x18\x06 \x01(\t\"{\n\nlayer_type\x12\x0f\n\x0b\x43ONVOLUTION\x10\x00\x12\x0b\n\x07POOLING\x10\x01\x12\x08\n\x04RELU\x10\x02\x12\x0b\n\x07SQUEEZE\x10\x03\x12\x11\n\rINNER_PRODUCT\x10\x04\x12\n\n\x06\x43ONCAT\x10\x05\x12\x0e\n\nBATCH_NORM\x10\x06\x12\t\n\x05SPLIT\x10\x07\"\xbe\x01\n\tpartition\x12\n\n\x02id\x18\x01 \x02(\x05\x12\r\n\x05ports\x18\x02 \x02(\x05\x12\x12\n\nbatch_size\x18\x03 \x02(\x05\x12\x12\n\ninput_node\x18\x04 \x02(\t\x12\x13\n\x0boutput_node\x18\x05 \x02(\t\x12 \n\x18weights_reloading_factor\x18\x06 \x02(\x05\x12\x1f\n\x17weights_reloading_layer\x18\x07 \x02(\t\x12\x16\n\x06layers\x18\x08 \x03(\x0b\x32\x06.layer\"+\n\npartitions\x12\x1d\n\tpartition\x18\x01 \x03(\x0b\x32\n.partition'
+  serialized_pb=b'\n\x11\x66pgaconvnet.proto\"C\n\x06stream\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0e\n\x06\x63oarse\x18\x02 \x02(\x05\x12\x0c\n\x04\x63trl\x18\x03 \x01(\x08\x12\r\n\x05split\x18\x04 \x01(\x08\"\xa7\x04\n\tparameter\x12\x12\n\nbatch_size\x18\x14 \x02(\x05\x12\x0f\n\x07rows_in\x18\x01 \x02(\x05\x12\x0f\n\x07\x63ols_in\x18\x02 \x02(\x05\x12\x13\n\x0b\x63hannels_in\x18\x03 \x02(\x05\x12\x10\n\x08rows_out\x18\x04 \x02(\x05\x12\x10\n\x08\x63ols_out\x18\x05 \x02(\x05\x12\x14\n\x0c\x63hannels_out\x18\x06 \x02(\x05\x12\x11\n\tcoarse_in\x18\x07 \x02(\x05\x12\x12\n\ncoarse_out\x18\x08 \x02(\x05\x12\x0e\n\x06\x63oarse\x18\x15 \x01(\x05\x12\x0f\n\x07\x66ilters\x18\t \x01(\x05\x12\x0b\n\x03pad\x18\n \x01(\x05\x12\x0f\n\x07pad_top\x18\x0b \x01(\x05\x12\x11\n\tpad_right\x18\x0c \x01(\x05\x12\x12\n\npad_bottom\x18\r \x01(\x05\x12\x10\n\x08pad_left\x18\x0e \x01(\x05\x12\x0e\n\x06stride\x18\x0f \x01(\x05\x12\x0e\n\x06groups\x18\x10 \x01(\x05\x12\x13\n\x0bkernel_size\x18\x11 \x01(\x05\x12\x0c\n\x04\x66ine\x18\x12 \x01(\x05\x12\x17\n\x0c\x62uffer_depth\x18\x13 \x02(\x05:\x01\x32\x12\x13\n\x0bmatmul_flag\x18\x1f \x01(\x08\x12\x10\n\x08\x63trledge\x18\x16 \x01(\t\x12\x11\n\tdrop_mode\x18\x17 \x01(\x08\x12\x10\n\x08ports_in\x18\x18 \x01(\x05\x12\x11\n\tports_out\x18\x19 \x01(\x05\x12\x11\n\tthreshold\x18\x1a \x01(\x02\x12\x15\n\rctrl_out_size\x18\x1b \x01(\x05\x12\x11\n\tctrledges\x18\x1c \x03(\t\"\x99\x03\n\x05layer\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x1b\n\nstreams_in\x18\x02 \x03(\x0b\x32\x07.stream\x12\x1c\n\x0bstreams_out\x18\x03 \x03(\x0b\x32\x07.stream\x12\x1e\n\nparameters\x18\x07 \x02(\x0b\x32\n.parameter\x12\x0f\n\x07node_in\x18\x08 \x03(\t\x12\x10\n\x08node_out\x18\t \x03(\t\x12\x1f\n\x04type\x18\x04 \x02(\x0e\x32\x11.layer.layer_type\x12\x14\n\x0cweights_path\x18\x05 \x01(\t\x12\x11\n\tbias_path\x18\x06 \x01(\t\"\xb9\x01\n\nlayer_type\x12\x0f\n\x0b\x43ONVOLUTION\x10\x00\x12\x0b\n\x07POOLING\x10\x01\x12\x08\n\x04RELU\x10\x02\x12\x0b\n\x07SQUEEZE\x10\x03\x12\x11\n\rINNER_PRODUCT\x10\x04\x12\n\n\x06\x43ONCAT\x10\x05\x12\x0e\n\nBATCH_NORM\x10\x06\x12\t\n\x05SPLIT\x10\x07\x12\x06\n\x02IF\x10\x08\x12\r\n\tREDUCEMAX\x10\t\x12\x0b\n\x07GREATER\x10\n\x12\x0c\n\x08IDENTITY\x10\x0b\x12\n\n\x06\x42UFFER\x10\x0c\"\xbe\x01\n\tpartition\x12\n\n\x02id\x18\x01 \x02(\x05\x12\r\n\x05ports\x18\x02 \x02(\x05\x12\x12\n\nbatch_size\x18\x03 \x02(\x05\x12\x12\n\ninput_node\x18\x04 \x02(\t\x12\x13\n\x0boutput_node\x18\x05 \x02(\t\x12 \n\x18weights_reloading_factor\x18\x06 \x02(\x05\x12\x1f\n\x17weights_reloading_layer\x18\x07 \x02(\t\x12\x16\n\x06layers\x18\x08 \x03(\x0b\x32\x06.layer\"+\n\npartitions\x12\x1d\n\tpartition\x18\x01 \x03(\x0b\x32\n.partition'
 )
 
 
@@ -71,11 +71,36 @@ _LAYER_LAYER_TYPE = _descriptor.EnumDescriptor(
       serialized_options=None,
       type=None,
       create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='IF', index=8, number=8,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='REDUCEMAX', index=9, number=9,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='GREATER', index=10, number=10,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='IDENTITY', index=11, number=11,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='BUFFER', index=12, number=12,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=704,
-  serialized_end=827,
+  serialized_start=869,
+  serialized_end=1054,
 )
 _sym_db.RegisterEnumDescriptor(_LAYER_LAYER_TYPE)
 
@@ -102,6 +127,20 @@ _STREAM = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ctrl', full_name='stream.ctrl', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='split', full_name='stream.split', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -115,7 +154,7 @@ _STREAM = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=21,
-  serialized_end=59,
+  serialized_end=88,
 )
 
 
@@ -281,6 +320,55 @@ _PARAMETER = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ctrledge', full_name='parameter.ctrledge', index=22,
+      number=22, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='drop_mode', full_name='parameter.drop_mode', index=23,
+      number=23, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ports_in', full_name='parameter.ports_in', index=24,
+      number=24, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ports_out', full_name='parameter.ports_out', index=25,
+      number=25, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='threshold', full_name='parameter.threshold', index=26,
+      number=26, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ctrl_out_size', full_name='parameter.ctrl_out_size', index=27,
+      number=27, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ctrledges', full_name='parameter.ctrledges', index=28,
+      number=28, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -293,8 +381,8 @@ _PARAMETER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=62,
-  serialized_end=478,
+  serialized_start=91,
+  serialized_end=642,
 )
 
 
@@ -336,15 +424,15 @@ _LAYER = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
       name='node_in', full_name='layer.node_in', index=4,
-      number=8, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=b"".decode('utf-8'),
+      number=8, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
       name='node_out', full_name='layer.node_out', index=5,
-      number=9, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=b"".decode('utf-8'),
+      number=9, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
@@ -382,8 +470,8 @@ _LAYER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=481,
-  serialized_end=827,
+  serialized_start=645,
+  serialized_end=1054,
 )
 
 
@@ -463,8 +551,8 @@ _PARTITION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=830,
-  serialized_end=1020,
+  serialized_start=1057,
+  serialized_end=1247,
 )
 
 
@@ -495,8 +583,8 @@ _PARTITIONS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1022,
-  serialized_end=1065,
+  serialized_start=1249,
+  serialized_end=1292,
 )
 
 _LAYER.fields_by_name['streams_in'].message_type = _STREAM

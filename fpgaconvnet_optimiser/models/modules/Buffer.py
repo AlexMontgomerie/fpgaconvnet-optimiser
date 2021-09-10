@@ -79,7 +79,7 @@ class Buffer(Module):
 
         bram_buffer = 0
         if bram_buffer_size >= 512: #taken from Accum.py modules
-            bram_buffer = math.ceil( (bram_acc_buffer_size)/18000)
+            bram_buffer = math.ceil( (bram_buffer_size)/18000)
         return {
           "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
           "BRAM" : bram_buffer,
@@ -99,12 +99,12 @@ class Buffer(Module):
             self.channels),dtype=float)
 
         if self.drop_mode: #non-inverted
-            if ctrl_drop:
-                return out
+            if ctrl_drop == 1.0:
+                return
             else:
                 return data #pass through
         else: #inverted
-            if not ctrl_drop:
-                return out
+            if not ctrl_drop == 1.0:
+                return
             else:
                 return data #pass through

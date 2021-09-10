@@ -14,8 +14,8 @@ import math
 import numpy as np
 import pydot
 
-#from fpgaconvnet_optimiser.models.modules import SlidingWindow
-#from fpgaconvnet_optimiser.models.modules import Pool
+from fpgaconvnet_optimiser.models.modules import ReduceMax
+from fpgaconvnet_optimiser.models.modules import Compare
 from fpgaconvnet_optimiser.models.layers import Layer
 
 class ExitConditionLayer(Layer):
@@ -27,6 +27,7 @@ class ExitConditionLayer(Layer):
             coarse_in: int,
             coarse_out: int,
             ctrledges: [str], #expecting list
+            threshold = 0.5,  #TODO remove default, for the comparison module
             cond_type   = 'top1',
             data_width  = 16
         ):
@@ -34,12 +35,14 @@ class ExitConditionLayer(Layer):
 
         self.ctrledges = ctrledges
         self.cond_type = cond_type
+        self.threshold = threshold
 
         #update flags
 
         #init modules
-        #TODO
         self.modules = {
+            'redmx'  : ReduceMax(self.rows_in(0), self.cols_in(0), self.channels_in(0)),
+            'cmp'   : Compare(self.rows_in(0), self.cols_in(0), self.channels_in(0), threshold)
         }
 
         self.update()
@@ -59,35 +62,57 @@ class ExitConditionLayer(Layer):
         parameters.coarse_out   = self.coarse_out
 
     def update(self): #TODO
-        Layer.update(self)
+        # TODO check channels are correct
+        self.modules['redmx'].rows     = self.rows_in(0)
+        self.modules['redmx'].cols     = self.cols_in(0)
+        self.modules['redmx'].channels = int(self.channels[0]/self.coarse_in[0])
 
+        self.modules['cmp'].rows     = self.rows_in(0)
+        self.modules['cmp'].cols     = self.cols_in(0)
+        self.modules['cmp'].channels = int(self.channels[0]/self.coarse_in[0])
+
+    ### RATES ###
     def rates_graph(self): #TODO
-        rates_graph = np.zeros( shape=(1,2), dtype=float)
+        rates_graph = np.zeros( shape=(2,3) , dtype=float )
+        # redmx
+        rates_graph[0,0] = self.modules['redmx'].rate_in()
+        rates_graph[0,1] = self.modules['redmx'].rate_out()
+        # cmp
+        rates_graph[1,1] = self.modules['cmp'].rate_in()
+        rates_graph[1,2] = self.modules['cmp'].rate_out()
+
         return rates_graph
 
     def resource(self): #TODO
-        mod_rsc = 0#self.modules['mod'].rsc()
+        redmx_rsc   = self.modules['redmx'].rsc()
+        cmp_rsc     = self.modules['cmp'].rsc()
 
         # Total
         return {
-            "LUT"  :  mod_rsc['LUT']*self.coarse_in,
-            "FF"   :  mod_rsc['FF']*self.coarse_in,
-            "BRAM" :  mod_rsc['BRAM']*self.coarse_in,
-            "DSP" :   mod_rsc['DSP']*self.coarse_in,
+            "LUT"  :  redmx_rsc['LUT']*self.coarse_in[0] +
+                      cmp_rsc['LUT']*self.coarse_in[0],
+            "FF"   :  redmx_rsc['FF']*self.coarse_in[0] +
+                      cmp_rsc['FF']*self.coarse_in[0],
+            "BRAM" :  redmx_rsc['BRAM']*self.coarse_in[0] +
+                      cmp_rsc['BRAM']*self.coarse_in[0],
+            "DSP" :   redmx_rsc['DSP']*self.coarse_in[0] +
+                      cmp_rsc['DSP']*self.coarse_in[0]
         }
 
-    def visualise(self,name): #TODO replace 'mod' with actual modules used
+    def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
-        for i in range(self.coarse_in):
-            cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
+        for i in range(self.coarse_in[0]):
+            cluster.add_node(pydot.Node( "_".join([name,"redmx",str(i)]), label="redmx" ))
 
-        for i in range(self.coarse_out):
-            cluster.add_node(pydot.Node( "_".join([name,"mod",str(i)]), label="mod" ))
+            cluster.add_node(pydot.Node( "_".join([name,"cmp",str(i)]), label="cmp" ))
+            cluster.add_edge(pydot.Edge( "_".join([name,"redmx",str(i)]),
+                                         "_".join([name,"cmp",str(i)]) ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_in) ]
-        nodes_out = [ "_".join([name,"mod",str(i)]) for i in range(self.coarse_out) ]
+        nodes_in  = [ "_".join([name,"redmx",str(i)]) for i in range(self.coarse_in[0]) ]
+        nodes_out = [ "_".join([name,"cmp",str(i)]) for i in range(self.coarse_out[0]) ]
+        #nodes_out = [ "_".join([name,"cmp",str(i)]) for i in range(len(self.ctrledges)) ]
 
         return cluster, nodes_in, nodes_out
 
@@ -97,10 +122,8 @@ class ExitConditionLayer(Layer):
         assert data.shape[1] == self.cols    , "ERROR (data): invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR (data): invalid channel dimension"
 
-        #instantiate softmax layer
-        softmax_layer = torch.nn.Softmax() #TODO move softmax to separate layer
-        pk = softmax_layer(torch.from_numpy(data)).detach()
+        #pk = softmax_layer(torch.from_numpy(data)).detach()
         #get max value
-        top1 = torch.max(pk)
+        top1 = torch.max(torch.from_numpy(data))
         #True = early exit, drop buffered data
         return top1 > threshold

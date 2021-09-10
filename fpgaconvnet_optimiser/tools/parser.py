@@ -23,6 +23,7 @@ from fpgaconvnet_optimiser.models.layers import BufferLayer
 from fpgaconvnet_optimiser.models.layers import SplitLayer
 from fpgaconvnet_optimiser.models.layers import ExitConditionLayer
 from fpgaconvnet_optimiser.models.layers import ExitSelectLayer
+from fpgaconvnet_optimiser.models.layers import SoftMaxCmpLayer
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
@@ -93,8 +94,9 @@ def build_graph(model):
             graph.nodes[name]['inputs'] = { "weights": "", "bias": "" }
 
         #add subgraphs to the network
-        if _layer_type(node.op_type) == LAYER_TYPE.If:
-            ifnode = [name, None, None, None]
+        if _layer_type(node.op_type) == LAYER_TYPE.If: #TODO extend for multi layer subgraphs
+            #ifnode = [name, None, None, None] #NOTE implied connection to ID pipeline
+            ifnode = [name, None, None] #NOTE exit select has no ctrl input
             #access the subgraphs
             for subgraph in node.attribute:
                 submodels.append(subgraph) #record link to submodels
@@ -111,6 +113,9 @@ def build_graph(model):
                     subname = onnx_helper._name(subnode)
                     # add sub graph node to graph
                     graph.add_node(subname, type=_layer_type(subnode.op_type), hw=None, inputs={} )
+                    if _layer_type(subnode.op_type) in [ LAYER_TYPE.Convolution, \
+                            LAYER_TYPE.InnerProduct ]:
+                        graph.nodes[subname]['inputs'] = { "weights": "", "bias": "" }
                     last_name=subname
                 exitedges.append((last_name, name)) #dataflow from last node in branch to If op
             ctrledges.append(ifnode)
@@ -122,21 +127,31 @@ def build_graph(model):
         # add edges into node
         for input_node in node.input:
             # add initializers
-            if onnx_helper.get_model_initializer(model, input_node) is not None:
+            if onnx_helper.get_model_initializer(model, input_node, submodels=submodels) is not None:
                 # get input details
-                input_details = onnx_helper.get_model_input(model, input_node)
+                input_details = onnx_helper.get_model_input(model, input_node, submodels=submodels)
                 # convolution inputs
                 if graph.nodes[name]["type"] == LAYER_TYPE.Convolution:
                     if len(input_details.type.tensor_type.shape.dim) == 4:
                         graph.nodes[name]['inputs']['weights'] = input_node
-                    if len(input_details.type.tensor_type.shape.dim) == 1:
+                    elif len(input_details.type.tensor_type.shape.dim) == 1:
                         graph.nodes[name]['inputs']['bias'] = input_node
+                    else:
+                        raise Exception("Unexpected dimension")
                 # inner product inputs
                 if graph.nodes[name]["type"] == LAYER_TYPE.InnerProduct:
                     if len(input_details.type.tensor_type.shape.dim) == 2:
                         graph.nodes[name]['inputs']['weights'] = input_node
-                    if len(input_details.type.tensor_type.shape.dim) == 1:
+                    elif len(input_details.type.tensor_type.shape.dim) == 1:
                         graph.nodes[name]['inputs']['bias'] = input_node
+                    else:
+                        raise Exception("Unexpected dimension")
+
+                if graph.nodes[name]["type"] == LAYER_TYPE.Greater:
+                    if len(input_details.type.tensor_type.shape.dim) == 1:
+                        graph.nodes[name]['inputs']['constant'] = input_node
+                    else:
+                        raise Exception("Unexpected dimension")
                 continue
             input_node = onnx_helper._format_name(input_node)
             if input_node != name:
@@ -162,7 +177,7 @@ def add_split_nodes(graph, ctrledges):
             splitnodes.append((node, successors))
     save_nodes = [] #store the split nodes for later use (not part of model)
     for i,(node,successors) in enumerate(splitnodes):
-        splitname = "split_" + str(i)
+        splitname = "split" + str(i)
         graph.add_node(splitname, type=LAYER_TYPE.Split, hw=None, inputs={} )
         for succ in successors:
             graph.remove_edge(node, succ)
@@ -177,7 +192,7 @@ def add_buffer_nodes(graph, ctrledges):
         predec = graphs.get_prev_nodes(graph, node)
         if len(predec) > 1:
             raise Exception("Multiple predecessors not supported")
-        buffername = "buffer_" + str(instance)
+        buffername = "buffer" + str(instance)
         graph.add_node(buffername, type=LAYER_TYPE.Buffer, hw=None, inputs={} )
         #insert buffer layer
         graph.remove_edge(predec[0], node)
@@ -197,7 +212,7 @@ def add_buffer_nodes(graph, ctrledges):
         i+=2
     return save_nodes
 
-def update_crtledges(graph, ctrledges):
+def update_ctrledges(graph, ctrledges):
     #ASSUMPTION: that target layer will be immediate predecessor
     for node in ctrledges: #will perform at each If op
         #ctrledges[i][0] is the If node
@@ -207,17 +222,17 @@ def update_crtledges(graph, ctrledges):
         if graph.nodes[predec[0]]["type"] not in [LAYER_TYPE.Greater]:
             raise Exception("Other layer types not supported")
         graph.remove_edge(predec[0], node[0]) #remove dataflow edge
-        node[3] = node[0] #set If op to have ctrl edge
+        #node[3] = node[0] #set If op to have ctrl edge
         node[0] = predec[0] #Replace with predecessor
 
 def find_ctrl_origin(graph, ctrledges, node):
     for ctrl in ctrledges:
         if node == ctrl[1]:
-            return ctrl[0], True #then branch link so EE
+            return ctrl[0], False #then branch link so EE
         elif node == ctrl[2]:
-            return ctrl[0], False #else branch link so not EE
-        elif node == ctrl[3]: #for linking exit select layer
-            return ctrl[0], None #TODO tidy this up
+            return ctrl[0], True #else branch link so not EE
+        #elif node == ctrl[3]: #for linking exit select layer
+        #    return ctrl[0], None #TODO tidy this up
     raise Exception("Node has no control input")
 
 def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
@@ -234,7 +249,7 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
         if graph.nodes[name]['type'] == LAYER_TYPE.Convolution:
             # get number of filters
             weights_input = graph.nodes[name]["inputs"]["weights"]
-            weights_dim = onnx_helper.get_model_input(model,weights_input)
+            weights_dim = onnx_helper.get_model_input(model,weights_input,submodels)
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             # get node attributes
             attr = onnx_helper._format_attr(node.attribute)
@@ -261,7 +276,7 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
         if graph.nodes[name]['type'] == LAYER_TYPE.InnerProduct:
             # get number of filters
             weights_input = graph.nodes[name]["inputs"]["weights"]
-            weights_dim = onnx_helper.get_model_input(model,weights_input)
+            weights_dim = onnx_helper.get_model_input(model,weights_input,submodels)
             matmul_flag = False
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             if graph.nodes[name]["inputs"]["bias"] == "":
@@ -321,6 +336,16 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                 1, # initialise coarse out to 1
             )
             continue
+        # Softmax Layer #NOTE not currently used
+        if graph.nodes[name]['type'] == LAYER_TYPE.Softmax:
+            graph.nodes[name]['hw'] = SoftMaxLayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 1
+                1, # initialise coarse out to 1
+            )
+            continue
         #top1 exit criterion layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Greater:
             #need to have some idea of the hw layer for EC
@@ -330,28 +355,34 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                     ctrlout = ctrl[1:]
             if len(ctrlout) == 0:
                 raise NameError("Control edges not found")
-            graph.nodes[name]['hw'] = ExitConditionLayer(
+
+            const_input = graph.nodes[name]["inputs"]["constant"]
+            const_val = onnx_helper.get_model_initializer(model, const_input, submodels)
+            threshold = float(const_val[0]) #NOTE change from numpy float to python float
+            #graph.nodes[name]['hw'] = ExitConditionLayer(
+            graph.nodes[name]['hw'] = SoftMaxCmpLayer(
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
                 1, # initialise coarse in to 1
                 1, # initialise coarse out to 1
-                ctrlout
+                ctrlout,
+                threshold
             )
             continue
-        #early exit layer
+        #ExitSelect/merging layer
         if graph.nodes[name]['type'] == LAYER_TYPE.If:
             #with two exits it makes sense to pull from the if
             #will need to generalise assumptions for >2 exits
             #graph - two dataflow inputs, pick either or on hw level
-            ctrl_origin, _ = find_ctrl_origin(graph, ctrledges, name)
+            #ctrl_origin, _ = find_ctrl_origin(graph, ctrledges, name)
             graph.nodes[name]['hw'] = ExitSelectLayer(
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
                 1, # initialise coarse in to 1
                 1, # initialise coarse out to 1
-                ctrl_origin
+                #ctrl_origin
             )
             continue
         raise NameError(name, node.op_type)
@@ -380,8 +411,7 @@ def add_hardware(model, submodels, graph, ctrledges, hw_only_nodes):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 1
-                1, # initialise coarse out to 1
+                1, # initialise coarse to 1
                 ctrl_origin,
                 drop_mode=EE_flag
             )
@@ -453,8 +483,6 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.Cast)
     filter_node_types(graph, LAYER_TYPE.Squeeze)
     filter_node_types(graph, LAYER_TYPE.Shape)
-    #TODO softmax needed for exit condition, remove filter when ONNX input updated
-    filter_node_types(graph, LAYER_TYPE.Softmax)
     filter_node_types(graph, LAYER_TYPE.LRN)
 
     #remove ReduceMax since it's implied as part of the EC
@@ -466,14 +494,17 @@ def parse_net(filepath,view=True):
 
     #shift control edge start from If to Greater (the layer standing in as EC)
     #append the ctrl edge from the Greater to If and remove the data edge
-    update_crtledges(graph, ctrledges)
+    update_ctrledges(graph, ctrledges)
 
     #determine Early Exit points (Identity operations, edge to exit)
     for eedge in exitedges:
         graph.add_edge(*eedge)
+
+    #NOTE Currently using integrated softmax and comparison layer
+    filter_node_types(graph, LAYER_TYPE.Softmax)
+
     #remove pass through node
     filter_node_types(graph, LAYER_TYPE.Identity)
-    #TODO separate softmax layer from other layers in model
 
     # add hardware to graph
     add_hardware(model, submodels, graph, ctrledges, hw_only_nodes)
@@ -485,4 +516,4 @@ def parse_net(filepath,view=True):
     for node in graph.nodes:
         graph.nodes[node]['hw'].update()
 
-    return model, graph, ctrledges
+    return model, submodels, graph, ctrledges

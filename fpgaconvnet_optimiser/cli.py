@@ -15,6 +15,8 @@ from fpgaconvnet_optimiser.optimiser import Improve
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
 
+import fpgaconvnet_optimiser.tools.graphs as graphs
+
 def main():
     parser = argparse.ArgumentParser(description="Optimiser Script")
     parser.add_argument('-n','--name',metavar='PATH',required=True,

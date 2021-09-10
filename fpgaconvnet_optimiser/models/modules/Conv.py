@@ -44,7 +44,7 @@ class Conv(Module):
         filters: int
             output channel dimension of the featuremap.
         fine: int
-            
+
         rows: int
             row dimension of input featuremap
         cols: int
@@ -52,10 +52,10 @@ class Conv(Module):
         channels: int
             channel dimension of input featuremap
         data_width: int
-            bitwidth of featuremap pixels (default is 16) 
+            bitwidth of featuremap pixels (default is 16)
         rsc_coef: list
             list of resource model coefficients. Corresponds
-            to `LUT`, `BRAM`, `DSP` and `FF` resources in 
+            to `LUT`, `BRAM`, `DSP` and `FF` resources in
             that order.
         """
 
@@ -74,6 +74,12 @@ class Conv(Module):
         # load resource coefficients
         # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
         #     "../../coefficients/conv_rsc_coef.npy"))
+        rsc_types = ['bram', 'lut', 'dsp', 'ff']
+        self.rsc_coef = {}
+        for rsc_t in rsc_types:
+            filename = "../../coefficients/conv_" + rsc_t + ".npy"
+            filersc = np.load(os.path.join(os.path.dirname(__file__), filename))
+            self.rsc_coef[rsc_t.upper()] = filersc
 
     def dynamic_model(self, freq, rate, sa_in, sa_out):
         return [
@@ -103,7 +109,7 @@ class Conv(Module):
         return self.fine/float(self.k_size*self.k_size)
 
     def pipeline_depth(self):
-        return self.fine 
+        return self.fine
 
     def module_info(self):
         return {

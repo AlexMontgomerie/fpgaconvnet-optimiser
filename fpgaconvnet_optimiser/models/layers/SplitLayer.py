@@ -73,7 +73,7 @@ class SplitLayer(Layer):
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1) :
-        parameters.batchsize = batch_size
+        parameters.batch_size = batch_size
         parameters.buffer_depth = self.buffer_depth
         parameters.rows_in      = self.rows_in(0)
         parameters.cols_in      = self.cols_in(0)
@@ -83,6 +83,7 @@ class SplitLayer(Layer):
         parameters.channels_out = self.channels_out(0)
         parameters.coarse_in    = self.coarse
         parameters.coarse_out   = self.coarse
+        parameters.ports_out    = self.ports_out
 
     ## UPDATE MODULES ##
     def update(self):
@@ -91,6 +92,21 @@ class SplitLayer(Layer):
         self.modules['fork'].cols     = self.cols_out(0)
         self.modules['fork'].channels = int(self.channels[0]/self.coarse)
         self.modules['fork'].coarse   = self.ports_out
+
+    def rows_out(self, port_index=0):
+        #rows are the same for both outputs
+        #currently there isn't a separate rows dim for >1 ports
+        return super().rows_out(0)
+
+    def cols_out(self, port_index=0):
+        #rows are the same for both outputs
+        #currently there isn't a separate rows dim for >1 ports
+        return super().cols_out(0)
+
+    def channels_out(self, port_index=0):
+        #rows are the same for both outputs
+        #currently there isn't a separate rows dim for >1 ports
+        return super().channels_out(0)
 
     def update_coarse_in(self, coarse_in, port_index=0):
         self.coarse = coarse_in
@@ -145,17 +161,16 @@ class SplitLayer(Layer):
 
 
         out = np.ndarray((
-            self.rows,
-            self.cols,
-            self.channels,
-            self.coarse),dtype=float)
+            self.rows_in(0),
+            self.cols_in(0),
+            self.channels_in(0),
+            self.ports_out),dtype=float)
 
         for index,_ in np.ndenumerate(out):
             out[index] = data[
               index[0],
               index[1],
-              index[2],
-              index[3]]
+              index[2]]
 
         return out
 

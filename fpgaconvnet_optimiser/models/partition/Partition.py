@@ -1,11 +1,13 @@
 import pydot
 import fpgaconvnet_optimiser.tools.graphs as graphs
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 class Partition():
 
     def __init__(
             self,
             graph,
+            ctrledges,
             ports_in=1,
             ports_out=1,
             streams_in=1,
@@ -16,6 +18,8 @@ class Partition():
 
         ## graph for partition
         self.graph = graph
+        ## control flow edges for graph
+        self.ctrledges = ctrledges
 
         ## ports
         self.ports_in   = ports_in
@@ -117,7 +121,9 @@ class Partition():
         # add clusters
         edge_labels = {}
         for node in self.graph:
-            node_cluster, nodes_in, nodes_out = self.graph.nodes[node]['hw'].visualise(node)
+            #node doesn't provide useful names for pytorch output
+            nname = str(node) + "-" + str(self.graph.nodes[node]['type'])[11:]
+            node_cluster, nodes_in, nodes_out = self.graph.nodes[node]['hw'].visualise(nname)
             edge_labels[node] = {
                 "nodes_in"  : nodes_in,
                 "nodes_out" : nodes_out
@@ -126,7 +132,19 @@ class Partition():
         # create edges
         for node in self.graph:
             for edge in graphs.get_next_nodes(self.graph,node):
-                for i in range(self.graph.nodes[node]['hw'].coarse_out):
-                    cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i] ,edge_labels[edge]["nodes_in"][i]))
+                #split layer nodes out duplicated at layer level
+                for i in range(self.graph.nodes[node]['hw'].coarse_out[0]):
+                    cluster.add_edge(pydot.Edge(edge_labels[node]["nodes_out"][i],
+                                    edge_labels[edge]["nodes_in"][i]))
+        #control edges
+        for ctrl in self.ctrledges:
+            #for i in range(1,4): #index 1,2,3 of the ctrl edge list
+            for i in range(1,3): #index 1,2 of the ctrl edge list
+                #TODO fix assumption that each in-out pair has only one node
+                cluster.add_edge(pydot.Edge(edge_labels[ctrl[0]]["nodes_out"][0],
+                                            edge_labels[ctrl[i]]["nodes_in"][0],
+                                            color='red'))
+                #print(edge_labels[ctrl[0]]["nodes_out"])
+                #print(edge_labels[ctrl[i]]["nodes_in"])
         # return cluster
         return cluster

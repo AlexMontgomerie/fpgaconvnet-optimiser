@@ -17,3 +17,4 @@ from .SplitLayer            import SplitLayer
 from .BufferLayer           import BufferLayer
 from .ExitConditionLayer    import ExitConditionLayer
 from .ExitSelectLayer       import ExitSelectLayer
+from .SoftMaxCmpLayer       import SoftMaxCmpLayer

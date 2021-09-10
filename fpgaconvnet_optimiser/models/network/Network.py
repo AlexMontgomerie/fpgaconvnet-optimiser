@@ -45,7 +45,8 @@ class Network():
         self.batch_size = batch_size
 
         # load network
-        self.model, self.graph = parser.parse_net(network_path, view=False)
+        self.model, self.submodels, self.graph, self.ctrledges = \
+            parser.parse_net(network_path, view=False)
 
         # node and edge lists
         self.node_list = list(self.graph.nodes())
@@ -55,8 +56,8 @@ class Network():
         self.connections_matrix = matrix.get_connections_matrix(self.graph)
         self.workload_matrix    = matrix.get_workload_matrix(self.graph)
 
-        # partitions
-        self.partitions = [Partition(copy.deepcopy(self.graph))]
+        # partitions, TODO check if deep copy needed for ctrl
+        self.partitions = [Partition(copy.deepcopy(self.graph), self.ctrledges)]
 
         # platform
         self.platform = {
@@ -124,6 +125,10 @@ class Network():
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node
     from fpgaconvnet_optimiser.models.network.represent import get_model_output_node
     from fpgaconvnet_optimiser.models.network.represent import save_all_partitions
+    from fpgaconvnet_optimiser.models.network.represent import save_partition_subgraphs
+    from fpgaconvnet_optimiser.models.network.represent import gen_layer_name
+    from fpgaconvnet_optimiser.models.network.represent import add_stream_in
+    from fpgaconvnet_optimiser.models.network.represent import add_stream_out
 
     # validate
     from fpgaconvnet_optimiser.models.network.validate import check_ports
