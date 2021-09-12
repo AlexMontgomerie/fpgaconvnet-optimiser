@@ -18,10 +18,18 @@ output_path="outputs/lenet"
 #model_path="data/models/onnx/zfnet512.onnx"
 #output_path="outputs/zfnet_test"
 
+# Added branchynet networks for baseline results
+name="brn_first_exit"
+model_path="examples/models/brn_first-exit_with-bias.onnx"
+output_path="outputs/brn_first_exit"
+
+name="brn_second_exit"
+model_path="examples/models/brn_second-exit_with-bias.onnx"
+output_path="outputs/brn_second_exit"
 
 mkdir -p $output_path
 
-python -m run_optimiser -n $name \
+python -m fpgaconvnet_optimiser -n $name \
     -m $model_path \
     -p $platform_path \
     -o $output_path \
