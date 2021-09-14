@@ -191,4 +191,12 @@ def _out_dim(model, name):
         dim[2] = 1 # cols
         return dim
 
-
+def gen_layer_name(graph, layer_name): # layer in protobuf form
+    # looks through graph to find node, to get type
+    layer_type = graph.nodes[layer_name]['type']
+    #FIXME bit of a hacky way to get a good type name
+    layer_type_str = str(layer_type)[11:].upper() # remove 'LAYER_TYPE.'
+    if layer_name.isnumeric(): # preprend with type to avoid macro issue
+        return f'{layer_type_str}{layer_name}'
+    else:
+        return layer_name
