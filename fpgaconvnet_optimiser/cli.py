@@ -27,7 +27,7 @@ def main():
         help='Batch size')
     parser.add_argument('--objective',choices=['throughput','latency'],required=True,
         help='Optimiser objective')
-    parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition'],
+    parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition','wordlength'],
         default=['fine','coarse','weights_reloading','partition'],
         help='network transforms')
     parser.add_argument('--optimiser',choices=['simulated_annealing','improve'],default='improve',
@@ -70,7 +70,8 @@ def main():
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
                 cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]))
+                iterations=int(optimiser_config["annealing"]["iterations"]),
+                wordlength=16)
 
     # turn on debugging
     net.DEBUG = True
@@ -93,6 +94,7 @@ def main():
 
     # specify available transforms
     net.transforms = args.transforms
+       
 
     # initialize graph
     ## completely partition graph
@@ -115,7 +117,7 @@ def main():
     #    net.get_optimal_batch_size()
 
     # visualise network
-    #net.visualise(os.path.join(args.output_path,"topology.png"))
+    net.visualise(os.path.join(args.output_path,"topology.png"))
 
     # create report
     net.create_report(os.path.join(args.output_path,"report.json"))

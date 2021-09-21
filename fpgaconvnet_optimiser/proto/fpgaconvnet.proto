@@ -26,6 +26,9 @@ message parameter {
     optional int32 groups   = 16;
     optional int32 kernel_size  = 17;
     optional int32 fine         = 18;
+    optional int32 data_width         = 22;
+    optional int32 weight_width         = 23;
+    optional int32 acc_width         = 24;
     required int32 buffer_depth  = 19 [default = 2];
 }
 

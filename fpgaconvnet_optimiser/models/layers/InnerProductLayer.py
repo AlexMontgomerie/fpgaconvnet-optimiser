@@ -19,14 +19,16 @@ class InnerProductLayer(Layer):
             coarse_out  =1,
             sa          =0.5,
             sa_out      =0.5,
-            data_width  =16,
-            acc_width   =30,
-            weight_width=16,
+            data_width  =12,
+            acc_width   =24,
+            weight_width=12,
             batch_size  =256            
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
 
-        self.weight_width = 8
+        self.data_width = data_width
+        self.acc_width = acc_width
+        self.weight_width = weight_width
 
         # update flags
         self.flags['channel_dependant'] = True
@@ -87,7 +89,9 @@ class InnerProductLayer(Layer):
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
         parameters.filters      = self.filters
-
+        parameters.data_width   =self.data_width
+        parameters.weight_width =self.weight_width
+        parameters.acc_width    =self.acc_width
     ## UPDATE MODULES ##
     def update(self): # TODO: update all parameters
         # fork
@@ -95,23 +99,30 @@ class InnerProductLayer(Layer):
         self.modules['fork'].cols     = self.cols
         self.modules['fork'].channels = int(self.channels/self.coarse_in)
         self.modules['fork'].coarse   = self.coarse_out
+        self.modules['fork'].data_width = self.data_width        
         # conv
         self.modules['conv'].rows     = 1
         self.modules['conv'].cols     = 1
         self.modules['conv'].channels = int(self.rows*self.cols*self.channels/self.coarse_in)
         self.modules['conv'].filters  = int(self.filters/(self.coarse_out))
         self.modules['conv'].fine     = 1
+        self.modules['conv'].data_width = self.data_width
+        self.modules['conv'].weight_width = self.weight_width
+        self.modules['conv'].acc_width = self.acc_width        
         # accum
         self.modules['accum'].rows     = 1
         self.modules['accum'].cols     = 1
         self.modules['accum'].channels = int(self.rows*self.cols*self.channels/self.coarse_in)
         self.modules['accum'].filters  = int(self.filters/(self.coarse_out))
+        self.modules['accum'].data_width = self.data_width        
         # glue
         self.modules['glue'].rows = 1
         self.modules['glue'].cols = 1
         self.modules['glue'].filters    = self.filters
         self.modules['glue'].coarse_in  = self.coarse_in 
         self.modules['glue'].coarse_out = self.coarse_out
+        self.modules['glue'].data_width = self.data_width
+        self.modules['glue'].acc_width  = self.acc_width        
 
     ### RATES ###
     def rates_graph(self): 

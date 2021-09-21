@@ -14,6 +14,8 @@ class SqueezeLayer(Layer):
             sa_out      =0.5
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
+        
+        self.data_width = data_width        
 
     ## UPDATE MODULES ##
     def update(self):
@@ -32,6 +34,7 @@ class SqueezeLayer(Layer):
         parameters.channels_out = self.channels_out()
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
+        parameters.data_width   = self.data_width          
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)

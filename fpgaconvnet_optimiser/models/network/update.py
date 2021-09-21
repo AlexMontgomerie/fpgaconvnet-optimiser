@@ -7,15 +7,15 @@ def update_partitions(self):
     # update modules
     for node in self.graph.nodes():
         self.graph.nodes[node]['hw'].update()
-    for partition_index in range(len(self.partitions)):    
-        for layer in self.partitions[partition_index].graph.nodes():
-              try:
-                 print(partition_index,layer)
-                 print("the amount of channels is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].channels))
-                 print("the amount of coarse_in is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].coarse_in))
-                 print("the amount of swchannels is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].modules['sliding_window'].channels))
-              except:
-                  pass        
+#    for partition_index in range(len(self.partitions)):    
+#        for layer in self.partitions[partition_index].graph.nodes():
+#              try:
+#                 print(partition_index,layer)
+#                 print("the amount of channels is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].channels))
+#                 print("the amount of coarse_in is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].coarse_in))
+#                 print("the amount of swchannels is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].modules['sliding_window'].channels))
+#              except:
+#                  pass        
  
     # remove all auxiliary layers
     for partition_index in range(len(self.partitions)):
@@ -60,14 +60,14 @@ def update_partitions(self):
         
         # update modules
         self.partitions[partition_index].update_modules()
-        for layer in self.partitions[partition_index].graph.nodes():
-              try:
-                 print(partition_index,layer)
-                 print("the amount of channels is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].channels))
-                 print("the amount of coarse_in is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].coarse_in))
-                 print("the amount of swchannels is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].modules['sliding_window'].channels))
-              except:
-                  pass
+#        for layer in self.partitions[partition_index].graph.nodes():
+#              try:
+#                 print(partition_index,layer)
+#                 print("the amount of channels is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].channels))
+#                 print("the amount of coarse_in is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].coarse_in))
+#                 print("the amount of swchannels is %d" %(self.partitions[partition_index].graph.nodes[layer]['hw'].modules['sliding_window'].channels))
+#              except:
+#                  pass
 
     ## validate
     self.check_streams()

@@ -15,15 +15,18 @@ class ReLULayer(Layer):
             coarse_out  =1,
             sa          =0.5,
             sa_out      =0.5,
-            data_width  =16,
+            data_width  =12,
             batch_size   =256
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
+        
+        self.data_width = data_width            
 
         # init modules
         self.modules = {
             "relu" : ReLU(dim,batch_size,data_width)
         }
+    
         self.update()
 
         # switching activity
@@ -43,12 +46,14 @@ class ReLULayer(Layer):
         parameters.coarse_in    = self.coarse_in
         parameters.coarse_out   = self.coarse_out
         parameters.coarse       = self.coarse_out
+        parameters.data_width   = self.data_width         
 
     ## UPDATE MODULES ##
     def update(self):
         self.modules['relu'].rows     = self.rows_in()
         self.modules['relu'].cols     = self.cols_in()
         self.modules['relu'].channels = int(self.channels/self.coarse_in)
+        self.modules['relu'].data_width = self.data_width        
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)

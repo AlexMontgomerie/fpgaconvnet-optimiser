@@ -24,21 +24,21 @@ class ConvolutionLayer(Layer):
             fine        =1,
             sa          =0.5,
             sa_out      =0.5,
-            data_width  =16,
-            acc_width   =30,
-            weight_width=16,
+            data_width  =12,
+            acc_width   =24,
+            weight_width=12,
             batch_size  =256               
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
-
-        # update flags
-        self.flags['channel_dependant'] = True
-        self.flags['transformable']     = True
-
+        
         # weight width
         self.data_width = data_width
         self.acc_width = acc_width
         self.weight_width = weight_width
+        
+        # update flags
+        self.flags['channel_dependant'] = True
+        self.flags['transformable']     = True
 
         # init variables
         self.k_size     = k_size
@@ -109,7 +109,9 @@ class ConvolutionLayer(Layer):
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
-
+        parameters.data_width   =self.data_width
+        parameters.weight_width =self.weight_width
+        parameters.acc_width    =self.acc_width
     ## UPDATE MODULES ##
     def update(self): 
         # sliding window
@@ -118,6 +120,7 @@ class ConvolutionLayer(Layer):
         self.modules['sliding_window'].rows     = self.rows_in()
         self.modules['sliding_window'].cols     = self.cols_in()
         self.modules['sliding_window'].channels = int(self.channels/self.coarse_in)
+        self.modules['sliding_window'].data_width = self.data_width
         #print("the amount of sw_channels is %d" %(self.modules['sliding_window'].channels))         
         # fork
         self.modules['fork'].rows     = self.rows_out()
@@ -131,18 +134,25 @@ class ConvolutionLayer(Layer):
         self.modules['conv'].channels = int(self.channels/self.coarse_in)
         self.modules['conv'].filters  = int(self.filters/(self.coarse_out*self.groups))
         self.modules['conv'].fine     = self.fine
+        self.modules['conv'].data_width = self.data_width
+        self.modules['conv'].weight_width = self.weight_width
+        self.modules['conv'].acc_width = self.acc_width
         # accum
         self.modules['accum'].rows     = self.rows_out()
         self.modules['accum'].cols     = self.cols_out()
         self.modules['accum'].channels = int(self.channels/(self.coarse_in))
         self.modules['accum'].filters  = int(self.filters/(self.coarse_out))
         self.modules['accum'].groups   = self.groups
+        self.modules['accum'].data_width = self.data_width
         # glue
         self.modules['glue'].rows       = self.rows_out()
         self.modules['glue'].cols       = self.cols_out()
         self.modules['glue'].filters    = self.filters
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
+        self.modules['glue'].data_width = self.data_width
+        self.modules['glue'].acc_width  = self.acc_width
+
 
 
     ### RATES ### 

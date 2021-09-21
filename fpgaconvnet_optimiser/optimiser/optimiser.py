@@ -45,7 +45,7 @@ class Optimiser(Network):
             'power'      : float("inf")
         }
 
-        self.transforms = ['coarse','fine','partition','weights_reloading']
+        self.transforms = ['coarse','fine','partition','weights_reloading','wordlength']
 
     def get_cost(self):
         """
@@ -84,7 +84,7 @@ class Optimiser(Network):
         assert self.get_latency()       <= self.constraints['latency']  , "ERROR : (constraint violation) Latency constraint exceeded"
         assert self.get_throughput()    >= self.constraints['throughput'], "ERROR : (constraint violation) Throughput constraint exceeded"
 
-    def apply_transform(self, transform, partition_index=None, node=None):
+    def apply_transform(self, transform, partition_index=None, node=None,iteration=None,cooltimes=None):
         """
         function to apply chosen transform to the network. Partition index
         and node can be specified. If not, a random partition and node is 
@@ -102,7 +102,6 @@ class Optimiser(Network):
             name of node to apply transform. Must be within
             `self.partitions[partition_index].graph`
         """
-        print(transform)
         # choose random partition index if not given
         if partition_index == None:
             partition_index = random.randint(0,len(self.partitions)-1)
@@ -135,6 +134,18 @@ class Optimiser(Network):
             self.partitions[partition_index].remove_squeeze()
             self.apply_random_partition(partition_index)
             return
+        ## Partition transform (partition transform)
+        if transform == 'wordlength':
+            #if cooltimes>=270:
+                  #if self.wordlength>=4 and self.wordlength<=30:
+                      #self.wordlength=self.wordlength+random.choice((-2,0,2))
+                  #if self.wordlength==32:   
+                      #self.wordlength=self.wordlength-random.choice((0,2)) 
+                  #if self.wordlength==2:   
+                      #self.wordlength=self.wordlength+random.choice((0,2))
+            #else:
+            self.wordlength=2*random.randint(1,16)                                 
+            return            
 
     def optimiser_status(self):
         """

@@ -20,10 +20,12 @@ class PoolingLayer(Layer):
             fine        =1,
             sa          =0.5,
             sa_out      =0.5,
-            data_width  =16,
+            data_width  =12,
             batch_size  =256            
         ):
         Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
+        
+        self.data_width = data_width        
 
         # update flags
         self.flags['transformable'] = True
@@ -86,17 +88,19 @@ class PoolingLayer(Layer):
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
-  
+        parameters.data_width   = self.data_width  
     ## UPDATE MODULES ##
     def update(self):
         # sliding window
         self.modules['sliding_window'].rows     = self.rows_in()
         self.modules['sliding_window'].cols     = self.cols_in()
         self.modules['sliding_window'].channels = int(self.channels/self.coarse_in)
+        self.modules['sliding_window'].data_width = self.data_width        
         # pool
         self.modules['pool'].rows     = self.rows_out()
         self.modules['pool'].cols     = self.cols_out()
         self.modules['pool'].channels = int(self.channels/self.coarse_in)
+        self.modules['pool'].data_width = self.data_width        
 
     ### RATES ### TODO
     def rates_graph(self):
