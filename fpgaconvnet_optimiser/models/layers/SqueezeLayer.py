@@ -17,50 +17,20 @@ class SqueezeLayer(Layer):
         ):
 
         # initialise parent class
-        super().__init__([rows],[cols],[channels],[coarse_in],[coarse_out],
+        super().__init__(rows, cols, channels, coarse_in, coarse_out,
                 data_width=data_width)
 
-        # initialise parameters
-        self.coarse_in = coarse_in
-        self.coarse_out = coarse_out
-
         # initialise modules
-        self.modules["squeeze"] = Squeeze(rows, cols, channels, coarse_in,
-                                          coarse_out)
-
-    def streams_in(self, port_index=0):
-        assert port_index == 0, "squeeze layers are only allowed a single port"
-        return self.coarse_in
-
-    def streams_out(self, port_index=0):
-        assert port_index == 0, "squeeze layers are only allowed a single port"
-        return self.coarse_out
-
-    def update_coarse_in(self, coarse_in, port_index=0):
-        assert port_index == 0, "squeeze layers are only allowed a single port"
-        self.coarse_in  = coarse_in
-
-    def update_coarse_out(self, coarse_out, port_index=0):
-        assert port_index == 0, "squeeze layers are only allowed a single port"
-        self.coarse_out = coarse_out
+        self.modules["squeeze"] = Squeeze(self.rows_in, self.cols_in, self.channels_in, self.coarse_in,
+                                          self.coarse_out)
 
     ## UPDATE MODULES ##
     def update(self):
-        pass
-
-    ## LAYER INFO ##
-    def layer_info(self,parameters,batch_size=1):
-        parameters.batch_size   = batch_size
-        parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
-        parameters.coarse_in    = self.coarse_in
-        parameters.coarse_out   = self.coarse_out
+        self.modules["squeeze"].rows = self.rows_in
+        self.modules["squeeze"].cols = self.cols_in
+        self.modules["squeeze"].channels = self.channels_in
+        self.modules["squeeze"].coarse_in = self.coarse_in
+        self.modules["squeeze"].coarse_out = self.coarse_out
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)

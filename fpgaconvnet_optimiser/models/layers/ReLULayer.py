@@ -1,11 +1,11 @@
-from fpgaconvnet_optimiser.models.modules import ReLU
-from fpgaconvnet_optimiser.models.layers import Layer
-
 import torch
 import numpy as np
 import math
 import onnx
 import pydot
+
+from fpgaconvnet_optimiser.models.modules import ReLU
+from fpgaconvnet_optimiser.models.layers import Layer
 
 class ReLULayer(Layer):
     def __init__(
@@ -18,52 +18,37 @@ class ReLULayer(Layer):
         ):
 
         # initialise parent class
-        super().__init__([rows],[cols],[channels],[coarse],[coarse],
+        super().__init__(rows, cols, channels, coarse, coarse,
                 data_width=data_width)
 
-        self.coarse = coarse
+        # save parameters
+        self._coarse = coarse
 
         # init modules
-        self.modules = {
-            "relu" : ReLU(self.rows_in(), self.cols_in(), self.channels_in())
-        }
+        self.modules["relu"] = ReLU(self.rows_in, self.cols_in, self.channels_in/self.streams_in)
         self.update()
 
-    def streams_in(self, port_index=0):
-        assert(port_index < self.ports_in)
-        return self.coarse
+    @property
+    def coarse(self) -> int:
+        return self._coarse
 
-    def streams_out(self, port_index=0):
-        assert(port_index < self.ports_out)
-        return self.coarse
-
-    def update_coarse_in(self, coarse_in, port_index=0):
-        assert(port_index < self.ports_in)
-        self.coarse = coarse_in
-
-    def update_coarse_out(self, coarse_out, port_index=0):
-        assert(port_index < self.ports_out)
-        self.coarse = coarse_out
+    @coarse.setter
+    def coarse(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self.coarse_out = val
+        self.update()
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
-        parameters.batch_size   = batch_size
-        parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
-        parameters.coarse_in    = self.coarse
-        parameters.coarse_out   = self.coarse
-        parameters.coarse       = self.coarse
+        Layer.layer_info(self, parameters, batch_size)
+        parameters.coarse = self.coarse
 
     ## UPDATE MODULES ##
     def update(self):
-        self.modules['relu'].rows     = self.rows_in()
-        self.modules['relu'].cols     = self.cols_in()
-        self.modules['relu'].channels = int(self.channels_in()/self.coarse)
+        self.modules['relu'].rows     = self.rows_in
+        self.modules['relu'].cols     = self.cols_in
+        self.modules['relu'].channels = int(self.channels_in/self.coarse)
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
@@ -72,16 +57,16 @@ class ReLULayer(Layer):
             cluster.add_node(pydot.Node( "_".join([name,"relu",str(i)]), label="relu" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_in()) ]
-        nodes_out = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_out()) ]
+        nodes_in  = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_in) ]
+        nodes_out = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_out) ]
 
         return cluster, nodes_in, nodes_out
 
     def functional_model(self,data,batch_size=1):
 
-        assert data.shape[0] == self.rows_in()    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols_in()    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels_in(), "ERROR: invalid channel dimension"
+        assert data.shape[0] == self.rows_in    , "ERROR: invalid row dimension"
+        assert data.shape[1] == self.cols_in    , "ERROR: invalid column dimension"
+        assert data.shape[2] == self.channels_in, "ERROR: invalid channel dimension"
 
         # instantiate relu layer
         relu_layer = torch.nn.ReLU()
