@@ -75,6 +75,20 @@ class SlidingWindow(Module):
         else:
             raise TypeError
 
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/sliding_window_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/sliding_window_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/sliding_window_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/sliding_window_dsp.npy"))
+
     def utilisation_model(self):
         return [
             1,
@@ -143,10 +157,12 @@ class SlidingWindow(Module):
             coef = self.rsc_coef
         # get the line buffer BRAM estimate
         line_buffer_depth = (self.cols+self.pad_left+self.pad_right)*self.channels+1
-        line_buffer_bram = (self.kernel_size-1) *bram_stream_resource_model(line_buffer_depth, self.data_width)
+        line_buffer_bram = (self.kernel_size[0]-1) * bram_stream_resource_model(line_buffer_depth, self.data_width)
         # get the window buffer BRAM estimate
         window_buffer_depth = self.channels+1
-        window_buffer_bram = self.kernel_size[0]*(self.kernel_size[1]-1) *bram_stream_resource_model(window_buffer_depth, self.data_width)
+        window_buffer_bram = self.kernel_size[0]*(self.kernel_size[1]-1) * bram_stream_resource_model(window_buffer_depth, self.data_width)
+        # get the linear model estimation
+        rsc = Module.rsc(self,coef)
         # add the bram estimation
         rsc["BRAM"] = line_buffer_bram + window_buffer_bram
         # return the resource usage
@@ -177,10 +193,10 @@ class SlidingWindow(Module):
                 data_padded[index] = 0
             else:
                 data_padded[index] = data[
-                                        index[0],
-                                        index[1]-self.pad_left,
-                                        index[2]-self.pad_bottom,
-                                        index[3]]
+                    index[0],
+                    index[1]-self.pad_left,
+                    index[2]-self.pad_bottom,
+                    index[3]]
 
         out = np.ndarray((
             batch_size,
@@ -192,10 +208,10 @@ class SlidingWindow(Module):
 
         for index,_ in np.ndenumerate(out):
             out[index] = data_padded[
-                          index[0],
-                          index[1]*self.stride[0]+index[4],
-                          index[2]*self.stride[1]+index[5],
-                          index[3]]
+                index[0],
+                index[1]*self.stride[0]+index[4],
+                index[2]*self.stride[1]+index[5],
+                index[3]]
 
         return out
 

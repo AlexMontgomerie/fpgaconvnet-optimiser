@@ -28,11 +28,25 @@ class Pool(Module):
         else:
             raise TypeError
 
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/pool_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/pool_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/pool_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/pool_dsp.npy"))
+
     def utilisation_model(self):
         return [
             1,
             self.data_width,
-            self.data_width*self.k_size[0]*self.k_size[1],
+            self.data_width*self.kernel_size[0]*self.kernel_size[1],
             self.data_width*self.rows*self.cols*self.channels,
         ]
 

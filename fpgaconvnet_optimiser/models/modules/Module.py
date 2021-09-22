@@ -84,7 +84,6 @@ class Module:
             utilisation of resources model. Defaults
             to zero resources.
         """
-
         return [0]
 
 
@@ -206,10 +205,10 @@ class Module:
             coef = self.rsc_coef
         # return the linear model estimation
         return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef[0])),
-          "BRAM" : int(np.dot(self.utilisation_model(), coef[1])),
-          "DSP"  : int(np.dot(self.utilisation_model(), coef[2])),
-          "FF"   : int(np.dot(self.utilisation_model(), coef[3])),
+          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
+          "BRAM" : int(np.dot(self.utilisation_model(), coef["BRAM"])),
+          "DSP"  : int(np.dot(self.utilisation_model(), coef["DSP"])),
+          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
         }
 
     def functional_model(self,data):

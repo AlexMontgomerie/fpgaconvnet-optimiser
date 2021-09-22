@@ -11,6 +11,21 @@ class Squeeze(Module):
     coarse_out: int
     coarse_in: int
 
+    def __post_init__(self):
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/squeeze_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/squeeze_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/squeeze_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/squeeze_dsp.npy"))
+
     def module_info(self):
         # get the base module fields
         info = Module.module_info(self)

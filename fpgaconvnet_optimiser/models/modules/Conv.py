@@ -17,6 +17,7 @@ from typing import Union, List
 from dataclasses import dataclass, field
 
 from fpgaconvnet_optimiser.models.modules import Module
+from fpgaconvnet_optimiser.tools.resource_model import dsp_multiplier_resource_model
 
 @dataclass
 class Conv(Module):
@@ -59,6 +60,20 @@ class Conv(Module):
         else:
             raise TypeError
 
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/conv_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/conv_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/conv_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/conv_dsp.npy"))
+
     def utilisation_model(self):
         return [
             1,
@@ -95,9 +110,9 @@ class Conv(Module):
         if coef == None:
             coef = self.rsc_coef
         # get an estimate for the dsp usage
-        dot_product_dsp = self.fine * dsp_multiplier_resource_model(self.weight_width, self,data_width)
+        dot_product_dsp = self.fine * dsp_multiplier_resource_model(self.weight_width, self.data_width)
         # get the linear model estimation
-        rsc = Module.rsc(self,coef)
+        rsc = Module.rsc(self, coef)
         # update the dsp usage
         rsc["DSP"] = dot_product_dsp
         # return the resource model

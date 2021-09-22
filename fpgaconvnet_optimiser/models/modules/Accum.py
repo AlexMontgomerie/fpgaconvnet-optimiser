@@ -24,6 +24,21 @@ class Accum(Module):
     filters: int
     groups: int
 
+    def __post_init__(self):
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_dsp.npy"))
+
     def utilisation_model(self):
         bram_acc_buffer_size =  (self.filters/self.groups)*self.data_width
         return np.array([
@@ -65,7 +80,7 @@ class Accum(Module):
         # get the accumulation buffer BRAM estimate
         acc_buffer_bram = bram_memory_resource_model((self.filters/self.groups), self.data_width)
         # get the linear model estimation
-        rsc = Module.rsc(self,coef)
+        rsc = Module.rsc(self, coef)
         # add the bram estimation
         rsc["BRAM"] = acc_buffer_bram
         # return the resource usage
