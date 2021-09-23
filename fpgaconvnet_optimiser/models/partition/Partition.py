@@ -48,22 +48,6 @@ class Partition():
         self.max_streams_in     = self.ports_in*int(self.port_width/self.data_width)
         self.max_streams_out    = self.ports_out*int(self.port_width/self.data_width)
 
-        # update model coefficients
-        self.update_coefficients()
-
-        # node and edge lists
-        #self.node_list = list(self.graph.nodes())
-        #self.edge_list = list(self.graph.edges())
-
-        # matrices
-        #self.connections_matrix = matrix.get_connections_matrix(self.graph)
-        #self.workload_matrix    = matrix.get_workload_matrix(self.graph)
-
-        # all types of layers
-        #self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
-        #self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
-
-
     ## fine transform
     from fpgaconvnet_optimiser.transforms.fine import apply_random_fine_layer
     from fpgaconvnet_optimiser.transforms.fine import apply_complete_fine
@@ -91,30 +75,10 @@ class Partition():
     from fpgaconvnet_optimiser.models.partition.metrics import get_total_operations
     from fpgaconvnet_optimiser.models.partition.metrics import get_bandwidth_in
     from fpgaconvnet_optimiser.models.partition.metrics import get_bandwidth_out
+    from fpgaconvnet_optimiser.models.partition.metrics import get_resource_usage
 
     # update
-    from fpgaconvnet_optimiser.models.partition.update import update_modules
-    from fpgaconvnet_optimiser.models.partition.update import update_coefficients
-
-    def get_resource_usage(self):
-        # initialise resource usage at 0
-        resource_usage = { # TODO: initialise with partition resource usage
-            'FF'    : 0,
-            'LUT'   : 0,
-            'DSP'   : 0,
-            'BRAM'  : 0
-        }
-        # iterate over nodes in partition
-        for node in self.graph.nodes():
-            # get the resource usage of the node
-            resource_usage_node = self.graph.nodes[node]['hw'].resource()
-            # update total resource usage for partition
-            resource_usage['FF']    += resource_usage_node['FF']
-            resource_usage['LUT']   += resource_usage_node['LUT']
-            resource_usage['DSP']   += resource_usage_node['DSP']
-            resource_usage['BRAM']  += resource_usage_node['BRAM']
-        # return resource usage for partition
-        return resource_usage
+    from fpgaconvnet_optimiser.models.partition.update import update
 
     def visualise(self, partition_index):
         cluster = pydot.Cluster(str(partition_index),label=f"partition: {partition_index}")

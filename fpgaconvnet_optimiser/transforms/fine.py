@@ -1,8 +1,8 @@
 """
-Defines the parallelism for the kernel x kernel dot product of the `fpgaconvnet_optimiser.models.modules.Conv` module. 
+Defines the parallelism for the kernel x kernel dot product of the `fpgaconvnet_optimiser.models.modules.Conv` module.
 
 .. note::
-    The `fine` parameter is limited to `[1,kernel_size,kernel_size*kernel_size]` 
+    The `fine` parameter is limited to `[1,kernel_size,kernel_size*kernel_size]`
 """
 
 import random
@@ -17,16 +17,13 @@ def apply_random_fine_layer(self, layer):
     # check layer can have fine transform applied
     if layer in feasible_layers:
         # choose random fine
-        fine = random.choice(self.graph.nodes[layer]['hw'].get_fine_feasible())
-        # update modules fine grain folding factor
-        self.graph.nodes[layer]['hw'].fine = fine
+        self.graph.nodes[layer]['hw'].fine = random.choice(self.graph.nodes[layer]['hw'].get_fine_feasible())
 
 def apply_complete_fine(self):
     # iterate over layers node info
-    for layer in self.graph.nodes():
+    for node in self.graph.nodes():
         # choose to apply to convolution layer only
-        if self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
+        if self.graph.nodes[node]['type'] == LAYER_TYPE.Convolution:
             # choose max fine for convolution layer
-            fine = self.graph.nodes[layer]['hw'].get_fine_feasible()[-1]
-            self.graph.nodes[layer]['hw'].fine = fine
+            self.graph.nodes[node]['hw'].fine = self.graph.nodes[node]['hw'].get_fine_feasible()[-1]
 

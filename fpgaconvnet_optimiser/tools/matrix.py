@@ -154,8 +154,8 @@ STREAMS MATRIX
 
 def get_streams_matrix(graph,node_list=[],edge_list=[]):
 
-    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_in(edge_index)
-    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_out(edge_index)
+    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_in
+    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_out
 
     return _matrix(graph,weight_in,weight_out,node_list,edge_list)
 
@@ -179,8 +179,8 @@ RATES MATRIX
 
 def get_rates_matrix(graph,node_list=[],edge_list=[]):
 
-    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].rate_in(edge_index)
-    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].rate_out(edge_index)
+    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].rate_in
+    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].rate_out
 
     return _matrix(graph,weight_in,weight_out,node_list,edge_list)
 
@@ -216,8 +216,8 @@ WORKLOAD MATRIX
 
 def get_workload_matrix(graph,node_list=[],edge_list=[]):
 
-    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].workload_in(edge_index)
-    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].workload_out(edge_index)
+    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].workload_in
+    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].workload_out
 
     return _matrix(graph,weight_in,weight_out,node_list,edge_list)
 

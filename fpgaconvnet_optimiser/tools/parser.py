@@ -114,9 +114,9 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                k_size =attr["kernel_shape"],
+                kernel_size =attr["kernel_shape"],
                 stride =attr["strides"],
-                pad    =attr["pads"],
+                pad =attr["pads"],
                 groups =attr["group"],
             )
             continue
@@ -148,9 +148,9 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 0, # initialise cols to 0
                 0, # initialise channels to 0
                 pool_type = 'max', # TODO: change so that it does AVG also
-                k_size =attr["kernel_shape"],
+                kernel_size =attr["kernel_shape"],
                 stride =attr["strides"],
-                pad    =attr["pads"],
+                pad =attr["pads"],
             )
             continue
         # ReLU Layer
@@ -172,7 +172,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 1, # initialise coarse out to 0
             )
             continue
-        raise NameError
+        raise NameError(f"{name}: type {str(graph.nodes[name]['type'])} does not exist!")
         print(name,graph.nodes[name]['type'])
 
 def add_dimensions(model, graph):
@@ -182,9 +182,9 @@ def add_dimensions(model, graph):
     input_cols      = int(model.graph.input[0].type.tensor_type.shape.dim[3].dim_value)
     # update input node hardware
     input_node = graphs.get_input_nodes(graph)[0]
-    graph.nodes[input_node]['hw'].channels[0]  = input_channels
-    graph.nodes[input_node]['hw'].rows[0]      = input_rows
-    graph.nodes[input_node]['hw'].cols[0]      = input_cols
+    graph.nodes[input_node]['hw'].channels  = input_channels
+    graph.nodes[input_node]['hw'].rows      = input_rows
+    graph.nodes[input_node]['hw'].cols      = input_cols
     # iterate over layers in model
     nodes = list(graph.nodes())
     nodes.remove(input_node)
@@ -195,9 +195,9 @@ def add_dimensions(model, graph):
             # get previous node output dimensions
             dim = onnx_helper._out_dim(model, prev_node)
             # update input dimensions
-            graph.nodes[node]['hw'].channels[0] = dim[0]
-            graph.nodes[node]['hw'].rows[0]     = dim[1]
-            graph.nodes[node]['hw'].cols[0]     = dim[2]
+            graph.nodes[node]['hw'].channels = dim[0]
+            graph.nodes[node]['hw'].rows     = dim[1]
+            graph.nodes[node]['hw'].cols     = dim[2]
 
 def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 

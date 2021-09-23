@@ -18,29 +18,25 @@ import fpgaconvnet_optimiser.tools.graphs as graphs
 
 def main():
     parser = argparse.ArgumentParser(description="Optimiser Script")
-    parser.add_argument('-n','--name',metavar='PATH',required=True,
+    parser.add_argument('-n','--name', metavar='PATH', required=True,
         help='network name')
-    parser.add_argument('-m','--model_path',metavar='PATH',required=True,
+    parser.add_argument('-m','--model_path', metavar='PATH', required=True,
         help='Path to ONNX model')
-    parser.add_argument('-p','--platform_path',metavar='PATH',required=True,
+    parser.add_argument('-p','--platform_path', metavar='PATH', required=True,
         help='Path to platform information')
-    parser.add_argument('-o','--output_path',metavar='PATH',required=True,
+    parser.add_argument('-o','--output_path', metavar='PATH', required=True,
         help='Path to output directory')
-    parser.add_argument('-b','--batch_size',metavar='N',type=int,default=1,required=False,
+    parser.add_argument('-b','--batch_size', metavar='N',type=int, default=1, required=False,
         help='Batch size')
-    parser.add_argument('--objective',choices=['throughput','latency'],required=True,
+    parser.add_argument('--objective', choices=['throughput','latency'], required=True,
         help='Optimiser objective')
-    # use optimiser config instead
-    #parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition'],
-    #    default=['fine','coarse','weights_reloading','partition'],
-    #    help='network transforms')
-    parser.add_argument('--optimiser',choices=['simulated_annealing','improve', 'greedy_partition'],default='improve',
+    parser.add_argument('--optimiser', choices=['simulated_annealing', 'improve', 'greedy_partition'], default='improve',
         help='Optimiser strategy')
-    parser.add_argument('--optimiser_config_path',metavar='PATH',
+    parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
         help='Configuration file (.yml) for optimiser')
-    parser.add_argument('--teacher_partition_path',metavar='PATH',
+    parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
         help='Previously optimised partitions saved in JSON')
-    parser.add_argument('--seed',metavar='N',type=int,default=1234567890,
+    parser.add_argument('--seed', metavar='N', type=int, default=1234567890,
         help='Seed for the optimiser run')
 
     args = parser.parse_args()

@@ -90,13 +90,13 @@ class Layer:
 
     @coarse_in.setter
     def coarse_in(self, val: int) -> None:
-        assert(val in self.coarse_in_feasible())
+        assert(val in self.get_coarse_in_feasible())
         self._coarse_in = val
         self.update()
 
     @coarse_out.setter
     def coarse_out(self, val: int) -> None:
-        assert(val[i] in self.coarse_out_feasible())
+        assert(val in self.get_coarse_out_feasible())
         self._coarse_out = val
         self.update()
 
@@ -303,7 +303,7 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth*self.data_width/18000)*self.streams_in(),
+            "BRAM"  : math.ceil(self.buffer_depth*self.data_width/18000)*self.streams_in,
             "DSP"   : 0
         }
 
@@ -313,30 +313,20 @@ class Layer:
     def get_coarse_out_feasible(self, wr_factor=1):
         return self.get_factors(int(self.channels_out/wr_factor))
 
-    def load_coef(self):
-        pass
-        # for module in self.modules:
-        #     self.modules[module].load_coef(
-        #         os.path.join(
-        #             os.path.dirname(__file__),
-        #             "../../coefficients/{}_rsc_coef.npy".format(module))
-        #     )
-
-
     def update(self):
         pass
 
     def layer_info(self, parameters, batch_size=1):
         parameters.batch_size   = batch_size
         parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
-        parameters.coarse_in    = self.streams_in()
-        parameters.coarse_out   = self.streams_out()
+        parameters.rows_in      = self.rows_in
+        parameters.cols_in      = self.cols_in
+        parameters.channels_in  = self.channels_in
+        parameters.rows_out     = self.rows_out
+        parameters.cols_out     = self.cols_out
+        parameters.channels_out = self.channels_out
+        parameters.coarse_in    = self.streams_in
+        parameters.coarse_out   = self.streams_out
 
     def get_operations(self):
         return 0

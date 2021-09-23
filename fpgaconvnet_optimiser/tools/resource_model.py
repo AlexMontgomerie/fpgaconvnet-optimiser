@@ -8,7 +8,7 @@ def bram_stream_resource_model(depth, width):
     assert width <= 36, "width must be less than 36"
 
     # find the closest width from the BRAM configuration
-    bram_width = BRAM_CONF.keys()[bisect.bisect_right(BRAM_CONF.keys(), width)-1]
+    bram_width = list(BRAM_CONF.keys())[bisect.bisect_right(list(BRAM_CONF.keys()), width)-1]
 
     # get the depth for the bram
     bram_depth = BRAM_CONF[bram_width]
@@ -24,7 +24,7 @@ def bram_memory_resource_model(depth, width):
     assert width <= 36, "width must be less than 36"
 
     # find the closest width from the BRAM configuration
-    bram_width = BRAM_CONF.keys()[bisect.bisect_right(BRAM_CONF.keys(), width)-1]
+    bram_width = list(BRAM_CONF.keys())[bisect.bisect_right(list(BRAM_CONF.keys()), width)-1]
 
     # get the depth for the bram
     bram_depth = BRAM_CONF[bram_width]
@@ -34,4 +34,5 @@ def bram_memory_resource_model(depth, width):
 
 
 def dsp_multiplier_resource_model(multiplicand_width, multiplier_width, dsp_type="DSP48E1"):
+    #https://github.com/Xilinx/finn/blob/4fee6ffd8e13f91314ec9086e9ce9b2ea9de15c7/src/finn/custom_op/fpgadataflow/streamingfclayer_batch.py#L368,
     return math.ceil((multiplicand_width+multiplier_width)/48)

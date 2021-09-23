@@ -124,8 +124,6 @@ class Network():
     from fpgaconvnet_optimiser.models.network.update import update_partitions
     from fpgaconvnet_optimiser.models.network.update import update_platform
     from fpgaconvnet_optimiser.models.network.update import update_coarse_in_out_partition
-    # from fpgaconvnet_optimiser.models.network.update import update_group_coarse_partition
-    # from fpgaconvnet_optimiser.models.network.update import update_group_wr_partition
 
     # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node
@@ -156,8 +154,8 @@ class Network():
         for partition in self.partitions:
             input_node  = partition.input_nodes[0]
             output_node = partition.output_nodes[0]
-            partition_input_size  = partition.graph.nodes[input_node]['hw'].workload_in(0)*partition.batch_size
-            partition_output_size = partition.graph.nodes[output_node]['hw'].workload_out(0)*partition.batch_size*partition.wr_factor
+            partition_input_size  = partition.graph.nodes[input_node]['hw'].workload_in*partition.batch_size
+            partition_output_size = partition.graph.nodes[output_node]['hw'].workload_out*partition.batch_size*partition.wr_factor
             if partition_input_size > max_input_size:
                 max_input_size = partition_input_size
             if partition_output_size > max_output_size:

@@ -123,14 +123,22 @@ def add_input_from_initializer(model : onnx.ModelProto):
 def load(filepath,fuse_bn=True):
     model = onnx.load(filepath)
     onnx.checker.check_model(model)
+    onnx.helper.strip_doc_string(model)
     add_input_from_initializer(model) #Seems to be necessary for conv layers from pytorch (at least)
     model = onnx.shape_inference.infer_shapes(model)
-    model = onnx.utils.polish_model(model)
-    passes = ["extract_constant_to_initializer", "eliminate_unused_initializer"]
+    # model = onnx.utils.polish_model(model)
+    passes = [
+            "extract_constant_to_initializer",
+            "eliminate_unused_initializer",
+            "eliminate_nop_transpose",
+            "eliminate_nop_pad",
+            "fuse_consecutive_transposes",
+            "fuse_transpose_into_gemm"
+    ]
     if fuse_bn:
         passes.append("fuse_bn_into_conv")
     model = optimizer.optimize(model, passes=passes)
-
+    onnx.checker.check_model(model)
     return model
 
 def update_batch_size(model, batch_size): # from https://github.com/microsoft/onnxruntime/issues/1467#issuecomment-514322927

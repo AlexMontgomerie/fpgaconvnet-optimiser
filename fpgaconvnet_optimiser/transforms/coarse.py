@@ -32,9 +32,9 @@ def apply_random_coarse_layer(self, layer):
         name of layer to update coarse factor
 
     """
-    # get possible coarse folding
+    # get possible coarse folding types
     coarse_types = ["coarse_in", "coarse_out"]
-    if self.graph.nodes[layer]['hw'].flags["multi_groups"]:
+    if self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
         coarse_types.append("coarse_group")
     # choose coarse in or coarse out
     coarse_type = random.choice(coarse_types)
@@ -46,41 +46,35 @@ def apply_random_coarse_layer(self, layer):
         # if input layer, make sure streams aren't too large
         if layer in graphs.get_input_nodes(self.graph):
             coarse_in_feasible = [ x for x in coarse_in_feasible if x <= self.max_streams_in ]
-        # choose random coarse in factor
-        coarse_in = random.choice(coarse_in_feasible)
         # update coarse folding for layer
-        self.graph.nodes[layer]['hw'].update_coarse_in(coarse_in)
+        self.graph.nodes[layer]['hw'].coarse_in = random.choice(coarse_in_feasible)
     ## coarse out
-    if coarse_type == 'coarse_out':
+    elif coarse_type == 'coarse_out':
         # get all feasible coarse out
         coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()
         # if output layer, make sure streams aren't too large
         if layer in graphs.get_output_nodes(self.graph):
             coarse_out_feasible = [ x for x in coarse_out_feasible if x <= self.max_streams_out ]
         # choose random coarse out factor
-        coarse_out = random.choice(coarse_out_feasible)
-        # update coarse folding for layer
-        self.graph.nodes[layer]['hw'].update_coarse_out(coarse_out)
+        self.graph.nodes[layer]['hw'].coarse_out = random.choice(coarse_out_feasible)
     ## coarse group
-    if coarse_type == 'coarse_group':
+    elif coarse_type == 'coarse_group':
         # get all feasible coarse group
         coarse_group_feasible = self.graph.nodes[layer]['hw'].get_coarse_group_feasible()
         # choose random coarse group factor
-        coarse_group = random.choice(coarse_group_feasible)
-        # update coarse folding for layer
-        self.graph.nodes[layer]['hw'].update_coarse_group(coarse_group)
+        self.graph.nodes[layer]['hw'].coarse_group = random.choice(coarse_group_feasible)
 
 def fix_coarse(self):
     # iterate over layers
     for node in self.graph.nodes():
         # check if coarse in is greater than max feasible coarse in
-        coarse_in = self.graph.nodes[node]['hw'].streams_in()
+        coarse_in = self.graph.nodes[node]['hw'].streams_in
         coarse_in_max = self.graph.nodes[node]['hw'].get_coarse_in_feasible()[-1]
-        self.graph.nodes[node]['hw'].update_coarse_in(min(coarse_in,coarse_in_max))
+        self.graph.nodes[node]['hw'].coarse_in = min(coarse_in,coarse_in_max)
         # check if coarse out is greater than max feasible coarse out
-        coarse_out = self.graph.nodes[node]['hw'].streams_out()
+        coarse_out = self.graph.nodes[node]['hw'].streams_out
         coarse_out_max = self.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
-        self.graph.nodes[node]['hw'].update_coarse_out(min(coarse_out,coarse_out_max))
+        self.graph.nodes[node]['hw'].coarse_out = min(coarse_out,coarse_out_max)
         if self.graph.nodes[node]['hw'].flags["has_groups"]:
             coarse_group = self.graph.nodes[node]['hw'].coarse_group
             coarse_group_max = self.graph.nodes[node]['hw'].get_coarse_group_feasible()[-1]

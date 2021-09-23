@@ -120,6 +120,14 @@ class PoolingLayer(Layer):
         return self._coarse
 
     @property
+    def coarse_in(self) -> int:
+        return self._coarse
+
+    @property
+    def coarse_out(self) -> int:
+        return self._coarse
+
+    @property
     def fine(self) -> int:
         if self.pool_type == "max":
             return self.kernel_size[0] * self.kernel_size[1]
@@ -147,9 +155,23 @@ class PoolingLayer(Layer):
 
     @coarse.setter
     def coarse(self, val: int) -> None:
-        self._coarse = self.val
-        self._coarse_in = self.val
-        self._coarse_in = self.val
+        self._coarse = val
+        self._coarse_in = val
+        self._coarse_out = val
+        self.update()
+
+    @coarse_in.setter
+    def coarse_in(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self._coarse_out = val
+        self.update()
+
+    @coarse_out.setter
+    def coarse_out(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self._coarse_out = val
         self.update()
 
     @fine.setter
