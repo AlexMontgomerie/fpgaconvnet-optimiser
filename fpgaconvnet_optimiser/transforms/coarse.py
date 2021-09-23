@@ -9,6 +9,7 @@ Input and output channel dimension parallelism of Layers. For a convolution laye
 
 """
 
+import logging
 import random
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
@@ -47,7 +48,10 @@ def apply_random_coarse_layer(self, layer):
         if layer in graphs.get_input_nodes(self.graph):
             coarse_in_feasible = [ x for x in coarse_in_feasible if x <= self.max_streams_in ]
         # update coarse folding for layer
-        self.graph.nodes[layer]['hw'].coarse_in = random.choice(coarse_in_feasible)
+        coarse_in_factor = random.choice(coarse_in_feasible)
+        self.graph.nodes[layer]['hw'].coarse_in = coarse_in_factor
+        # log the applied transform
+        logging.info(f"applying coarse in factor of {coarse_in_factor} to {layer}")
     ## coarse out
     elif coarse_type == 'coarse_out':
         # get all feasible coarse out
@@ -56,13 +60,19 @@ def apply_random_coarse_layer(self, layer):
         if layer in graphs.get_output_nodes(self.graph):
             coarse_out_feasible = [ x for x in coarse_out_feasible if x <= self.max_streams_out ]
         # choose random coarse out factor
-        self.graph.nodes[layer]['hw'].coarse_out = random.choice(coarse_out_feasible)
+        coarse_out_factor = random.choice(coarse_out_feasible)
+        self.graph.nodes[layer]['hw'].coarse_out = coarse_out_factor
+        # log the applied transform
+        logging.info(f"applying coarse out factor of {coarse_out_factor} to {layer}")
     ## coarse group
     elif coarse_type == 'coarse_group':
         # get all feasible coarse group
         coarse_group_feasible = self.graph.nodes[layer]['hw'].get_coarse_group_feasible()
         # choose random coarse group factor
-        self.graph.nodes[layer]['hw'].coarse_group = random.choice(coarse_group_feasible)
+        coarse_group_factor = random.choice(coarse_group_feasible)
+        self.graph.nodes[layer]['hw'].coarse_group = coarse_group_factor
+        # log the applied transform
+        logging.info(f"applying coarse group factor of {coarse_group_factor} to {layer}")
 
 def fix_coarse(self):
     # iterate over layers

@@ -24,9 +24,9 @@ def add_squeeze(self):
             # add node to node info
             self.graph.add_node(new_node,type=LAYER_TYPE.Squeeze,
                 hw=SqueezeLayer(
-                    self.graph.nodes[start_node]['hw'].channels_out,
                     self.graph.nodes[start_node]['hw'].rows_out,
                     self.graph.nodes[start_node]['hw'].cols_out,
+                    self.graph.nodes[start_node]['hw'].channels_out,
                     self.graph.nodes[start_node]['hw'].streams_out,
                     self.graph.nodes[end_node]['hw'].streams_in
                 )
@@ -44,9 +44,9 @@ def add_squeeze(self):
         # add node to node info
         self.graph.add_node(new_node, type=LAYER_TYPE.Squeeze,
             hw=SqueezeLayer(
-                self.graph.nodes[input_node]['hw'].channels_in,
                 self.graph.nodes[input_node]['hw'].rows_in,
                 self.graph.nodes[input_node]['hw'].cols_in,
+                self.graph.nodes[input_node]['hw'].channels_in,
                 self.streams_in,
                 self.graph.nodes[input_node]['hw'].streams_in
             )

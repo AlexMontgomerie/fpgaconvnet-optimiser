@@ -5,7 +5,9 @@ Defines the parallelism for the kernel x kernel dot product of the `fpgaconvnet_
     The `fine` parameter is limited to `[1,kernel_size,kernel_size*kernel_size]`
 """
 
+import logging
 import random
+
 import fpgaconvnet_optimiser.transforms.helper
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
@@ -17,7 +19,10 @@ def apply_random_fine_layer(self, layer):
     # check layer can have fine transform applied
     if layer in feasible_layers:
         # choose random fine
-        self.graph.nodes[layer]['hw'].fine = random.choice(self.graph.nodes[layer]['hw'].get_fine_feasible())
+        fine_factor = random.choice(self.graph.nodes[layer]['hw'].get_fine_feasible())
+        self.graph.nodes[layer]['hw'].fine = fine_factor
+        # log the transform
+        logging.info(f"applying fine factor of {fine_factor} to {layer}")
 
 def apply_complete_fine(self):
     # iterate over layers node info

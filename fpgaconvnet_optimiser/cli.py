@@ -2,6 +2,7 @@
 A command line interface for running the optimiser for given networks
 """
 
+import logging
 import os
 import yaml
 import json
@@ -15,6 +16,11 @@ from fpgaconvnet_optimiser.optimiser.improve import Improve
 from fpgaconvnet_optimiser.optimiser.greedy_partition import GreedyPartition
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
+
+# Initialise logger
+FORMAT="%(asctime)s.%(msecs)03d %(levelname)s = (%(module)s) %(message)s"
+# logging.basicConfig(level=logging.INFO, filename=os.path.join(args.output_path,"fpgaconvnet_optimiser.log"), format=FORMAT, filemode="a")
+logging.basicConfig(level=logging.INFO, filename="fpgaconvnet_optimiser.log", format=FORMAT, filemode="w", datefmt='%H:%M:%S')
 
 def main():
     parser = argparse.ArgumentParser(description="Optimiser Script")
@@ -49,6 +55,9 @@ def main():
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
+    if not os.path.exists(os.path.join(args.output_path,"checkpoint")):
+        os.makedirs(os.path.join(args.output_path,"checkpoint"))
+
     shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
@@ -74,7 +83,8 @@ def main():
                 k=float(optimiser_config["annealing"]["k"]),
                 cool=float(optimiser_config["annealing"]["cool"]),
                 iterations=int(optimiser_config["annealing"]["iterations"]),
-                transforms_config=optimiser_config["transforms"])
+                transforms_config=optimiser_config["transforms"],
+                checkpoint_path=os.path.join(args.output_path,"checkpoint"))
     elif optimiser == "greedy_partition":
         # create network
         net = GreedyPartition(name, model_path,

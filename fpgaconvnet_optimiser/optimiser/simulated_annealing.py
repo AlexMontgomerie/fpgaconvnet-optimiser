@@ -1,9 +1,13 @@
+import os
 import sys
 import numpy as np
 import json
 import copy
 import random
 import math
+import logging
+import uuid
+from datetime import datetime
 
 from fpgaconvnet_optimiser.optimiser.optimiser import Optimiser
 import fpgaconvnet_optimiser.tools.graphs as graphs
@@ -15,13 +19,17 @@ START_LOOP=1000
 
 class SimulatedAnnealing(Optimiser):
     """
-Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
+    Randomly chooses a transform and hardware component to change. The
+    change is accepted based on a probability-based decision function
     """
 
-    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
+    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,
+            iterations=10,transforms_config={},fix_starting_point_config={},
+            data_width=16,weight_width=8,acc_width=30,fuse_bn=True,checkpoint_path="."):
 
         # Initialise Network
-        Optimiser.__init__(self,name,network_path,transforms_config,fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
+        Optimiser.__init__(self,name,network_path,transforms_config,
+                fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
 
         # Simulate Annealing Variables
         self.T          = T
@@ -29,6 +37,9 @@ Randomly chooses a transform and hardware component to change. The change is acc
         self.T_min      = T_min
         self.cool       = cool
         self.iterations = iterations
+
+        # checkpoint directory routes
+        self.checkpoint_path = checkpoint_path
 
     def optimiser_status(self):
         # objective
@@ -104,6 +115,9 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # Save previous iteration
             partitions = copy.deepcopy(self.partitions)
 
+            # create a design checkpoint
+            self.save_design_checkpoint(os.path.join(self.checkpoint_path,f"{str(uuid.uuid4().hex)}.dcp"))
+
             # several iterations per cool down
             for _ in range(self.iterations):
 
@@ -125,6 +139,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 node = random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph))
 
                 ## Apply the transform
+                logging.info(f"applying {transform} to {node} in partition {partition_index}")
                 self.apply_transform(transform, partition_index, node)
 
                 ## Update partitions

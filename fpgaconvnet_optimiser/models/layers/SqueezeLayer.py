@@ -24,7 +24,9 @@ class SqueezeLayer(Layer):
         self.modules["squeeze"] = Squeeze(self.rows_in, self.cols_in, self.channels_in, self.coarse_in,
                                           self.coarse_out)
 
-    ## UPDATE MODULES ##
+    def layer_info(self,parameters,batch_size=1):
+        Layer.layer_info(self, parameters, batch_size)
+
     def update(self):
         self.modules["squeeze"].rows = self.rows_in
         self.modules["squeeze"].cols = self.cols_in

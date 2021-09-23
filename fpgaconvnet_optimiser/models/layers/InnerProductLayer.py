@@ -40,13 +40,21 @@ class InnerProductLayer(Layer):
         self._filters = filters
 
         # init modules
-        self.modules["fork"] = Fork(self.rows, self.cols, self.channels, 1, self.coarse_out)
+        self.modules["fork"] = Fork(self.rows_in, self.cols_in, self.channels_in, 1, self.coarse_out)
         self.modules["conv"] = Conv( 1,1,self.channels_in*self.rows_in*self.cols_in, self.channels_out, 1, 1, 1)
         self.modules["accum"] = Accum(1,1,self.channels_in*self.rows_in*self.cols_in, self.channels_out, 1)
         self.modules["glue"] = Glue( 1,1,self.channels_in*self.rows_in*self.cols_in,
                 self.channels_out, self.coarse_in, self.coarse_out)
 
         self.update()
+
+    @property
+    def rows_out(self) -> int:
+        return 1
+
+    @property
+    def cols_out(self) -> int:
+        return 1
 
     @property
     def channels_out(self) -> int:
@@ -61,7 +69,9 @@ class InnerProductLayer(Layer):
         self._filters = val
         self.update()
 
-    ## UPDATE MODULES ##
+    def layer_info(self,parameters,batch_size=1):
+        Layer.layer_info(self, parameters, batch_size)
+
     def update(self): # TODO: update all parameters
         # fork
         self.modules['fork'].rows     = self.rows_in
