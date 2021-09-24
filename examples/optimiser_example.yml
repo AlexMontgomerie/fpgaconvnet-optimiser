@@ -1,8 +1,8 @@
 transforms:
     fine:
-        apply_transform: true
+        apply_transform: false
         probability: 0.25
-        start_complete: false
+        start_complete: true
     coarse:
         apply_transform: true
         probability: 0.25
@@ -11,11 +11,11 @@ transforms:
         probability: 0.25
         start_max: true
     partition:
-        apply_transform: true
+        apply_transform: false
         probability: 0.25
         horizontal: true
         vertical: true
-        start_complete: true
+        start_complete: false
         allowed_type: [split, merge]
         allowed_partitions:
             - [Relu, Conv]
@@ -24,8 +24,11 @@ transforms:
             - [AveragePool, Gemm]
 annealing:
     T: 10.0
-    T_min: 0.00001
+    T_min: 0.001
     k: 0.01
     cool: 0.9
-    iterations: 50
+    iterations: 10
+general:
+    logging: true
+    checkpoints: true
     starting_point_distillation: false

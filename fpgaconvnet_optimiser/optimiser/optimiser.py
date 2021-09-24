@@ -5,6 +5,7 @@ import random
 import math
 import logging
 import pickle
+from datetime import datetime
 from google.protobuf import json_format
 
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
@@ -179,6 +180,11 @@ class Optimiser(Network):
             cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\r')
 
     def save_design_checkpoint(self, output_path):
+        # get the current state of the optimiser
+        state = {
+            "time" : str(datetime.now()),
+            "self" : self
+        }
         # pickle the current optimiser state
         checkpoint = pickle.dumps(self)
         # save to output path
