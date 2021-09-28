@@ -1,22 +1,17 @@
-"""
-
-"""
-
-import os
-import math
-import sys
 from typing import List
-from functools import reduce
 import pydot
 import collections
 from google.protobuf.json_format import MessageToDict
 import numpy as np
 from dataclasses import dataclass, field
 
+from fpgaconvnet_optimiser.models.layers.utils import get_factors
+from fpgaconvnet_optimiser.models.layers.utils import balance_module_rates
+
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
 
 @dataclass
-class Layer:
+class MultiPortLayer:
     """
     Base class for all layer models.
 
@@ -51,13 +46,16 @@ class Layer:
     _channels: List[int]
     _coarse_in: List[int]
     _coarse_out: List[int]
-    _ports_in: int = field(default=1, init=True)
-    _ports_out: int = field(default=1, init=True)
+    ports_in: int = field(default=1, init=True)
+    ports_out: int = field(default=1, init=True)
     data_width: int = field(default=16, init=True)
     buffer_depth: int = field(default=0, init=False)
     modules: dict = field(default_factory=collections.OrderedDict, init=False)
 
-    # define properties of the layer
+    """
+    properties
+    """
+
     @property
     def rows(self) -> List[int]:
         return self._rows
@@ -78,15 +76,10 @@ class Layer:
     def coarse_out(self) -> List[int]:
         return self._coarse_out
 
-    @property
-    def ports_in(self) -> int:
-        return self._ports_in
+    """
+    property setters
+    """
 
-    @property
-    def ports_out(self) -> int:
-        return self._ports_out
-
-    # create the setter methods for these properties
     @rows.setter
     def rows(self, val: List[int]) -> None:
         assert(len(val) == self.ports_in)
@@ -123,16 +116,13 @@ class Layer:
         self._coarse_in = val
         self.update()
 
-    @ports_in.setter
-    def ports_in(self, val: int) -> None:
-        self._ports_in = val
-
-    @ports_out.setter
-    def ports_out(self, val: int) -> None:
-        self._ports_out = val
-
     def rows_in(self, port_index=0):
         """
+        Parameters
+        ----------
+        port_index: int
+            index of port into the layer
+
         Returns
         -------
         int
@@ -143,6 +133,11 @@ class Layer:
 
     def cols_in(self, port_index=0):
         """
+        Parameters
+        ----------
+        port_index: int
+            index of port into the layer
+
         Returns
         -------
         int
@@ -153,6 +148,11 @@ class Layer:
 
     def channels_in(self, port_index=0):
         """
+        Parameters
+        ----------
+        port_index: int
+            index of port into the layer
+
         Returns
         -------
         int
@@ -163,33 +163,48 @@ class Layer:
 
     def rows_out(self, port_index=0):
         """
+        Parameters
+        ----------
+        port_index: int
+            index of port out of the layer
+
         Returns
         -------
         int
             row dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return list(self.modules.values())[-1].rows_out()
+        return self.rows[port_index]
 
     def cols_out(self, port_index=0):
         """
+        Parameters
+        ----------
+        port_index: int
+            index of port out of the layer
+
         Returns
         -------
         int
             column dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return list(self.modules.values())[-1].cols_out()
+        return self.cols[port_index]
 
     def channels_out(self, port_index=0):
         """
+        Parameters
+        ----------
+        port_index: int
+            index of port out of the layer
+
         Returns
         -------
         int
             channel dimension of the output featuremap
         """
         assert(port_index < self.ports_out)
-        return list(self.modules.values())[-1].channels_out()*self.coarse_out[port_index]
+        return self.channels[port_index]
 
     def rates_graph(self):
 
@@ -222,7 +237,7 @@ class Layer:
             default is 1.0
         """
         assert(port_index < self.ports_in)
-        return abs(self.balance_module_rates(self.rates_graph())[0,0])
+        return abs(balance_module_rates(self.rates_graph())[0,0])
 
     def rate_out(self, port_index=0):
         """
@@ -240,7 +255,7 @@ class Layer:
             default is 1.0
         """
         assert(port_index < self.ports_out)
-        return abs(self.balance_module_rates(
+        return abs(balance_module_rates(
             self.rates_graph())[len(self.modules.keys())-1,len(self.modules.keys())])
 
     def streams_in(self, port_index=0):
@@ -335,18 +350,18 @@ class Layer:
         """
         return self.data_width
 
-    def get_latency_in(self):
+    def latency_in(self):
         return max([
             abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for
             i in range(self.ports_in) ])
 
-    def get_latency_out(self):
+    def latency_out(self):
         return max([
             abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i)))
             for i in range(self.ports_out) ])
 
-    def get_latency(self):
-        return max(self.get_latency_in(), self.get_latency_out())
+    def latency(self):
+        return max(self.latency_in(), self.latency_out())
 
     def pipeline_depth(self):
         return sum([ self.modules[module].pipeline_depth() for module in self.modules ])
@@ -364,31 +379,11 @@ class Layer:
 
     def get_coarse_in_feasible(self, port_index=0, wr_factor=1):
         assert(port_index < self.ports_in)
-        return self.get_factors(int(self.channels_in(port_index)/wr_factor))
+        return get_factors(int(self.channels_in(port_index)/wr_factor))
 
     def get_coarse_out_feasible(self, port_index=0, wr_factor=1):
         assert(port_index < self.ports_out)
-        return self.get_factors(int(self.channels_out(port_index)/wr_factor))
-
-    def update_coarse_in(self, coarse_in, port_index=0):
-        assert(port_index < self.ports_in)
-        self.coarse_in[port_index]  = coarse_in
-        self.update_coarse_out(coarse_in, port_index=port_index)
-
-    def update_coarse_out(self, coarse_out, port_index=0):
-        assert(port_index < self.ports_out)
-        self.coarse_out[port_index] = coarse_out
-        self.update_coarse_in(coarse_in, port_index=port_index)
-
-    def load_coef(self):
-        pass
-        # for module in self.modules:
-        #     self.modules[module].load_coef(
-        #         os.path.join(
-        #             os.path.dirname(__file__),
-        #             "../../coefficients/{}_rsc_coef.npy".format(module))
-        #     )
-
+        return get_factors(int(self.channels_out(port_index)/wr_factor))
 
     def update(self):
         pass
@@ -425,33 +420,3 @@ class Layer:
 
     def functional_model(self,data,batch_size=1):
         return
-
-    def balance_module_rates(self,rate_graph):
-
-        rate_ratio = [ abs(rate_graph[i,i+1]/rate_graph[i,i]) for i in range(rate_graph.shape[0]) ]
-
-        for i in range(1,rate_graph.shape[0]):
-            # start from end
-            layer = rate_graph.shape[0]-i
-
-            if abs(rate_graph[layer,layer]) > abs(rate_graph[layer-1,layer]):
-                # propogate forward
-                for j in range(layer,rate_graph.shape[0]):
-                        if(abs(rate_graph[j,j]) <= abs(rate_graph[j-1,j])):
-                            break
-                        rate_graph[j,j]   = abs(rate_graph[j-1,j])
-                        rate_graph[j,j+1] = -rate_graph[j,j]*rate_ratio[j]
-
-            elif abs(rate_graph[layer,layer]) < abs(rate_graph[layer-1,layer]):
-                # propogate backward
-                for j in range(0,layer):
-                        if(abs(rate_graph[layer-j,layer-j]) >= abs(rate_graph[layer-j-1,layer-j])):
-                            break
-                        rate_graph[layer-j-1,layer-j]   = -abs(rate_graph[layer-j,layer-j])
-                        rate_graph[layer-j-1,layer-j-1] = -rate_graph[layer-j-1,layer-j]/rate_ratio[layer-j-1]
-        return rate_graph
-
-    def get_factors(self, n):
-        return list(set(reduce(list.__add__,
-                    ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0))))
-

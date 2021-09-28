@@ -217,22 +217,8 @@ class TestIntervalMatrix(unittest.TestCase):
         self.assertEqual(interval_matrix.shape[0],n_edges)
         self.assertEqual(interval_matrix.shape[1],n_nodes)
 
-        print(np.max(interval_matrix))
-
-        workload_matrix = matrix.get_workload_matrix(graph)
-        streams_matrix  = matrix.get_streams_matrix(graph)
-        rates_matrix    = matrix.get_balanced_rates_matrix(graph)
-        #print(rates_matrix)
-
-        interval_matrix = matrix.np.multiply(streams_matrix, np.absolute(rates_matrix))
-        interval_matrix = matrix.np.divide(workload_matrix, np.absolute(interval_matrix))
-        interval_matrix = matrix.np.nan_to_num(interval_matrix)
-
-
-        print(np.max(interval_matrix))
-
         # check rank of matrix
-        #self.assertEqual(matrix_rank(interval_matrix),n_nodes-1)
+        self.assertEqual(matrix_rank(interval_matrix),n_nodes-1)
 
         # check theres only one value
         #interval = np.unique(np.absolute(interval_matrix).astype(int)).tolist()

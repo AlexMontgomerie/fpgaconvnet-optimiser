@@ -4,7 +4,6 @@ import copy
 import fpgaconvnet_optimiser.tools.graphs as graphs
 import fpgaconvnet_optimiser.tools.matrix as matrix
 
-
 def check_ports(self):
     # check each partition
     for partition in self.partitions:
@@ -59,14 +58,14 @@ def check_workload(self):
             if node not in self.graph:
                 continue
             # check workload in
-            workload_ref = self.graph.nodes[node]['hw'].workload_in*self.graph.nodes[node]['hw'].streams_in
-            workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_in*\
-                self.partitions[partition_index].graph.nodes[node]['hw'].streams_in*wr_factor
+            workload_ref = self.graph.nodes[node]['hw'].workload_in()*self.graph.nodes[node]['hw'].streams_in()
+            workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_in()*\
+                self.partitions[partition_index].graph.nodes[node]['hw'].streams_in()*wr_factor
             assert workload_actual >= workload_ref, f"({node}) workload in imbalance"
             # check workload out
-            workload_ref = self.graph.nodes[node]['hw'].workload_out*self.graph.nodes[node]['hw'].streams_out
-            workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_out*\
-                self.partitions[partition_index].graph.nodes[node]['hw'].streams_out*wr_factor
+            workload_ref = self.graph.nodes[node]['hw'].workload_out()*self.graph.nodes[node]['hw'].streams_out()
+            workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_out()*\
+                self.partitions[partition_index].graph.nodes[node]['hw'].streams_out()*wr_factor
             assert workload_actual >= workload_ref, f"({node}) workload out imbalance"
 
 def check_streams(self):

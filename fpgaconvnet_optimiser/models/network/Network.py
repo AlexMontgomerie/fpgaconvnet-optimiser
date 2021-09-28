@@ -31,7 +31,7 @@ class Network():
     def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True):
 
         ## percentage resource allocation
-        self.rsc_allocation = 0.7
+        self.rsc_allocation = 1.0
 
         ## bitwidths
         self.data_width     = data_width
@@ -88,8 +88,6 @@ class Network():
         # update partitions
         self.update_partitions()
 
-    # import transforms
-    ## partitioning transform
     from fpgaconvnet_optimiser.transforms.partition import check_parallel_block
     from fpgaconvnet_optimiser.transforms.partition import get_all_horizontal_splits
     from fpgaconvnet_optimiser.transforms.partition import get_all_vertical_splits
@@ -107,10 +105,8 @@ class Network():
     from fpgaconvnet_optimiser.transforms.partition import merge_complete
     from fpgaconvnet_optimiser.transforms.partition import apply_random_partition
 
-    # import reporting functions
     from fpgaconvnet_optimiser.models.network.report import create_report
 
-    # import scheduling functions
     from fpgaconvnet_optimiser.models.network.scheduler import get_partition_order
     from fpgaconvnet_optimiser.models.network.scheduler import get_input_base_addr
     from fpgaconvnet_optimiser.models.network.scheduler import get_output_base_addr
@@ -120,17 +116,14 @@ class Network():
     from fpgaconvnet_optimiser.models.network.scheduler import get_schedule_csv
     from fpgaconvnet_optimiser.models.network.scheduler import check_scheduler
 
-    # update
     from fpgaconvnet_optimiser.models.network.update import update_partitions
     from fpgaconvnet_optimiser.models.network.update import update_platform
     from fpgaconvnet_optimiser.models.network.update import update_coarse_in_out_partition
 
-    # represent
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node
     from fpgaconvnet_optimiser.models.network.represent import get_model_output_node
     from fpgaconvnet_optimiser.models.network.represent import save_all_partitions
 
-    # validate
     from fpgaconvnet_optimiser.models.network.validate import check_ports
     from fpgaconvnet_optimiser.models.network.validate import check_resources
     from fpgaconvnet_optimiser.models.network.validate import get_resources_bad_partitions
@@ -138,10 +131,6 @@ class Network():
     from fpgaconvnet_optimiser.models.network.validate import check_streams
     from fpgaconvnet_optimiser.models.network.validate import check_partitions
     from fpgaconvnet_optimiser.models.network.validate import check_memory_bandwidth
-
-    """
-
-    """
 
     def get_memory_usage_estimate(self):
 
@@ -154,18 +143,14 @@ class Network():
         for partition in self.partitions:
             input_node  = partition.input_nodes[0]
             output_node = partition.output_nodes[0]
-            partition_input_size  = partition.graph.nodes[input_node]['hw'].workload_in*partition.batch_size
-            partition_output_size = partition.graph.nodes[output_node]['hw'].workload_out*partition.batch_size*partition.wr_factor
+            partition_input_size  = partition.graph.nodes[input_node]['hw'].workload_in()*partition.batch_size
+            partition_output_size = partition.graph.nodes[output_node]['hw'].workload_out()*partition.batch_size*partition.wr_factor
             if partition_input_size > max_input_size:
                 max_input_size = partition_input_size
             if partition_output_size > max_output_size:
                 max_output_size = partition_output_size
 
         return math.ceil(((max_input_size + max_output_size)*self.data_width)/8)
-
-    """
-
-    """
 
     def get_latency(self, partition_list=None):
         if partition_list == None:
@@ -194,24 +179,23 @@ class Network():
         # save graph
         g.write_png(output_path)
 
-
-
     def get_layer_hardware(self, layer_proto):
         # get layer type
         layer_type = fpgaconvnet_optimiser.tools.layer_enum.from_proto_layer_type(layer_proto.type)
-        # get dimensions
-        dims = [
-                layer_proto.parameters.channels_in,
-                layer_proto.parameters.rows_in,
-                layer_proto.parameters.cols_in
-        ]
         # Convolution layer
         if layer_type == LAYER_TYPE.Convolution:
-            return ConvolutionLayer(dims,
-                layer_proto.parameters.filters,
-                k_size      =layer_proto.parameters.kernel_size,
-                stride      =layer_proto.parameters.stride,
-                pad         =layer_proto.parameters.pad,
+            return ConvolutionLayer(
+                layer_proto.parameters.channels_out,
+                layer_proto.parameters.rows_in,
+                layer_proto.parameters.cols_in,
+                layer_proto.parameters.channels_in,
+                kernel_size =list(layer_proto.parameters.kernel_size),
+                stride      =list(layer_proto.parameters.stride),
+                pad         = [
+                    layer_proto.parameters.pad_top,
+                    layer_proto.parameters.pad_right,
+                    layer_proto.parameters.pad_bottom,
+                    layer_proto.parameters.pad_left],
                 groups      =layer_proto.parameters.groups,
                 fine        =layer_proto.parameters.fine,
                 coarse_in   =layer_proto.parameters.coarse_in,
@@ -220,35 +204,49 @@ class Network():
 
         # Inner Product Layer
         if layer_type == LAYER_TYPE.InnerProduct:
-            return InnerProductLayer(dims,
-                layer_proto.parameters.filters,
+            return InnerProductLayer(
+                layer_proto.parameters.channels_out,
+                layer_proto.parameters.rows_in,
+                layer_proto.parameters.cols_in,
+                layer_proto.parameters.channels_in,
                 coarse_in   =layer_proto.parameters.coarse_in,
                 coarse_out  =layer_proto.parameters.coarse_out
             )
 
         # Pooling layer
         if layer_type == LAYER_TYPE.Pooling:
-            return PoolingLayer(dims,
-                pool_type   = 'max', # TODO: change so that it does AVG also
-                k_size      =layer_proto.parameters.kernel_size,
-                stride      =layer_proto.parameters.stride,
-                pad         =layer_proto.parameters.pad,
-                coarse_in   =layer_proto.parameters.coarse_in,
-                coarse_out  =layer_proto.parameters.coarse_out
+            return PoolingLayer(
+                layer_proto.parameters.rows_in,
+                layer_proto.parameters.cols_in,
+                layer_proto.parameters.channels_in,
+                pool_type   = 'max',
+                kernel_size =list(layer_proto.parameters.kernel_size),
+                stride      =list(layer_proto.parameters.stride),
+                pad         = [
+                    layer_proto.parameters.pad_top,
+                    layer_proto.parameters.pad_right,
+                    layer_proto.parameters.pad_bottom,
+                    layer_proto.parameters.pad_left],
+                coarse      =layer_proto.parameters.coarse
             )
 
         # ReLU Layer
         if layer_type == LAYER_TYPE.ReLU:
             # create relu layer hardware
-            return ReLULayer(dims,
-                coarse_in   =layer_proto.parameters.coarse_in,
-                coarse_out  =layer_proto.parameters.coarse_out
+            return ReLULayer(
+                layer_proto.parameters.rows_in,
+                layer_proto.parameters.cols_in,
+                layer_proto.parameters.channels_in,
+                coarse      =layer_proto.parameters.coarse
             )
 
         # Squeeze Layer
         if layer_type == LAYER_TYPE.Squeeze:
             # create relu layer hardware
-            return SqueezeLayer(dims,
+            return SqueezeLayer(
+                layer_proto.parameters.rows_in,
+                layer_proto.parameters.cols_in,
+                layer_proto.parameters.channels_in,
                 coarse_in   =layer_proto.parameters.coarse_in,
                 coarse_out  =layer_proto.parameters.coarse_out
             )

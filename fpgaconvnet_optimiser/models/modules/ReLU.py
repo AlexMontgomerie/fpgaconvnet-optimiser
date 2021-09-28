@@ -5,7 +5,6 @@
 import numpy as np
 import math
 import os
-import sys
 from dataclasses import dataclass, field
 
 from fpgaconvnet_optimiser.models.modules import Module

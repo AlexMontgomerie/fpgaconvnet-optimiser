@@ -22,7 +22,7 @@ def create_report(self, output_path):
             "num_partitions" : len(self.partitions),
             "max_resource_usage" : {
                 "BRAM" : max([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ]),
-                "DSP" : max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ])   
+                "DSP" : max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ])
             }
         }
     }
@@ -56,8 +56,8 @@ def create_report(self, output_path):
             resource_usage = hw.resource()
             report["partitions"][i]["layers"][node] = {
                 "type" : str(self.partitions[i].graph.nodes[node]['type']),
-                "interval" : hw.get_latency(), #TODO
-                "latency" : hw.get_latency(), 
+                "interval" : hw.latency(), #TODO
+                "latency" : hw.latency(),
                 "resource_usage" : {
                     "BRAM" : resource_usage["BRAM"],
                     "DSP" : resource_usage["DSP"]

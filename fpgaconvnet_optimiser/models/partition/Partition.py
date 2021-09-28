@@ -137,9 +137,9 @@ class Partition():
         self.remove_weights_reloading_transform()
 
         for node in self.graph.nodes():
-            self.graph.nodes[node]["hw"].update_coarse_in(1)
-            self.graph.nodes[node]["hw"].update_coarse_out(1)
-            self.graph.nodes[node]["hw"].update_coarse_group(1)
+            self.graph.nodes[node]["hw"].coarse_in = 1
+            self.graph.nodes[node]["hw"].coarse_out = 1
+            self.graph.nodes[node]["hw"].coarse_group = 1
 
             if self.graph.nodes[node]["type"] == LAYER_TYPE.Convolution:
                 self.graph.nodes[node]["hw"].fine = 1

@@ -1,22 +1,31 @@
 """
 .. figure:: ../../../figures/batch_norm_diagram.png
 """
-from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
+import os
+from dataclasses import dataclass, field
 
+from fpgaconvnet_optimiser.models.modules import Module
+
+@dataclass
 class BatchNorm(Module):
-    def __init__(
-            self,
-            dim,
-            data_width=16
-        ):
-        # init module
-        Module.__init__(self,dim,data_width)
-    
-    
-    def load_coef(self,rsc_coef_path):
+
+    def __post_init__(self):
         pass
+        # # load the resource model coefficients
+        # self.rsc_coef["LUT"] = np.load(
+        #         os.path.join(os.path.dirname(__file__),
+        #         "../../coefficients/relu_lut.npy"))
+        # self.rsc_coef["FF"] = np.load(
+        #         os.path.join(os.path.dirname(__file__),
+        #         "../../coefficients/relu_ff.npy"))
+        # self.rsc_coef["BRAM"] = np.load(
+        #         os.path.join(os.path.dirname(__file__),
+        #         "../../coefficients/relu_bram.npy"))
+        # self.rsc_coef["DSP"] = np.load(
+        #         os.path.join(os.path.dirname(__file__),
+        #         "../../coefficients/relu_dsp.npy"))
 
     def rsc(self):
         return {
@@ -25,10 +34,6 @@ class BatchNorm(Module):
           "DSP"  : 1,
           "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
         }
-
-    '''
-    FUNCTIONAL MODEL
-    '''
 
     def functional_model(self, data, scale, shift):
         # check input dimensionality

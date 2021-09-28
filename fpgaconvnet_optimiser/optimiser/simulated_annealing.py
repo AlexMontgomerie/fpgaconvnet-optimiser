@@ -42,21 +42,16 @@ class SimulatedAnnealing(Optimiser):
         self.checkpoint_path = checkpoint_path
 
     def optimiser_status(self, return_char='\r'):
-        # objective
-        objectives = ['latency','throughput']
-        objective  = objectives[self.objective]
         # cost
         cost = self.get_cost()
-        # Resources
+        # resources
         resources = [ partition.get_resource_usage() for partition in self.partitions ]
         BRAM = max([ resource['BRAM'] for resource in resources ])
         DSP  = max([ resource['DSP']  for resource in resources ])
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
-        # sys.stdout.write("\033[K")
-        # print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-        #     temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
-        print(f"{self.T:.5e}\t{abs(self.get_cost()):.5e}\t  {int(BRAM):4d} | {int(DSP):4d} | {int(LUT):6d} | {int(FF):6d}",end=return_char)
+        # print the current status of the optimiser
+        print(f"{self.T:.5e}\t{abs(self.get_cost()):.5e}\t\t  {int(BRAM):4d} | {int(DSP):4d} | {int(LUT):6d} | {int(FF):6d}",end=return_char)
 
     def run_optimiser(self, log=True):
 
@@ -104,7 +99,8 @@ class SimulatedAnnealing(Optimiser):
             print("ERROR: Exceeds resource usage")
             return
 
-        objectives = ['latency','throughput']
+        # print the header for the optimiser status
+        objectives = ['latency (s)','throughput (fps)']
         objective  = objectives[self.objective]
         print(f"Temperature\t{objective}\t  BRAM | DSP  | LUT    | FF    ")
 

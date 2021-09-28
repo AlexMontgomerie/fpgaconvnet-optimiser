@@ -31,10 +31,10 @@ class PoolingLayer(Layer):
     def format_pad(self, pad):
         if isinstance(pad, int):
             return [
-                    pad - (self.rows_in - self.kernel_size[0] + 2*pad) % self.stride[0],
+                    pad - (self.rows_in() - self.kernel_size[0] + 2*pad) % self.stride[0],
                     pad,
                     pad,
-                    pad - (self.cols_in - self.kernel_size[1] + 2*pad) % self.stride[1],
+                    pad - (self.cols_in() - self.kernel_size[1] + 2*pad) % self.stride[1],
                 ]
         elif isinstance(pad, list):
             assert len(pad) == 4, "Must specify four pad dimensions"
@@ -77,9 +77,9 @@ class PoolingLayer(Layer):
         self._pad_left = self._pad[1]
 
         # init modules
-        self.modules["sliding_window"] = SlidingWindow(self.rows_in, self.cols_in, int(self.channels_in/self.coarse),
+        self.modules["sliding_window"] = SlidingWindow(self.rows_in(), self.cols_in(), int(self.channels_in()/self.coarse),
                 self.kernel_size, self.stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left)
-        self.modules["pool"] = Pool(self.rows_out, self.cols_out, int(self.channels_out/self.coarse), kernel_size)
+        self.modules["pool"] = Pool(self.rows_out(), self.cols_out(), int(self.channels_out()/self.coarse), kernel_size)
 
         self.update()
 
@@ -179,29 +179,31 @@ class PoolingLayer(Layer):
         self._fine = self.val
         self.update()
 
-    ## LAYER INFO ##
+    def rows_out(self) -> int:
+        return self.modules["sliding_window"].rows_out()
+
+    def cols_out(self) -> int:
+        return self.modules["sliding_window"].cols_out()
+
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)
-        parameters.coarse       = self.coarse
-        parameters.kernel_size_x = self.kernel_size[0]
-        parameters.kernel_size_y = self.kernel_size[1]
-        parameters.stride_x = self.stride[0]
-        parameters.stride_y = self.stride[1]
+        parameters.coarse = self.coarse
+        parameters.kernel_size.extend([self.kernel_size[0], self.kernel_size[1]])
+        parameters.stride.extend([self.stride[0], self.stride[1]])
         parameters.pad_top      = self.pad_top
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
 
-    ## UPDATE MODULES ##
     def update(self):
         # sliding window
-        self.modules['sliding_window'].rows     = self.rows_in
-        self.modules['sliding_window'].cols     = self.cols_in
-        self.modules['sliding_window'].channels = int(self.channels_in/self.coarse)
+        self.modules['sliding_window'].rows     = self.rows_in()
+        self.modules['sliding_window'].cols     = self.cols_in()
+        self.modules['sliding_window'].channels = int(self.channels_in()/self.coarse)
         # pool
-        self.modules['pool'].rows     = self.rows_out
-        self.modules['pool'].cols     = self.cols_out
-        self.modules['pool'].channels = int(self.channels_in/self.coarse)
+        self.modules['pool'].rows     = self.rows_out()
+        self.modules['pool'].cols     = self.cols_out()
+        self.modules['pool'].channels = int(self.channels_in()/self.coarse)
 
     def get_fine_feasible(self):
         return [1]
@@ -234,19 +236,19 @@ class PoolingLayer(Layer):
             cluster.add_edge(pydot.Edge( "_".join([name,"sw",str(i)]) , "_".join([name,"pool",str(i)]) ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"sw",str(i)]) for i in range(self.streams_in) ]
-        nodes_out = [ "_".join([name,"pool",str(i)]) for i in range(self.streams_out) ]
+        nodes_in  = [ "_".join([name,"sw",str(i)]) for i in range(self.streams_in()) ]
+        nodes_out = [ "_".join([name,"pool",str(i)]) for i in range(self.streams_out()) ]
 
         return cluster, nodes_in, nodes_out
 
     def functional_model(self,data,batch_size=1):
 
-        assert data.shape[0] == self.rows_in    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols_in    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels_in, "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         # instantiate pooling layer
-        pooling_layer = torch.nn.MaxPool2d(self.kernel_size, stride=self.stride, padding=self.pad)
+        pooling_layer = torch.nn.MaxPool2d(self.kernel_size, stride=self.stride, padding=self.pad[0])
 
         # return output featuremap
         data = np.moveaxis(data, -1, 0)

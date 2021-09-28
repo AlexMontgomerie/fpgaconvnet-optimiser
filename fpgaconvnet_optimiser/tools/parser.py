@@ -16,8 +16,8 @@ from fpgaconvnet_optimiser.models.layers import ConvolutionLayer
 from fpgaconvnet_optimiser.models.layers import InnerProductLayer
 from fpgaconvnet_optimiser.models.layers import PoolingLayer
 from fpgaconvnet_optimiser.models.layers import ReLULayer
-from fpgaconvnet_optimiser.models.layers import LRNLayer
-from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
+# from fpgaconvnet_optimiser.models.layers import LRNLayer
+# from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 

@@ -13,7 +13,7 @@ class TestLayerTemplate():
         # check output dimensions
         self.assertTrue(layer.rows_out() > 0)
         self.assertTrue(layer.cols_out() > 0)
-        self.assertTrue(layer.channels_out(0) > 0)
+        self.assertTrue(layer.channels_out() > 0)
 
     def run_test_rates(self, layer):
         # check rate in
@@ -43,9 +43,9 @@ class TestLayerTemplate():
 
     def run_test_latency(self,layer):
         # check latency in
-        self.assertTrue(layer.get_latency_in() >= 0.0)
-        # check size out
-        self.assertTrue(layer.get_latency_in() >= 0.0)
+        self.assertTrue(layer.latency_in() >= 0.0)
+        # check latency out
+        self.assertTrue(layer.latency_out() >= 0.0)
 
     def run_test_pipeline_depth(self,layer):
         # check pipeline depth
@@ -64,6 +64,17 @@ class TestLayerTemplate():
         self.assertTrue(rsc["FF"] >= 0)
         self.assertTrue(rsc["DSP"] >= 0)
         self.assertTrue(rsc["BRAM"] >= 0)
+
+    def run_test_updating_properties(self, layer):
+        # updating coarse in
+        coarse_in = max(layer.get_coarse_in_feasible())
+        layer.coarse_in = coarse_in
+        self.assertEqual(layer.coarse_in, coarse_in)
+        # updating coarse out
+        coarse_out = max(layer.get_coarse_out_feasible())
+        layer.coarse_out = coarse_out
+        self.assertEqual(layer.coarse_out, coarse_out)
+
 
 @ddt.ddt
 class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
@@ -95,7 +106,7 @@ class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
             config["cols"],
             config["channels"],
             coarse=config["coarse"],
-            k_size=config["kernel_size"],
+            kernel_size=config["kernel_size"],
             stride=config["stride"],
             pad=config["pad"],
         )
@@ -109,6 +120,7 @@ class TestPoolingLayer(TestLayerTemplate,unittest.TestCase):
         self.run_test_latency(layer)
         self.run_test_pipeline_depth(layer)
         self.run_test_wait_depth(layer)
+        self.run_test_updating_properties(layer)
         self.run_test_resources(layer)
 
 @ddt.ddt
@@ -148,11 +160,11 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
             config["channels"],
             coarse_in=config["coarse_in"],
             coarse_out=config["coarse_out"],
-            k_size=config["kernel_size"],
+            kernel_size=config["kernel_size"],
             stride=config["stride"],
             groups=config["groups"],
             pad=config["pad"],
-            fine=config["fine"],
+            fine=config["fine"]
         )
 
         # run tests
@@ -164,6 +176,7 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
         self.run_test_latency(layer)
         self.run_test_pipeline_depth(layer)
         self.run_test_wait_depth(layer)
+        self.run_test_updating_properties(layer)
         self.run_test_resources(layer)
 
 @ddt.ddt
@@ -193,7 +206,7 @@ class TestReLULayer(TestLayerTemplate,unittest.TestCase):
             config["rows"],
             config["cols"],
             config["channels"],
-            coarse=config["coarse"],
+            coarse = config["coarse"]
         )
 
         # run tests
@@ -205,6 +218,7 @@ class TestReLULayer(TestLayerTemplate,unittest.TestCase):
         self.run_test_latency(layer)
         self.run_test_pipeline_depth(layer)
         self.run_test_wait_depth(layer)
+        self.run_test_updating_properties(layer)
         self.run_test_resources(layer)
 
 @ddt.ddt
@@ -247,6 +261,7 @@ class TestInnerProductLayer(TestLayerTemplate,unittest.TestCase):
         self.run_test_latency(layer)
         self.run_test_pipeline_depth(layer)
         self.run_test_wait_depth(layer)
+        self.run_test_updating_properties(layer)
         self.run_test_resources(layer)
 
 @ddt.ddt
@@ -280,6 +295,7 @@ class TestSqueezeLayer(TestLayerTemplate,unittest.TestCase):
         self.run_test_latency(layer)
         self.run_test_pipeline_depth(layer)
         self.run_test_wait_depth(layer)
+        self.run_test_updating_properties(layer)
         self.run_test_resources(layer)
 
 @ddt.ddt

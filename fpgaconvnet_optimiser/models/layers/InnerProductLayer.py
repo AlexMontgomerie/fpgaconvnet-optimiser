@@ -1,14 +1,18 @@
+import numpy as np
+import math
+import pydot
+import torch
+
+from fpgaconvnet_optimiser.models.layers.utils import get_factors
+
+from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
+
 from fpgaconvnet_optimiser.models.modules import SlidingWindow
 from fpgaconvnet_optimiser.models.modules import Conv
 from fpgaconvnet_optimiser.models.modules import Fork
 from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
 from fpgaconvnet_optimiser.models.layers import Layer
-
-import numpy as np
-import math
-import pydot
-import torch
 
 class InnerProductLayer(Layer):
     def __init__(
@@ -20,8 +24,8 @@ class InnerProductLayer(Layer):
             coarse_in: int = 1,
             coarse_out: int = 1,
             data_width: int = 16,
-            weight_width: int = 8,
-            acc_width: int = 30
+            weight_width: int = 16,
+            acc_width: int = 16
         ):
 
         # initialise parent class
@@ -40,25 +44,13 @@ class InnerProductLayer(Layer):
         self._filters = filters
 
         # init modules
-        self.modules["fork"] = Fork(self.rows_in, self.cols_in, self.channels_in, 1, self.coarse_out)
-        self.modules["conv"] = Conv( 1,1,self.channels_in*self.rows_in*self.cols_in, self.channels_out, 1, 1, 1)
-        self.modules["accum"] = Accum(1,1,self.channels_in*self.rows_in*self.cols_in, self.channels_out, 1)
-        self.modules["glue"] = Glue( 1,1,self.channels_in*self.rows_in*self.cols_in,
-                self.channels_out, self.coarse_in, self.coarse_out)
+        self.modules["fork"] = Fork(self.rows_in(), self.cols_in(), self.channels_in(), 1, self.coarse_out)
+        self.modules["conv"] = Conv(1,1,self.channels_in()*self.rows_in()*self.cols_in(), self.filters, 1, 1, 1)
+        self.modules["accum"] = Accum(1,1,self.channels_in()*self.rows_in()*self.cols_in(), self.filters, 1)
+        self.modules["glue"] = Glue(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
+                self.filters, self.coarse_in, self.coarse_out)
 
         self.update()
-
-    @property
-    def rows_out(self) -> int:
-        return 1
-
-    @property
-    def cols_out(self) -> int:
-        return 1
-
-    @property
-    def channels_out(self) -> int:
-        return self.filters
 
     @property
     def filters(self) -> int:
@@ -69,25 +61,35 @@ class InnerProductLayer(Layer):
         self._filters = val
         self.update()
 
+    def rows_out(self) -> int:
+        return 1
+
+    def cols_out(self) -> int:
+        return 1
+
+    def channels_out(self) -> int:
+        return self.filters
+
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)
+        parameters.filters = self.filters
 
     def update(self): # TODO: update all parameters
         # fork
-        self.modules['fork'].rows     = self.rows_in
-        self.modules['fork'].cols     = self.cols_in
-        self.modules['fork'].channels = int(self.channels_in/self.coarse_in)
+        self.modules['fork'].rows     = self.rows_in()
+        self.modules['fork'].cols     = self.cols_in()
+        self.modules['fork'].channels = int(self.channels_in()/self.coarse_in)
         self.modules['fork'].coarse   = self.coarse_out
         # conv
         self.modules['conv'].rows     = 1
         self.modules['conv'].cols     = 1
-        self.modules['conv'].channels = int(self.rows_in*self.cols_in*self.channels_in/self.coarse_in)
+        self.modules['conv'].channels = int(self.rows_in()*self.cols_in()*self.channels_in()/self.coarse_in)
         self.modules['conv'].filters  = int(self.filters/(self.coarse_out))
         self.modules['conv'].fine     = 1
         # accum
         self.modules['accum'].rows     = 1
         self.modules['accum'].cols     = 1
-        self.modules['accum'].channels = int(self.rows_in*self.cols_in*self.channels_in/self.coarse_in)
+        self.modules['accum'].channels = int(self.rows_in()*self.cols_in()*self.channels_in()/self.coarse_in)
         self.modules['accum'].filters  = int(self.filters/(self.coarse_out))
         # glue
         self.modules['glue'].rows = 1
@@ -97,7 +99,7 @@ class InnerProductLayer(Layer):
         self.modules['glue'].coarse_out = self.coarse_out
 
     def get_weights_reloading_feasible(self):
-        return self.get_factors(int(self.filters/self.coarse_out))
+        return get_factors(int(self.filters/self.coarse_out))
 
     def get_parameters_size(self):
         weights_size = self.channels * self.filters
@@ -112,15 +114,15 @@ class InnerProductLayer(Layer):
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
         accum_rsc   = self.modules['accum'].rsc()
-        if int(self.channels_in/self.coarse_in) == 1:
+        if int(self.channels_in()/self.coarse_in) == 1:
             accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         glue_rsc    = self.modules['glue'].rsc()
         if self.coarse_in == 1:
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # TODO: add to modules instead
-        n_filters = float(self.filters*self.channels_in*self.rows_in*self.cols_in)/float(self.coarse_in*self.coarse_out)
-        weights_bram_usage = int(math.ceil(self.weight_width*n_filters/18000))*self.coarse_in*self.coarse_out
+        weights_memory_depth = float(self.filters*self.channels_in()*self.rows_in()*self.cols_in())/float(self.coarse_in*self.coarse_out)
+        weights_bram_usage = bram_memory_resource_model(int(weights_memory_depth), self.weight_width)*self.coarse_in*self.coarse_out
 
         # Total
         return {
@@ -169,16 +171,16 @@ class InnerProductLayer(Layer):
 
     def functional_model(self,data,weights,bias,batch_size=1):
 
-        assert data.shape[0] == self.rows_in    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols_in    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels_in, "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == self.rows_in*self.cols_in*self.channels_in, "ERROR (weights): invalid channel dimension"
+        assert weights.shape[1] == self.rows_in()*self.cols_in()*self.channels_in(), "ERROR (weights): invalid channel dimension"
 
 
         # instantiate inner product layer
-        inner_product_layer = torch.nn.Linear(self.channels_in*self.rows_in*self.cols_in, self.filters, bias=False)
+        inner_product_layer = torch.nn.Linear(self.channels_in()*self.rows_in()*self.cols_in(), self.filters, bias=False)
 
         # update weights
         inner_product_layer.weight = torch.nn.Parameter(torch.from_numpy(weights))

@@ -1,62 +1,95 @@
-from fpgaconvnet_optimiser.models.modules import BatchNorm
-from fpgaconvnet_optimiser.models.layers import Layer
-
 import numpy as np
 import math
 import tempfile
 import pydot
 
+from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
+
+from fpgaconvnet_optimiser.models.modules import BatchNorm
+from fpgaconvnet_optimiser.models.layers import Layer
+
 class BatchNormLayer(Layer):
     def __init__(
             self,
-            dim,
-            coarse_in   =1,
-            coarse_out  =1,
-            data_width  =16,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse: int = 1,
+            data_width: int = 16
         ):
-        Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
+
+        super().__init__(self,rows, cols, channels, coarse,
+                coarse, data_width=data_width)
+
+        # save parameters
+        self._coarse = coarse
 
         # init variables
         self.scale_layer = None
 
         # modules
-        self.modules = {
-            "batch_norm" : BatchNorm(dim, data_width)
-        }
+        self.modules["batch_norm"] = BatchNorm(self.rows, self.cols, self.channels)
+
+        # update modules
         self.update()
 
-    ## LAYER INFO ##
-    def layer_info(self,parameters,batch_size=1):
-        parameters.batch_size   = batch_size
-        parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
-        parameters.coarse_in    = self.coarse_in
-        parameters.coarse_out   = self.coarse_out
+    @property
+    def coarse(self) -> int:
+        return self._coarse
 
-    ## UPDATE MODULES ##
+    @property
+    def coarse_in(self) -> int:
+        return self._coarse
+
+    @property
+    def coarse_out(self) -> int:
+        return self._coarse
+
+    @coarse.setter
+    def coarse(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self.coarse_out = val
+        self.update()
+
+    @coarse_in.setter
+    def coarse_in(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self._coarse_out = val
+        self.update()
+
+    @coarse_out.setter
+    def coarse_out(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self._coarse_out = val
+        self.update()
+
+    def layer_info(self,parameters,batch_size=1):
+        Layer.layer_info(self, parameters, batch_size)
+        parameters.coarse = self.coarse
+
     def update(self):
         # batch norm
         self.modules['batch_norm'].rows     = self.rows_in()
         self.modules['batch_norm'].cols     = self.cols_in()
-        self.modules['batch_norm'].channels = int(self.channels/self.coarse_in)
+        self.modules['batch_norm'].channels = self.channels_in()//self.coarse
 
     def resource(self):
 
+        # get batch norm layer usage
         bn_rsc      = self.modules['batch_norm'].rsc()
-        n_filters = float(self.channels) / float(self.coarse_in)
-        weights_bram_usage = int(math.ceil((2*self.data_width*n_filters)/18000))*self.coarse_in
+
+        # get bram usage of scale parameter
+        weights_bram_usage = bram_memory_resource_models(self.channels//self.coarse,self.data_width)*self.coarse
 
         # Total
         return {
-            "LUT"  :  bn_rsc['LUT']*self.coarse_in,
-            "FF"   :  bn_rsc['FF']*self.coarse_in,
-            "BRAM" :  bn_rsc['BRAM']*self.coarse_in+weights_bram_usage,
-            "DSP" :   bn_rsc['DSP']*self.coarse_in
+            "LUT"  :  bn_rsc['LUT']*self.coarse,
+            "FF"   :  bn_rsc['FF']*self.coarse,
+            "BRAM" :  bn_rsc['BRAM']*self.coarse + weights_bram_usage,
+            "DSP" :   bn_rsc['DSP']*self.coarse
         }
 
     def functional_model(self,data,gamma,beta,batch_size=1):

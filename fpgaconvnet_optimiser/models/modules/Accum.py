@@ -51,7 +51,7 @@ class Accum(Module):
         ])
 
     def channels_in(self):
-        return int((self.channels*self.filters)/(self.groups))
+        return (self.channels*self.filters)//self.groups
 
     def channels_out(self):
         return self.filters
@@ -60,7 +60,7 @@ class Accum(Module):
         return (self.groups)/float(self.channels)
 
     def pipeline_depth(self):
-        return (self.channels*self.filters)/(self.groups*self.groups)
+        return (self.channels*self.filters)//(self.groups*self.groups)
 
     def module_info(self):
         # get the base module fields
@@ -68,8 +68,8 @@ class Accum(Module):
         # add module-specific info fields
         info['groups'] = self.groups
         info['filters'] = self.filters
-        info['channels_per_group'] = int(self.channels_in()/self.groups)
-        info['filters_per_group'] = int(self.filters/self.groups)
+        info['channels_per_group'] = self.channels_in()//self.groups
+        info['filters_per_group'] = self.filters//self.groups
         # return the info
         return info
 
@@ -78,7 +78,7 @@ class Accum(Module):
         if coef == None:
             coef = self.rsc_coef
         # get the accumulation buffer BRAM estimate
-        acc_buffer_bram = bram_memory_resource_model((self.filters/self.groups), self.data_width)
+        acc_buffer_bram = bram_memory_resource_model(int(self.filters/self.groups), self.data_width)
         # get the linear model estimation
         rsc = Module.rsc(self, coef)
         # add the bram estimation
@@ -88,13 +88,13 @@ class Accum(Module):
 
     def functional_model(self,data):
         # check input dimensionality
-        assert data.shape[0] == self.rows                       , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols                       , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels                   , "ERROR: invalid channel dimension"
-        assert data.shape[3] == int(self.filters/self.groups)   , "ERROR: invalid filter  dimension"
+        assert data.shape[0] == self.rows                   , "ERROR: invalid row dimension"
+        assert data.shape[1] == self.cols                   , "ERROR: invalid column dimension"
+        assert data.shape[2] == self.channels               , "ERROR: invalid channel dimension"
+        assert data.shape[3] == self.filters//self.groups   , "ERROR: invalid filter  dimension"
 
-        channels_per_group = int(self.channels/self.groups)
-        filters_per_group  = int(self.filters/self.groups)
+        channels_per_group = self.channels//self.groups
+        filters_per_group  = self.filters//self.groups
 
         out = np.zeros((
             self.rows,

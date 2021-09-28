@@ -34,13 +34,11 @@ class TestModuleTemplate():
         self.assertLessEqual(module.rate_out(), 1.0)
 
     def run_test_resources(self, module):
-
         rsc = module.rsc()
         self.assertGreaterEqual(rsc["LUT"], 0.0)
         self.assertGreaterEqual(rsc["FF"], 0.0)
         self.assertGreaterEqual(rsc["DSP"], 0.0)
         self.assertGreaterEqual(rsc["BRAM"], 0.0)
-
 
 @ddt.ddt
 class TestForkModule(TestModuleTemplate,unittest.TestCase):
@@ -80,7 +78,6 @@ class TestAccumModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_dimensions(module)
         self.run_test_rates(module)
         self.run_test_resources(module)
-
         # additional checks
         self.assertGreater(module.filters,0)
 

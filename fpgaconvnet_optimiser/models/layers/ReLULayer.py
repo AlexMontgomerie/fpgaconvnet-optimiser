@@ -25,7 +25,7 @@ class ReLULayer(Layer):
         self._coarse = coarse
 
         # init modules
-        self.modules["relu"] = ReLU(self.rows_in, self.cols_in, self.channels_in/self.streams_in)
+        self.modules["relu"] = ReLU(self.rows_in(), self.cols_in(), self.channels_in()/self.coarse)
         self.update()
 
     @property
@@ -61,16 +61,14 @@ class ReLULayer(Layer):
         self._coarse_out = val
         self.update()
 
-    ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)
         parameters.coarse = self.coarse
 
-    ## UPDATE MODULES ##
     def update(self):
-        self.modules['relu'].rows     = self.rows_in
-        self.modules['relu'].cols     = self.cols_in
-        self.modules['relu'].channels = int(self.channels_in/self.coarse)
+        self.modules['relu'].rows     = self.rows_in()
+        self.modules['relu'].cols     = self.cols_in()
+        self.modules['relu'].channels = int(self.channels_in()/self.coarse)
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
@@ -79,16 +77,16 @@ class ReLULayer(Layer):
             cluster.add_node(pydot.Node( "_".join([name,"relu",str(i)]), label="relu" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_in) ]
-        nodes_out = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_out) ]
+        nodes_in  = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_in()) ]
+        nodes_out = [ "_".join([name,"relu",str(i)]) for i in range(self.streams_out()) ]
 
         return cluster, nodes_in, nodes_out
 
     def functional_model(self,data,batch_size=1):
 
-        assert data.shape[0] == self.rows_in    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols_in    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels_in, "ERROR: invalid channel dimension"
+        assert data.shape[0] == self.rows_in()    , "ERROR: invalid row dimension"
+        assert data.shape[1] == self.cols_in()    , "ERROR: invalid column dimension"
+        assert data.shape[2] == self.channels_in(), "ERROR: invalid channel dimension"
 
         # instantiate relu layer
         relu_layer = torch.nn.ReLU()

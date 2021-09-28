@@ -21,16 +21,16 @@ class SqueezeLayer(Layer):
                 data_width=data_width)
 
         # initialise modules
-        self.modules["squeeze"] = Squeeze(self.rows_in, self.cols_in, self.channels_in, self.coarse_in,
+        self.modules["squeeze"] = Squeeze(self.rows, self.cols, self.channels, self.coarse_in,
                                           self.coarse_out)
 
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)
 
     def update(self):
-        self.modules["squeeze"].rows = self.rows_in
-        self.modules["squeeze"].cols = self.cols_in
-        self.modules["squeeze"].channels = self.channels_in
+        self.modules["squeeze"].rows = self.rows
+        self.modules["squeeze"].cols = self.cols
+        self.modules["squeeze"].channels = self.channels
         self.modules["squeeze"].coarse_in = self.coarse_in
         self.modules["squeeze"].coarse_out = self.coarse_out
 

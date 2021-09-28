@@ -161,8 +161,8 @@ def get_scheduler(self):
         output_dependence   = self.get_partition_output_dependence(partition_index)[0]
         ## dimensions
         batch_size  = self.partitions[partition_index].batch_size
-        input_size  = self.partitions[partition_index].graph.nodes[input_node]['hw'].workload_in
-        output_size = self.partitions[partition_index].graph.nodes[output_node]['hw'].workload_out
+        input_size  = self.partitions[partition_index].graph.nodes[input_node]['hw'].workload_in()
+        output_size = self.partitions[partition_index].graph.nodes[output_node]['hw'].workload_out()
         ## weights reloading variables
         wr_factor   = self.partitions[partition_index].wr_factor
         if self.partitions[partition_index].wr_layer:

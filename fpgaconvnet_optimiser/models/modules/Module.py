@@ -165,7 +165,7 @@ class Module:
         """
         return 1.0
 
-    def get_latency(self):
+    def latency(self):
         """
         Returns
         -------

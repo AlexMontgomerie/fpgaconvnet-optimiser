@@ -64,8 +64,8 @@ class Pool(Module):
         assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
         assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.k_size[0]  , "ERROR: invalid column dimension"
-        assert data.shape[4] == self.k_size[1]  , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.kernel_size[0]  , "ERROR: invalid kernel size (x) dimension"
+        assert data.shape[4] == self.kernel_size[1]  , "ERROR: invalid kernel size (y) dimension"
 
         out = np.ndarray((
             self.rows,
@@ -77,7 +77,6 @@ class Pool(Module):
                 out[index] = np.max(data[index])
             elif self.pool_type == 'avg':
                 out[index] = np.mean(data[index])
-
 
         return out
 

@@ -66,7 +66,7 @@ def get_bandwidth_in(self,freq):
     interval = self.get_interval()
     # get workload and streams in
     input_node = graphs.get_input_nodes(self.graph)[0]
-    workload = self.graph.nodes[input_node]["hw"].workload_in
+    workload = self.graph.nodes[input_node]["hw"].workload_in()
     streams = self.streams_in
     # calculate rate from interval
     rate = workload / (interval*streams)
@@ -78,7 +78,7 @@ def get_bandwidth_out(self,freq):
     interval = self.get_interval()
     # get workload and streams out
     output_node = graphs.get_output_nodes(self.graph)[0]
-    workload = self.graph.nodes[output_node]["hw"].workload_in
+    workload = self.graph.nodes[output_node]["hw"].workload_out()
     streams = self.streams_out
     # calculate rate from interval
     rate = workload / (interval*streams)
