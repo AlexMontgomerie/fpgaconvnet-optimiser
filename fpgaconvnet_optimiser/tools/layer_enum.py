@@ -57,4 +57,24 @@ def from_proto_layer_type(layer_type):
     }
     return layer_types.get(layer_type, lambda: "Invalid Layer Type")
 
-
+def from_onnx_op_type(op_type):
+    layer_types = { 
+        "Conv"      : LAYER_TYPE.Convolution,
+        "Gemm"      : LAYER_TYPE.InnerProduct,
+        "Relu"      : LAYER_TYPE.ReLU,
+        "MaxPool"   : LAYER_TYPE.Pooling,
+        "LRN"       : LAYER_TYPE.LRN,
+        "Reshape"   : LAYER_TYPE.Transpose,
+        "Softmax"   : LAYER_TYPE.Softmax,
+        "Dropout"   : LAYER_TYPE.Dropout,
+        "Flatten"   : LAYER_TYPE.Flatten,
+        "BatchNormalization" : LAYER_TYPE.BatchNorm,
+        "GlobalAveragePool"  : LAYER_TYPE.Pooling,
+        "AveragePool"        : LAYER_TYPE.Pooling,
+        "Add"       : LAYER_TYPE.Eltwise,
+        "Cast"      : LAYER_TYPE.Cast,
+        "Clip"      : LAYER_TYPE.Clip,
+        "Shape"     : LAYER_TYPE.Shape,
+        "Squeeze"   : LAYER_TYPE.Squeeze,
+    }
+    return layer_types.get(op_type, lambda: TypeError)

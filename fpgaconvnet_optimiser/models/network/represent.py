@@ -22,7 +22,7 @@ def get_model_output_node(self, partition_index):
         output_node = graphs.get_prev_nodes(self.partitions[partition_index].graph,output_node)[0]
     return onnx_helper.get_model_node(self.model, output_node).output[0]
 
-def save_all_partitions(self,filepath): # TODO: update
+def save_all_partitions(self,filepath,input_output_from_model=True):
     # create protocol buffer
     partitions = fpgaconvnet_pb2.partitions()
     # iterate over partions
@@ -32,8 +32,12 @@ def save_all_partitions(self,filepath): # TODO: update
         # add partition info
         partition.id = i
         partition.ports = 1 # TODO
-        partition.input_node  = self.get_model_input_node(i) #self.partitions[i]['input_nodes'][0]
-        partition.output_node = self.get_model_output_node(i) #self.partitions[i]['output_nodes'][0]
+        if input_output_from_model:
+            partition.input_node  = self.get_model_input_node(i) #self.partitions[i]['input_nodes'][0]
+            partition.output_node = self.get_model_output_node(i) #self.partitions[i]['output_nodes'][0]
+        else:
+            partition.input_node  = self.partitions[i].input_nodes[0]
+            partition.output_node = self.partitions[i].output_nodes[0]
         partition.batch_size  = self.partitions[i].batch_size
         partition.weights_reloading_factor = self.partitions[i].wr_factor
         partition.weights_reloading_layer  = str(self.partitions[i].wr_layer)
@@ -52,7 +56,7 @@ def save_all_partitions(self,filepath): # TODO: update
             else :
                 layer.node_in   = prev_nodes[0]
                 stream_in.name  = "_".join([prev_nodes[0].replace("/","_"), node.replace("/","_")])
-            stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_in
+            stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].streams_in()
             # add stream(s) out
             stream_out = layer.streams_out.add()
             next_nodes = graphs.get_next_nodes(self.partitions[i].graph, node)
@@ -62,7 +66,7 @@ def save_all_partitions(self,filepath): # TODO: update
             else:
                 layer.node_out  = next_nodes[0]
                 stream_out.name = "_".join([node.replace("/","_"), next_nodes[0].replace("/","_")])
-            stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_out
+            stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].streams_out()
             # add parameters
             self.partitions[i].graph.nodes[node]['hw'].layer_info(layer.parameters, batch_size=self.partitions[i].batch_size)
             # add weights key

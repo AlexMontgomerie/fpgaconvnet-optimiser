@@ -3,8 +3,15 @@ import json
 import copy
 import random
 import math
+import logging
+import pickle
+from datetime import datetime
+from google.protobuf import json_format
 
+import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
+import fpgaconvnet_optimiser.tools.graphs as graphs
 from fpgaconvnet_optimiser.models.network.Network import Network
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_proto_layer_type
 
 LATENCY   =0
 THROUGHPUT=1
@@ -12,10 +19,10 @@ POWER     =2
 
 class Optimiser(Network):
     """
-    Base class for all optimisation strategies. This inherits the `Network` class. 
+    Base class for all optimisation strategies. This inherits the `Network` class.
     """
 
-    def __init__(self,name,network_path):
+    def __init__(self,name,network_path,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
         """
         Parameters
         ----------
@@ -29,14 +36,14 @@ class Optimiser(Network):
         ----------
         objective: int
             Objective for the optimiser. One of `LATENCY`, `THROUGHPUT` and `POWER`.
-        constraints: dict 
+        constraints: dict
             dictionary containing constraints for `latency`, `throughput` and `power`.
         transforms: list
             list of transforms that can be applied to the network. Allowed transforms
             are `['coarse','fine','partition','weights_reloading']`
         """
         # Initialise Network
-        Network.__init__(self,name,network_path)
+        Network.__init__(self,name,network_path,data_width=data_width,weight_width=weight_width,acc_width=acc_width,fuse_bn=fuse_bn)
 
         self.objective   = 0
         self.constraints = {
@@ -47,30 +54,48 @@ class Optimiser(Network):
 
         self.transforms = ['coarse','fine','partition','weights_reloading','wordlength']
 
-    def get_cost(self):
+        self.transforms_config = transforms_config
+        if len(fix_starting_point_config) == 0:
+            self.fix_starting_point_config = transforms_config
+        else:
+            self.fix_starting_point_config = fix_starting_point_config
+
+    # import optimiser utilities
+    from fpgaconvnet_optimiser.optimiser.utils import starting_point_distillation
+    from fpgaconvnet_optimiser.optimiser.utils import merge_memory_bound_partitions
+
+    def get_transforms(self):
+        self.transforms = []
+        for transform_type, attr in self.transforms_config.items():
+            if bool(attr["apply_transform"]):
+                self.transforms.append(transform_type)
+
+    def get_cost(self, partition_list=None):
         """
-        calculates the cost function of the optimisation strategy at it's current state. 
+        calculates the cost function of the optimisation strategy at it's current state.
         This cost is based on the objective of the optimiser. There are three objectives
-        that can be chosen: 
-        
+        that can be chosen:
+
         - `LATENCY (0)`
         - `THROUGHPUT (1)`
         - `POWER (2)`
 
-        Returns: 
+        Returns:
         --------
         float
         """
+        if partition_list == None:
+            partition_list = list(range(len(self.partitions)))
         # Latency objective
         if   self.objective == LATENCY:
-            return self.get_latency()
+            return self.get_latency(partition_list)
         # Throughput objective
         elif self.objective == THROUGHPUT:
-            return -self.get_throughput()
+            return -self.get_throughput(partition_list)
         # Power objective
         elif self.objective == POWER:
-            return self.get_power_average()    
-    
+            return self.get_power_average(partition_list)
+
     def check_constraints(self):
         """
         function to check the performance constraints of the network. Checks
@@ -87,7 +112,7 @@ class Optimiser(Network):
     def apply_transform(self, transform, partition_index=None, node=None,iteration=None,cooltimes=None):
         """
         function to apply chosen transform to the network. Partition index
-        and node can be specified. If not, a random partition and node is 
+        and node can be specified. If not, a random partition and node is
         chosen.
 
         Parameters
@@ -108,7 +133,7 @@ class Optimiser(Network):
 
         # choose random node in partition if given
         if node == None:
-            node = random.choice([*self.partitions[partition_index].graph])
+            node = random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph))
 
         # Apply a random transform
         ## Coarse transform (node_info transform)
@@ -154,7 +179,7 @@ class Optimiser(Network):
         # objective
         objectives = [ 'latency', 'throughput','power']
         objective  = objectives[self.objective]
-        # cost 
+        # cost
         cost = self.get_cost()
         # Resources
         resources = [ self.get_resource_usage(i) for i in range(len(self.partitions)) ]
@@ -165,13 +190,24 @@ class Optimiser(Network):
         print("COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
             cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\r')
 
+    def save_design_checkpoint(self, output_path):
+        # get the current state of the optimiser
+        state = {
+            "time" : str(datetime.now()),
+            "self" : self
+        }
+        # pickle the current optimiser state
+        checkpoint = pickle.dumps(self)
+        # save to output path
+        with open(output_path, "wb") as f:
+            f.write(checkpoint)
+
     def get_optimal_batch_size(self):
         """
-        gets an approximation of the optimal (largest) batch size for throughput-based 
+        gets an approximation of the optimal (largest) batch size for throughput-based
         applications. This is dependant on the platform's memory capacity. Updates the
-        `self.batch_size` variable. 
+        `self.batch_size` variable.
         """
- 
         # change the batch size to zero
         self.batch_size = 1
         # update each partitions batch size

@@ -3,6 +3,7 @@ A set of helper functions for the various transforms.
 """
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
+from functools import reduce
 
 def get_all_layers(graph, layer_type):
     """

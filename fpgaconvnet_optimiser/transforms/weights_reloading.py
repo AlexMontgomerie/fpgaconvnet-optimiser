@@ -89,13 +89,13 @@ def remove_weights_reloading_transform(self):
     if self.wr_layer:
         # update number of filters in wr layer
         filters = self.graph.nodes[self.wr_layer]['hw'].filters
-        self.graph.nodes[self.wr_layer]['hw'].filters = int(filters*self.wr_factor)
+        self.graph.nodes[self.wr_layer]['hw'].filters = filters*self.wr_factor
         # iterate until the end to update the rest of the channels
         layers_after = graphs.get_next_nodes_all(self.graph, self.wr_layer)
         for layer in layers_after:
             ## get channels and reduce by wr factor
-            channels = self.graph.nodes[layer]['hw'].channels
-            self.graph.nodes[layer]['hw'].channels = int(channels*self.wr_factor)
+            channels = self.graph.nodes[layer]['hw'].channels_in()
+            self.graph.nodes[layer]['hw'].channels = channels*self.wr_factor
     # set wr_factor to 1
     self.wr_factor = 1
 
@@ -104,26 +104,26 @@ def apply_weights_reloading_transform(self):
     if self.wr_layer:
         # update number of filters in wr layer
         filters = self.graph.nodes[self.wr_layer]['hw'].filters
-        self.graph.nodes[self.wr_layer]['hw'].filters = int(filters/self.wr_factor)
+        self.graph.nodes[self.wr_layer]['hw'].filters = filters//self.wr_factor
         # make sure the coarse out factor is not larger than the filters
-        self.graph.nodes[self.wr_layer]['hw'].update_coarse_out(min(
+        self.graph.nodes[self.wr_layer]['hw'].coarse_out = min(
             max(self.graph.nodes[self.wr_layer]['hw'].get_coarse_out_feasible()),
             self.graph.nodes[self.wr_layer]['hw'].coarse_out
-            ))        
+        )
         # iterate until the end to update the rest of the channels
         layers_after = graphs.get_next_nodes_all(self.graph, self.wr_layer)
         for layer in layers_after:
             ## get channels and reduce by wr factor
-            channels = self.graph.nodes[layer]['hw'].channels
-            self.graph.nodes[layer]['hw'].channels = int(channels/self.wr_factor)
+            channels = self.graph.nodes[layer]['hw'].channels_in()
+            self.graph.nodes[layer]['hw'].channels = channels//self.wr_factor
             # make sure the coarse out factor is not larger than the filters
-            self.graph.nodes[layer]['hw'].update_coarse_in(min(
+            self.graph.nodes[layer]['hw'].coarse_in = min(
                 max(self.graph.nodes[layer]['hw'].get_coarse_in_feasible()),
                 self.graph.nodes[layer]['hw'].coarse_in
-                ))
+            )
             # make sure the coarse out factor is not larger than the filters
-            self.graph.nodes[layer]['hw'].update_coarse_out(min(
+            self.graph.nodes[layer]['hw'].coarse_out = min(
                 max(self.graph.nodes[layer]['hw'].get_coarse_out_feasible()),
                 self.graph.nodes[layer]['hw'].coarse_out
-                ))
-            
+            )
+

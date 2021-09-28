@@ -2,7 +2,7 @@ from graphviz import Digraph
 import pydot
 import os
 import random
-import copy 
+import copy
 import onnx
 import onnx.utils
 import onnx.numpy_helper
@@ -16,32 +16,10 @@ from fpgaconvnet_optimiser.models.layers import ConvolutionLayer
 from fpgaconvnet_optimiser.models.layers import InnerProductLayer
 from fpgaconvnet_optimiser.models.layers import PoolingLayer
 from fpgaconvnet_optimiser.models.layers import ReLULayer
-from fpgaconvnet_optimiser.models.layers import LRNLayer
-from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
+# from fpgaconvnet_optimiser.models.layers import LRNLayer
+# from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
-
-def _layer_type(op_type):
-    layer_types = { 
-        "Conv"      : LAYER_TYPE.Convolution,
-        "Gemm"      : LAYER_TYPE.InnerProduct,
-        "Relu"      : LAYER_TYPE.ReLU,
-        "MaxPool"   : LAYER_TYPE.Pooling,
-        "LRN"       : LAYER_TYPE.LRN,
-        "Reshape"   : LAYER_TYPE.Transpose,
-        "Softmax"   : LAYER_TYPE.Softmax,
-        "Dropout"   : LAYER_TYPE.Dropout,
-        "Flatten"   : LAYER_TYPE.Flatten,
-        "BatchNormalization" : LAYER_TYPE.BatchNorm,
-        "GlobalAveragePool"  : LAYER_TYPE.Pooling,
-        "AveragePool"        : LAYER_TYPE.Pooling,
-        "Add"       : LAYER_TYPE.Eltwise,
-        "Cast"      : LAYER_TYPE.Cast,
-        "Clip"      : LAYER_TYPE.Clip,
-        "Shape"     : LAYER_TYPE.Shape,
-        "Squeeze"   : LAYER_TYPE.Squeeze,
-    }
-    return layer_types.get(op_type, lambda: TypeError)
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 
 def remove_node(graph, node): # TODO: move to tools.graphs
     prev_nodes = graphs.get_prev_nodes(graph,node)
@@ -67,9 +45,9 @@ def build_graph(model):
         # get name of node
         name = onnx_helper._name(node)
         # add node to graph
-        graph.add_node( name, type=_layer_type(node.op_type), hw=None, inputs={} )
-        if _layer_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
-            graph.nodes[name]['inputs'] = { "weights": "", "bias": "" } 
+        graph.add_node( name, type=from_onnx_op_type(node.op_type), hw=None, inputs={} )
+        if from_onnx_op_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
+            graph.nodes[name]['inputs'] = { "weights": "", "bias": "" }
     # add all edges from network
     edges = []
     for name in graph.nodes():
@@ -109,7 +87,7 @@ def build_graph(model):
     # return graph
     return graph
 
-def add_hardware(model, graph):
+def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
     # iterate over nodes in graph
     for node in model.graph.node:
         # get node name
@@ -124,20 +102,22 @@ def add_hardware(model, graph):
             weights_dim = onnx_helper.get_model_input(model,weights_input)
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             # get node attributes
-            attr = onnx_helper._format_attr(node.attribute) 
+            attr = onnx_helper._format_attr(node.attribute)
             # default attributes
             attr.setdefault("group", 1)
             attr.setdefault("strides", [1,1])
             attr.setdefault("pads", [0,0,0,0])
             attr.setdefault("dilations", [1,1])
             # create convolution layer hardware
-            graph.nodes[name]['hw'] = ConvolutionLayer([0,0,0],
-                #layer.convolution_param.num_output,
+            graph.nodes[name]['hw'] = ConvolutionLayer(
                 filters,
-                k_size =attr["kernel_shape"][0],
-                stride =attr["strides"][0],
-                pad    =attr["pads"][0],
-                groups =attr["group"]
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                kernel_size =attr["kernel_shape"],
+                stride =attr["strides"],
+                pad =attr["pads"],
+                groups =attr["group"],
             )
             continue
         # FC Layer
@@ -147,36 +127,52 @@ def add_hardware(model, graph):
             weights_dim = onnx_helper.get_model_input(model,weights_input)
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             # create inner product layer hardware
-            graph.nodes[name]['hw'] = InnerProductLayer([0,0,0],
-                filters
+            graph.nodes[name]['hw'] = InnerProductLayer(
+                filters,
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
             )
             continue
         # Pooling layer
         if graph.nodes[name]['type'] == LAYER_TYPE.Pooling:
             # get node attributes
-            attr = onnx_helper._format_attr(node.attribute) 
+            attr = onnx_helper._format_attr(node.attribute)
             # default attributes
             attr.setdefault("strides", [1,1])
             attr.setdefault("pads", [0,0,0,0])
             attr.setdefault("dilations", [1,1])
             # create pooling layer hardware
-            graph.nodes[name]['hw'] = PoolingLayer([0,0,0],
+            graph.nodes[name]['hw'] = PoolingLayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
                 pool_type = 'max', # TODO: change so that it does AVG also
-                k_size =attr["kernel_shape"][0],
-                stride =attr["strides"][0],
-                pad    =attr["pads"][0]
+                kernel_size =attr["kernel_shape"],
+                stride =attr["strides"],
+                pad =attr["pads"],
             )
             continue
         # ReLU Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.ReLU:
             # create relu layer hardware
-            graph.nodes[name]['hw'] = ReLULayer([0,0,0])
+            graph.nodes[name]['hw'] = ReLULayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+            )
             continue
         # BatchNorm Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
-            graph.nodes[name]['hw'] = BatchNormLayer([0,0,0])
+            graph.nodes[name]['hw'] = BatchNormLayer(
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                1, # initialise coarse in to 0
+                1, # initialise coarse out to 0
+            )
             continue
-        raise NameError
+        raise NameError(f"{name}: type {str(graph.nodes[name]['type'])} does not exist!")
         print(name,graph.nodes[name]['type'])
 
 def add_dimensions(model, graph):
@@ -197,20 +193,20 @@ def add_dimensions(model, graph):
         prev_nodes = graphs.get_prev_nodes(graph, node)
         for prev_node in prev_nodes: # TODO: support parallel networks
             # get previous node output dimensions
-            dim = onnx_helper._out_dim(model, prev_node) 
+            dim = onnx_helper._out_dim(model, prev_node)
             # update input dimensions
             graph.nodes[node]['hw'].channels = dim[0]
             graph.nodes[node]['hw'].rows     = dim[1]
             graph.nodes[node]['hw'].cols     = dim[2]
 
-def parse_net(filepath,view=True):
+def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
     # load onnx model
-    model = onnx_helper.load(filepath)
-    
+    model = onnx_helper.load(filepath,fuse_bn)
+
     # get graph
     graph = build_graph(model)
-    
+
     # remove input node
     remove_nodes = []
     for node in graph.nodes:
@@ -231,7 +227,7 @@ def parse_net(filepath,view=True):
     filter_node_types(graph, LAYER_TYPE.LRN)
 
     # add hardware to graph
-    add_hardware(model, graph)
+    add_hardware(model, graph, data_width, weight_width, acc_width)
 
     # add layer dimensions
     add_dimensions(model, graph)

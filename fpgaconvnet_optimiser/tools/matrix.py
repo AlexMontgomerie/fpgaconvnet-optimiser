@@ -72,29 +72,30 @@ def matrix_to_graph(matrix,node_list,edge_list):
             graph[edge[0]].append(edge[1])
 
     return graph
-"""
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-VECTORS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-"""
 
 def get_edge_mask(graph, sub_graph):
-    graph_edge_list     = get_edge_list_matrix(graph) 
-    sub_graph_edge_list = get_edge_list_matrix(sub_graph) 
+    graph_edge_list     = get_edge_list_matrix(graph)
+    sub_graph_edge_list = get_edge_list_matrix(sub_graph)
     return np.transpose([[ 1 if edge in sub_graph_edge_list else 0 for edge in graph_edge_list]])
 
 def get_node_mask(graph, sub_graph):
-    graph_node_list     = get_node_list_matrix(graph) 
-    sub_graph_node_list = get_node_list_matrix(sub_graph) 
+    graph_node_list     = get_node_list_matrix(graph)
+    sub_graph_node_list = get_node_list_matrix(sub_graph)
     return np.array([ 1 if node in sub_graph_node_list else 0 for node in graph_node_list])
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 MATRIX TEMPLATE
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
-def _matrix(graph,node_list,edge_list,weight_in,weight_out):
+def _matrix(graph,weight_in,weight_out,node_list=[],edge_list=[]):
+
+    # list of nodes and edges
+    if not node_list:
+        node_list = get_node_list_matrix(graph)
+    if not edge_list:
+        edge_list = get_edge_list_matrix(graph)
 
     # create matrix
     matrix = np.zeros( shape=( len(edge_list),len(node_list) ) , dtype=float )
@@ -109,7 +110,7 @@ def _matrix(graph,node_list,edge_list,weight_in,weight_out):
         for edge_in in edges_in:
             if edge_in[0] in graph[node_in]:
                 matrix[edge_list.index(edge_in) ,node_list.index('input') ] =   weight_in(graph,node_in,list(graph.predecessors(edge_in[0])).index(node_in))
-                matrix[edge_list.index(edge_in) ,node_list.index(node_in) ] =  -weight_in(graph,node_in,list(graph.predecessors(edge_in[0])).index(node_in)) 
+                matrix[edge_list.index(edge_in) ,node_list.index(node_in) ] =  -weight_in(graph,node_in,list(graph.predecessors(edge_in[0])).index(node_in))
             else:
                 matrix[edge_list.index(edge_in) ,node_list.index('input') ] =   weight_in(graph,node_in,0)
                 matrix[edge_list.index(edge_in) ,node_list.index(node_in) ] =  -weight_in(graph,node_in,0)
@@ -119,20 +120,20 @@ def _matrix(graph,node_list,edge_list,weight_in,weight_out):
         edges_out = get_edges_out(node_out,edge_list)
         for edge_out in edges_out:
             if edge_out[1] in graph[node_out]:
-                matrix[edge_list.index(edge_out),node_list.index(node_out)] =   weight_out(graph,node_out,list(graph.successors(node_out)).index(edge_out[1])) 
-                matrix[edge_list.index(edge_out),node_list.index('output')] =  -weight_out(graph,node_out,list(graph.successors(node_out)).index(edge_out[1])) 
+                matrix[edge_list.index(edge_out),node_list.index(node_out)] =   weight_out(graph,node_out,list(graph.successors(node_out)).index(edge_out[1]))
+                matrix[edge_list.index(edge_out),node_list.index('output')] =  -weight_out(graph,node_out,list(graph.successors(node_out)).index(edge_out[1]))
             else:
-                matrix[edge_list.index(edge_out),node_list.index(node_out)] =   weight_out(graph,node_out,0) 
-                matrix[edge_list.index(edge_out),node_list.index('output')] =  -weight_out(graph,node_out,0) 
+                matrix[edge_list.index(edge_out),node_list.index(node_out)] =   weight_out(graph,node_out,0)
+                matrix[edge_list.index(edge_out),node_list.index('output')] =  -weight_out(graph,node_out,0)
 
     # internal connections
     for node in graph.nodes():
         for edge in graph.adj[node]:
-            matrix[edge_list.index((node,edge)),node_list.index(node)] =  weight_out(graph,node,list(graph.successors(node)).index(edge)) 
+            matrix[edge_list.index((node,edge)),node_list.index(node)] =  weight_out(graph,node,list(graph.successors(node)).index(edge))
             matrix[edge_list.index((node,edge)),node_list.index(edge)] = -weight_in(graph,edge,list(graph.predecessors(edge)).index(node))
     return matrix
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 CONNECTIONS MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -140,49 +141,37 @@ CONNECTIONS MATRIX
 
 def get_connections_matrix(graph,node_list=[],edge_list=[]): # TODO: Change to get_connection_matrix
 
-    # list of nodes and edges
-    if not node_list:
-        node_list = get_node_list_matrix(graph)
-    if not edge_list:
-        edge_list = get_edge_list_matrix(graph)
-
     weight_in  = lambda graph, node, edge_index : 1
     weight_out = lambda graph, node, edge_index : 1
-    
-    return _matrix(graph,node_list,edge_list,weight_in,weight_out)
 
-"""    
+    return _matrix(graph,weight_in,weight_out,node_list,edge_list)
+
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 STREAMS MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
-def get_streams_matrix(graph,node_list=[],edge_list=[]): 
-
-    # list of nodes and edges
-    if not node_list:
-        node_list = get_node_list_matrix(graph)
-    if not edge_list:
-        edge_list = get_edge_list_matrix(graph)
+def get_streams_matrix(graph,node_list=[],edge_list=[]):
 
     weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_in()
     weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].streams_out()
 
-    return _matrix(graph,node_list,edge_list,weight_in,weight_out)
+    return _matrix(graph,weight_in,weight_out,node_list,edge_list)
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 BALANCED STREAMS MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
 def get_balanced_streams_matrix(graph,node_list=[],edge_list=[]):
-    # get rates matrix
+    # get streams matrix
     streams_matrix = get_streams_matrix(graph,node_list=node_list,edge_list=edge_list)
-    # balance rates
+    # balance streams
     return np.multiply(streams_matrix,scipy.linalg.null_space(streams_matrix).T)
- 
-"""    
+
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 RATES MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -190,62 +179,27 @@ RATES MATRIX
 
 def get_rates_matrix(graph,node_list=[],edge_list=[]):
 
-    # list of nodes and edges
-    if not node_list:
-        node_list = get_node_list_matrix(graph)
-    if not edge_list:
-        edge_list = get_edge_list_matrix(graph)
+    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].rate_in()
+    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].rate_out()
 
-    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].rate_in(edge_index)
-    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].rate_out(edge_index)
+    return _matrix(graph,weight_in,weight_out,node_list,edge_list)
 
-    return _matrix(graph,node_list,edge_list,weight_in,weight_out)
-
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 BALANCED RATES MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
 def get_balanced_rates_matrix(graph,node_list=[],edge_list=[]):
-    
-    ## get un-balanced rates graph
-    #rates_matrix = get_rates_matrix(graph,node_list=node_list,edge_list=edge_list)
-
-    ## get adjacent module rate ratios
-    #rate_ratio = [ abs(rates_matrix[i,i+1]/rates_matrix[i,i]) for i in range(rates_matrix.shape[0]) ]
-    #print(rate_ratio)
-
-    ## iterate backwards from last edge in matrix
-    #for layer in range(rates_matrix.shape[0]-1,0,-1):
-
-    #    # check for mismatch in adjacent nodes
-    #    if abs(rates_matrix[layer,layer]) > abs(rates_matrix[layer-1,layer]):
-    #        # propogate forward
-    #        for j in range(layer,rates_matrix.shape[0]):
-    #                if(abs(rates_matrix[j,j]) <= abs(rates_matrix[j-1,j])):
-    #                    break
-    #                rates_matrix[j,j]   = abs(rates_matrix[j-1,j])
-    #                rates_matrix[j,j+1] = -rates_matrix[j,j]*rate_ratio[j]
-
-    #    elif abs(rates_matrix[layer,layer]) < abs(rates_matrix[layer-1,layer]):
-    #        # propogate backward
-    #        for j in range(layer-1,0,-1):
-    #                if(abs(rates_matrix[j+1,j+1]) >= abs(rates_matrix[j,j+1])):
-    #                    break
-    #                rates_matrix[j,j+1] = -abs(rates_matrix[j+1,j+1])
-    #                rates_matrix[j,j]   = -rates_matrix[j,j+1]/rate_ratio[j]
-
-    ##return balanced rates matrix
-    #return rates_matrix
 
     # get connections matrix
     connections_matrix = get_connections_matrix(graph,node_list=node_list,edge_list=edge_list)
-    # get the interval
+    # get the interval of the graph
     interval = np.max(np.absolute(get_interval_matrix(graph,node_list=node_list,edge_list=edge_list)))
     # get streams matrix
     streams_matrix  = get_streams_matrix(graph,node_list=node_list,edge_list=edge_list)
     workload_matrix = get_workload_matrix(graph,node_list=node_list,edge_list=edge_list)
+    # return the balanced rates matrix
     return np.nan_to_num(np.divide(
         workload_matrix,
         np.multiply(
@@ -254,26 +208,20 @@ def get_balanced_rates_matrix(graph,node_list=[],edge_list=[]):
                 connections_matrix),
             streams_matrix)))
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 WORKLOAD MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
-def get_workload_matrix(graph,node_list=[],edge_list=[]): # TODO
+def get_workload_matrix(graph,node_list=[],edge_list=[]):
 
-    # list of nodes and edges
-    if not node_list:
-        node_list = get_node_list_matrix(graph)
-    if not edge_list:
-        edge_list = get_edge_list_matrix(graph)
+    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].workload_in()
+    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].workload_out()
 
-    weight_in  = lambda graph, node, edge_index : graph.nodes[node]['hw'].workload_in(edge_index)
-    weight_out = lambda graph, node, edge_index : graph.nodes[node]['hw'].workload_out(edge_index)
+    return _matrix(graph,weight_in,weight_out,node_list,edge_list)
 
-    return _matrix(graph,node_list,edge_list,weight_in,weight_out)
-
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 TOPOLOGY MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -284,7 +232,7 @@ def get_topology_matrix(graph,node_list=[],edge_list=[]):
     rates_matrix   = get_balanced_rates_matrix(graph,node_list=node_list,edge_list=edge_list)
     return np.multiply(streams_matrix, np.absolute(rates_matrix))
 
-"""    
+"""
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 INTERVAL MATRIX
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -300,4 +248,3 @@ def get_interval_matrix(graph,node_list=[],edge_list=[]):
     interval_matrix = np.nan_to_num(interval_matrix)
 
     return np.absolute(interval_matrix)
-

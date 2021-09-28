@@ -2,6 +2,7 @@
 A command line interface for running the optimiser for given networks
 """
 
+import logging
 import os
 import yaml
 import json
@@ -10,68 +11,91 @@ import shutil
 import random
 import numpy as np
 
-from fpgaconvnet_optimiser.optimiser import SimulatedAnnealing
-from fpgaconvnet_optimiser.optimiser import Improve
+from fpgaconvnet_optimiser.optimiser.simulated_annealing import SimulatedAnnealing
+from fpgaconvnet_optimiser.optimiser.improve import Improve
+from fpgaconvnet_optimiser.optimiser.greedy_partition import GreedyPartition
+
+import fpgaconvnet_optimiser.tools.graphs as graphs
 
 def main():
-    parser = argparse.ArgumentParser(description="Optimiser Script")
-    parser.add_argument('-n','--name',metavar='PATH',required=True,
+    parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
+    parser.add_argument('-n','--name', metavar='PATH', required=True,
         help='network name')
-    parser.add_argument('-m','--model_path',metavar='PATH',required=True,
+    parser.add_argument('-m','--model_path', metavar='PATH', required=True,
         help='Path to ONNX model')
-    parser.add_argument('-p','--platform_path',metavar='PATH',required=True,
+    parser.add_argument('-p','--platform_path', metavar='PATH', required=True,
         help='Path to platform information')
-    parser.add_argument('-o','--output_path',metavar='PATH',required=True,
+    parser.add_argument('-o','--output_path', metavar='PATH', required=True,
         help='Path to output directory')
-    parser.add_argument('-b','--batch_size',metavar='N',type=int,default=1,required=False,
+    parser.add_argument('-b','--batch_size', metavar='N',type=int, default=1, required=False,
         help='Batch size')
-    parser.add_argument('--objective',choices=['throughput','latency'],required=True,
+    parser.add_argument('--objective', choices=['throughput','latency'], required=True,
         help='Optimiser objective')
-    parser.add_argument('--transforms',nargs="+", choices=['fine','coarse','weights_reloading','partition','wordlength'],
-        default=['fine','coarse','weights_reloading','partition'],
-        help='network transforms')
-    parser.add_argument('--optimiser',choices=['simulated_annealing','improve'],default='improve',
-        help='Optimiser strategy')
-    parser.add_argument('--optimiser_config_path',metavar='PATH',
+    parser.add_argument('--optimiser', choices=['simulated_annealing', 'improve', 'greedy_partition'],
+        default='improve', help='Optimiser strategy')
+    parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
         help='Configuration file (.yml) for optimiser')
-    parser.add_argument('--seed',metavar='N',type=int,default=1234567890,
+    parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
+        help='Previously optimised partitions saved in JSON')
+    parser.add_argument('--seed', metavar='N', type=int, default=random.randint(0,2**32-1),
         help='Seed for the optimiser run')
 
+    # parse the arguments
     args = parser.parse_args()
 
     # setup seed
     random.seed(args.seed)
     np.random.seed(args.seed)
 
-    # copy input files to the output path
+    # make the output directory if it does not exist
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
+    # copy input files to the output path
     shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
     # load optimiser config
     with open(args.optimiser_config_path,"r") as f:
-        optimiser_config = yaml.load(f)
+        optimiser_config = yaml.load(f, Loader=yaml.Loader)
 
-    # load network
+    # Initialise logger
+    if bool(optimiser_config["general"]["logging"]):
+        FORMAT="%(asctime)s.%(msecs)03d %(levelname)s = (%(module)s) %(message)s"
+        logging.basicConfig(level=logging.INFO, filename=os.path.join(args.output_path,"optimiser.log"), format=FORMAT, filemode="w", datefmt='%H:%M:%S')
+    else:
+        logging.getLogger().disabled = True
+
+    # create the checkpoint directory
+    if not os.path.exists(os.path.join(args.output_path,"checkpoint")):
+        os.makedirs(os.path.join(args.output_path,"checkpoint"))
+
+    # load network based on the given optimiser strategy
     if args.optimiser == "improve":
-        # create network
         net = Improve(args.name,args.model_path,
                 T=float(optimiser_config["annealing"]["T"]),
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
                 cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]))
+                iterations=int(optimiser_config["annealing"]["iterations"]),
+                transforms_config=optimiser_config["transforms"])
     elif args.optimiser == "simulated_annealing":
-        # create network
         net = SimulatedAnnealing(args.name,args.model_path,
                 T=float(optimiser_config["annealing"]["T"]),
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
                 cool=float(optimiser_config["annealing"]["cool"]),
                 iterations=int(optimiser_config["annealing"]["iterations"]),
-                wordlength=16)
+                transforms_config=optimiser_config["transforms"],
+                checkpoint_path=os.path.join(args.output_path,"checkpoint"))
+    elif optimiser == "greedy_partition":
+        net = GreedyPartition(name, model_path,
+                T=float(optimiser_config["annealing"]["T"]),
+                T_min=float(optimiser_config["annealing"]["T_min"]),
+                k=float(optimiser_config["annealing"]["k"]),
+                cool=float(optimiser_config["annealing"]["cool"]),
+                iterations=int(optimiser_config["annealing"]["iterations"]),
+                transforms_config=optimiser_config["transforms"])
 
     # turn on debugging
     net.DEBUG = True
@@ -93,18 +117,29 @@ def main():
     net.batch_size = args.batch_size
 
     # specify available transforms
-    net.transforms = args.transforms
-       
+    net.get_transforms()
 
     # initialize graph
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
         net.split_complete()
 
+    ## apply max fine factor to the graph
+    if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
+        for partition in net.partitions:
+            partition.apply_complete_fine()
+
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
+
+    if bool(optimiser_config["general"]["starting_point_distillation"]):
+        net.update_partitions()
+        net.starting_point_distillation(args.teacher_partition_path)
+        net.update_partitions()
+        net.merge_memory_bound_partitions()
+        net.update_partitions()
 
     # run optimiser
     net.run_optimiser()

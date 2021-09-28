@@ -1,46 +1,42 @@
 """
-The purpose of the accumulation (Accum) module is 
-to perform the channel-wise accumulation of the 
-dot product result from the output of the 
+The purpose of the accumulation (Accum) module is
+to perform the channel-wise accumulation of the
+dot product result from the output of the
 convolution (Conv) module.  As the data is coming
-into the module filter-first, the separate filter 
-accumulations are buffered until they complete 
+into the module filter-first, the separate filter
+accumulations are buffered until they complete
 their accumulation across channels.
 
 .. figure:: ../../../figures/accum_diagram.png
 """
-import joblib
-from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
+from dataclasses import dataclass, field
 
+from fpgaconvnet_optimiser.models.modules import Module
+from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
+
+@dataclass
 class Accum(Module):
-    def __init__(
-            self,
-            dim,
-            filters,
-            groups,
-            data_width=16
-        ):
+    filters: int
+    groups: int
 
-        # module name
-        self.name = "accum"
-        
-        # init module
-        Module.__init__(self,dim,data_width)
-
-        # init variables
-        self.filters = filters
-        self.groups  = groups
-        self.data_width=data_width
-        RSC_TYPES=["LUT", "FF", "BRAM", "DSP"]
-        self.rsc_buildmodel = {
-            }
-        for rsc in RSC_TYPES:
-            self.rsc_buildmodel[rsc]=joblib.load("/home/wz2320/fpgaconvnet-optimiser/fpgaconvnet_optimiser/coefficients/accum_"+str(rsc)+'(randomforest)')         
-           
-
+    def __post_init__(self):
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_dsp.npy"))
 
     def utilisation_model(self):
         return {
@@ -51,7 +47,7 @@ class Accum(Module):
         }
 
     def channels_in(self):
-        return int((self.channels*self.filters)/(self.groups))
+        return (self.channels*self.filters)//self.groups
 
     def channels_out(self):
         return self.filters
@@ -60,64 +56,41 @@ class Accum(Module):
         return (self.groups)/float(self.channels)
 
     def pipeline_depth(self):
-        return (self.channels*self.filters)/(self.groups*self.groups)
+        return (self.channels*self.filters)//(self.groups*self.groups)
 
     def module_info(self):
-        return {
-            'type'      : self.__class__.__name__.upper(),
-            'rows'      : self.rows_in(),
-            'cols'      : self.cols_in(),
-            'groups'    : self.groups,
-            'channels'  : self.channels_in(),
-            'filters'   : self.filters,
-            'channels_per_group'  : int(self.channels_in()/self.groups),
-            'filters_per_group'   : int(self.filters/self.groups),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
+        # get the base module fields
+        info = Module.module_info(self)
+        # add module-specific info fields
+        info['groups'] = self.groups
+        info['filters'] = self.filters
+        info['channels_per_group'] = self.channels_in()//self.groups
+        info['filters_per_group'] = self.filters//self.groups
+        # return the info
+        return info
 
-    def rsc(self,buildmodel=None):
-        #if coef == None:
-            #coef = self.rsc_coef
-        # streams
-        #bram_input_buffer = math.ceil( ((self.channels*self.filters+1)*self.data_width)/18000)
-        #bram_acc_buffer   = math.ceil( ((self.groups*self.filters+1)*self.data_width)/18000)
-        #data_width = 30
-        #acc_buffer =  (self.filters/self.groups)
-        #acc_fifo_bram = 0
-        #if acc_buffer*self.data_width >= 512:
-          #  acc_buffer_fifo_data = math.ceil( (acc_buffer*data_width)/18000) 
-          #  acc_buffer_fifo_addr = math.ceil( math.log(acc_buffer,2) )
-            #acc_fifo_bram = max(acc_buffer_fifo_data, acc_buffer_fifo_addr)
-          #  acc_fifo_bram = acc_buffer_fifo_data
-        #acc_buffer_bram = math.ceil( (acc_buffer*data_width)/18000)    
-        if buildmodel == None:                  
-            buildmodel = self.rsc_buildmodel         
-        return {
-          "LUT"  : int(buildmodel["LUT"].predict(self.utilisation_model()["LUT"].reshape(1, -1))),
-          "BRAM" : int(buildmodel["BRAM"].predict(self.utilisation_model()["BRAM"].reshape(1, -1))),
-          "DSP"  : int(buildmodel["DSP"].predict(self.utilisation_model()["DSP"].reshape(1, -1))),
-          "FF"   : int(buildmodel["FF"].predict(self.utilisation_model()["FF"].reshape(1, -1))),
-        }
-
-    
-#        return {
-#          "LUT"  : int(np.dot(self.utilisation_model()["LUT"], coef["LUT"])),
-#          "BRAM" : int(np.dot(self.utilisation_model()["BRAM"], coef["BRAM"])),
-#          "DSP"  : 0,
-#          "FF"   : int(np.dot(self.utilisation_model()["FF"], coef["FF"])),
-#        }
+    def rsc(self,coef=None):
+        # use module resource coefficients if none are given
+        if coef == None:
+            coef = self.rsc_coef
+        # get the accumulation buffer BRAM estimate
+        acc_buffer_bram = bram_memory_resource_model(int(self.filters/self.groups), self.data_width)
+        # get the linear model estimation
+        rsc = Module.rsc(self, coef)
+        # add the bram estimation
+        rsc["BRAM"] = acc_buffer_bram
+        # return the resource usage
+        return rsc
 
     def functional_model(self,data):
         # check input dimensionality
-        assert data.shape[0] == self.rows                       , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols                       , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels                   , "ERROR: invalid channel dimension"
-        assert data.shape[3] == int(self.filters/self.groups)   , "ERROR: invalid filter  dimension"
+        assert data.shape[0] == self.rows                   , "ERROR: invalid row dimension"
+        assert data.shape[1] == self.cols                   , "ERROR: invalid column dimension"
+        assert data.shape[2] == self.channels               , "ERROR: invalid channel dimension"
+        assert data.shape[3] == self.filters//self.groups   , "ERROR: invalid filter  dimension"
 
-        channels_per_group = int(self.channels/self.groups)
-        filters_per_group  = int(self.filters/self.groups)
+        channels_per_group = self.channels//self.groups
+        filters_per_group  = self.filters//self.groups
 
         out = np.zeros((
             self.rows,

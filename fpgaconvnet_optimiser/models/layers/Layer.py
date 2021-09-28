@@ -2,87 +2,103 @@
 
 """
 
-import os
-import math
-from functools import reduce
-
 import pydot
+import collections
 from google.protobuf.json_format import MessageToDict
+import numpy as np
+from dataclasses import dataclass, field
+
+from fpgaconvnet_optimiser.models.layers.utils import get_factors
+from fpgaconvnet_optimiser.models.layers.utils import balance_module_rates
 
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
+from fpgaconvnet_optimiser.tools.resource_model import bram_stream_resource_model
 
+@dataclass
 class Layer:
     """
     Base class for all layer models.
+
+    Attributes
+    ----------
+    buffer_depth: int, default: 0
+        depth of incoming fifo buffers for each stream in.
+    rows: int
+        row dimension of input featuremap
+    cols: int
+        column dimension of input featuremap
+    channels: int
+        channel dimension of input featuremap
+    coarse_in: int
+        number of parallel streams per port into the layer.
+    coarse_out: int
+        number of parallel streams per port out of the layer.
+    data_width: int
+        bitwidth of featuremap pixels
+    modules: dict
+        dictionary of `fpgaconvnet_optimiser.models.Module`
+        instances that make up the layer. These modules are
+        used for the resource and performance models of the
+        layer.
     """
-    def __init__(
-            self,
-            dim,
-            coarse_in,
-            coarse_out,
-            data_width
-        ):
-        """
-        Parameters
-        ----------
-        dim: list
-            dimensions of the input featuremap. Should contain
-            `channels`, `rows`, `cols` in that order.
 
-        Attributes
-        ----------
-        buffer_depth: int, default: 0
-            depth of incoming fifo buffers for each stream in.
-        rows: int
-            row dimension of input featuremap
-        cols: int
-            column dimension of input featuremap
-        channels: int
-            channel dimension of input featuremap
-        coarse_in: int
-            number of parallel streams into the layer.
-            coarse_out: int
-            number of parallel streams out of the layer.
-        data_width: int
-            bitwidth of featuremap pixels
-        modules: dict
-            dictionary of `module` instances that make
-            up the layer. These modules are used for the
-            resource and performance models of the layer.
-        """
+    _rows: int
+    _cols: int
+    _channels: int
+    _coarse_in: int
+    _coarse_out: int
+    data_width: int = field(default=16, init=True)
+    buffer_depth: int = field(default=0, init=False)
+    modules: dict = field(default_factory=collections.OrderedDict, init=False)
 
-        # flags
-        self.flags = {
-            "multi_input"       : False,
-            "multi_output"      : False,
-            "channel_dependant" : False,
-            "transformable"     : False
-        }
+    @property
+    def rows(self) -> int:
+        return self._rows
 
-        # buffer depth
-        self.buffer_depth = 0
+    @property
+    def cols(self) -> int:
+        return self._cols
 
-        # parameters
-        self.rows       = dim[1]
-        self.cols       = dim[2]
-        self.channels   = dim[0]
+    @property
+    def channels(self) -> int:
+        return self._channels
 
-        # streams
-        self.coarse_in  = coarse_in
-        self.coarse_out = coarse_out
+    @property
+    def coarse_in(self) -> int:
+        return self._coarse_in
 
-        # data width
-        self.data_width = data_width
+    @property
+    def coarse_out(self) -> int:
+        return self._coarse_out
 
-        # init modules
-        self.modules = {}
+    @rows.setter
+    def rows(self, val: int) -> None:
+        self._rows = val
+        self.update()
 
-        # power and resource model coefficients
-        self.static_coef  = {}
-        self.dynamic_coef = {}
-        self.rsc_coef     = {}
+    @cols.setter
+    def cols(self, val: int) -> None:
+        self._cols = val
+        self.update()
 
-    def rows_in(self):
+    @channels.setter
+    def channels(self, val: int) -> None:
+        self._channels = val
+        self.update()
+
+    @coarse_in.setter
+    def coarse_in(self, val: int) -> None:
+        assert(val in self.get_coarse_in_feasible())
+        self._coarse_in = val
+        self.update()
+
+    @coarse_out.setter
+    def coarse_out(self, val: int) -> None:
+        assert(val in self.get_coarse_out_feasible())
+        self._coarse_out = val
+        self.update()
+
+    def rows_in(self) -> int:
         """
         Returns
         -------
@@ -91,7 +107,7 @@ class Layer:
         """
         return self.rows
 
-    def cols_in(self):
+    def cols_in(self) -> int:
         """
         Returns
         -------
@@ -100,7 +116,7 @@ class Layer:
         """
         return self.cols
 
-    def channels_in(self):
+    def channels_in(self) -> int:
         """
         Returns
         -------
@@ -109,157 +125,157 @@ class Layer:
         """
         return self.channels
 
-    def rows_out(self):
+    def rows_out(self) -> int:
         """
         Returns
         -------
         int
             row dimension of the output featuremap
         """
-        return self.rows_in()
+        return self.rows
 
-    def cols_out(self):
+    def cols_out(self) -> int:
         """
         Returns
         -------
         int
             column dimension of the output featuremap
         """
-        return self.cols_in()
+        return self.cols
 
-    def channels_out(self):
+    def channels_out(self) -> int:
         """
         Returns
         -------
         int
             channel dimension of the output featuremap
         """
-        return self.channels_in()
+        return self.channels
 
-    def rate_in(self,index):
+    def build_rates_graph(self):
+
+        # create the rates graph
+        rates_graph = np.zeros(shape=(len(self.modules.keys()),
+                                      len(self.modules.keys())+1) , dtype=float )
+
+        # iterate over modules
+        for i, module in enumerate(self.modules.keys()):
+            # update rates_graph
+            rates_graph[i,i] = self.modules[module].rate_in()
+            rates_graph[i,i+1] = self.modules[module].rate_out()
+
+        # return rates_graph
+        return rates_graph
+
+    def rate_in(self) -> float:
         """
-        Parameters
-        ----------
-        index: int
-            index of port into layer
-
         Returns
         -------
-        float 
+        float
             rate of words into layer. As a fraction of a
             clock cycle.
 
             default is 1.0
         """
-        return 1.0
+        return abs(balance_module_rates(self.build_rates_graph())[0,0])
 
-    def rate_out(self,index):
+    def rate_out(self) -> float:
         """
-        Parameters
-        ----------
-        index: int
-            index of port into layer
-
         Returns
         -------
-        float 
-            rate of words out of the layer. As a fraction 
+        float
+            rate of words out of the layer. As a fraction
             of a clock cycle.
 
             default is 1.0
         """
-        return 1.0
+        return abs(balance_module_rates(
+            self.build_rates_graph())[len(self.modules.keys())-1,len(self.modules.keys())])
 
-    def streams_in(self):
+    def streams_in(self) -> int:
         """
         Returns
         -------
-        int 
+        int
             number of parallel streams into the layer.
         """
         return self.coarse_in
 
-    def streams_out(self):
+    def streams_out(self) -> int:
         """
         Returns
         -------
-        int 
+        int
             number of parallel streams out of the layer.
         """
         return self.coarse_out
 
-    def workload_in(self, index):
+    def workload_in(self) -> int:
         """
-        Parameters
-        ----------
-        index: int
-            index of port into layer
-
         Returns
         -------
-        int 
+        int
             workload into layer from port `index` for a single
-            featuremap. This is calculated by 
+            featuremap. This is calculated by
             `rows_in()*cols_in()*channels_in()`.
         """
-        return self.rows_in()  * self.cols_in()  * self.channels_in()
-        
-    def workload_out(self, index):
-        """
-        Parameters
-        ----------
-        index: int
-            index of port out of layer
+        return self.rows_in() * self.cols_in() * self.channels_in()
 
+    def workload_out(self) -> int:
+        """
         Returns
         -------
-        int 
-            workload out of layer from port `index` for a 
-            single featuremap. This is calculated by 
+        int
+            workload out of layer from port `index` for a
+            single featuremap. This is calculated by
             `rows_out()*cols_out()*channels_out()`.
         """
         return self.rows_out() * self.cols_out() * self.channels_out()
 
-    def size_in(self):
+    def size_in(self) -> int:
         """
         Returns
         -------
-        int 
+        int
             workload in per stream.
         """
-        return self.rows_in()  * self.cols_in()  * int( self.channels_in() / self.coarse_in )
-        
-    def size_out(self):
+        return self.rows_in() * self.cols_in() * int( self.channels_in() / self.streams_in() )
+
+    def size_out(self) -> int:
         """
         Returns
         -------
-        int 
+        int
             workload out per stream.
         """
-        return self.rows_out() * self.cols_out() * int( self.channels_out() / self.coarse_out )
+        return self.rows_out() * self.cols_out() * int( self.channels_out() / self.streams_out() )
 
     def width_in(self):
         """
         Returns
         -------
-        int 
+        int
             data width in
         """
         return self.data_width
-    
+
     def width_out(self):
         """
         Returns
         -------
-        int 
+        int
             data width out
-        """ 
+        """
         return self.data_width
 
-    def get_latency(self):
-        latency_in  = abs(self.workload_in(0) /(self.rate_in(0) *self.streams_in() ))
-        latency_out = abs(self.workload_out(0)/(self.rate_out(0)*self.streams_out()))
-        return max(latency_in,latency_out)
+    def latency_in(self):
+        return abs(self.workload_in()/(self.rate_in()*self.streams_in()))
+
+    def latency_out(self):
+        return abs(self.workload_out()/(self.rate_out()*self.streams_out()))
+
+    def latency(self):
+        return max(self.latency_in(), self.latency_out())
 
     def pipeline_depth(self):
         return sum([ self.modules[module].pipeline_depth() for module in self.modules ])
@@ -271,59 +287,31 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth/1125)*self.coarse_in,
+            "BRAM"  : bram_stream_resource_model(self.buffer_depth,self.data_width)*self.streams_in(),
             "DSP"   : 0
         }
 
-    def static_power(self):
-        return 0
+    def get_coarse_in_feasible(self, wr_factor=1):
+        return get_factors(int(self.channels_in()/wr_factor))
 
-    def dynamic_power(self, freq, rate): 
-        return 0
-
-    def power(self,freq,rate):
-        return self.static_power() + self.dynamic_power(freq,rate)
-
-    def get_coarse_in_feasible(self,wr_factor=1):
-        return self.get_factors(int(self.channels_in()/wr_factor))
-
-    def get_coarse_out_feasible(self,wr_factor=1):
-        return self.get_factors(int(self.channels_out()/wr_factor))
-
-    def update_coarse_in(self, coarse_in):
-        self.coarse_in  = coarse_in
-        self.coarse_out = coarse_in
-
-    def update_coarse_out(self, coarse_out):
-        self.coarse_in  = coarse_out
-        self.coarse_out = coarse_out
-
-    def load_coef(self):
-        pass
-        # for module in self.modules:
-        #     self.modules[module].load_coef(
-        #         os.path.join(
-        #             os.path.dirname(__file__),
-        #             "../../coefficients/{}_rsc_coef.npy".format(module))
-        #     )
-        
+    def get_coarse_out_feasible(self, wr_factor=1):
+        return get_factors(int(self.channels_out()/wr_factor))
 
     def update(self):
         pass
 
-    def layer_info(self):
-        return {
-            'type'      : self.__class__.__name__.upper(),
-            'buffer_depth'  : self.buffer_depth,
-            'rows_in'       : self.rows_in(),
-            'cols_in'       : self.cols_in(),
-            'channels_in'   : self.channels_in(),
-            'size_in'       : int(self.workload_in(0)),
-            'size_out'      : int(self.workload_out(0)),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
+    def layer_info(self, parameters, batch_size=1):
+        parameters.batch_size   = batch_size
+        parameters.data_width   = self.data_width
+        parameters.buffer_depth = self.buffer_depth
+        parameters.rows_in      = self.rows_in()
+        parameters.cols_in      = self.cols_in()
+        parameters.channels_in  = self.channels_in()
+        parameters.rows_out     = self.rows_out()
+        parameters.cols_out     = self.cols_out()
+        parameters.channels_out = self.channels_out()
+        parameters.coarse_in    = self.streams_in()
+        parameters.coarse_out   = self.streams_out()
 
     def get_operations(self):
         return 0
@@ -333,7 +321,7 @@ class Layer:
         parameter = fpgaconvnet_pb2.parameter()
         self.layer_info(parameter)
         # convert to dictionary
-        return MessageToDict(parameter, preserving_proto_field_name=True) 
+        return MessageToDict(parameter, preserving_proto_field_name=True)
 
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
@@ -343,35 +331,5 @@ class Layer:
 
         return cluster, "_".join([name,"edge"]), "_".join([name,"edge"])
 
-    def functional_model(self,data,batch_size=1): # TODO: just leave empty
-        return 
-
-    def balance_module_rates(self,rate_graph):
-
-        rate_ratio = [ abs(rate_graph[i,i+1]/rate_graph[i,i]) for i in range(rate_graph.shape[0]) ]
-
-        for i in range(1,rate_graph.shape[0]):
-            # start from end
-            layer = rate_graph.shape[0]-i
-
-            if abs(rate_graph[layer,layer]) > abs(rate_graph[layer-1,layer]):
-                # propogate forward
-                for j in range(layer,rate_graph.shape[0]):
-                        if(abs(rate_graph[j,j]) <= abs(rate_graph[j-1,j])):
-                            break
-                        rate_graph[j,j]   = abs(rate_graph[j-1,j])
-                        rate_graph[j,j+1] = -rate_graph[j,j]*rate_ratio[j]
-
-            elif abs(rate_graph[layer,layer]) < abs(rate_graph[layer-1,layer]):
-                # propogate backward
-                for j in range(0,layer):
-                        if(abs(rate_graph[layer-j,layer-j]) >= abs(rate_graph[layer-j-1,layer-j])):
-                            break
-                        rate_graph[layer-j-1,layer-j]   = -abs(rate_graph[layer-j,layer-j])
-                        rate_graph[layer-j-1,layer-j-1] = -rate_graph[layer-j-1,layer-j]/rate_ratio[layer-j-1]
-        return rate_graph
-
-    def get_factors(self, n):
-        return list(set(reduce(list.__add__, 
-                    ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0))))
-
+    def functional_model(self,data,batch_size=1):
+        return

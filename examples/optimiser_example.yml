@@ -1,22 +1,35 @@
 transforms:
     fine:
-        apply_transform: true
+        apply_transform: false
         probability: 0.25
-        start_complete: false
+        start_complete: true
     coarse:
         apply_transform: true
         probability: 0.25
     weights_reloading:
-        apply_transform: true 
+        apply_transform: false
         probability: 0.25
-        start_max: true
+        start_max: false
     partition:
-        apply_transform: true
+        apply_transform: false
         probability: 0.25
-        start_complete: true
+        horizontal: true
+        vertical: true
+        start_complete: false
+        allowed_type: [split, merge]
+        allowed_partitions:
+            - [Relu, Conv]
+            - [MaxPool, Conv]
+            - [Relu, Gemm]
+            - [AveragePool, Gemm]
 annealing:
     T: 10.0
-    T_min: 0.00001
-    k: 0.01
-    cool: 0.98
-    iterations: 50
+    T_min: 0.001
+    k: 0.1
+    cool: 0.9
+    iterations: 10
+general:
+    logging: false
+    checkpoints: false
+    starting_point_distillation: false
+
