@@ -27,6 +27,11 @@ message parameter {
     optional int32 pad_bottom   = 19;
     repeated int32 kernel_size  = 20;
     repeated int32 stride       = 21;
+    optional int32 data_width   = 22;
+    optional int32 weight_width = 23;
+    optional int32 acc_width    = 24;
+    optional int32 input_width  = 25;
+    optional int32 output_width = 26;
 }
 
 message layer {

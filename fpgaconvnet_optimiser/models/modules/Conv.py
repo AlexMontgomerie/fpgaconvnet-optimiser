@@ -42,7 +42,6 @@ class Conv(Module):
         list of resource model coefficients. Corresponds
         to `LUT`, `BRAM`, `DSP` and `FF` resources in
         that order.
-
     """
 
     filters: int
@@ -50,6 +49,7 @@ class Conv(Module):
     kernel_size: Union[List[int], int]
     groups: int
     weight_width: int = field(default=16, init=False)
+    acc_width: int = field(default=16, init=False)
 
     def __post_init__(self):
         # format kernel size as a 2 element list
@@ -75,12 +75,12 @@ class Conv(Module):
                 "../../coefficients/conv_dsp.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width*self.kernel_size[0]*self.kernel_size[1],
-            self.data_width*self.fine,
-            self.data_width
-        ]
+        return {
+            "LUT"  : np.array([math.log(self.filters,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
+            "FF"   : np.array([math.log(self.filters,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1])
+        }
 
     def channels_out(self):
         return int(self.filters/float(self.groups))

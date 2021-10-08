@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 
 from fpgaconvnet_optimiser.optimiser.optimiser import Optimiser
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 import fpgaconvnet_optimiser.tools.graphs as graphs
 
 LATENCY   =0
@@ -72,12 +73,14 @@ class SimulatedAnnealing(Optimiser):
             bad_partitions = self.get_resources_bad_partitions()
 
         # Attempt to find a good starting point
+        print(START_LOOP)
         if not start:
             transforms_config = self.transforms_config
             self.transforms_config = self.fix_starting_point_config
             self.get_transforms()
 
             for i in range(START_LOOP):
+                print('The %dth iteration' %(i))
                 transform = random.choice(self.transforms)
                 partition_index = list(bad_partitions.keys())[-1]
                 self.apply_transform(transform,partition_index)
@@ -105,6 +108,7 @@ class SimulatedAnnealing(Optimiser):
         print(f"Temperature\t{objective}\t  BRAM | DSP  | LUT    | FF    ")
 
         # Cooling Loop
+        cooltimes=0
         while self.T_min < self.T:
 
             # update partitions
@@ -154,6 +158,7 @@ class SimulatedAnnealing(Optimiser):
                 # revert to previous state
                 self.partitions = partitions
                 continue
+
 
             # Simulated annealing descision
             if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):

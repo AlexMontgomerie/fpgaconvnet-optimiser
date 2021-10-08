@@ -90,17 +90,18 @@ class SlidingWindow(Module):
                 "../../coefficients/sliding_window_dsp.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width*self.kernel_size[0]*self.kernel_size[1],
-            self.data_width*(self.kernel_size[0]-1),
-            self.data_width*self.kernel_size[0]*(self.kernel_size[1]-1),
-            (self.kernel_size[0]-1)*(((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width < 512 else 0,
-            (self.kernel_size[0]-1)*math.ceil( (((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width)/18000) if ((self.cols+self.pad_left+self.pad_right)*self.channels+1)*self.data_width >= 512 else 0,
-            self.kernel_size[0]*(self.kernel_size[1]-1)*(self.channels+1)*self.data_width  if self.channels*self.data_width < 512 else 0,
-            self.kernel_size[0]*(self.kernel_size[1]-1)*math.ceil( ((self.channels+1)*self.data_width)/18000) if self.channels*self.data_width >= 512 else 0,
-            self.data_width*self.kernel_size[0]*self.kernel_size[1]*self.channels
-        ]
+        return {
+            "LUT"  : np.array([self.data_width*self.kernel_size[0]*self.kernel_size[1],
+                self.kernel_size[0]*(self.kernel_size[1]-1)*(self.data_width+math.floor(math.log(self.channels,2))),
+                (self.kernel_size[1]-1)*(self.data_width+math.floor(math.log(self.channels*self.cols,2))),
+                (self.kernel_size[0])*(self.kernel_size[1]-1), (self.kernel_size[1]-1)]),
+            "FF"   : np.array([self.data_width*self.kernel_size[0]*self.kernel_size[1],
+                self.kernel_size[0]*(self.kernel_size[1]-1)*(self.data_width+math.floor(math.log(self.channels,2))),
+                (self.kernel_size[1]-1)*(self.data_width+math.floor(math.log(self.channels*self.cols,2))),
+                (self.kernel_size[0])*(self.kernel_size[1]-1), (self.kernel_size[1]-1)]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1]),
+        }
 
     def rows_out(self):
         return int((self.rows_in()-self.kernel_size[0]+self.pad_top+self.pad_bottom)/self.stride[0]+1)

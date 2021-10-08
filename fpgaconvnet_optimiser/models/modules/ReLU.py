@@ -28,11 +28,12 @@ class ReLU(Module):
                 "../../coefficients/relu_dsp.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width,
-            self.data_width*self.rows*self.cols*self.channels
-        ]
+        return {
+            "LUT"  : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "FF"   : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1])
+        }
 
     def functional_model(self, data):
         # check input dimensionality

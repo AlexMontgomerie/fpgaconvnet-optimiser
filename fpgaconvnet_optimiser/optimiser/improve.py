@@ -31,7 +31,7 @@ class Improve(Optimiser):
         self.cool       = cool
         self.iterations = iterations
 
-    """    
+    """
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     OPTIMISER
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,7 +42,7 @@ class Improve(Optimiser):
         # objective
         objectives = ['latency','throughput']
         objective  = objectives[self.objective]
-        # cost 
+        # cost
         cost = self.get_cost()
         # Resources
         resources = [ partition.get_resource_usage() for partition in self.partitions ]
@@ -55,23 +55,22 @@ class Improve(Optimiser):
             temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
     def run_optimiser(self, log=True):
-       
         # update all partitions
         self.update_partitions()
 
         # Setup
-        cost = self.get_cost()       
+        cost = self.get_cost()
 
         start = False
 
-        try: 
+        try:
             self.check_resources()
             self.check_constraints()
             start = True
         except AssertionError as error:
             print("ERROR: Exceeds resource usage (trying to find valid starting point)")
             bad_partitions = self.get_resources_bad_partitions()
-        
+
         # Attempt to find a good starting point
         if not start:
             transforms_config = self.transforms_config
@@ -93,16 +92,16 @@ class Improve(Optimiser):
                 except AssertionError as error:
                     pass
 
-        try: 
+        try:
             self.check_resources()
             self.check_constraints()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
             return
- 
+
         # Cooling Loop
         while self.T_min < self.T:
-            
+
             # update partitions
             self.update_partitions()
 
@@ -114,7 +113,7 @@ class Improve(Optimiser):
 
             # several iterations per cool down
             for _ in range(self.iterations):
-                
+
                 # update partitions
                 self.update_partitions()
 
@@ -137,12 +136,12 @@ class Improve(Optimiser):
 
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)
-            
+
                 ## Update partitions
                 self.update_partitions()
 
             # Check resources
-            try: 
+            try:
                 self.check_resources()
                 self.check_constraints()
             except AssertionError:

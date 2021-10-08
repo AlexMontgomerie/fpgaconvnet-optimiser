@@ -63,16 +63,19 @@ class ConvolutionLayer(Layer):
             groups: int = 1,
             pad: Union[List[int], int] = 0,
             fine: int  = 1,
-            data_width: int = 16,
+            input_width: int = 16,
+            output_width: int = 16,
             weight_width: int = 16,
             acc_width: int = 16
         ):
 
         # initialise parent class
         super().__init__(rows, cols, channels, coarse_in,
-                coarse_out, data_width=data_width)
+                coarse_out, data_width=input_width)
 
         # save the widths
+        self.input_width = input_width
+        self.output_width = output_width
         self.weight_width = weight_width
         self.acc_width = acc_width
 
@@ -197,7 +200,6 @@ class ConvolutionLayer(Layer):
     def channels_out(self) -> int:
         return self.filters
 
-    ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)
         parameters.filters      = self.filters
@@ -210,43 +212,48 @@ class ConvolutionLayer(Layer):
         parameters.pad_right    = self.pad_right
         parameters.pad_bottom   = self.pad_bottom
         parameters.pad_left     = self.pad_left
+        parameters.input_width  = self.input_width
+        parameters.output_width = self.output_width
+        parameters.weight_width = self.weight_width
+        parameters.acc_width    = self.acc_width
 
-    ## UPDATE MODULES ##
     def update(self):
         # sliding window
-        self.modules['sliding_window'].rows     = self.rows_in()
-        self.modules['sliding_window'].cols     = self.cols_in()
-        self.modules['sliding_window'].channels = int(self.channels_in()/self.coarse_in*self.coarse_group)
-        self.modules['sliding_window'].data_width = self.data_width
+        self.modules['sliding_window'].rows     = self.rows
+        self.modules['sliding_window'].cols     = self.cols
+        self.modules['sliding_window'].channels = self.channels//(self.coarse_in*self.coarse_group)
+        self.modules['sliding_window'].data_width   = self.input_width
         # fork
         self.modules['fork'].rows     = self.rows_out()
         self.modules['fork'].cols     = self.cols_out()
-        self.modules['fork'].channels = int(self.channels_in()/self.coarse_in*self.coarse_group)
+        self.modules['fork'].channels = self.channels_in()//(self.coarse_in*self.coarse_group)
         self.modules['fork'].coarse   = self.coarse_out
-        self.modules['fork'].data_width = self.data_width
+        self.modules['fork'].data_width     = self.input_width
         # conv
         self.modules['conv'].rows     = self.rows_out()
         self.modules['conv'].cols     = self.cols_out()
-        self.modules['conv'].channels = int(self.channels_in()/self.coarse_in*self.coarse_group)
-        self.modules['conv'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
+        self.modules['conv'].channels = self.channels//(self.coarse_in*self.coarse_group)
+        self.modules['conv'].filters  = self.filters//(self.coarse_out*self.coarse_group)
         self.modules['conv'].fine     = self.fine
-        self.modules['conv'].groups   = int(self.groups/self.coarse_group)
-        self.modules['conv'].data_width = self.data_width
-        self.modules['conv'].weight_width = self.weight_width
+        self.modules['conv'].groups   = self.groups//self.coarse_group
+        self.modules['conv'].data_width     = self.input_width
+        self.modules['conv'].weight_width   = self.weight_width
+        self.modules['conv'].acc_width      = self.acc_width
         # accum
         self.modules['accum'].rows     = self.rows_out()
         self.modules['accum'].cols     = self.cols_out()
-        self.modules['accum'].channels = int(self.channels_in()/(self.coarse_in*self.coarse_group))
-        self.modules['accum'].filters  = int(self.filters/(self.coarse_out*self.coarse_group))
-        self.modules['accum'].groups   = int(self.groups/self.coarse_group)
-        self.modules['accum'].data_width = self.acc_width
+        self.modules['accum'].channels = self.channels//(self.coarse_in*self.coarse_group)
+        self.modules['accum'].filters  = self.filters//(self.coarse_out*self.coarse_group)
+        self.modules['accum'].groups   = self.groups//self.coarse_group
+        self.modules['accum'].data_width    = self.acc_width
         # glue
         self.modules['glue'].rows       = self.rows_out()
         self.modules['glue'].cols       = self.cols_out()
-        self.modules['glue'].filters    = int(self.filters/self.coarse_group)
+        self.modules['glue'].filters    = self.filters//self.coarse_group
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
-        self.modules['glue'].data_width = self.acc_width
+        self.modules['glue'].data_width = self.output_width
+        self.modules['glue'].acc_width  = self.acc_width
 
     def get_coarse_group_feasible(self):
         return get_factors(self.groups)
@@ -259,10 +266,10 @@ class ConvolutionLayer(Layer):
             return [ 1, self.kernel_size[0], self.kernel_size[0]*self.kernel_size[1] ]
 
     def get_weights_reloading_feasible(self):
-        return get_factors(int(self.filters/(self.groups*self.coarse_out)))
+        return get_factors(self.filters//(self.groups*self.coarse_out))
 
     def get_parameters_size(self):
-        weights_size = self.channels_in() * int( self.filters / self.groups ) * self.kernel_size[0] * self.kernel_size[1]
+        weights_size = self.channels_in() * ( self.filters // self.groups ) * self.kernel_size[0] * self.kernel_size[1]
         bias_size = 0
         return {
             "weights"   : weights_size,
@@ -360,7 +367,7 @@ class ConvolutionLayer(Layer):
         assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == int(self.channels_in()/self.groups), "ERROR (weights): invalid channel dimension"
+        assert weights.shape[1] == self.channels//self.groups, "ERROR (weights): invalid channel dimension"
         assert weights.shape[2] == self.kernel_size[0]  , "ERROR (weights): invalid kernel dimension"
         assert weights.shape[3] == self.kernel_size[1]  , "ERROR (weights): invalid kernel dimension"
 

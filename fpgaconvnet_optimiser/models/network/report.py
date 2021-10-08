@@ -21,6 +21,8 @@ def create_report(self, output_path):
             },
             "num_partitions" : len(self.partitions),
             "max_resource_usage" : {
+                "LUT" : max([ partition.get_resource_usage()["LUT"] for partition in self.partitions ]),
+                "FF" : max([ partition.get_resource_usage()["FF"] for partition in self.partitions ]),                 
                 "BRAM" : max([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ]),
                 "DSP" : max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ])
             }
@@ -41,6 +43,8 @@ def create_report(self, output_path):
             "weights_reloading_factor" : self.partitions[i].wr_factor,
             "weights_reloading_layer" : self.partitions[i].wr_layer,
             "resource_usage" : {
+                "LUT" : resource_usage["LUT"],
+                "FF" : resource_usage["FF"],            
                 "BRAM" : resource_usage["BRAM"],
                 "DSP" : resource_usage["DSP"]
             },
@@ -59,6 +63,8 @@ def create_report(self, output_path):
                 "interval" : hw.latency(), #TODO
                 "latency" : hw.latency(),
                 "resource_usage" : {
+                    "LUT" : resource_usage["LUT"],
+                    "FF" : resource_usage["FF"],            
                     "BRAM" : resource_usage["BRAM"],
                     "DSP" : resource_usage["DSP"]
                 }

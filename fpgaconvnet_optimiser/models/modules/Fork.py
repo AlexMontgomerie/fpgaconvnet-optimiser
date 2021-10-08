@@ -46,11 +46,12 @@ class Fork(Module):
                 "../../coefficients/fork_dsp.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width*self.kernel_size[0]*self.kernel_size[1],
-            self.data_width*self.kernel_size[0]*self.kernel_size[1]*self.coarse
-        ]
+        return {
+            "LUT"  : np.array([math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "FF"   : np.array([math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1]),
+        }
 
     def module_info(self):
         # get the base module fields

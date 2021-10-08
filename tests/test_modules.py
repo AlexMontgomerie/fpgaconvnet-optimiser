@@ -78,6 +78,7 @@ class TestAccumModule(TestModuleTemplate,unittest.TestCase):
         self.run_test_dimensions(module)
         self.run_test_rates(module)
         self.run_test_resources(module)
+
         # additional checks
         self.assertGreater(module.filters,0)
 

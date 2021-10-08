@@ -302,6 +302,7 @@ class Layer:
 
     def layer_info(self, parameters, batch_size=1):
         parameters.batch_size   = batch_size
+        parameters.data_width   = self.data_width
         parameters.buffer_depth = self.buffer_depth
         parameters.rows_in      = self.rows_in()
         parameters.cols_in      = self.cols_in()

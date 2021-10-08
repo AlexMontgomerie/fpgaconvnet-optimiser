@@ -5,7 +5,6 @@ Convolution layer together.
 
 .. figure:: ../../../figures/glue_diagram.png
 """
-
 import numpy as np
 import math
 import os
@@ -19,6 +18,7 @@ class Glue(Module):
     filters: int
     coarse_in: int
     coarse_out: int
+    acc_width: int = field(default=16, init=False)
 
     def __post_init__(self):
         # load the resource model coefficients
@@ -36,12 +36,12 @@ class Glue(Module):
                 "../../coefficients/glue_dsp.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width,
-            self.data_width*self.coarse_in*self.coarse_out,
-            self.data_width*self.coarse_out
-        ]
+        return {
+            "LUT"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "FF"    : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "DSP"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "BRAM"  : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+        }
 
     def channels_in(self):
         return self.filters

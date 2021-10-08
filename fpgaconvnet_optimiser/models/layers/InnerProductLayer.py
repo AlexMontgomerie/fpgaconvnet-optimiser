@@ -23,16 +23,19 @@ class InnerProductLayer(Layer):
             channels: int,
             coarse_in: int = 1,
             coarse_out: int = 1,
-            data_width: int = 16,
+            input_width: int = 16,
+            output_width: int = 16,
             weight_width: int = 16,
             acc_width: int = 16
         ):
 
         # initialise parent class
         super().__init__(rows, cols, channels, coarse_in,
-                coarse_out, data_width=data_width)
+                coarse_out, data_width=input_width)
 
         # save the widths
+        self.input_width = input_width
+        self.output_width = output_width
         self.weight_width = weight_width
         self.acc_width = acc_width
 
@@ -72,7 +75,11 @@ class InnerProductLayer(Layer):
 
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)
-        parameters.filters = self.filters
+        parameters.filters      = self.filters
+        parameters.input_width  = self.input_width
+        parameters.output_width = self.output_width
+        parameters.weight_width = self.weight_width
+        parameters.acc_width    = self.acc_width
 
     def update(self): # TODO: update all parameters
         # fork
@@ -80,23 +87,30 @@ class InnerProductLayer(Layer):
         self.modules['fork'].cols     = self.cols_in()
         self.modules['fork'].channels = int(self.channels_in()/self.coarse_in)
         self.modules['fork'].coarse   = self.coarse_out
+        self.modules['fork'].data_width = self.input_width
         # conv
         self.modules['conv'].rows     = 1
         self.modules['conv'].cols     = 1
         self.modules['conv'].channels = int(self.rows_in()*self.cols_in()*self.channels_in()/self.coarse_in)
         self.modules['conv'].filters  = int(self.filters/(self.coarse_out))
         self.modules['conv'].fine     = 1
+        self.modules['conv'].data_width = self.input_width
+        self.modules['conv'].weight_width = self.weight_width
+        self.modules['conv'].acc_width = self.acc_width
         # accum
         self.modules['accum'].rows     = 1
         self.modules['accum'].cols     = 1
         self.modules['accum'].channels = int(self.rows_in()*self.cols_in()*self.channels_in()/self.coarse_in)
         self.modules['accum'].filters  = int(self.filters/(self.coarse_out))
+        self.modules['accum'].data_width = self.acc_width
         # glue
         self.modules['glue'].rows = 1
         self.modules['glue'].cols = 1
         self.modules['glue'].filters    = self.filters
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
+        self.modules['glue'].data_width = self.output_width
+        self.modules['glue'].acc_width  = self.acc_width
 
     def get_weights_reloading_feasible(self):
         return get_factors(int(self.filters/self.coarse_out))

@@ -17,6 +17,8 @@ def bram_stream_resource_model(depth, width):
     # find the closest depth from the BRAM configuration
     if depth in list(BRAM_CONF_DEPTH.keys()):
         bram_depth = depth
+    elif depth > sorted(list(BRAM_CONF_DEPTH.keys()))[-1]:
+        bram_depth = sorted(list(BRAM_CONF_DEPTH.keys()))[-1]
     else:
         bram_depth = sorted(list(BRAM_CONF_DEPTH.keys()))[
                 bisect.bisect_right(sorted(list(BRAM_CONF_DEPTH.keys())), depth)]

@@ -62,30 +62,20 @@ class Module:
             'channels_out'  : self.channels_out()
         }
 
-    def load_coef(self, rsc_coef_path):
-        """
-        loads coefficients of the module's resource
-        and power models.
-
-        Parameters
-        ----------
-        rsc_coef_path: str
-            path to `.npy` file containing resource
-            model coefficients.
-        """
-
-        self.rsc_coef = np.load(rsc_coef_path)
-
     def utilisation_model(self):
         """
         Returns
         -------
-        list
+        dict
             utilisation of resources model. Defaults
             to zero resources.
         """
-        return [0]
-
+        return {
+            "LUT"  : np.array([0]),
+            "DSP"  : np.array([0]),
+            "BRAM" : np.array([0]),
+            "FF"   : np.array([0]),
+        }
 
     def rows_in(self):
         """
@@ -200,15 +190,20 @@ class Module:
             estimated resource usage of the module. Uses the
             resource coefficients for the estimate.
         """
+
+        # get the utilisation model
+        utilisation_model = self.utilisation_model()
+
         # use module resource coefficients if none are given
         if coef == None:
             coef = self.rsc_coef
+
         # return the linear model estimation
         return {
-          "LUT"  : int(np.dot(self.utilisation_model(), coef["LUT"])),
-          "BRAM" : int(np.dot(self.utilisation_model(), coef["BRAM"])),
-          "DSP"  : int(np.dot(self.utilisation_model(), coef["DSP"])),
-          "FF"   : int(np.dot(self.utilisation_model(), coef["FF"])),
+          "LUT"  : int(np.dot(utilisation_model["LUT"], coef["LUT"])),
+          "BRAM" : int(np.dot(utilisation_model["BRAM"], coef["BRAM"])),
+          "DSP"  : int(np.dot(utilisation_model["DSP"], coef["DSP"])),
+          "FF"   : int(np.dot(utilisation_model["FF"], coef["FF"])),
         }
 
     def functional_model(self,data):

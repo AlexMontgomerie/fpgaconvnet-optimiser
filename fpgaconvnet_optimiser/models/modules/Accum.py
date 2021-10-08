@@ -9,7 +9,6 @@ their accumulation across channels.
 
 .. figure:: ../../../figures/accum_diagram.png
 """
-
 import numpy as np
 import math
 import os
@@ -40,15 +39,12 @@ class Accum(Module):
                 "../../coefficients/accum_dsp.npy"))
 
     def utilisation_model(self):
-        bram_acc_buffer_size =  (self.filters/self.groups)*self.data_width
-        return np.array([
-            1,
-            #self.data_width,
-            self.data_width*self.groups,
-            self.data_width*(self.channels/self.groups),
-            bram_acc_buffer_size,
-            math.ceil( (bram_acc_buffer_size)/18000),
-        ])
+        return {
+            "LUT"   : np.array([self.filters,self.groups,self.data_width,self.cols,self.rows,self.channels]),
+            "FF"    : np.array([self.filters,self.groups,self.data_width,self.cols,self.rows,self.channels]),
+            "DSP"   : np.array([self.filters,self.groups,self.data_width,self.cols,self.rows,self.channels]),
+            "BRAM"  : np.array([self.filters,self.groups,self.data_width,self.cols,self.rows,self.channels]),
+        }
 
     def channels_in(self):
         return (self.channels*self.filters)//self.groups

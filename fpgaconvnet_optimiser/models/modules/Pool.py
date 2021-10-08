@@ -4,7 +4,6 @@ across a kernel-size window of the feature map.
 
 .. figure:: ../../../figures/pool_max_diagram.png
 """
-
 import numpy as np
 import math
 import os
@@ -43,12 +42,12 @@ class Pool(Module):
                 "../../coefficients/pool_dsp.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width,
-            self.data_width*self.kernel_size[0]*self.kernel_size[1],
-            self.data_width*self.rows*self.cols*self.channels,
-        ]
+        return {
+            "LUT"  : np.array([self.kernel_size[0],self.kernel_size[1],self.cols,self.rows,self.channels,self.data_width]),
+            "FF"   : np.array([self.kernel_size[0],self.kernel_size[1],self.cols,self.rows,self.channels,self.data_width]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1]),
+        }
 
     def module_info(self):
         # get the base module fields

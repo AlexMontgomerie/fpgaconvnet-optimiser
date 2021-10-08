@@ -31,8 +31,8 @@ def main():
         help='Batch size')
     parser.add_argument('--objective', choices=['throughput','latency'], required=True,
         help='Optimiser objective')
-    parser.add_argument('--optimiser', choices=['simulated_annealing', 'improve', 'greedy_partition'], default='improve',
-        help='Optimiser strategy')
+    parser.add_argument('--optimiser', choices=['simulated_annealing', 'improve', 'greedy_partition'],
+        default='improve', help='Optimiser strategy')
     parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
         help='Configuration file (.yml) for optimiser')
     parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
