@@ -14,6 +14,7 @@ from fpgaconvnet_optimiser.optimiser import SimulatedAnnealing
 from fpgaconvnet_optimiser.optimiser import Improve
 
 def main():
+    print(os.getcwd())
     parser = argparse.ArgumentParser(description="Optimiser Script")
     parser.add_argument('-n','--name',metavar='PATH',required=True,
         help='network name')
@@ -64,13 +65,22 @@ def main():
                 cool=float(optimiser_config["annealing"]["cool"]),
                 iterations=int(optimiser_config["annealing"]["iterations"]))
     elif args.optimiser == "simulated_annealing":
+
+        #Testing, remove before commit
+        optimiser_config["annealing"]["T"] = "auto"
+        optimiser_config["annealing"]["T_min"] = 0.001
+        optimiser_config["annealing"]["k"] = 0.9
+        optimiser_config["annealing"]["cool"] = 0.98
+        optimiser_config["annealing"]["iterations"] = 10
+
+
         # create network
         net = SimulatedAnnealing(args.name,args.model_path,
-                T=float(optimiser_config["annealing"]["T"]),
-                T_min=float(optimiser_config["annealing"]["T_min"]),
-                k=float(optimiser_config["annealing"]["k"]),
-                cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]))
+                T=optimiser_config["annealing"]["T"],
+                T_min=optimiser_config["annealing"]["T_min"],
+                k=optimiser_config["annealing"]["k"],
+                cool=optimiser_config["annealing"]["cool"],
+                iterations=optimiser_config["annealing"]["iterations"])
 
     # turn on debugging
     net.DEBUG = True
@@ -104,6 +114,10 @@ def main():
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
 
+    #Initialize "auto" annealing variables
+    if net.T == "auto":
+        net.estimate_starting_temperature()
+
     # run optimiser
     net.run_optimiser()
 
@@ -115,13 +129,17 @@ def main():
     #    net.get_optimal_batch_size()
 
     # visualise network
-    net.visualise(os.path.join(args.output_path,"topology.png"))
+    net.visualise(os.path.join(args.output_path, "topology.png"))
 
     # create report
-    net.create_report(os.path.join(args.output_path,"report.json"))
+    net.create_report(os.path.join(args.output_path, "report.json"))
 
     # save all partitions
     net.save_all_partitions(args.output_path)
 
     # create scheduler
-    net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+    net.get_schedule_csv(os.path.join(args.output_path, "scheduler.csv"))
+
+#Testing, remove before commit
+
+main()
