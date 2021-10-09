@@ -1,3 +1,4 @@
+import os
 import sys
 import copy
 import random
@@ -5,6 +6,7 @@ import math
 
 from decimal import *
 from fpgaconvnet_optimiser.optimiser.optimiser import Optimiser
+from multiprocessing import Pool
 
 LATENCY = 0
 THROUGHPUT = 1
@@ -60,7 +62,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # Setup
         cost = self.get_cost()
 
-        #Initialize to valid partition within constraints
+        # Initialize to valid partition within constraints
         start = False
 
         try:
@@ -143,7 +145,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # reduce temperature
             self.T *= self.cool
 
-    def estimate_starting_temperature(self, chi_target=0.8, chi_tolerance=0.01, p=1, sample_target=100, threads = 1):
+    def estimate_starting_temperature(self, chi_target=0.8, chi_tolerance=0.01, p=1, sample_target=100, threads=0):
         """
         An implementation of the algorithm from:
             Ben-Ameur, Walid. (2004). Computing the Initial Temperature of Simulated Annealing.
@@ -155,19 +157,39 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
         # Initialize list to store energy information of positive transitions
 
-        #All transitions generated in single thread
+        # All transitions generated in single thread
         if threads == 1:
             transitions = self.generate_transitions(sample_target)
             sample_list = transitions[0]
             self.partitions = transitions[1]
-        # elif threads !=0:
-        #     #Multi-core support for
-        #     self.generate_transitions_mp(sample_target, threads)
-        # else:
-        #     self.generate_transitions_mp(mp)
 
-            # self.optimiser_status()
-        print(sample_list)
+        # Generation of transition spread across multiple cores
+        else:
+
+            # auto (0) in threads sets maximum number of threads
+            if threads == 0:
+                threads = os.cpu_count()
+
+            # Per core number of transitions to be generated
+            core_sample_targets = [sample_target // threads for _ in range(threads)]
+
+            # Distribute remainder
+            for i in range(sample_target % threads):
+                core_sample_targets[i] += 1
+
+            # Multiprocessing map function
+            with Pool(threads) as p:
+                transitions = p.map(self.generate_transitions, core_sample_targets)
+
+            # Flatten transition list
+            sample_list = []
+            for core in transitions:
+                sample_list.extend(core[0])
+
+                # Load best performing partition from sampling
+                if self.get_cost() > core[2]:
+                    self.partitions = core[1]
+
         # Arbitrary starting temperature
         T = Decimal(7.5)
         chi_estimate = Decimal(0)
@@ -177,6 +199,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # Algorithm from paper implemented
         i = 0
         while abs((chi_target - chi_estimate) / chi_target) > chi_tolerance:
+
+            #Calculating exponentially weighted sum of transitions
             Emax_sum = Decimal(0)
             Emin_sum = Decimal(0)
 
@@ -184,14 +208,17 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 Emin_sum += (Decimal(-j[0]) / T).exp()
                 Emax_sum += (Decimal(-j[1]) / T).exp()
 
+            # Estimate of acceptance probability
             chi_estimate = Emax_sum / Emin_sum
-            temp = Decimal(chi_estimate).ln() / Decimal(chi_target).ln()
 
+            #Estimating temperature for next iteration
             T = T * Decimal(chi_estimate).ln() / Decimal(chi_target).ln()
+
+            #In case algorithm fails to converge in reasonable time, some data points are replaced
             i += 1
             if i > 1000:
                 print("Failed to converge, adding sample and restarting ")
-                five_percent = int(len(sample_list)/20)
+                five_percent = int(len(sample_list) / 20)
                 sample_list.extend(self.generate_transitions(five_percent)[0])
 
                 for _ in range(five_percent):
@@ -199,16 +226,18 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 i = 0
                 T = Decimal(7.5)
 
-        print("Starting temperature: " + str(float(T)))
+        print("Starting temperature: " + str(T))
         self.T = float(T)
 
-    def generate_transitions(self, sample_target, positive=False, negative=True):
+    def generate_transitions(self, sample_target=100, positive=False, negative=True):
 
         # Variable initialization
         min_partitions = []
         min_cost = float('inf')
         sample_list = []
+        pid = os.getpid()
 
+        #Main sample collection loop
         while len(sample_list) < sample_target:
 
             # update partitions
@@ -220,6 +249,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # Save previous iteration
             partitions = copy.deepcopy(self.partitions)
 
+            #Check for valid starting point
             start = False
 
             try:
@@ -254,19 +284,19 @@ Randomly chooses a transform and hardware component to change. The change is acc
                     self.partitions[i].remove_squeeze()
 
                 # Apply a transform
-                ## Choose a random transform
+                # Choose a random transform
                 transform = random.choice(self.transforms)
 
-                ## Choose a random partition
+                # Choose a random partition
                 partition_index = random.randint(0, len(self.partitions) - 1)
 
-                ## Choose a random node in partition
+                # Choose a random node in partition
                 node = random.choice(list(self.partitions[partition_index].graph))
 
-                ## Apply the transform
+                # Apply the transform
                 self.apply_transform(transform, partition_index, node)
 
-                ## Update partitions
+                # Update partitions
                 self.update_partitions()
 
             # Check resources
@@ -280,15 +310,17 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # Add transition to sample list based on Negative and Positive flags
             if (self.get_cost() > cost) and negative:
                 sample_list.append((cost, self.get_cost()))
-                print(f"Negative transition, diffference: {self.get_cost() - cost}, Sample point {len(sample_list)}/{sample_target}")
+                print(
+                    f"Negative transition, diffference: {self.get_cost() - cost}, Sample point {len(sample_list)}/{sample_target}, PID:{pid}")
 
             elif (self.get_cost() < cost) and positive:
                 sample_list.append((cost, self.get_cost()))
-                print(f"Positive transition, diffference: {self.get_cost() - cost}, Sample point {len(sample_list)}/{sample_target}")
+                print(
+                    f"Positive transition, diffference: {self.get_cost() - cost}, Sample point {len(sample_list)}/{sample_target}, PID:{pid}")
 
-            #Update the best performing parition
-            elif self.get_cost() < min_cost:
+                # Update the record of the best performing partition
+            if self.get_cost() < min_cost:
+                min_cost = self.get_cost()
                 min_partitions = partitions
 
-        out_tuple = (sample_list, min_partitions, min_cost)
-        return out_tuple
+        return sample_list, min_partitions, min_cost
