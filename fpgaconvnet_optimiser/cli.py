@@ -40,9 +40,6 @@ def main():
 
     args = parser.parse_args()
 
-    # setup seed
-    random.seed(args.seed)
-    np.random.seed(args.seed)
 
     # copy input files to the output path
     if not os.path.exists(args.output_path):
@@ -80,7 +77,9 @@ def main():
                 T_min=optimiser_config["annealing"]["T_min"],
                 k=optimiser_config["annealing"]["k"],
                 cool=optimiser_config["annealing"]["cool"],
-                iterations=optimiser_config["annealing"]["iterations"])
+                iterations=optimiser_config["annealing"]["iterations"],
+                csv_path=(args.output_path + "out.csv"),
+                seed=args.seed )
 
     # turn on debugging
     net.DEBUG = True
