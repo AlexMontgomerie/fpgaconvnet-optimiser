@@ -115,6 +115,8 @@ class Conv(Module):
         rsc = Module.rsc(self, coef)
         # update the dsp usage
         rsc["DSP"] = dot_product_dsp
+        # set the BRAM usage to zero
+        rsc["BRAM"] = 0
         # return the resource model
         return rsc
 
