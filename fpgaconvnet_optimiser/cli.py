@@ -73,8 +73,8 @@ def main():
 
         # create network
         net = SimulatedAnnealing(args.name,args.model_path,
-                T=optimiser_config["annealing"]["T"],
-                T_min=optimiser_config["annealing"]["T_min"],
+                t=optimiser_config["annealing"]["T"],
+                t_min=optimiser_config["annealing"]["T_min"],
                 k=optimiser_config["annealing"]["k"],
                 cool=optimiser_config["annealing"]["cool"],
                 iterations=optimiser_config["annealing"]["iterations"],
@@ -113,10 +113,30 @@ def main():
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
 
-    #Initialize "auto" annealing variables
-    if net.T == "auto":
-        net.estimate_starting_temperature()
+    # #Initialize "auto" annealing variables
+    # if net.T == "auto":
+    #     net.estimate_starting_temperature()
 
+    # for i in range(10):
+    #     samples = (i+1)*50
+    #     print("Samples:" + str((i+1)*50))
+    #     temps = []
+    #     maxes = []
+    #     for j in range(10):
+    #         t, maxi = net.estimate_starting_temperature(sample_target = 10)
+    #         temps.append(t)
+    #         maxes.append(maxi)
+    #     print(f"Sample run: {samples}")
+    #     print(temps)
+    #     print(sum(temps)/len(temps))
+    #     print(sum(maxes)/len(maxes))
+
+    while True:
+        temps = []
+        for i in range(10):
+            temps.append(net.estimate_starting_temperature(sample_target=100))
+        print(sum(temps)/len(temps))
+        input()
     # run optimiser
     net.run_optimiser()
 

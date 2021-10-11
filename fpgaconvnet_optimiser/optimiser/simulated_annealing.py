@@ -46,6 +46,9 @@ Randomly chooses a transform and hardware component to change. The change is acc
             self.transform_count[transform] = 0
 
     def optimiser_status(self):
+        """Function prints network status information between cooling iterations and saves additional information into
+        the debug csv file, if a path is set"""
+
         # objective
         objectives = ['latency', 'throughput']
         objective = objectives[self.objective]
@@ -90,6 +93,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
             csv_file.close()
 
     def run_optimiser(self, log=True):
+        """Runs based on platform and transform information set separately of constructor. Upon completion
+        self.partitions is set to the result of optimization"""
 
         # update all partitions
         self.update_partitions()
@@ -193,18 +198,37 @@ Randomly chooses a transform and hardware component to change. The change is acc
             self.t *= self.cool
         print(self.transform_count)
 
-    def estimate_starting_temperature(self, chi_target=0.8, chi_tolerance=0.01, p=1, sample_target=100, threads=0):
+    def estimate_starting_temperature(self, chi_target=0.95, chi_tolerance=0.01, sample_target=100, threads=1, mode="Ameur"):
         """
-        An implementation of the algorithm from:
-            Ben-Ameur, Walid. (2004). Computing the Initial Temperature of Simulated Annealing.
+        The function uses the generate_transitions function to generate a sample of state transitions and then applies
+        an algorithm to estimate the starting temperature. It both sets the network t annealing parameter and returns this temperature.
+
+        There are two algorithms implemented:
+            1) Ben-Ameur, Walid. (2004). Computing the Initial Temperature of Simulated Annealing.
             Computational Optimization and Applications. 29. 369-385. 10.1023/B:COAP.0000044187.23143.bd.
+            This has additional parameters implemented as **kwargs:
+                -chi-target: Target acceptance probability. Should be close to 1 as the goal is to accept all
+                    transitions initially
+                -chi-tolerance: Precision to which determine starting temperature and match chi-target
+            2) Maximum transition - Set initial temperature to maximum observed difference as all transitions should be
+            accepted initially
 
-        The function generates a number of random transitions and estimates a good value of temperature.
-        I was not able to figure out why the algorithm seems to get stuck in loops while the temperature is estimated, so it simply restarts.
+        Algorithm 1 may fail to converge. If that occurs, some transitions are replaced and another attempt is made.
+
+        Smallest sample list for which a failure to converge has been observed (in case more digging is to be done)
+                    sample_list = [(-5.8307128554903995, -5.640806442180019), (-11.918836347797749, -11.371805455155148),
+                           (-11.371805455155148, -9.204115697648776), (-9.204115697648776, -4.309705653654608),
+                           (-11.994668226037508, -6.035553174382293), (-3.0169132743870315, -2.405264519831464),
+                           (-6.035553174382293, -5.948002938979628), (-5.948002938979628, -4.032819797286603),
+                           (-11.183263539331135, -2.9867880267935436), (-2.9867880267935436, -2.9582999459601433),
+                           (-2.9582999459601433, -2.957873422468494), (-3.9015029681854285, -1.0329898958713128),
+                           (-4.01625381130438, -4.0073207659265915), (-4.0073207659265915, -3.770179622516949),
+                           (-3.770179622516949, -2.4365893223042), (-2.4367352379557734, -2.4129557112982267),
+                           (-11.813303310531769, -5.830639694407311), (-6.026676965052264, -5.882455365105181),
+                           (-2804.639996410061, -12.074495969484948), (-12.074495969484948, -4.032841655731214),
+                           (-4.032841655731214, -4.02756906467377), (-4.02756906467377, -3.0206963372027005),
+                           (-4.017757846841786, -3.0169132743870315)]
         """
-        decimal.getcontext().prec = 1000
-
-        # Initialize list to store energy information of positive transitions
 
         # All transitions generated in single thread
         if threads == 1:
@@ -237,48 +261,78 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
                 # Load best performing partition from sampling
                 if self.get_cost() > core[2]:
-                    self.partitions = core[1]
+                     self.partitions = core[1]
 
-        # Arbitrary starting temperature
-        t = Decimal(7.5)
-        chi_estimate = Decimal(0)
-        chi_target = Decimal(chi_target)
-        chi_tolerance = Decimal(chi_tolerance)
+        #Select temperature estimation algorithm
+        if mode == "Ameur":
+            # Ben-Ameur algorithm from paper implemented
 
-        # Algorithm from paper implemented
-        i = 0
-        while abs((chi_target - chi_estimate) / chi_target) > chi_tolerance:
+            #Set precision
+            decimal.getcontext().prec = 100
 
-            # Calculating exponentially weighted sum of transitions
-            e_max_sum = Decimal(0)
-            e_min_sum = Decimal(0)
+            # Arbitrary starting temperature
+            t = Decimal(7.5)
+            chi_estimate = Decimal(0)
+            chi_target = Decimal(chi_target)
+            chi_tolerance = Decimal(chi_tolerance)
 
+            i = 0
+            while abs((chi_target - chi_estimate) / chi_target) > chi_tolerance:
+
+                # Calculating exponentially weighted sum of transitions
+                e_max_sum = Decimal(0)
+                e_min_sum = Decimal(0)
+
+                for j in sample_list:
+                    e_min_sum += (Decimal(-j[0]) / t).exp()
+                    e_max_sum += (Decimal(-j[1]) / t).exp()
+
+                # Estimate of acceptance probability
+                chi_estimate = e_max_sum / e_min_sum
+
+                # Estimating temperature for next iteration
+                t = t * Decimal(chi_estimate).ln() / Decimal(chi_target).ln()
+
+                # In case algorithm fails to converge in reasonable time, some data points are replaced
+                i += 1
+                if i > 1000:
+                    print("Failed to converge, adding sample and restarting ")
+
+                    print(sample_list)
+                    input()
+                    five_percent = int(len(sample_list) / 20)
+                    sample_list.extend(self.generate_transitions(five_percent)[0])
+
+                    for _ in range(five_percent):
+                        sample_list.pop(0)
+                    i = 0
+                    t = Decimal(7.5)
+
+            print("Starting temperature: " + str(t))
+            self.t = float(t)
+            return t
+
+        #Estimation of starting temperature as maximum difference
+        elif mode == "Max":
+            max = 0
             for j in sample_list:
-                e_min_sum += (Decimal(-j[0]) / t).exp()
-                e_max_sum += (Decimal(-j[1]) / t).exp()
+                if j[1]-j[0] > max:
+                    max = j[1]-j[0]
 
-            # Estimate of acceptance probability
-            chi_estimate = e_max_sum / e_min_sum
+            print("Starting temperature: " + str(max))
+            self.t = max
+            return max
 
-            # Estimating temperature for next iteration
-            t = t * Decimal(chi_estimate).ln() / Decimal(chi_target).ln()
-
-            # In case algorithm fails to converge in reasonable time, some data points are replaced
-            i += 1
-            if i > 1000:
-                print("Failed to converge, adding sample and restarting ")
-                five_percent = int(len(sample_list) / 20)
-                sample_list.extend(self.generate_transitions(five_percent)[0])
-
-                for _ in range(five_percent):
-                    sample_list.pop(0)
-                i = 0
-                t = Decimal(7.5)
-
-        print("Starting temperature: " + str(t))
-        self.t = float(t)
-
-    def generate_transitions(self, sample_target=100, positive=False, negative=True):
+    def generate_transitions(self, sample_target, positive=False, negative=True):
+        """Function generates a specified number (sample_target) of random transitions for its network in either the
+        positive direction (performance increases afer change) or the negative direction (performance decreases after change)
+        The function returns a tuple of three elements:
+            1)List of tuples of two elements, the first being the cost function before specified transition and the
+             second after
+            2)A copy of the best performing partitions encountered during random search. Suggested as a good starting
+            point for the optimiser
+            3) The cost function value for the best performing partitions
+        """
 
         # Variable initialization
         min_partitions = []
@@ -314,6 +368,10 @@ Randomly chooses a transform and hardware component to change. The change is acc
                     transform = random.choice(self.transforms)
                     self.apply_transform(transform)
                     self.update_partitions()
+
+                    # Increment transition counter
+                    if self.DEBUG:
+                        self.transform_count[transform] += 1
 
                     try:
                         self.check_resources()
@@ -359,7 +417,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 # revert to previous state
                 self.partitions = partitions
 
-            # Add transition to sample list based on Negative and Positive flags
+            # Add transition to sample list based on Negative (perf. decreases) and Positive(perf. increases) flags
             if (self.get_cost() > cost) and negative:
                 sample_list.append((cost, self.get_cost()))
                 print(
@@ -380,6 +438,9 @@ Randomly chooses a transform and hardware component to change. The change is acc
         return sample_list, min_partitions, min_cost
 
     def write_csv_header(self):
+        """Function appends the data columns and human readable information on annealer settings into the csv file at
+        self.csv_path"""
+
         # Generate column header for transform counter
         key_header = ""
         for key in self.transform_count.keys():
