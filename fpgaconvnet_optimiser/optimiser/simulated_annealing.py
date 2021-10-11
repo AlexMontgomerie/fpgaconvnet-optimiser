@@ -198,7 +198,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             self.t *= self.cool
         print(self.transform_count)
 
-    def estimate_starting_temperature(self, chi_target=0.95, chi_tolerance=0.01, sample_target=100, threads=1, mode="Ameur"):
+    def estimate_starting_temperature(self, chi_target=0.94, chi_tolerance=0.01, sample_target=100, mode="Ameur"):
         """
         The function uses the generate_transitions function to generate a sample of state transitions and then applies
         an algorithm to estimate the starting temperature. It both sets the network t annealing parameter and returns this temperature.
@@ -231,37 +231,11 @@ Randomly chooses a transform and hardware component to change. The change is acc
         """
 
         # All transitions generated in single thread
-        if threads == 1:
-            transitions = self.generate_transitions(sample_target)
-            sample_list = transitions[0]
-            self.partitions = transitions[1]
 
-        # Generation of transition spread across multiple cores
-        else:
+        transitions = self.generate_transitions(sample_target)
+        sample_list = transitions[0]
+        self.partitions = transitions[1]
 
-            # auto (0) in threads sets maximum number of threads
-            if threads == 0:
-                threads = os.cpu_count()
-
-            # Per core number of transitions to be generated
-            core_sample_targets = [sample_target // threads for _ in range(threads)]
-
-            # Distribute remainder
-            for i in range(sample_target % threads):
-                core_sample_targets[i] += 1
-
-            # Multiprocessing map function
-            with Pool(threads) as p:
-                transitions = p.map(self.generate_transitions, core_sample_targets)
-
-            # Flatten transition list
-            sample_list = []
-            for core in transitions:
-                sample_list.extend(core[0])
-
-                # Load best performing partition from sampling
-                if self.get_cost() > core[2]:
-                     self.partitions = core[1]
 
         #Select temperature estimation algorithm
         if mode == "Ameur":

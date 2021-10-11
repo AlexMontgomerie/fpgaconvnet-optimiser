@@ -134,7 +134,7 @@ def main():
     while True:
         temps = []
         for i in range(10):
-            temps.append(net.estimate_starting_temperature(sample_target=100))
+            temps.append(net.estimate_starting_temperature(sample_target=250))
         print(sum(temps)/len(temps))
         input()
     # run optimiser
