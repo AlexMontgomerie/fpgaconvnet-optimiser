@@ -32,4 +32,5 @@ general:
     logging: false
     checkpoints: false
     starting_point_distillation: false
+    resource_allocation: 0.75
 

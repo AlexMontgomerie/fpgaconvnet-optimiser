@@ -19,8 +19,8 @@ def check_resources(self):
     for partition in self.partitions:
         # get the resource usage for the platform
         partition_resource_usage = partition.get_resource_usage()
-        assert partition_resource_usage['FF']   <= (self.platform['constraints']['FF']), "ERROR: FF usage exceeded"
-        assert partition_resource_usage['LUT']  <= (self.platform['constraints']['LUT']), "ERROR: LUT usage exceeded"
+        assert partition_resource_usage['FF']   <= (self.rsc_allocation*self.platform['constraints']['FF']), "ERROR: FF usage exceeded"
+        assert partition_resource_usage['LUT']  <= (self.rsc_allocation*self.platform['constraints']['LUT']), "ERROR: LUT usage exceeded"
         assert partition_resource_usage['DSP']  <= (self.rsc_allocation*self.platform['constraints']['DSP']) , "ERROR: DSP usage exceeded"
         assert partition_resource_usage['BRAM'] <= (self.rsc_allocation*self.platform['constraints']['BRAM']), "ERROR: BRAM usage exceeded"
 

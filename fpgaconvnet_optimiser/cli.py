@@ -97,6 +97,9 @@ def main():
                 iterations=int(optimiser_config["annealing"]["iterations"]),
                 transforms_config=optimiser_config["transforms"])
 
+    # update the resouce allocation
+    net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
+
     # turn on debugging
     net.DEBUG = True
 

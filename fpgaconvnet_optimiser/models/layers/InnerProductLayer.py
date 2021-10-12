@@ -85,14 +85,14 @@ class InnerProductLayer(Layer):
         # fork
         self.modules['fork'].rows     = self.rows_in()
         self.modules['fork'].cols     = self.cols_in()
-        self.modules['fork'].channels = int(self.channels_in()/self.coarse_in)
+        self.modules['fork'].channels = self.channels_in()//self.coarse_in
         self.modules['fork'].coarse   = self.coarse_out
         self.modules['fork'].data_width = self.input_width
         # conv
         self.modules['conv'].rows     = 1
         self.modules['conv'].cols     = 1
-        self.modules['conv'].channels = int(self.rows_in()*self.cols_in()*self.channels_in()/self.coarse_in)
-        self.modules['conv'].filters  = int(self.filters/(self.coarse_out))
+        self.modules['conv'].channels = self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
+        self.modules['conv'].filters  = self.filters//self.coarse_out
         self.modules['conv'].fine     = 1
         self.modules['conv'].data_width = self.input_width
         self.modules['conv'].weight_width = self.weight_width
@@ -100,8 +100,8 @@ class InnerProductLayer(Layer):
         # accum
         self.modules['accum'].rows     = 1
         self.modules['accum'].cols     = 1
-        self.modules['accum'].channels = int(self.rows_in()*self.cols_in()*self.channels_in()/self.coarse_in)
-        self.modules['accum'].filters  = int(self.filters/(self.coarse_out))
+        self.modules['accum'].channels = self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
+        self.modules['accum'].filters  = self.filters//self.coarse_out
         self.modules['accum'].data_width = self.acc_width
         # glue
         self.modules['glue'].rows = 1
@@ -128,7 +128,7 @@ class InnerProductLayer(Layer):
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
         accum_rsc   = self.modules['accum'].rsc()
-        if int(self.channels_in()/self.coarse_in) == 1:
+        if self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in == 1:
             accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         glue_rsc    = self.modules['glue'].rsc()
         if self.coarse_in == 1:

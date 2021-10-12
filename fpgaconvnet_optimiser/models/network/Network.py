@@ -28,10 +28,10 @@ from fpgaconvnet_optimiser.models.layers import SqueezeLayer
 
 class Network():
 
-    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True):
+    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True, rsc_allocation=1.0):
 
         ## percentage resource allocation
-        self.rsc_allocation = 1.0
+        self.rsc_allocation = rsc_allocation
 
         ## bitwidths
         self.data_width     = data_width
