@@ -79,7 +79,6 @@ class Partition():
 
     # update
     from fpgaconvnet_optimiser.models.partition.update import update
-
     def visualise(self, partition_index):
         cluster = pydot.Cluster(str(partition_index),label=f"partition: {partition_index}")
         # add clusters
@@ -110,7 +109,6 @@ class Partition():
                     max_latency = latency
 
         return max_latency
-
 
     def is_input_memory_bound(self):
         input_node  = graphs.get_input_nodes(self.graph)[0]

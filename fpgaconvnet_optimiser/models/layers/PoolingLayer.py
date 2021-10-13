@@ -83,6 +83,12 @@ class PoolingLayer(Layer):
 
         self.update()
 
+    def rows_out(self) -> int:
+        return self.modules["sliding_window"].rows_out()
+
+    def cols_out(self) -> int:
+        return self.modules["sliding_window"].cols_out()
+
     @property
     def kernel_size(self) -> List[int]:
         return self._kernel_size
@@ -178,12 +184,6 @@ class PoolingLayer(Layer):
     def fine(self, val: int) -> None:
         self._fine = self.val
         self.update()
-
-    def rows_out(self) -> int:
-        return self.modules["sliding_window"].rows_out()
-
-    def cols_out(self) -> int:
-        return self.modules["sliding_window"].cols_out()
 
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)

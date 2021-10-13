@@ -126,4 +126,3 @@ def apply_weights_reloading_transform(self):
                 max(self.graph.nodes[layer]['hw'].get_coarse_out_feasible()),
                 self.graph.nodes[layer]['hw'].coarse_out
             )
-
