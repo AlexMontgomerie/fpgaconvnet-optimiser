@@ -46,6 +46,8 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
             # create layer
             layer = partition.layers.add()
             layer.name = node.replace("/","_")
+            layer_name = onnx_helper.gen_layer_name(
+                    self.partitions[i].graph, layer.name) # REQUIRED EDIT
             layer.type = fpgaconvnet_optimiser.tools.layer_enum.to_proto_layer_type(self.partitions[i].graph.nodes[node]['type'])
             # add stream(s) in
             stream_in  = layer.streams_in.add()
@@ -54,9 +56,11 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
                 layer.node_in   = node
                 stream_in.name  = "in"
             else :
-                layer.node_in   = prev_nodes[0]
-                stream_in.name  = "_".join([prev_nodes[0].replace("/","_"), node.replace("/","_")])
-            stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].streams_in()
+                prev_layer_name = onnx_helper.gen_layer_name(
+                    self.partitions[i].graph, prev_nodes[0].replace("/","_")) # REQUIRED EDIT
+                layer.node_in   = prev_layer_name #REQUIRED EDIT
+                stream_in.name  = "_".join([prev_layer_name, layer_name]) # REQUIRED EDIT
+            stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_in
             # add stream(s) out
             stream_out = layer.streams_out.add()
             next_nodes = graphs.get_next_nodes(self.partitions[i].graph, node)
@@ -64,9 +68,11 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
                 layer.node_out  = node
                 stream_out.name = "out"
             else:
-                layer.node_out  = next_nodes[0]
-                stream_out.name = "_".join([node.replace("/","_"), next_nodes[0].replace("/","_")])
-            stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].streams_out()
+                next_layer_name = onnx_helper.gen_layer_name(
+                    self.partitions[i].graph, next_nodes[0].replace("/","_")) # REQUIRED EDIT
+                layer.node_out  = next_layer_name
+                stream_out.name = "_".join([layer_name, next_layer_name])
+            stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_out
             # add parameters
             self.partitions[i].graph.nodes[node]['hw'].layer_info(layer.parameters, batch_size=self.partitions[i].batch_size)
             # add weights key
