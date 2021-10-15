@@ -52,7 +52,7 @@ class Optimiser(Network):
             'power'      : float("inf")
         }
 
-        self.transforms = ['coarse','fine','partition','weights_reloading','wordlength']
+        self.transforms = ['coarse','fine','partition']
 
         self.transforms_config = transforms_config
         if len(fix_starting_point_config) == 0:
@@ -159,18 +159,6 @@ class Optimiser(Network):
             self.partitions[partition_index].remove_squeeze()
             self.apply_random_partition(partition_index)
             return
-        ## Partition transform (partition transform)
-        if transform == 'wordlength':
-            #if cooltimes>=270:
-                  #if self.wordlength>=4 and self.wordlength<=30:
-                      #self.wordlength=self.wordlength+random.choice((-2,0,2))
-                  #if self.wordlength==32:   
-                      #self.wordlength=self.wordlength-random.choice((0,2)) 
-                  #if self.wordlength==2:   
-                      #self.wordlength=self.wordlength+random.choice((0,2))
-            #else:
-            self.wordlength=2*random.randint(1,16)                                 
-            return            
 
     def optimiser_status(self):
         """
