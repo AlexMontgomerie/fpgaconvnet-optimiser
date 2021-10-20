@@ -92,12 +92,11 @@ def get_all_horizontal_splits(self, partition_index, allowed_partitions=[]):
     if allowed_partitions:
         for split in all_horizontal_splits:
             # get layer types
-            layer_types = [
+            layer_types = (
                 self.partitions[partition_index].graph.nodes[split[0]]["type"],
                 self.partitions[partition_index].graph.nodes[split[1]]["type"]
-            ]
+            )
             # see if it's in the allowed partitions
-            print(allowed_partitions)
             if layer_types in allowed_partitions:
                 filtered_horizontal_splits.append(split)
         # return the filtered splits

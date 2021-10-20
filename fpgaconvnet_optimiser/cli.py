@@ -76,7 +76,6 @@ def main():
     for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
         allowed_partitions.append((from_onnx_op_type(allowed_partition[0]), from_onnx_op_type(allowed_partition[1])))
     optimiser_config["transforms"]["partition"]["allowed_partitions"] = allowed_partitions
-    print(allowed_partitions)
 
     # load network based on the given optimiser strategy
     if args.optimiser == "improve":
