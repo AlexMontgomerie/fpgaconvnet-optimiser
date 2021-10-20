@@ -22,7 +22,7 @@ def get_model_output_node(self, partition_index):
         output_node = graphs.get_prev_nodes(self.partitions[partition_index].graph,output_node)[0]
     return onnx_helper.get_model_node(self.model, output_node).output[0]
 
-def save_all_partitions(self,filepath): # TODO: update
+def save_all_partitions(self,filepath,input_output_from_model=True):
     # create protocol buffer
     partitions = fpgaconvnet_pb2.partitions()
     # iterate over partions
@@ -32,8 +32,12 @@ def save_all_partitions(self,filepath): # TODO: update
         # add partition info
         partition.id = i
         partition.ports = 1 # TODO
-        partition.input_node  = self.get_model_input_node(i) #self.partitions[i]['input_nodes'][0]
-        partition.output_node = self.get_model_output_node(i) #self.partitions[i]['output_nodes'][0]
+        if input_output_from_model:
+            partition.input_node  = self.get_model_input_node(i) #self.partitions[i]['input_nodes'][0]
+            partition.output_node = self.get_model_output_node(i) #self.partitions[i]['output_nodes'][0]
+        else:
+            partition.input_node  = self.partitions[i].input_nodes[0]
+            partition.output_node = self.partitions[i].output_nodes[0]
         partition.batch_size  = self.partitions[i].batch_size
         partition.weights_reloading_factor = self.partitions[i].wr_factor
         partition.weights_reloading_layer  = str(self.partitions[i].wr_layer)

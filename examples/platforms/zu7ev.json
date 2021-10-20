@@ -1,0 +1,14 @@
+{
+  "name" : "zu7ev",
+  "DSP"  : 1728,
+  "BRAM" : 624,
+  "URAM" : 96,
+  "FF"   : 460800,
+  "LUT"  : 230400,
+  "freq"          : 150000000,
+  "reconf_time"   : 0.08255,
+  "mem_bandwidth" : 16,
+  "mem_capacity"  : 512000000,
+  "ports"         : 4,
+  "port_width"    : 64
+}

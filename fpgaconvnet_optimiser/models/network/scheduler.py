@@ -51,7 +51,7 @@ def get_partition_output_dependence(self, partition_index):
     # return partitions out
     return partitions_out
 
-def get_partition_order(self): # may need to update for 
+def get_partition_order(self): # may need to update for
     # find the ordering for the partitions
     partition_order = []
     # function to find which partition a node occurs in
@@ -133,7 +133,7 @@ def get_output_base_addr(self, partition_order, partition_index):
             ## get the workload of current partition
             input_node_curr = self.partitions[partition_index]['input_nodes'][0]
             workload_curr   = self.partitions[partition_index]['layers'][input_node_curr]['hw'].workload_in(0)
-            return workload_curr # TODO: *bytes 
+            return workload_curr # TODO: *bytes
     ## otherwise set as input of previous partition
     else:
         return _get_input_base_addr(partition_index-1)
@@ -159,10 +159,10 @@ def get_scheduler(self):
         ## partition dependencies
         input_dependence    = self.get_partition_input_dependence(partition_index)[0]
         output_dependence   = self.get_partition_output_dependence(partition_index)[0]
-        ## dimensions 
+        ## dimensions
         batch_size  = self.partitions[partition_index].batch_size
-        input_size  = self.partitions[partition_index].graph.nodes[input_node]['hw'].workload_in(0)
-        output_size = self.partitions[partition_index].graph.nodes[output_node]['hw'].workload_out(0)
+        input_size  = self.partitions[partition_index].graph.nodes[input_node]['hw'].workload_in()
+        output_size = self.partitions[partition_index].graph.nodes[output_node]['hw'].workload_out()
         ## weights reloading variables
         wr_factor   = self.partitions[partition_index].wr_factor
         if self.partitions[partition_index].wr_layer:
@@ -199,18 +199,18 @@ def get_schedule_csv(self, output_path):
     csv_out = np.zeros((n_partitions,n_fields),dtype=int)
     # iterate over partitions
     for i in range(n_partitions):
-        csv_out[i,0]    = schedule[i]['partition_id']               
-        csv_out[i,1]    = schedule[i]['ports_in']                   
-        csv_out[i,2]    = schedule[i]['ports_out']                  
-        csv_out[i,3]    = schedule[i]['input_addr']                 
-        csv_out[i,4]    = schedule[i]['output_addr']                
-        csv_out[i,5]    = schedule[i]['input_dependence']           
-        csv_out[i,6]    = schedule[i]['output_dependence']          
-        csv_out[i,7]    = schedule[i]['weights_reloading_factor']   
-        csv_out[i,8]    = schedule[i]['batch_size']                 
-        csv_out[i,9]    = schedule[i]['input_size']                 
-        csv_out[i,10]   = schedule[i]['output_size']                
-        csv_out[i,11]   = schedule[i]['weights_size']               
+        csv_out[i,0]    = schedule[i]['partition_id']
+        csv_out[i,1]    = schedule[i]['ports_in']
+        csv_out[i,2]    = schedule[i]['ports_out']
+        csv_out[i,3]    = schedule[i]['input_addr']
+        csv_out[i,4]    = schedule[i]['output_addr']
+        csv_out[i,5]    = schedule[i]['input_dependence']
+        csv_out[i,6]    = schedule[i]['output_dependence']
+        csv_out[i,7]    = schedule[i]['weights_reloading_factor']
+        csv_out[i,8]    = schedule[i]['batch_size']
+        csv_out[i,9]    = schedule[i]['input_size']
+        csv_out[i,10]   = schedule[i]['output_size']
+        csv_out[i,11]   = schedule[i]['weights_size']
     # save csv to output path
     np.savetxt(output_path, csv_out, fmt='%d', delimiter=',')
 

@@ -1,3 +1,12 @@
+import numpy as np
+import math
+import pydot
+import torch
+
+from fpgaconvnet_optimiser.models.layers.utils import get_factors
+
+from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
+
 from fpgaconvnet_optimiser.models.modules import SlidingWindow
 from fpgaconvnet_optimiser.models.modules import Conv
 from fpgaconvnet_optimiser.models.modules import Fork
@@ -5,154 +14,129 @@ from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
 from fpgaconvnet_optimiser.models.layers import Layer
 
-import numpy as np
-import math
-import pydot
-import torch
-
 class InnerProductLayer(Layer):
     def __init__(
             self,
-            dim,
-            filters,
-            coarse_in   =1,
-            coarse_out  =1,
-            data_width  =16,
-            sa          =0.5,
-            sa_out      =0.5
+            filters: int,
+            rows: int,
+            cols: int,
+            channels: int,
+            coarse_in: int = 1,
+            coarse_out: int = 1,
+            input_width: int = 16,
+            output_width: int = 16,
+            weight_width: int = 16,
+            acc_width: int = 16
         ):
-        Layer.__init__(self,dim,coarse_in,coarse_out,data_width)
 
-        self.weight_width = 8
+        # initialise parent class
+        super().__init__(rows, cols, channels, coarse_in,
+                coarse_out, data_width=input_width)
+
+        # save the widths
+        self.input_width = input_width
+        self.output_width = output_width
+        self.weight_width = weight_width
+        self.acc_width = acc_width
 
         # update flags
-        self.flags['channel_dependant'] = True
-        self.flags['transformable']     = True
+        # self.flags['channel_dependant'] = True
+        # self.flags['transformable']     = True
 
-        self.filters   = filters
-
-        dim_out = [
-            self.filters,
-            1,
-            1
-        ]
+        # save parameters
+        self._filters = filters
 
         # init modules
-        self.modules = {
-            "fork"           : Fork( [self.channels,self.rows,self.cols]    ,1,coarse_out),
-            "conv"           : Conv( [self.channels*self.rows*self.cols,1,1],filters,1,1,1),
-            "accum"          : Accum([self.channels*self.rows*self.cols,1,1],filters,1),
-            "glue"           : Glue( [self.channels*self.rows*self.cols,1,1],filters,coarse_in,coarse_out)
-        }
+        self.modules["fork"] = Fork(self.rows_in(), self.cols_in(), self.channels_in(), 1, self.coarse_out)
+        self.modules["conv"] = Conv(1,1,self.channels_in()*self.rows_in()*self.cols_in(), self.filters, 1, 1, 1)
+        self.modules["accum"] = Accum(1,1,self.channels_in()*self.rows_in()*self.cols_in(), self.filters, 1)
+        self.modules["glue"] = Glue(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
+                self.filters, self.coarse_in, self.coarse_out)
+
         self.update()
 
-        # switching activity
-        self.sa     = sa
-        self.sa_out = sa_out
+    @property
+    def filters(self) -> int:
+        return self._filters
 
-    def rows_out(self):
+    @filters.setter
+    def filters(self, val: int) -> None:
+        self._filters = val
+        self.update()
+
+    def rows_out(self) -> int:
         return 1
 
-    def cols_out(self):
+    def cols_out(self) -> int:
         return 1
 
-    def channels_out(self):
-        return self.filters 
+    def channels_out(self) -> int:
+        return self.filters
 
-    def rate_in(self,index):
-        return abs(self.balance_module_rates(self.rates_graph())[0,0])
-
-    def rate_out(self,index):
-        return abs(self.balance_module_rates(self.rates_graph())[3,4])
-
-    def update_coarse_in(self, coarse_in):
-        self.coarse_in  = coarse_in
-
-    def update_coarse_out(self, coarse_out):
-        self.coarse_out = coarse_out
-
-    ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
-        parameters.batch_size   = batch_size
-        parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in()
-        parameters.cols_in      = self.cols_in()
-        parameters.channels_in  = self.channels_in()
-        parameters.rows_out     = self.rows_out()
-        parameters.cols_out     = self.cols_out()
-        parameters.channels_out = self.channels_out()
-        parameters.coarse_in    = self.coarse_in
-        parameters.coarse_out   = self.coarse_out
+        Layer.layer_info(self, parameters, batch_size)
         parameters.filters      = self.filters
+        parameters.input_width  = self.input_width
+        parameters.output_width = self.output_width
+        parameters.weight_width = self.weight_width
+        parameters.acc_width    = self.acc_width
 
-    ## UPDATE MODULES ##
     def update(self): # TODO: update all parameters
         # fork
-        self.modules['fork'].rows     = self.rows
-        self.modules['fork'].cols     = self.cols
-        self.modules['fork'].channels = int(self.channels/self.coarse_in)
+        self.modules['fork'].rows     = self.rows_in()
+        self.modules['fork'].cols     = self.cols_in()
+        self.modules['fork'].channels = self.channels_in()//self.coarse_in
         self.modules['fork'].coarse   = self.coarse_out
+        self.modules['fork'].data_width = self.input_width
         # conv
         self.modules['conv'].rows     = 1
         self.modules['conv'].cols     = 1
-        self.modules['conv'].channels = int(self.rows*self.cols*self.channels/self.coarse_in)
-        self.modules['conv'].filters  = int(self.filters/(self.coarse_out))
+        self.modules['conv'].channels = self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
+        self.modules['conv'].filters  = self.filters//self.coarse_out
         self.modules['conv'].fine     = 1
+        self.modules['conv'].data_width = self.input_width
+        self.modules['conv'].weight_width = self.weight_width
+        self.modules['conv'].acc_width = self.acc_width
         # accum
         self.modules['accum'].rows     = 1
         self.modules['accum'].cols     = 1
-        self.modules['accum'].channels = int(self.rows*self.cols*self.channels/self.coarse_in)
-        self.modules['accum'].filters  = int(self.filters/(self.coarse_out))
+        self.modules['accum'].channels = self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
+        self.modules['accum'].filters  = self.filters//self.coarse_out
+        self.modules['accum'].data_width = self.acc_width
         # glue
         self.modules['glue'].rows = 1
         self.modules['glue'].cols = 1
         self.modules['glue'].filters    = self.filters
-        self.modules['glue'].coarse_in  = self.coarse_in 
+        self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
+        self.modules['glue'].data_width = self.output_width
+        self.modules['glue'].acc_width  = self.acc_width
 
-    ### RATES ###
-    def rates_graph(self): 
-        rates_graph = np.zeros( shape=(4,5) , dtype=float ) 
-        # fork 
-        rates_graph[0,0] = self.modules['fork'].rate_in() 
-        rates_graph[0,1] = self.modules['fork'].rate_out()
-        # conv
-        rates_graph[1,1] = self.modules['conv'].rate_in()
-        rates_graph[1,2] = self.modules['conv'].rate_out()
-        # accum
-        rates_graph[2,2] = self.modules['accum'].rate_in()
-        rates_graph[2,3] = self.modules['accum'].rate_out()
-        # glue
-        rates_graph[3,3] = self.modules['glue'].rate_in()
-        rates_graph[3,4] = self.modules['glue'].rate_out()
-
-        return rates_graph
- 
     def get_weights_reloading_feasible(self):
-        return self.get_factors(int(self.filters/self.coarse_out))
- 
+        return get_factors(int(self.filters/self.coarse_out))
+
     def get_parameters_size(self):
-        weights_size = self.channels * self.filters  
+        weights_size = self.channels * self.filters
         bias_size = 0
         return {
             "weights"   : weights_size,
             "bias"      : bias_size
         }
-  
+
     def resource(self):
 
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
         accum_rsc   = self.modules['accum'].rsc()
-        if int(self.channels/self.coarse_in) == 1:
+        if self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in == 1:
             accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         glue_rsc    = self.modules['glue'].rsc()
         if self.coarse_in == 1:
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # TODO: add to modules instead
-        n_filters = float(self.filters*self.channels*self.rows*self.cols)/float(self.coarse_in*self.coarse_out)
-        weights_bram_usage = int(math.ceil(self.weight_width*n_filters/18000))*self.coarse_in*self.coarse_out
+        weights_memory_depth = float(self.filters*self.channels_in()*self.rows_in()*self.cols_in())/float(self.coarse_in*self.coarse_out)
+        weights_bram_usage = bram_memory_resource_model(int(weights_memory_depth), self.weight_width)*self.coarse_in*self.coarse_out
 
         # Total
         return {
@@ -201,25 +185,25 @@ class InnerProductLayer(Layer):
 
     def functional_model(self,data,weights,bias,batch_size=1):
 
-        assert data.shape[0] == self.rows    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels, "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == self.rows*self.cols*self.channels, "ERROR (weights): invalid channel dimension"
+        assert weights.shape[1] == self.rows_in()*self.cols_in()*self.channels_in(), "ERROR (weights): invalid channel dimension"
 
-        
-        # instantiate convolution layer
-        inner_product_layer = torch.nn.Linear(self.channels*self.rows*self.cols, self.filters, bias=False)
-        
+
+        # instantiate inner product layer
+        inner_product_layer = torch.nn.Linear(self.channels_in()*self.rows_in()*self.cols_in(), self.filters, bias=False)
+
         # update weights
         inner_product_layer.weight = torch.nn.Parameter(torch.from_numpy(weights))
-        
+
         # update bias
         inner_product_layer.bias = torch.nn.Parameter(torch.from_numpy(bias))
-        
+
         # return output featuremap
         data = np.moveaxis(data, -1, 0).flatten()
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0) 
+        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
         return inner_product_layer(torch.from_numpy(data)).detach().numpy()
 

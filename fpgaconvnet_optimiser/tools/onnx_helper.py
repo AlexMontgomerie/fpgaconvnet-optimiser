@@ -5,6 +5,8 @@ import onnx.numpy_helper
 from onnx import version_converter
 import onnxoptimizer as optimizer
 from onnx.tools import update_model_dims
+from itertools import repeat
+from collections.abc import Iterable
 
 def add_value_info_for_constants(model : onnx.ModelProto):
     """
@@ -118,15 +120,25 @@ def add_input_from_initializer(model : onnx.ModelProto):
 
     return add_const_value_infos_to_graph(model.graph)
 
-def load(filepath):
+def load(filepath,fuse_bn=True):
     model = onnx.load(filepath)
     onnx.checker.check_model(model)
+    onnx.helper.strip_doc_string(model)
     add_input_from_initializer(model) #Seems to be necessary for conv layers from pytorch (at least)
     model = onnx.shape_inference.infer_shapes(model)
-    model = onnx.utils.polish_model(model)
-    passes = ["extract_constant_to_initializer", "eliminate_unused_initializer","fuse_bn_into_conv"]
+    # model = onnx.utils.polish_model(model)
+    passes = [
+            "extract_constant_to_initializer",
+            "eliminate_unused_initializer",
+            "eliminate_nop_transpose",
+            "eliminate_nop_pad",
+            "fuse_consecutive_transposes",
+            "fuse_transpose_into_gemm"
+    ]
+    if fuse_bn:
+        passes.append("fuse_bn_into_conv")
     model = optimizer.optimize(model, passes=passes)
-
+    onnx.checker.check_model(model)
     return model
 
 def update_batch_size(model, batch_size): # from https://github.com/microsoft/onnxruntime/issues/1467#issuecomment-514322927
@@ -173,6 +185,8 @@ def _format_attr(attribute):
     for attr in attribute:
         if attr.type == 7: # (INTS) TODO: find enumeration
             attr_out[attr.name] = [ int(i) for i in attr.ints ]
+        elif attr.type == 2: #(INT)
+            attr_out[attr.name] = attr.i
     return attr_out
 
 def _out_dim(model, name):

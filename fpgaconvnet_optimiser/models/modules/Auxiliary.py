@@ -4,13 +4,15 @@ import numpy as np
 class Split(Module):
     def __init__(
             self,
-            dim,
+            rows,
+            cols,
+            channels,
             inputs,
             coarse,
             data_width=16
         ):
         # init module
-        Module.__init__(self,dim,data_width)
+        Module.__init__(self,rows,cols,channels,data_width)
 
         # init variables
         self.inputs = inputs

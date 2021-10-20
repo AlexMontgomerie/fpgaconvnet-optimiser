@@ -1,55 +1,50 @@
 """
-The Glue module is used to combine streams 
-used for channel parallelism in the 
-Convolution layer together. 
+The Glue module is used to combine streams
+used for channel parallelism in the
+Convolution layer together.
 
 .. figure:: ../../../figures/glue_diagram.png
 """
-
-from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
+from dataclasses import dataclass, field
 
+from fpgaconvnet_optimiser.models.modules import Module
+
+@dataclass
 class Glue(Module):
-    def __init__(
-            self,
-            dim,
-            filters,
-            coarse_in,
-            coarse_out,
-            data_width=16
-        ):
-        # init module
-        Module.__init__(self,dim,data_width)
+    filters: int
+    coarse_in: int
+    coarse_out: int
+    acc_width: int = field(default=16, init=False)
 
-        # init variables
-        self.filters    = filters
-        self.coarse_in  = coarse_in
-        self.coarse_out = coarse_out
-
-        # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/glue_rsc_coef.npy"))
-
-    def dynamic_model(self, freq, rate, sa_in, sa_out):
-        return [
-            self.data_width*freq,
-            self.data_width*self.sa_in*freq*rate,
-            self.data_width*self.sa_in*freq*rate*self.coarse_in*self.coarse_out,
-            self.data_width*self.sa_in*freq*rate*self.coarse_out
-        ]
+    def __post_init__(self):
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/glue_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/glue_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/glue_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/glue_dsp.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width,
-            self.data_width*self.coarse_in*self.coarse_out,
-            self.data_width*self.coarse_out
-        ]
+        return {
+            "LUT"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "FF"    : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "DSP"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "BRAM"  : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+        }
 
     def channels_in(self):
-        return self.filters*self.coarse_in
+        return self.filters
 
     def channels_out(self):
         return self.filters
@@ -58,30 +53,14 @@ class Glue(Module):
         return self.rows *self.cols *self.filters / self.coarse_out
 
     def module_info(self):
-        return {
-            'type'      : self.__class__.__name__.upper(),
-            'rows'      : self.rows_in(),
-            'cols'      : self.cols_in(),
-            'channels'  : self.channels_in(),
-            'filters'   : self.filters,
-            'coarse_in'     : self.coarse_in,
-            'coarse_out'    : self.coarse_out,
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
-
-    def rsc(self):
-        return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
-          "BRAM" : 0,
-          "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
-        }
-
-    '''
-    FUNCTIONAL MODEL
-    '''
+        # get the base module fields
+        info = Module.module_info(self)
+        # add module-specific info fields
+        info["filters"] = self.filters
+        info["coarse_in"] = self.coarse_in
+        info["coarse_out"] = self.coarse_out
+        # return the info
+        return info
 
     def functional_model(self,data):
         # check input dimensionality

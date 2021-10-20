@@ -2,49 +2,38 @@
 .. figure:: ../../../figures/relu_diagram.png
 """
 
-from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+from dataclasses import dataclass, field
 
+from fpgaconvnet_optimiser.models.modules import Module
+
+@dataclass
 class ReLU(Module):
-    def __init__(
-            self,
-            dim,
-            data_width=16
-        ):
-        # init module
-        Module.__init__(self,dim,data_width)
 
-        # load resource coefficients
-        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #    "../../coefficients/relu_rsc_coef.npy"))
+    def __post_init__(self):
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/relu_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/relu_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/relu_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/relu_dsp.npy"))
 
-    def module_info(self):
+    def utilisation_model(self):
         return {
-            'type'      : self.__class__.__name__.upper(),
-            'rows'      : self.rows_in(),
-            'cols'      : self.cols_in(),
-            'channels'  : self.channels_in(),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
+            "LUT"  : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "FF"   : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1])
         }
-
-    def load_coef(self,rsc_coef_path):
-        pass
-
-    def rsc(self):
-        return {
-          "LUT"  : 0, # int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
-          "BRAM" : 0,
-          "DSP"  : 0,
-          "FF"   : 0 # int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
-        }
-
-    '''
-    FUNCTIONAL MODEL
-    '''
 
     def functional_model(self, data):
         # check input dimensionality

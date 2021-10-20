@@ -1,80 +1,70 @@
 """
-This module performs the max pooling function 
+This module performs the max pooling function
 across a kernel-size window of the feature map.
 
 .. figure:: ../../../figures/pool_max_diagram.png
 """
-
-from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
+from typing import Union, List
+from dataclasses import dataclass, field
 
+from fpgaconvnet_optimiser.models.modules import Module
+
+@dataclass
 class Pool(Module):
-    def __init__(
-            self,
-            dim,
-            k_size=1,
-            pool_type='max',
-            data_width=16
-        ):
-        # init module
-        Module.__init__(self,dim,data_width)
+    kernel_size: Union[List[int],int]
+    pool_type: str = "max"
 
-        # init variables
-        self.k_size    = k_size
-        self.pool_type = pool_type
+    def __post_init__(self):
+        # format kernel size as a 2 element list
+        if isinstance(self.kernel_size, int):
+            self.kernel_size = [self.kernel_size, self.kernel_size]
+        elif isinstance(self.kernel_size, list):
+            assert len(self.kernel_size) == 2, "Must specify two kernel dimensions"
+        else:
+            raise TypeError
 
-        # load resource coefficients
-        self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-            "../../coefficients/pool_rsc_coef.npy"))
-
-    def dynamic_model(self, freq, rate, sa_in, sa_out):
-        return [
-            self.data_width*freq,
-            self.data_width*sa_in*freq*rate*self.k_size*self.k_size,
-            self.data_width*sa_in*freq*rate,
-        ]
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/pool_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/pool_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/pool_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/pool_dsp.npy"))
 
     def utilisation_model(self):
-        return [
-            1,
-            self.data_width,
-            self.data_width*self.k_size*self.k_size,
-        ]
+        return {
+            "LUT"  : np.array([self.kernel_size[0],self.kernel_size[1],self.cols,self.rows,self.channels,self.data_width]),
+            "FF"   : np.array([self.kernel_size[0],self.kernel_size[1],self.cols,self.rows,self.channels,self.data_width]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1]),
+        }
 
     def module_info(self):
-        return {
-            'type'      : self.__class__.__name__.upper(),
-            'rows'      : self.rows_in(),
-            'cols'      : self.cols_in(),
-            'channels'  : self.channels_in(),
-            'pool_type'     :  0 if self.pool_type == 'max' else 1,
-            'kernel_size'   : self.k_size,
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
-
-    def rsc(self):
-        return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
-          "BRAM" : 0,
-          "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
-        }
-
-    '''
-    FUNCTIONAL MODEL
-    '''
+        # get the base module fields
+        info = Module.module_info(self)
+        # add module-specific info fields
+        info["kernel_size"] = self.kernel_size
+        info["pool_type"] = 0 if self.pool_type == 'max' else 1
+        # return the info
+        return info
 
     def functional_model(self, data):
         # check input dimensionality
         assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
         assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
         assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.k_size  , "ERROR: invalid column dimension"
-        assert data.shape[4] == self.k_size  , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.kernel_size[0]  , "ERROR: invalid kernel size (x) dimension"
+        assert data.shape[4] == self.kernel_size[1]  , "ERROR: invalid kernel size (y) dimension"
 
         out = np.ndarray((
             self.rows,
@@ -86,7 +76,6 @@ class Pool(Module):
                 out[index] = np.max(data[index])
             elif self.pool_type == 'avg':
                 out[index] = np.mean(data[index])
-
 
         return out
 
