@@ -92,10 +92,10 @@ def get_all_horizontal_splits(self, partition_index, allowed_partitions=[]):
     if allowed_partitions:
         for split in all_horizontal_splits:
             # get layer types
-            layer_types = [
+            layer_types = (
                 self.partitions[partition_index].graph.nodes[split[0]]["type"],
                 self.partitions[partition_index].graph.nodes[split[1]]["type"]
-            ]
+            )
             # see if it's in the allowed partitions
             if layer_types in allowed_partitions:
                 filtered_horizontal_splits.append(split)
@@ -308,17 +308,25 @@ def merge_vertical(self, partition_index_a, partition_index_b):
     del self.partitions[partition_index_b]
 
 def split_horizontal_complete(self):
+
+    # get the allowed partitions
+    allowed_partitions = []
+    if "partition" in self.transforms_config:
+        allowed_partitions = self.transforms_config["partition"]["allowed_partitions"]
+
     # function to find a horizontal split
     def _find_horizontal_split_partition():
         for i in range(len(self.partitions)):
-            if self.get_all_horizontal_splits(i):
+            if self.get_all_horizontal_splits(i, allowed_partitions=allowed_partitions):
                 return i
         return None
+
     partition_index = _find_horizontal_split_partition()
+
     # keep iterating until all horizontal splits done
     while partition_index != None:
         # apply first possible split
-        horizontal_splits = self.get_all_horizontal_splits(partition_index)
+        horizontal_splits = self.get_all_horizontal_splits(partition_index, allowed_partitions=allowed_partitions)
         self.split_horizontal(partition_index,horizontal_splits[0])
         # find next partition
         partition_index = _find_horizontal_split_partition()
@@ -386,11 +394,13 @@ def apply_random_partition(self, partition_index):
    # choose randomly between merge or split
     ## split partition
     transform_type = random.choice(["split", "merge"])
+    allowed_partitions = []
     if "partition" in self.transforms_config:
         transform_type = random.choice(self.transforms_config["partition"]["allowed_type"])
+        allowed_partitions = self.transforms_config["partition"]["allowed_partitions"]
     if transform_type == 'split':
         ## get all possible splits
-        horizontal_splits = self.get_all_horizontal_splits(partition_index)
+        horizontal_splits = self.get_all_horizontal_splits(partition_index, allowed_partitions=allowed_partitions)
         vertical_splits   = self.get_all_vertical_splits(partition_index)
         ## split horizontally first
         if horizontal_splits:

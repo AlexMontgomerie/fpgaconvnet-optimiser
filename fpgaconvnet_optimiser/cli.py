@@ -16,6 +16,7 @@ from fpgaconvnet_optimiser.optimiser.improve import Improve
 from fpgaconvnet_optimiser.optimiser.greedy_partition import GreedyPartition
 
 import fpgaconvnet_optimiser.tools.graphs as graphs
+from fpgaconvnet_optimiser.tools.layer_enum import from_onnx_op_type
 
 def main():
     parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
@@ -69,6 +70,12 @@ def main():
     # create the checkpoint directory
     if not os.path.exists(os.path.join(args.output_path,"checkpoint")):
         os.makedirs(os.path.join(args.output_path,"checkpoint"))
+
+    # format the partition transform allowed partitions
+    allowed_partitions = []
+    for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
+        allowed_partitions.append((from_onnx_op_type(allowed_partition[0]), from_onnx_op_type(allowed_partition[1])))
+    optimiser_config["transforms"]["partition"]["allowed_partitions"] = allowed_partitions
 
     # load network based on the given optimiser strategy
     if args.optimiser == "improve":
