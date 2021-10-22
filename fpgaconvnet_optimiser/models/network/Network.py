@@ -30,6 +30,9 @@ class Network():
 
     def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True, rsc_allocation=1.0):
 
+        # empty transforms configuration
+        self.transforms_config = {}
+
         ## percentage resource allocation
         self.rsc_allocation = rsc_allocation
 
