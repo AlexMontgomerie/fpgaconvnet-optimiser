@@ -157,7 +157,7 @@ class Optimiser(Network):
             ### apply random partition
             # remove squeeze layers prior to partitioning
             self.partitions[partition_index].remove_squeeze()
-            self.apply_random_partition(partition_index, )
+            self.apply_random_partition(partition_index)
             return
 
     def optimiser_status(self):
