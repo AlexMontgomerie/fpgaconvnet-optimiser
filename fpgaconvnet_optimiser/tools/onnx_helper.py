@@ -226,41 +226,40 @@ def convert_matmul_to_gemm(model):
     for index, node in enumerate(model.graph.node):
         if node.op_type == "MatMul":
             # update the weights
-            for i, init in enumerate(model.graph.initializer):
-                if init.name == node.input[1]: # exact match
-                    # update the weights
-                    weights = onnx.numpy_helper.to_array(init)
-                    weights = np.swapaxes(weights,0,1)
-                    new_init = onnx.helper.make_tensor(
-                        name=init.name,
-                        data_type=init.data_type,
-                        dims=weights.shape,
-                        vals=weights.flatten().tolist())
-                    new_init_value_info = onnx.helper.make_tensor_value_info(
-                            new_init.name,
-                            onnx.TensorProto.FLOAT,
-                            weights.shape)
-                    # find the value info
-                    init_value_info = get_model_input(model, init.name)
-                    # update the graph
-                    model.graph.initializer.remove(init)
-                    model.graph.initializer.insert(i,new_init)
-                    model.graph.input.remove(init_value_info)
-                    model.graph.input.insert(i,new_init_value_info)
-                    # add an empty bias term
-                    new_bias = onnx.helper.make_tensor(
-                        name="_".join([init.name,"bias"]),
-                        data_type=init.data_type,
-                        dims=(weights.shape[1],),
-                        vals=np.zeros(weights.shape[1]).flatten().tolist())
-                    new_bias_value_info = onnx.helper.make_tensor_value_info(
-                            new_bias.name,
-                            onnx.TensorProto.FLOAT,
-                            [weights.shape[1]])
-                    # update the graph
-                    model.graph.initializer.insert(-1,new_bias)
-                    model.graph.input.insert(-1,new_bias_value_info)
-                    break
+            init = get_model_initializer(model, node.input[1], to_tensor=False)
+            init_index = list(model.graph.initializer).index(init)
+            weights = onnx.numpy_helper.to_array(init)
+            weights = np.swapaxes(weights,0,1)
+            new_init = onnx.helper.make_tensor(
+                name=node.input[1],
+                data_type=init.data_type,
+                dims=weights.shape,
+                vals=weights.flatten().tolist())
+            # update weight's value info
+            init_value_info = get_model_input(model, node.input[1])
+            init_value_info_index = list(model.graph.input).index(init_value_info)
+            new_init_value_info = onnx.helper.make_tensor_value_info(
+                    node.input[1],
+                    onnx.TensorProto.FLOAT,
+                    weights.shape)
+            # update the graph
+            model.graph.initializer.remove(init)
+            model.graph.initializer.insert(init_index,new_init)
+            model.graph.input.remove(init_value_info)
+            model.graph.input.insert(init_value_info_index, new_init_value_info)
+            # add an empty bias term
+            new_bias = onnx.helper.make_tensor(
+                name="_".join([node.input[1],"bias"]),
+                data_type=init.data_type,
+                dims=(weights.shape[1],),
+                vals=np.zeros(weights.shape[1]).flatten().tolist())
+            new_bias_value_info = onnx.helper.make_tensor_value_info(
+                    new_bias.name,
+                    onnx.TensorProto.FLOAT,
+                    [weights.shape[1]])
+            # update the graph
+            model.graph.initializer.insert(-1,new_bias)
+            model.graph.input.insert(-1,new_bias_value_info)
             # create a new matmul node
             new_node = onnx.helper.make_node(
                 "Gemm",
