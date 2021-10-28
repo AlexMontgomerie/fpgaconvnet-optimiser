@@ -46,6 +46,7 @@ def build_graph(model):
         name = onnx_helper._name(node)
         # add node to graph
         graph.add_node( name, type=from_onnx_op_type(node.op_type), hw=None, inputs={} )
+
         if from_onnx_op_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
             graph.nodes[name]['inputs'] = { "weights": "", "bias": "" }
     # add all edges from network
@@ -173,13 +174,17 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
             )
             continue
         raise NameError(f"{name}: type {str(graph.nodes[name]['type'])} does not exist!")
-        print(name,graph.nodes[name]['type'])
 
 def add_dimensions(model, graph):
     # add input dimensions
-    input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
-    input_rows      = int(model.graph.input[0].type.tensor_type.shape.dim[2].dim_value)
-    input_cols      = int(model.graph.input[0].type.tensor_type.shape.dim[3].dim_value)
+    if len(model.graph.input[0].type.tensor_type.shape.dim) <= 2:
+        input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
+        input_rows      = 1
+        input_cols      = 1
+    else:
+        input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
+        input_rows      = int(model.graph.input[0].type.tensor_type.shape.dim[2].dim_value)
+        input_cols      = int(model.graph.input[0].type.tensor_type.shape.dim[3].dim_value)
     # update input node hardware
     input_node = graphs.get_input_nodes(graph)[0]
     graph.nodes[input_node]['hw'].channels  = input_channels

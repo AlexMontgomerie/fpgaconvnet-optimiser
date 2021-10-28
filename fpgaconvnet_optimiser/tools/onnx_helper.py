@@ -1,3 +1,4 @@
+import copy
 import onnx
 import onnxruntime
 import onnx.utils
@@ -7,6 +8,7 @@ import onnxoptimizer as optimizer
 from onnx.tools import update_model_dims
 from itertools import repeat
 from collections.abc import Iterable
+import numpy as np
 
 def add_value_info_for_constants(model : onnx.ModelProto):
     """
@@ -133,11 +135,13 @@ def load(filepath,fuse_bn=True):
             "eliminate_nop_transpose",
             "eliminate_nop_pad",
             "fuse_consecutive_transposes",
-            "fuse_transpose_into_gemm"
+            "fuse_transpose_into_gemm",
+            "fuse_matmul_add_bias_into_gemm",
     ]
     if fuse_bn:
         passes.append("fuse_bn_into_conv")
     model = optimizer.optimize(model, passes=passes)
+    model = convert_matmul_to_gemm(model)
     onnx.checker.check_model(model)
     return model
 
@@ -210,7 +214,65 @@ def gen_layer_name(graph, layer_name): # layer in protobuf form
     layer_type = graph.nodes[layer_name]['type']
     #FIXME bit of a hacky way to get a good type name
     layer_type_str = str(layer_type)[11:].upper() # remove 'LAYER_TYPE.'
+    # replace all invalid characters in the layer name
+    layer_name = layer_name.replace("/","_").replace(":","_")
     if layer_name.isnumeric(): # preprend with type to avoid macro issue
         return f'{layer_type_str}{layer_name}'
     else:
         return layer_name
+
+def convert_matmul_to_gemm(model):
+    # iterate over nodes in the graph
+    for index, node in enumerate(model.graph.node):
+        if node.op_type == "MatMul":
+            # update the weights
+            init = get_model_initializer(model, node.input[1], to_tensor=False)
+            init_index = list(model.graph.initializer).index(init)
+            weights = onnx.numpy_helper.to_array(init)
+            weights = np.swapaxes(weights,0,1)
+            new_init = onnx.helper.make_tensor(
+                name=node.input[1],
+                data_type=init.data_type,
+                dims=weights.shape,
+                vals=weights.flatten().tolist())
+            # update weight's value info
+            init_value_info = get_model_input(model, node.input[1])
+            init_value_info_index = list(model.graph.input).index(init_value_info)
+            new_init_value_info = onnx.helper.make_tensor_value_info(
+                    node.input[1],
+                    onnx.TensorProto.FLOAT,
+                    weights.shape)
+            # update the graph
+            model.graph.initializer.remove(init)
+            model.graph.initializer.insert(init_index,new_init)
+            model.graph.input.remove(init_value_info)
+            model.graph.input.insert(init_value_info_index, new_init_value_info)
+            # add an empty bias term
+            new_bias = onnx.helper.make_tensor(
+                name="_".join([node.input[1],"bias"]),
+                data_type=init.data_type,
+                dims=(weights.shape[1],),
+                vals=np.zeros(weights.shape[1]).flatten().tolist())
+            new_bias_value_info = onnx.helper.make_tensor_value_info(
+                    new_bias.name,
+                    onnx.TensorProto.FLOAT,
+                    [weights.shape[1]])
+            # update the graph
+            model.graph.initializer.insert(-1,new_bias)
+            model.graph.input.insert(-1,new_bias_value_info)
+            # create a new matmul node
+            new_node = onnx.helper.make_node(
+                "Gemm",
+                name=node.name,
+                inputs=[*node.input, "_".join([node.input[1],"bias"])],
+                outputs=node.output
+            )
+            # remove old node and add new one
+            model.graph.node.remove(node)
+            model.graph.node.insert(index, new_node)
+    # return the new model
+    return model
+
+
+
+
