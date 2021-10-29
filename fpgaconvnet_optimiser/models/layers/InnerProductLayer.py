@@ -12,6 +12,7 @@ from fpgaconvnet_optimiser.models.modules import Conv
 from fpgaconvnet_optimiser.models.modules import Fork
 from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
+from fpgaconvnet_optimiser.models.modules import FIFO
 from fpgaconvnet_optimiser.models.layers import Layer
 
 class InnerProductLayer(Layer):
@@ -125,37 +126,55 @@ class InnerProductLayer(Layer):
 
     def resource(self):
 
+        # instances
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
         accum_rsc   = self.modules['accum'].rsc()
-        if self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in == 1:
-            accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         glue_rsc    = self.modules['glue'].rsc()
-        if self.coarse_in == 1:
-            glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
-        # TODO: add to modules instead
-        weights_memory_depth = float(self.filters*self.channels_in()*self.rows_in()*self.cols_in())/float(self.coarse_in*self.coarse_out)
-        weights_bram_usage = bram_memory_resource_model(int(weights_memory_depth), self.weight_width)*self.coarse_in*self.coarse_out
+        # stream
+        fork_out = FIFO(1, 1, 1, self.coarse_in*self.coarse_out, self.buffer_depth)
+        fork_out.data_width = self.data_width
+        fork_out_rsc = fork_out.rsc()
+        conv_out = FIFO(1, 1, 1, self.coarse_in*self.coarse_out, self.buffer_depth)
+        conv_out.data_width = self.acc_width
+        conv_out_rsc = conv_out.rsc()
+        accum_out = FIFO(1, 1, 1, self.coarse_in*self.coarse_out, int(self.modules['accum'].filters / self.modules['accum'].groups + 1))
+        accum_out.data_width = self.acc_width
+        accum_out_rsc = accum_out.rsc()
+
+        if int(self.channels/self.coarse_in) == 1:
+            accum_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+            accum_out_rsc = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #if self.coarse_in == 1:
+        #    glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # Total
         return {
             "LUT"  :  fork_rsc['LUT']*self.coarse_in +
                       conv_rsc['LUT']*self.coarse_in*self.coarse_out +
                       accum_rsc['LUT']*self.coarse_in*self.coarse_out +
-                      glue_rsc['LUT'],
+                      glue_rsc['LUT'] +
+                      fork_out_rsc['LUT'] +
+                      conv_out_rsc['LUT'] +
+                      accum_out_rsc['LUT'],
             "FF"   :  fork_rsc['FF']*self.coarse_in +
                       conv_rsc['FF']*self.coarse_in*self.coarse_out +
                       accum_rsc['FF']*self.coarse_in*self.coarse_out +
-                      glue_rsc['FF'],
+                      glue_rsc['FF'] +
+                      fork_out_rsc['FF'] +
+                      conv_out_rsc['FF'] +
+                      accum_out_rsc['FF'],
             "BRAM" :  fork_rsc['BRAM']*self.coarse_in +
                       conv_rsc['BRAM']*self.coarse_in*self.coarse_out +
-                      accum_rsc['BRAM']*self.coarse_out +
+                      accum_rsc['BRAM']*self.coarse_in*self.coarse_out +
                       glue_rsc['BRAM'] +
-                      weights_bram_usage,
+                      fork_out_rsc['BRAM'] +
+                      conv_out_rsc['BRAM'] +
+                      accum_out_rsc['BRAM'],
             "DSP"  :  fork_rsc['DSP']*self.coarse_in +
                       conv_rsc['DSP']*self.coarse_in*self.coarse_out +
-                      accum_rsc['DSP']*self.coarse_out +
+                      accum_rsc['DSP']*self.coarse_in*self.coarse_out +
                       glue_rsc['DSP']
         }
 

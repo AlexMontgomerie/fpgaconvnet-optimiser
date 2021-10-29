@@ -1,4 +1,5 @@
 from fpgaconvnet_optimiser.models.layers import Layer
+from fpgaconvnet_optimiser.models.modules import FIFO
 
 import pydot
 import numpy as np
@@ -47,6 +48,13 @@ class SqueezeLayer(Layer):
         # return module
         return cluster, nodes_in, nodes_out
 
+    def resource(self):        
+        # todo: replace with squeeze module
+        channel_cache = FIFO(1, 1, 1, self.channels_in(), self.buffer_depth)
+        channel_cache.data_width = self.data_width
+        channel_cache_rsc = channel_cache.rsc()
+        return channel_cache_rsc
+        
     def functional_model(self,data,batch_size=1):
 
         assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"

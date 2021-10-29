@@ -30,11 +30,17 @@ def bram_resource_model(depth, width):
     # return the ceiling
     return math.ceil(width/bram_width)
 
-def bram_stream_resource_model(depth, width):
-    return bram_resource_model(depth, width)
+def bram_stream_resource_model(depth, width, rsc_type="BRAM"):
+    if width*depth > 1024 or rsc_type == "BRAM": # hls use 512, vivado use 1024 
+        return bram_resource_model(depth, width)
+    else:
+        return 0
 
-def bram_memory_resource_model(depth, width):
-    return bram_resource_model(depth, width)
+def bram_memory_resource_model(depth, width, rsc_type="BRAM"):
+    if width*depth >= 1024 or rsc_type == "BRAM":
+        return bram_resource_model(depth, width)
+    else:
+        return 0
 
 def dsp_multiplier_resource_model(multiplicand_width, multiplier_width, dsp_type="DSP48E1"):
     #https://github.com/Xilinx/finn/blob/4fee6ffd8e13f91314ec9086e9ce9b2ea9de15c7/src/finn/custom_op/fpgadataflow/streamingfclayer_batch.py#L368,

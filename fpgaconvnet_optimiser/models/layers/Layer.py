@@ -48,7 +48,7 @@ class Layer:
     _coarse_in: int
     _coarse_out: int
     data_width: int = field(default=16, init=True)
-    buffer_depth: int = field(default=0, init=False)
+    buffer_depth: int = field(default=2, init=False)
     modules: dict = field(default_factory=collections.OrderedDict, init=False)
 
     @property

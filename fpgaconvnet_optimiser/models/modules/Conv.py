@@ -17,7 +17,7 @@ from typing import Union, List
 from dataclasses import dataclass, field
 
 from fpgaconvnet_optimiser.models.modules import Module
-from fpgaconvnet_optimiser.tools.resource_model import dsp_multiplier_resource_model
+from fpgaconvnet_optimiser.tools.resource_model import dsp_multiplier_resource_model, bram_memory_resource_model
 
 @dataclass
 class Conv(Module):
@@ -115,8 +115,10 @@ class Conv(Module):
         rsc = Module.rsc(self, coef)
         # update the dsp usage
         rsc["DSP"] = dot_product_dsp
-        # set the BRAM usage to zero
-        rsc["BRAM"] = 0
+
+        n_filters = float(self.filters*self.channels/self.groups*self.kernel_size[0]*self.kernel_size[1])/self.fine
+        weights_bram = bram_memory_resource_model(n_filters, self.weight_width, rsc_type="AUTO")
+        rsc["BRAM"] = weights_bram*self.fine
         # return the resource model
         return rsc
 

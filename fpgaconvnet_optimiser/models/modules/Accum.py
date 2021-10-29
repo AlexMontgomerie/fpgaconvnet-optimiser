@@ -74,7 +74,8 @@ class Accum(Module):
         if coef == None:
             coef = self.rsc_coef
         # get the accumulation buffer BRAM estimate
-        acc_buffer_bram = bram_memory_resource_model(int(self.filters/self.groups), self.data_width)
+        acc_buffer_size =  int(self.filters/self.groups) if int(self.channels/self.groups) > 1 else 0
+        acc_buffer_bram = bram_memory_resource_model(acc_buffer_size, self.data_width)
         # get the linear model estimation
         rsc = Module.rsc(self, coef)
         # add the bram estimation
