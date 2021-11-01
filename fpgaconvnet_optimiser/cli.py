@@ -94,6 +94,7 @@ def main():
                 cool=float(optimiser_config["annealing"]["cool"]),
                 iterations=int(optimiser_config["annealing"]["iterations"]),
                 transforms_config=optimiser_config["transforms"],
+                checkpoint=bool(optimiser_config["general"]["checkpoints"]),
                 checkpoint_path=os.path.join(args.output_path,"checkpoint"))
     elif optimiser == "greedy_partition":
         net = GreedyPartition(name, model_path,

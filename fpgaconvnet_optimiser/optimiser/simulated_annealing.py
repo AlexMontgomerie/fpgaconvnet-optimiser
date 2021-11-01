@@ -26,7 +26,8 @@ class SimulatedAnnealing(Optimiser):
 
     def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,
             iterations=10,transforms_config={},fix_starting_point_config={},
-            data_width=16,weight_width=8,acc_width=30,fuse_bn=True,checkpoint_path="."):
+            data_width=16,weight_width=8,acc_width=30,fuse_bn=True,checkpoint=False,
+            checkpoint_path="."):
 
         # Initialise Network
         Optimiser.__init__(self,name,network_path,transforms_config,
@@ -40,6 +41,7 @@ class SimulatedAnnealing(Optimiser):
         self.iterations = iterations
 
         # checkpoint directory routes
+        self.checkpoint = checkpoint
         self.checkpoint_path = checkpoint_path
 
     def optimiser_status(self, return_char='\r'):
@@ -121,7 +123,8 @@ class SimulatedAnnealing(Optimiser):
             partitions = copy.deepcopy(self.partitions)
 
             # create a design checkpoint
-            self.save_design_checkpoint(os.path.join(self.checkpoint_path,f"{str(uuid.uuid4().hex)}.dcp"))
+            if self.checkpoint:
+                self.save_design_checkpoint(os.path.join(self.checkpoint_path,f"{str(uuid.uuid4().hex)}.dcp"))
 
             # several iterations per cool down
             for _ in range(self.iterations):
