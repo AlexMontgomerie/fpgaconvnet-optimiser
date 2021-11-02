@@ -3,6 +3,7 @@ Layers are comprised of modules. They have the same functionality of the equival
 """
 
 from .Layer             import Layer
+from .Layer3D           import Layer3D
 from .MultiPortLayer    import MultiPortLayer
 
 from .BatchNormLayer    import BatchNormLayer

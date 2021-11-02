@@ -6,6 +6,7 @@ import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
 class LAYER_TYPE(Enum):
     Concat       =3
     Convolution  =4
+    Convolution3D=5
     Dropout      =6
     InnerProduct =14
     LRN          =15
@@ -57,9 +58,9 @@ def from_proto_layer_type(layer_type):
     }
     return layer_types.get(layer_type, lambda: "Invalid Layer Type")
 
-def from_onnx_op_type(op_type):
+def from_onnx_op_type(op_type, dimensionality="2D"):
     layer_types = {
-        "Conv"      : LAYER_TYPE.Convolution,
+        "Conv"      : LAYER_TYPE.Convolution3D if dimensionality == "3D" else LAYER_TYPE.Convolution,
         "Gemm"      : LAYER_TYPE.InnerProduct,
         "MatMul"    : LAYER_TYPE.InnerProduct,
         "Relu"      : LAYER_TYPE.ReLU,

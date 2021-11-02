@@ -141,7 +141,7 @@ def load(filepath,fuse_bn=True):
     if fuse_bn:
         passes.append("fuse_bn_into_conv")
     model = optimizer.optimize(model, passes=passes)
-    model = convert_matmul_to_gemm(model)
+    # model = convert_matmul_to_gemm(model)
     onnx.checker.check_model(model)
     return model
 

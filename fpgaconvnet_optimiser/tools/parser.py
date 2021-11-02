@@ -37,7 +37,7 @@ def filter_node_types(graph, layer_type):
     for node in remove_nodes:
         remove_node(graph,node)
 
-def build_graph(model):
+def build_graph(model, dimensionality):
     # graph structure
     graph = nx.DiGraph()
     # add all nodes from network
@@ -45,7 +45,8 @@ def build_graph(model):
         # get name of node
         name = onnx_helper._name(node)
         # add node to graph
-        graph.add_node( name, type=from_onnx_op_type(node.op_type), hw=None, inputs={} )
+        graph.add_node( name, type=from_onnx_op_type(node.op_type, dimensionality=dimensionality),
+                hw=None, inputs={} )
 
         if from_onnx_op_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
             graph.nodes[name]['inputs'] = { "weights": "", "bias": "" }
@@ -63,6 +64,12 @@ def build_graph(model):
                 # convolution inputs
                 if graph.nodes[name]["type"] == LAYER_TYPE.Convolution:
                     if len(input_details.type.tensor_type.shape.dim) == 4:
+                        graph.nodes[name]['inputs']['weights'] = input_node
+                    if len(input_details.type.tensor_type.shape.dim) == 1:
+                        graph.nodes[name]['inputs']['bias'] = input_node
+                # 3d convolution inputs
+                if graph.nodes[name]["type"] == LAYER_TYPE.Convolution3D:
+                    if len(input_details.type.tensor_type.shape.dim) == 5:
                         graph.nodes[name]['inputs']['weights'] = input_node
                     if len(input_details.type.tensor_type.shape.dim) == 1:
                         graph.nodes[name]['inputs']['bias'] = input_node
@@ -121,6 +128,32 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 groups =attr["group"],
             )
             continue
+        # 3D Convolution layer
+        if graph.nodes[name]['type'] == LAYER_TYPE.Convolution3D:
+            # get number of filters
+            weights_input = graph.nodes[name]["inputs"]["weights"]
+            weights_dim = onnx_helper.get_model_input(model,weights_input)
+            filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
+            # get node attributes
+            attr = onnx_helper._format_attr(node.attribute)
+            # default attributes
+            attr.setdefault("group", 1)
+            attr.setdefault("strides", [1,1])
+            attr.setdefault("pads", [0,0,0,0])
+            attr.setdefault("dilations", [1,1])
+            # create convolution layer hardware
+            graph.nodes[name]['hw'] = ConvolutionLayer(
+                filters,
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+                kernel_size =attr["kernel_shape"],
+                stride =attr["strides"],
+                pad =attr["pads"],
+                groups =attr["group"],
+            )
+            continue
+
         # FC Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.InnerProduct:
             # get number of filters
@@ -204,13 +237,13 @@ def add_dimensions(model, graph):
             graph.nodes[node]['hw'].rows     = dim[1]
             graph.nodes[node]['hw'].cols     = dim[2]
 
-def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
+def parse_net(filepath,dimensionality="3D",data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
     # load onnx model
-    model = onnx_helper.load(filepath,fuse_bn)
+    model = onnx_helper.load(filepath, fuse_bn)
 
     # get graph
-    graph = build_graph(model)
+    graph = build_graph(model, dimensionality)
 
     # remove input node
     remove_nodes = []

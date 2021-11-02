@@ -49,7 +49,7 @@ class Network():
         self.fuse_bn = fuse_bn
 
         # load network
-        self.model, self.graph = parser.parse_net(network_path, view=False,
+        self.model, self.graph = parser.parse_net(network_path,
                 data_width=self.data_width, weight_width=self.weight_width,
                 acc_width=self.acc_width, fuse_bn=self.fuse_bn)
 
