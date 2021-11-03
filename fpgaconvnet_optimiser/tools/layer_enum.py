@@ -12,6 +12,7 @@ class LAYER_TYPE(Enum):
     LRN          =15
     Pooling      =17
     ReLU         =18
+    ReLU3D       =81
     Sigmoid      =19
     Softmax      =20
     Eltwise      =25
@@ -63,7 +64,7 @@ def from_onnx_op_type(op_type, dimensionality="2D"):
         "Conv"      : LAYER_TYPE.Convolution3D if dimensionality == "3D" else LAYER_TYPE.Convolution,
         "Gemm"      : LAYER_TYPE.InnerProduct,
         "MatMul"    : LAYER_TYPE.InnerProduct,
-        "Relu"      : LAYER_TYPE.ReLU,
+        "Relu"      : LAYER_TYPE.ReLU3D if dimensionality == "3D" else LAYER_TYPE.ReLU,
         "MaxPool"   : LAYER_TYPE.Pooling,
         "LRN"       : LAYER_TYPE.LRN,
         "Reshape"   : LAYER_TYPE.Transpose,

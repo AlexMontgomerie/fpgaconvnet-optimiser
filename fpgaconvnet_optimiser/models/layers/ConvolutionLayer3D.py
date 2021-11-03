@@ -9,10 +9,10 @@ from fpgaconvnet_optimiser.models.layers.utils import get_factors
 from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
 
 from fpgaconvnet_optimiser.models.modules import SlidingWindow3D
-from fpgaconvnet_optimiser.models.modules import Conv
-from fpgaconvnet_optimiser.models.modules import Fork
-from fpgaconvnet_optimiser.models.modules import Accum
-from fpgaconvnet_optimiser.models.modules import Glue
+from fpgaconvnet_optimiser.models.modules import Conv3D
+from fpgaconvnet_optimiser.models.modules import Fork3D
+from fpgaconvnet_optimiser.models.modules import Accum3D
+from fpgaconvnet_optimiser.models.modules import Glue3D
 from fpgaconvnet_optimiser.models.layers import Layer3D
 
 class ConvolutionLayer3D(Layer3D):
@@ -102,13 +102,13 @@ class ConvolutionLayer3D(Layer3D):
         # TODO: Update the following
         self.modules["sliding_window"] = SlidingWindow3D(self.depth_in(), self.rows_in(), self.cols_in(), int(self.channels_in()/self.coarse_in),
                 self.kernel_size, self.stride, self.pad_front, self.pad_back, self.pad_top, self.pad_bottom, self.pad_left, self.pad_right)
-        self.modules["fork"] = Fork(self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
+        self.modules["fork"] = Fork3D(self.depth_out(), self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
                 self.kernel_size, self.coarse_out)
-        self.modules["conv"] = Conv(self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
+        self.modules["conv"] = Conv3D(self.depth_out(), self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
                 int(self.filters/self.coarse_out), self.fine, self.kernel_size, self.groups)
-        self.modules["accum"] = Accum(self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
+        self.modules["accum"] = Accum3D(self.depth_out(), self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
                 int(self.filters/self.coarse_out), self.groups)
-        self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1, int(self.filters/self.coarse_out),
+        self.modules["glue"] = Glue3D(self.depth_out(), self.rows_out(), self.cols_out(), 1, int(self.filters/self.coarse_out),
                 self.coarse_in, self.coarse_out)
 
         self.update()
@@ -220,7 +220,7 @@ class ConvolutionLayer3D(Layer3D):
         return self.filters
 
     def layer_info(self,parameters,batch_size=1):
-        Layer.layer_info(self, parameters, batch_size)
+        Layer3D.layer_info(self, parameters, batch_size)
         parameters.filters      = self.filters
         parameters.groups       = self.groups
         parameters.coarse_group = self.coarse_group

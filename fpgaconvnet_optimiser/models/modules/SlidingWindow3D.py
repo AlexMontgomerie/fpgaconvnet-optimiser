@@ -145,7 +145,7 @@ class SlidingWindow3D(Module3D):
 
     def module_info(self):
         # get the base module fields
-        info = Module.module_info(self)
+        info = Module3D.module_info(self)
         # add module-specific info fields
         info["kernel_size"] = self.kernel_size
         info["stride"] = self.stride
@@ -180,7 +180,7 @@ class SlidingWindow3D(Module3D):
         window_buffer_depth = self.channels+1
         window_buffer_bram = self.kernel_size[0]*(self.kernel_size[1]-1) * bram_stream_resource_model(window_buffer_depth, self.data_width)
         # get the linear model estimation
-        rsc = Module.rsc(self,coef)
+        rsc = Module3D.rsc(self,coef)
         # add the bram estimation
         rsc["BRAM"] = line_buffer_bram + window_buffer_bram
         # return the resource usage

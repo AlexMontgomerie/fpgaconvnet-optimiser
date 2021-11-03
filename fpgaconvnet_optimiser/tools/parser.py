@@ -17,6 +17,7 @@ from fpgaconvnet_optimiser.models.layers import ConvolutionLayer3D
 from fpgaconvnet_optimiser.models.layers import InnerProductLayer
 from fpgaconvnet_optimiser.models.layers import PoolingLayer
 from fpgaconvnet_optimiser.models.layers import ReLULayer
+from fpgaconvnet_optimiser.models.layers import ReLULayer3D
 # from fpgaconvnet_optimiser.models.layers import LRNLayer
 # from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
@@ -198,6 +199,16 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 0, # initialise channels to 0
             )
             continue
+        # ReLU3D Layer
+        if graph.nodes[name]['type'] == LAYER_TYPE.ReLU3D:
+            # create relu layer hardware
+            graph.nodes[name]['hw'] = ReLULayer3D(
+                0, # initialise depth to 0
+                0, # initialise rows to 0
+                0, # initialise cols to 0
+                0, # initialise channels to 0
+            )
+            continue
         # BatchNorm Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.BatchNorm:
             graph.nodes[name]['hw'] = BatchNormLayer(
@@ -210,21 +221,39 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
             continue
         raise NameError(f"{name}: type {str(graph.nodes[name]['type'])} does not exist!")
 
-def add_dimensions(model, graph):
+def add_dimensions(model, graph, dimensionality='2D'):
     # add input dimensions
     if len(model.graph.input[0].type.tensor_type.shape.dim) <= 2:
-        input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
-        input_rows      = 1
-        input_cols      = 1
+        if dimensionality == '3D':
+            input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
+            input_depth      = 1
+            input_rows      = 1
+            input_cols      = 1
+        else:
+            input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
+            input_rows      = 1
+            input_cols      = 1
     else:
-        input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
-        input_rows      = int(model.graph.input[0].type.tensor_type.shape.dim[2].dim_value)
-        input_cols      = int(model.graph.input[0].type.tensor_type.shape.dim[3].dim_value)
+        if dimensionality == '3D':
+            input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
+            input_depth     = int(model.graph.input[0].type.tensor_type.shape.dim[2].dim_value)
+            input_rows      = int(model.graph.input[0].type.tensor_type.shape.dim[3].dim_value)
+            input_cols      = int(model.graph.input[0].type.tensor_type.shape.dim[4].dim_value)
+        else:
+            input_channels  = int(model.graph.input[0].type.tensor_type.shape.dim[1].dim_value)
+            input_rows      = int(model.graph.input[0].type.tensor_type.shape.dim[2].dim_value)
+            input_cols      = int(model.graph.input[0].type.tensor_type.shape.dim[3].dim_value)
     # update input node hardware
     input_node = graphs.get_input_nodes(graph)[0]
-    graph.nodes[input_node]['hw'].channels  = input_channels
-    graph.nodes[input_node]['hw'].rows      = input_rows
-    graph.nodes[input_node]['hw'].cols      = input_cols
+    if dimensionality == '3D':
+        graph.nodes[input_node]['hw'].channels  = input_channels
+        graph.nodes[input_node]['hw'].depth     = input_depth
+        graph.nodes[input_node]['hw'].rows      = input_rows
+        graph.nodes[input_node]['hw'].cols      = input_cols
+    else:
+        graph.nodes[input_node]['hw'].channels  = input_channels
+        graph.nodes[input_node]['hw'].rows      = input_rows
+        graph.nodes[input_node]['hw'].cols      = input_cols
     # iterate over layers in model
     nodes = list(graph.nodes())
     nodes.remove(input_node)
@@ -233,11 +262,17 @@ def add_dimensions(model, graph):
         prev_nodes = graphs.get_prev_nodes(graph, node)
         for prev_node in prev_nodes: # TODO: support parallel networks
             # get previous node output dimensions
-            dim = onnx_helper._out_dim(model, prev_node)
+            dim = onnx_helper._out_dim(model, prev_node, dimensionality)
             # update input dimensions
-            graph.nodes[node]['hw'].channels = dim[0]
-            graph.nodes[node]['hw'].rows     = dim[1]
-            graph.nodes[node]['hw'].cols     = dim[2]
+            if dimensionality == '3D':
+                graph.nodes[node]['hw'].channels = dim[0]
+                graph.nodes[node]['hw'].depth    = dim[1]
+                graph.nodes[node]['hw'].rows     = dim[2]
+                graph.nodes[node]['hw'].cols     = dim[3]
+            else:
+                graph.nodes[node]['hw'].channels = dim[0]
+                graph.nodes[node]['hw'].rows     = dim[1]
+                graph.nodes[node]['hw'].cols     = dim[2]
 
 def parse_net(filepath,dimensionality="3D",data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
@@ -270,7 +305,7 @@ def parse_net(filepath,dimensionality="3D",data_width=16,weight_width=8,acc_widt
     add_hardware(model, graph, data_width, weight_width, acc_width)
 
     # add layer dimensions
-    add_dimensions(model, graph)
+    add_dimensions(model, graph, dimensionality)
 
     # update all layers
     for node in graph.nodes:

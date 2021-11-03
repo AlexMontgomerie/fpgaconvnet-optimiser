@@ -193,21 +193,38 @@ def _format_attr(attribute):
             attr_out[attr.name] = attr.i
     return attr_out
 
-def _out_dim(model, name):
-    dim = [0,0,0]
-    value_info = get_model_value_info(model, name)
-    if len(value_info.type.tensor_type.shape.dim) == 4:
-        #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
-        dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
-        dim[1] = int(value_info.type.tensor_type.shape.dim[2].dim_value) # rows
-        dim[2] = int(value_info.type.tensor_type.shape.dim[3].dim_value) # cols
-        return dim
-    elif len(value_info.type.tensor_type.shape.dim) == 2:
-        #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
-        dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
-        dim[1] = 1 # rows
-        dim[2] = 1 # cols
-        return dim
+def _out_dim(model, name, dimensionality='2D'):
+    if dimensionality == '3D':
+        dim = [0,0,0,0]
+        value_info = get_model_value_info(model, name)
+        if len(value_info.type.tensor_type.shape.dim) == 5:
+            #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
+            dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
+            dim[1] = int(value_info.type.tensor_type.shape.dim[2].dim_value) # depth
+            dim[2] = int(value_info.type.tensor_type.shape.dim[3].dim_value) # rows
+            dim[3] = int(value_info.type.tensor_type.shape.dim[4].dim_value) # cols
+            return dim
+        elif len(value_info.type.tensor_type.shape.dim) == 2:
+            #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
+            dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
+            dim[1] = 1 # depth
+            dim[2] = 1 # rows
+            dim[3] = 1 # cols
+    else:
+        dim = [0,0,0]
+        value_info = get_model_value_info(model, name)
+        if len(value_info.type.tensor_type.shape.dim) == 4:
+            #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
+            dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
+            dim[1] = int(value_info.type.tensor_type.shape.dim[2].dim_value) # rows
+            dim[2] = int(value_info.type.tensor_type.shape.dim[3].dim_value) # cols
+            return dim
+        elif len(value_info.type.tensor_type.shape.dim) == 2:
+            #dim[0] = int(node.type.tensor_type.shape.dim[0].dim_value) # batch size
+            dim[0] = int(value_info.type.tensor_type.shape.dim[1].dim_value) # channels
+            dim[1] = 1 # rows
+            dim[2] = 1 # cols
+    return dim
 
 def gen_layer_name(graph, layer_name): # layer in protobuf form
     # looks through graph to find node, to get type

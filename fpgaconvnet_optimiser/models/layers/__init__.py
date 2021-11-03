@@ -10,6 +10,7 @@ from .BatchNormLayer      import BatchNormLayer
 from .InnerProductLayer   import InnerProductLayer
 from .PoolingLayer        import PoolingLayer
 from .ReLULayer           import ReLULayer
+from .ReLULayer3D         import ReLULayer3D
 from .ConvolutionLayer    import ConvolutionLayer
 from .ConvolutionLayer3D  import ConvolutionLayer3D
 from .SqueezeLayer        import SqueezeLayer
