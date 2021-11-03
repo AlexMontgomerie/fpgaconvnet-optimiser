@@ -127,6 +127,7 @@ def load(filepath,fuse_bn=True):
     onnx.checker.check_model(model)
     onnx.helper.strip_doc_string(model)
     add_input_from_initializer(model) #Seems to be necessary for conv layers from pytorch (at least)
+    model = convert_matmul_to_gemm(model)
     model = onnx.shape_inference.infer_shapes(model)
     # model = onnx.utils.polish_model(model)
     passes = [
@@ -141,7 +142,6 @@ def load(filepath,fuse_bn=True):
     if fuse_bn:
         passes.append("fuse_bn_into_conv")
     model = optimizer.optimize(model, passes=passes)
-    model = convert_matmul_to_gemm(model)
     onnx.checker.check_model(model)
     return model
 
@@ -302,20 +302,22 @@ def convert_matmul_to_gemm(model):
             if transpose_connection:
                 new_node = onnx.helper.make_node(
                     "Gemm",
-                    name=node.name,
+                    name="Gemm" + node.name.split("MatMul")[-1],
                     inputs=[node.input[0], input_node.input[0], ".".join([input_node.input[0],"bias"])],
                     outputs=node.output
                 )
             else:
                 new_node = onnx.helper.make_node(
                     "Gemm",
-                    name=node.name,
+                    name="Gemm" + node.name.split("MatMul")[-1],
                     inputs=[*node.input, ".".join([input_node.input[0],"bias"])],
                     outputs=node.output
                 )
             # remove old node and add new one
             model.graph.node.remove(node)
             model.graph.node.insert(index, new_node)
+            if transpose_connection:
+                model.graph.node.remove(input_node)
     # return the new model
     return model
 
