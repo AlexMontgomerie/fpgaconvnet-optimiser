@@ -22,9 +22,7 @@ from fpgaconvnet_optimiser.tools.resource_model import dsp_multiplier_resource_m
 class Bias(Module):
     filters: int
     groups: int
-    coarse_out: int
-    bias_width: int = field(default=16, init=False)
-    #acc_width: int = field(default=16, init=False)
+    biases_width: int = field(default=16, init=False)
 
     def __post_init__(self):
         # load the resource model coefficients
@@ -91,19 +89,19 @@ class Bias(Module):
     #    return rsc
 
     def functional_model(self,data,biases):
-        f_c_out = int(self.filters/self.coarse_out)
+        #f_c_out = int(self.filters/self.coarse_out)
 
         # check input dimensionality
         assert data.shape[0] == self.rows                   , "ERROR: invalid row dimension"
         assert data.shape[1] == self.cols                   , "ERROR: invalid column dimension"
-        assert data.shape[2] == f_c_out                     , "ERROR: invalid filter dimension"
-        assert data.shape[3] == self.coarse_out             , "ERROR: invalid c_out dimension"
+        assert data.shape[2] == self.filters                , "ERROR: invalid filter dimension"
+        #assert data.shape[3] == self.coarse_out             , "ERROR: invalid c_out dimension"
         #TODO check filter group thing dimension
         #assert data.shape[3] == self.filters//self.groups   , "ERROR: invalid filter dimension"
 
         # check bias dimensionality
-        assert biases.shape[0] == f_c_out                   , "ERROR: invalid filter dimension"
-        assert biases.shape[1] == self.coarse_out           , "ERROR: invalid c_out dimension"
+        assert biases.shape[0] == self.filters              , "ERROR: invalid filter dimension"
+        #assert biases.shape[1] == self.coarse_out           , "ERROR: invalid c_out dimension"
 
         #TODO is this required?
         #channels_per_group = self.channels//self.groups
@@ -112,27 +110,41 @@ class Bias(Module):
         out = np.zeros((
             self.rows,
             self.cols,
-            f_c_out,
-            self.coarse_out
+            self.filters,
+            #self.coarse_out
             ), dtype=float)
 
         for index,_ in np.ndenumerate(out):
-            out[index] = data[index] + biases[index[2],index[3]]
+            out[index] = data[index] + biases[index[2]]
+            #out[index] = data[index] + biases[index[2],index[3]]
 
         # sanity check because numpy indexing confuses me
-        for f_i in range(f_c_out):
-            for co_i in range(self.coarse_out):
-                # create copy of input and output filter
-                cf = np.empty_like(data[:,:,0,0])
-                cfo = np.empty_like(data[:,:,0,0])
-                # set values of input and output
-                cf[:] = data[:,:,f_i,co_i]
-                cfo[:] = out[:,:,f_i,co_i]
-                # subtraction should give biaois
-                v = cfo - cf
-                for _,val in np.ndenumerate(v):
-                    # check each filter result has been added correctly to the bias
-                    assert np.allclose(biases[f_i,co_i],val,
-                            rtol=1.e-8,atol=1.e-8), "ERROR: the biases don't match!"
+        for f_i in range(self.filters):
+            # create copy of input and output filter
+            cf = np.empty_like(data[:,:,0])
+            cfo = np.empty_like(data[:,:,0])
+            # set values of input and output
+            cf[:] = data[:,:,f_i]
+            cfo[:] = out[:,:,f_i]
+            # subtraction should give biaois
+            v = cfo - cf
+            for _,val in np.ndenumerate(v):
+                # check each filter result has been added correctly to the bias
+                assert np.allclose(biases[f_i],val,
+                        rtol=1.e-8,atol=1.e-8), "ERROR: the biases don't match!"
+
+            #for co_i in range(self.coarse_out):
+            #    # create copy of input and output filter
+            #    cf = np.empty_like(data[:,:,0,0])
+            #    cfo = np.empty_like(data[:,:,0,0])
+            #    # set values of input and output
+            #    cf[:] = data[:,:,f_i,co_i]
+            #    cfo[:] = out[:,:,f_i,co_i]
+            #    # subtraction should give biaois
+            #    v = cfo - cf
+            #    for _,val in np.ndenumerate(v):
+            #        # check each filter result has been added correctly to the bias
+            #        assert np.allclose(biases[f_i,co_i],val,
+            #                rtol=1.e-8,atol=1.e-8), "ERROR: the biases don't match!"
 
         return out
