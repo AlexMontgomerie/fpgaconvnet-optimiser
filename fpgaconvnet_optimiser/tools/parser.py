@@ -13,6 +13,7 @@ import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
 
 from fpgaconvnet_optimiser.models.layers import BatchNormLayer
 from fpgaconvnet_optimiser.models.layers import ConvolutionLayer
+from fpgaconvnet_optimiser.models.layers import ConvolutionLayer3D
 from fpgaconvnet_optimiser.models.layers import InnerProductLayer
 from fpgaconvnet_optimiser.models.layers import PoolingLayer
 from fpgaconvnet_optimiser.models.layers import ReLULayer
@@ -48,7 +49,7 @@ def build_graph(model, dimensionality):
         graph.add_node( name, type=from_onnx_op_type(node.op_type, dimensionality=dimensionality),
                 hw=None, inputs={} )
 
-        if from_onnx_op_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
+        if from_onnx_op_type(node.op_type) in [ LAYER_TYPE.Convolution, LAYER_TYPE.Convolution3D, LAYER_TYPE.InnerProduct ]:
             graph.nodes[name]['inputs'] = { "weights": "", "bias": "" }
     # add all edges from network
     edges = []
@@ -138,12 +139,13 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
             attr = onnx_helper._format_attr(node.attribute)
             # default attributes
             attr.setdefault("group", 1)
-            attr.setdefault("strides", [1,1])
-            attr.setdefault("pads", [0,0,0,0])
-            attr.setdefault("dilations", [1,1])
+            attr.setdefault("strides", [1,1,1])
+            attr.setdefault("pads", [0,0,0,0,0,0])
+            attr.setdefault("dilations", [1,1,1])
             # create convolution layer hardware
-            graph.nodes[name]['hw'] = ConvolutionLayer(
+            graph.nodes[name]['hw'] = ConvolutionLayer3D(
                 filters,
+                0, # initialise depth to 0
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0

@@ -21,6 +21,7 @@ import fpgaconvnet_optimiser.tools.layer_enum
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
 from fpgaconvnet_optimiser.models.layers import ConvolutionLayer
+from fpgaconvnet_optimiser.models.layers import ConvolutionLayer3D
 from fpgaconvnet_optimiser.models.layers import InnerProductLayer
 from fpgaconvnet_optimiser.models.layers import PoolingLayer
 from fpgaconvnet_optimiser.models.layers import ReLULayer

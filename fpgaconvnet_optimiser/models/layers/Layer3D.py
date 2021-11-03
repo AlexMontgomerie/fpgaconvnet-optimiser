@@ -23,6 +23,8 @@ class Layer3D:
     ----------
     buffer_depth: int, default: 0
         depth of incoming fifo buffers for each stream in.
+    depth: int
+        depth dimension of input featuremap
     rows: int
         row dimension of input featuremap
     cols: int
@@ -42,15 +44,19 @@ class Layer3D:
         layer.
     """
 
+    _depth: int
     _rows: int
     _cols: int
     _channels: int
-    _depth: int
     _coarse_in: int
     _coarse_out: int
     data_width: int = field(default=16, init=True)
     buffer_depth: int = field(default=0, init=False)
     modules: dict = field(default_factory=collections.OrderedDict, init=False)
+
+    @property
+    def depth(self) -> int:
+        return self._depth
 
     @property
     def rows(self) -> int:
@@ -65,16 +71,17 @@ class Layer3D:
         return self._channels
 
     @property
-    def depth(self) -> int:
-        return self._depth
-
-    @property
     def coarse_in(self) -> int:
         return self._coarse_in
 
     @property
     def coarse_out(self) -> int:
         return self._coarse_out
+
+    @depth.setter
+    def depth(self, val: int) -> None:
+        self._depth = val
+        self.update()
 
     @rows.setter
     def rows(self, val: int) -> None:
@@ -91,11 +98,6 @@ class Layer3D:
         self._channels = val
         self.update()
 
-    @depth.setter
-    def depth(self, val: int) -> None:
-        self._depth = val
-        self.update()
-
     @coarse_in.setter
     def coarse_in(self, val: int) -> None:
         assert(val in self.get_coarse_in_feasible())
@@ -107,6 +109,15 @@ class Layer3D:
         assert(val in self.get_coarse_out_feasible())
         self._coarse_out = val
         self.update()
+
+    def depth_in(self) -> int:
+        """
+        Returns
+        -------
+        int
+            depth dimension of the input featuremap
+        """
+        return self.depth
 
     def rows_in(self) -> int:
         """
@@ -135,12 +146,12 @@ class Layer3D:
         """
         return self.channels
 
-    def depth_in(self) -> int:
+    def depth_out(self) -> int:
         """
         Returns
         -------
         int
-            depth dimension of the input featuremap
+            depth dimension of the output featuremap
         """
         return self.depth
 
@@ -170,15 +181,6 @@ class Layer3D:
             channel dimension of the output featuremap
         """
         return self.channels
-
-    def depth_out(self) -> int:
-        """
-        Returns
-        -------
-        int
-            depth dimension of the output featuremap
-        """
-        return self.depth
 
     def build_rates_graph(self):
 
@@ -245,9 +247,9 @@ class Layer3D:
         int
             workload into layer from port `index` for a single
             featuremap. This is calculated by
-            `rows_in()*cols_in()*channels_in()`.
+            `depth_in()*rows_in()*cols_in()*channels_in()`.
         """
-        return self.rows_in() * self.cols_in() * self.channels_in() * self.depth_in()
+        return self.depth_in() * self.rows_in() * self.cols_in() * self.channels_in()
 
     def workload_out(self) -> int:
         """
@@ -256,9 +258,9 @@ class Layer3D:
         int
             workload out of layer from port `index` for a
             single featuremap. This is calculated by
-            `rows_out()*cols_out()*channels_out()`.
+            `depth_out()*rows_out()*cols_out()*channels_out()`.
         """
-        return self.rows_out() * self.cols_out() * self.channels_out() * self.depth_out()
+        return self.depth_out() * self.rows_out() * self.cols_out() * self.channels_out()
 
     def size_in(self) -> int:
         """
@@ -267,7 +269,7 @@ class Layer3D:
         int
             workload in per stream.
         """
-        return self.rows_in() * self.cols_in() * int( self.channels_in() / self.streams_in() ) * self.depth_in()
+        return self.depth_in() * self.rows_in() * self.cols_in() * int( self.channels_in() / self.streams_in() )
 
     def size_out(self) -> int:
         """
@@ -276,7 +278,7 @@ class Layer3D:
         int
             workload out per stream.
         """
-        return self.rows_out() * self.cols_out() * int( self.channels_out() / self.streams_out() ) * self.depth_out()
+        return self.depth_out() * self.rows_out() * self.cols_out() * int( self.channels_out() / self.streams_out() )
 
     def width_in(self):
         """
@@ -332,9 +334,11 @@ class Layer3D:
         parameters.batch_size   = batch_size
         parameters.data_width   = self.data_width
         parameters.buffer_depth = self.buffer_depth
+        parameters.depth_in     = self.depth_in()
         parameters.rows_in      = self.rows_in()
         parameters.cols_in      = self.cols_in()
         parameters.channels_in  = self.channels_in()
+        parameters.depth_out    = self.depth_out()
         parameters.rows_out     = self.rows_out()
         parameters.cols_out     = self.cols_out()
         parameters.channels_out = self.channels_out()

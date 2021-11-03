@@ -141,7 +141,7 @@ def load(filepath,fuse_bn=True):
     if fuse_bn:
         passes.append("fuse_bn_into_conv")
     model = optimizer.optimize(model, passes=passes)
-    # model = convert_matmul_to_gemm(model)
+    model = convert_matmul_to_gemm(model)
     onnx.checker.check_model(model)
     return model
 
@@ -226,22 +226,43 @@ def convert_matmul_to_gemm(model):
     for index, node in enumerate(model.graph.node):
         if node.op_type == "MatMul":
             # update the weights
+            transpose_connection = False
             init = get_model_initializer(model, node.input[1], to_tensor=False)
+            if init is None:
+                transpose_connection = True
+                input_node = get_model_node(model, node.input[1])
+                init = get_model_initializer(model, input_node.input[0], to_tensor=False)
             init_index = list(model.graph.initializer).index(init)
             weights = onnx.numpy_helper.to_array(init)
             weights = np.swapaxes(weights,0,1)
-            new_init = onnx.helper.make_tensor(
+            if transpose_connection:
+                new_init = onnx.helper.make_tensor(
+                    name=input_node.input[0],
+                    data_type=init.data_type,
+                    dims=weights.shape,
+                    vals=weights.flatten().tolist())
+            else:
+                new_init = onnx.helper.make_tensor(
                 name=node.input[1],
                 data_type=init.data_type,
                 dims=weights.shape,
                 vals=weights.flatten().tolist())
             # update weight's value info
-            init_value_info = get_model_input(model, node.input[1])
+            if transpose_connection:
+                init_value_info = get_model_input(model, input_node.input[0])
+            else:
+                init_value_info = get_model_input(model, node.input[1])
             init_value_info_index = list(model.graph.input).index(init_value_info)
-            new_init_value_info = onnx.helper.make_tensor_value_info(
-                    node.input[1],
-                    onnx.TensorProto.FLOAT,
-                    weights.shape)
+            if transpose_connection:
+                new_init_value_info = onnx.helper.make_tensor_value_info(
+                        input_node.input[0],
+                        onnx.TensorProto.FLOAT,
+                        weights.shape)
+            else:
+                new_init_value_info = onnx.helper.make_tensor_value_info(
+                node.input[1],
+                onnx.TensorProto.FLOAT,
+                weights.shape)
             # update the graph
             model.graph.initializer.remove(init)
             model.graph.initializer.insert(init_index,new_init)
@@ -249,7 +270,7 @@ def convert_matmul_to_gemm(model):
             model.graph.input.insert(init_value_info_index, new_init_value_info)
             # add an empty bias term
             new_bias = onnx.helper.make_tensor(
-                name="_".join([node.input[1],"bias"]),
+                name=".".join([input_node.input[0],"bias"]),
                 data_type=init.data_type,
                 dims=(weights.shape[1],),
                 vals=np.zeros(weights.shape[1]).flatten().tolist())
@@ -261,12 +282,20 @@ def convert_matmul_to_gemm(model):
             model.graph.initializer.insert(-1,new_bias)
             model.graph.input.insert(-1,new_bias_value_info)
             # create a new matmul node
-            new_node = onnx.helper.make_node(
-                "Gemm",
-                name=node.name,
-                inputs=[*node.input, "_".join([node.input[1],"bias"])],
-                outputs=node.output
-            )
+            if transpose_connection:
+                new_node = onnx.helper.make_node(
+                    "Gemm",
+                    name=node.name,
+                    inputs=[node.input[0], input_node.input[0], ".".join([input_node.input[0],"bias"])],
+                    outputs=node.output
+                )
+            else:
+                new_node = onnx.helper.make_node(
+                    "Gemm",
+                    name=node.name,
+                    inputs=[*node.input, ".".join([input_node.input[0],"bias"])],
+                    outputs=node.output
+                )
             # remove old node and add new one
             model.graph.node.remove(node)
             model.graph.node.insert(index, new_node)
