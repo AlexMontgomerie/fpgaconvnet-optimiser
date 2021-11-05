@@ -27,7 +27,7 @@ class InnerProductLayer(Layer):
             input_width: int = 16,
             output_width: int = 16,
             weight_width: int = 16,
-            acc_width: int = 16
+            acc_width: int = 16,
             biases_width: int = 16
         ):
 
@@ -101,7 +101,7 @@ class InnerProductLayer(Layer):
         # conv
         self.modules['conv'].rows     = 1
         self.modules['conv'].cols     = 1
-        self.modules['conv'].channels =
+        self.modules['conv'].channels =\
                                 self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
         self.modules['conv'].filters  = self.filters//self.coarse_out
         self.modules['conv'].fine     = 1
@@ -111,7 +111,7 @@ class InnerProductLayer(Layer):
         # accum
         self.modules['accum'].rows     = 1
         self.modules['accum'].cols     = 1
-        self.modules['accum'].channels =
+        self.modules['accum'].channels =\
                                 self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
         self.modules['accum'].filters  = self.filters//self.coarse_out
         self.modules['accum'].data_width = self.acc_width
@@ -229,7 +229,7 @@ class InnerProductLayer(Layer):
         assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters ,   "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == self.rows_in()*self.cols_in()*self.channels_in(),
+        assert weights.shape[1] == self.rows_in()*self.cols_in()*self.channels_in(),\
                                                     "ERROR (weights): invalid channel dimension"
 
 

@@ -67,8 +67,8 @@ class ConvolutionLayer(Layer):
             input_width: int = 16,
             output_width: int = 16,
             weight_width: int = 16,
-            acc_width: int = 16
-            biases_width: int = 16,
+            acc_width: int = 16,
+            biases_width: int = 16
         ):
 
         # initialise parent class
@@ -111,7 +111,7 @@ class ConvolutionLayer(Layer):
         self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1,
                 int(self.filters/self.coarse_out), self.coarse_in, self.coarse_out)
         self.modules["bias"] = Bias(self.rows_out(), self.cols_out(), 1,
-                self.filters, self.groups, self.biases_width)
+                self.filters, self.groups)
 
         self.update()
 
@@ -417,11 +417,11 @@ class ConvolutionLayer(Layer):
         assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters ,   "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == self.channels//self.groups,
+        assert weights.shape[1] == self.channels//self.groups,\
                                                     "ERROR (weights): invalid channel dimension"
-        assert weights.shape[2] == self.kernel_size[0]  ,
+        assert weights.shape[2] == self.kernel_size[0],\
                                                     "ERROR (weights): invalid kernel dimension"
-        assert weights.shape[3] == self.kernel_size[1]  ,
+        assert weights.shape[3] == self.kernel_size[1],\
                                                     "ERROR (weights): invalid kernel dimension"
 
         assert bias.shape[0] == self.filters  ,     "ERROR (bias): invalid filter dimension"
