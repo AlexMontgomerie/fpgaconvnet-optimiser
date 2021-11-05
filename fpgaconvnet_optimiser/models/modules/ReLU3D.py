@@ -16,22 +16,21 @@ class ReLU3D(Module3D):
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_lut.npy"))
+                "../../coefficients/relu3d_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_ff.npy"))
+                "../../coefficients/relu3d_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_bram.npy"))
+                "../../coefficients/relu3d_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_dsp.npy"))
+                "../../coefficients/relu3d_dsp.npy"))
 
     def utilisation_model(self):
-        # TODO: Update the following
         return {
-            "LUT"  : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
-            "FF"   : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "LUT"  : np.array([self.data_width, math.ceil(math.log(self.channels*self.depth*self.rows*self.cols,2))]),
+            "FF"   : np.array([self.data_width, math.ceil(math.log(self.channels*self.depth*self.rows*self.cols,2))]),
             "DSP"  : np.array([1]),
             "BRAM" : np.array([1])
         }

@@ -99,7 +99,6 @@ class ConvolutionLayer3D(Layer3D):
         self._pad_right = self._pad[5]
 
         # init modules
-        # TODO: Update the following
         self.modules["sliding_window"] = SlidingWindow3D(self.depth_in(), self.rows_in(), self.cols_in(), int(self.channels_in()/self.coarse_in),
                 self.kernel_size, self.stride, self.pad_front, self.pad_back, self.pad_top, self.pad_bottom, self.pad_left, self.pad_right)
         self.modules["fork"] = Fork3D(self.depth_out(), self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
@@ -108,6 +107,7 @@ class ConvolutionLayer3D(Layer3D):
                 int(self.filters/self.coarse_out), self.fine, self.kernel_size, self.groups)
         self.modules["accum"] = Accum3D(self.depth_out(), self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
                 int(self.filters/self.coarse_out), self.groups)
+        #TODO: Why are channels here equal to 1?
         self.modules["glue"] = Glue3D(self.depth_out(), self.rows_out(), self.cols_out(), 1, int(self.filters/self.coarse_out),
                 self.coarse_in, self.coarse_out)
 
@@ -246,14 +246,14 @@ class ConvolutionLayer3D(Layer3D):
         self.modules['sliding_window'].channels = self.channels//(self.coarse_in*self.coarse_group)
         self.modules['sliding_window'].data_width   = self.input_width
         # fork
-        # TODO: Update the following
+        self.modules['fork'].depth    = self.depth_out()
         self.modules['fork'].rows     = self.rows_out()
         self.modules['fork'].cols     = self.cols_out()
         self.modules['fork'].channels = self.channels_in()//(self.coarse_in*self.coarse_group)
         self.modules['fork'].coarse   = self.coarse_out
         self.modules['fork'].data_width     = self.input_width
         # conv
-        # TODO: Update the following
+        self.modules['conv'].depth    = self.depth_out()
         self.modules['conv'].rows     = self.rows_out()
         self.modules['conv'].cols     = self.cols_out()
         self.modules['conv'].channels = self.channels//(self.coarse_in*self.coarse_group)
@@ -264,7 +264,7 @@ class ConvolutionLayer3D(Layer3D):
         self.modules['conv'].weight_width   = self.weight_width
         self.modules['conv'].acc_width      = self.acc_width
         # accum
-        # TODO: Update the following
+        self.modules['accum'].depth    = self.depth_out()
         self.modules['accum'].rows     = self.rows_out()
         self.modules['accum'].cols     = self.cols_out()
         self.modules['accum'].channels = self.channels//(self.coarse_in*self.coarse_group)
@@ -272,7 +272,7 @@ class ConvolutionLayer3D(Layer3D):
         self.modules['accum'].groups   = self.groups//self.coarse_group
         self.modules['accum'].data_width    = self.acc_width
         # glue
-        # TODO: Update the following
+        self.modules['glue'].depth      = self.depth_out()
         self.modules['glue'].rows       = self.rows_out()
         self.modules['glue'].cols       = self.cols_out()
         self.modules['glue'].filters    = self.filters//self.coarse_group
@@ -285,12 +285,20 @@ class ConvolutionLayer3D(Layer3D):
         return get_factors(self.groups)
 
     def get_fine_feasible(self):
-        # TODO: Update the following
-        if self.kernel_size[0] != self.kernel_size[1]:
-            assert(self.kernel_size[0] == 1 or self.kernel_size[1] == 1)
-            return [ 1, max(self.kernel_size[0],self.kernel_size[1])]
+        if self.kernel_size[0] != self.kernel_size[1] and self.kernel_size[1] == self.kernel_size[2]:
+            if self.kernel_size[0] == 1:
+                return [1, self.kernel_size[1], self.kernel_size[1]*self.kernel_size[2]]
+            elif self.kernel_size[1] == 1:
+                return [1, self.kernel_size[0]]
+            else:
+                return [1, self.kernel_size[0], self.kernel_size[1], self.kernel_size[0]*self.kernel_size[1], self.kernel_size[1]*self.kernel_size[2], self.kernel_size[0]*self.kernel_size[1]*self.kernel_size[2]]
+        elif self.kernel_size[0] == self.kernel_size[1] and self.kernel_size[1] == self.kernel_size[2]:
+            if self.kernel_size[0] == 1:
+                return [1]
+            else:
+                return [1, self.kernel_size[0], self.kernel_size[0]*self.kernel_size[1], self.kernel_size[0]*self.kernel_size[1]*self.kernel_size[2]]
         else:
-            return [ 1, self.kernel_size[0], self.kernel_size[0]*self.kernel_size[1] ]
+            return [ 1, self.kernel_size[0], self.kernel_size[1], self.kernel_size[2], self.kernel_size[0]*self.kernel_size[1], self.kernel_size[0]*self.kernel_size[2], self.kernel_size[1]*self.kernel_size[2], self.kernel_size[0]*self.kernel_size[1]*self.kernel_size[2] ]
 
     def get_weights_reloading_feasible(self):
         return get_factors(self.filters//(self.groups*self.coarse_out))

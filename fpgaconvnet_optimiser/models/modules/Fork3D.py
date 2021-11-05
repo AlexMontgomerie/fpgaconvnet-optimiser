@@ -34,22 +34,21 @@ class Fork3D(Module3D):
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/fork_lut.npy"))
+                "../../coefficients/fork3d_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/fork_ff.npy"))
+                "../../coefficients/fork3d_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/fork_bram.npy"))
+                "../../coefficients/fork3d_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/fork_dsp.npy"))
+                "../../coefficients/fork3d_dsp.npy"))
 
     def utilisation_model(self):
-        # TODO: Update the following
         return {
-            "LUT"  : np.array([math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
-            "FF"   : np.array([math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "LUT"  : np.array([math.ceil(math.log(self.channels*self.depth*self.rows*self.cols,2))]),
+            "FF"   : np.array([math.ceil(math.log(self.channels*self.depth*self.rows*self.cols,2))]),
             "DSP"  : np.array([1]),
             "BRAM" : np.array([1]),
         }

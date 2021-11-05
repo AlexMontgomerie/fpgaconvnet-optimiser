@@ -24,24 +24,23 @@ class Glue3D(Module3D):
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/glue_lut.npy"))
+                "../../coefficients/glue3d_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/glue_ff.npy"))
+                "../../coefficients/glue3d_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/glue_bram.npy"))
+                "../../coefficients/glue3d_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/glue_dsp.npy"))
+                "../../coefficients/glue3d_dsp.npy"))
 
     def utilisation_model(self):
-        # TODO: Update the following
         return {
-            "LUT"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
-            "FF"    : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
-            "DSP"   : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
-            "BRAM"  : np.array([self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "LUT"   : np.array([self.depth,self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "FF"    : np.array([self.depth,self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "DSP"   : np.array([self.depth,self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
+            "BRAM"  : np.array([self.depth,self.cols,self.rows,self.channels,self.data_width,self.acc_width,self.filters,self.coarse_in,self.coarse_out]),
         }
 
     def channels_in(self):

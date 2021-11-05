@@ -86,16 +86,16 @@ class SlidingWindow3D(Module3D):
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/sliding_window_lut.npy"))
+                "../../coefficients/sliding_window3d_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/sliding_window_ff.npy"))
+                "../../coefficients/sliding_window3d_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/sliding_window_bram.npy"))
+                "../../coefficients/sliding_window3d_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/sliding_window_dsp.npy"))
+                "../../coefficients/sliding_window3d_dsp.npy"))
 
     def utilisation_model(self):
         # TODO: Update the following

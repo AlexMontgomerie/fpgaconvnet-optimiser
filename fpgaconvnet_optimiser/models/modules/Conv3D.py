@@ -65,22 +65,21 @@ class Conv3D(Module3D):
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/conv_lut.npy"))
+                "../../coefficients/conv3d_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/conv_ff.npy"))
+                "../../coefficients/conv3d_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/conv_bram.npy"))
+                "../../coefficients/conv3d_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/conv_dsp.npy"))
+                "../../coefficients/conv3d_dsp.npy"))
 
     def utilisation_model(self):
-        # TODO: Update the following
         return {
-            "LUT"  : np.array([math.log(self.filters,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
-            "FF"   : np.array([math.log(self.filters,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
+            "LUT"  : np.array([math.log(self.filters,2),math.log(self.depth*self.cols*self.rows,2),math.log(self.channels,2)]),
+            "FF"   : np.array([math.log(self.filters,2),math.log(self.depth*self.cols*self.rows,2),math.log(self.channels,2)]),
             "DSP"  : np.array([1]),
             "BRAM" : np.array([1])
         }
