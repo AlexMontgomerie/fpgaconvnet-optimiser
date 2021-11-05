@@ -14,7 +14,7 @@ from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 def apply_random_fine_layer(self, layer):
 
     # feasible layers
-    feasible_layers = fpgaconvnet_optimiser.transforms.helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
+    feasible_layers = fpgaconvnet_optimiser.transforms.helper.get_all_layers(self.graph, [LAYER_TYPE.Convolution, LAYER_TYPE.Convolution3D])
 
     # check layer can have fine transform applied
     if layer in feasible_layers:
@@ -28,7 +28,7 @@ def apply_complete_fine(self):
     # iterate over layers node info
     for node in self.graph.nodes():
         # choose to apply to convolution layer only
-        if self.graph.nodes[node]['type'] == LAYER_TYPE.Convolution:
+        if self.graph.nodes[node]['type'] == LAYER_TYPE.Convolution or self.graph.nodes[node]['type'] == LAYER_TYPE.Convolution3D:
             # choose max fine for convolution layer
             self.graph.nodes[node]['hw'].fine = self.graph.nodes[node]['hw'].get_fine_feasible()[-1]
 

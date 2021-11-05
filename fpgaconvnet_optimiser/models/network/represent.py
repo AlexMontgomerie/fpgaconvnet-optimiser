@@ -76,7 +76,7 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
             # add parameters
             self.partitions[i].graph.nodes[node]['hw'].layer_info(layer.parameters, batch_size=self.partitions[i].batch_size)
             # add weights key
-            if self.partitions[i].graph.nodes[node]['type'] in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
+            if self.partitions[i].graph.nodes[node]['type'] in [ LAYER_TYPE.Convolution, LAYER_TYPE.Convolution3D, LAYER_TYPE.InnerProduct ]:
                 layer.weights_path = self.partitions[i].graph.nodes[node]['inputs']['weights']
                 layer.bias_path    = self.partitions[i].graph.nodes[node]['inputs']['bias']
 

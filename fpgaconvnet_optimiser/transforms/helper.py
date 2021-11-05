@@ -24,7 +24,7 @@ def get_all_layers(graph, layer_type):
     """
     layers= []
     for node in graph.nodes():
-        if graph.nodes[node]['type'] == layer_type:
+        if graph.nodes[node]['type'] in layer_type:
             layers.append(node)
     return layers
 

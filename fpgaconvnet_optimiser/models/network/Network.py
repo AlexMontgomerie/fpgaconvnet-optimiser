@@ -87,8 +87,8 @@ class Network():
 
         # all types of layers
         # TODO: Check dimensionality here
-        self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
-        self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
+        self.conv_layers = helper.get_all_layers(self.graph, [LAYER_TYPE.Convolution, LAYER_TYPE.Convolution3D])
+        self.pool_layers = helper.get_all_layers(self.graph, [LAYER_TYPE.Pooling])
 
         # update partitions
         self.update_partitions()

@@ -38,8 +38,8 @@ def check_parallel_block(self, partition_index):
             (self.partitions[partition_index].graph.nodes[output_node]['type'] == LAYER_TYPE.Concat)):
         return False
     # check the number of split and concat nodes
-    n_split  = len(get_all_layers(self.partitions[partition_index].graph,LAYER_TYPE.Split))
-    n_concat = len(get_all_layers(self.partitions[partition_index].graph,LAYER_TYPE.Concat))
+    n_split  = len(get_all_layers(self.partitions[partition_index].graph,[LAYER_TYPE.Split]))
+    n_concat = len(get_all_layers(self.partitions[partition_index].graph,[LAYER_TYPE.Concat]))
     # break if there's too many parallel blocks
     if (n_split > 1) or (n_concat > 1):
         return False

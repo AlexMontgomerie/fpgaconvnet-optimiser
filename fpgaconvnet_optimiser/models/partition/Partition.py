@@ -139,5 +139,5 @@ class Partition():
             self.graph.nodes[node]["hw"].coarse_out = 1
             self.graph.nodes[node]["hw"].coarse_group = 1
 
-            if self.graph.nodes[node]["type"] == LAYER_TYPE.Convolution:
+            if self.graph.nodes[node]["type"] == LAYER_TYPE.Convolution or self.graph.nodes[node]["type"] == LAYER_TYPE.Convolution3D:
                 self.graph.nodes[node]["hw"].fine = 1
