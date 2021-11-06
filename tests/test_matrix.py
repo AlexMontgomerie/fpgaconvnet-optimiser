@@ -22,7 +22,10 @@ class TestConnectionMatrix(unittest.TestCase):
     @ddt.data(*glob.glob("tests/models/*.onnx"))
     def test_net(self,model_path):
         # graph definition
-        _, graph = parser.parse_net(model_path,view=False)
+        if model_path.split("/")[-1].split(".onnx")[0] == "x3d_m":
+            _, graph = parser.parse_net(model_path, dimensionality='3D')
+        else:
+            _, graph = parser.parse_net(model_path)
 
         # get matrix and expected dimensions
         n_nodes             = len(matrix.get_node_list_matrix(graph))
@@ -49,7 +52,10 @@ class TestStreamsMatrix(unittest.TestCase):
     def test_net(self,model_path):
 
         # graph definition
-        _, graph = parser.parse_net(model_path,view=False)
+        if model_path.split("/")[-1].split(".onnx")[0] == "x3d_m":
+            _, graph = parser.parse_net(model_path, dimensionality='3D')
+        else:
+            _, graph = parser.parse_net(model_path)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
@@ -75,7 +81,10 @@ class TestRatesMatrix(unittest.TestCase):
     def test_net(self,model_path):
 
         # graph definition
-        _, graph = parser.parse_net(model_path,view=False)
+        if model_path.split("/")[-1].split(".onnx")[0] == "x3d_m":
+            _, graph = parser.parse_net(model_path, dimensionality='3D')
+        else:
+            _, graph = parser.parse_net(model_path)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
@@ -104,7 +113,10 @@ RATES BALANCED MATRIX
 #     def test_net(self,model_path):
 
 #         # graph definition
-#         graph, node_info = parser.parse_net(model_path,view=False)
+#        if model_path.split("/")[-1].split(".onnx")[0] == "x3d_m":
+#            _, graph = parser.parse_net(model_path, dimensionality='3D')
+#        else:
+#            _, graph = parser.parse_net(model_path)
 
 #         # get matrix and expected dimensions
 #         n_nodes                 = len(matrix.get_node_list_matrix(graph))
@@ -147,7 +159,10 @@ class TestWorkloadMatrix(unittest.TestCase):
     def test_net(self,model_path):
 
         # graph definition
-        _, graph = parser.parse_net(model_path,view=False)
+        if model_path.split("/")[-1].split(".onnx")[0] == "x3d_m":
+            _, graph = parser.parse_net(model_path, dimensionality='3D')
+        else:
+            _, graph = parser.parse_net(model_path)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
@@ -179,7 +194,10 @@ class TestTopologyMatrix(unittest.TestCase):
     def test_net(self,model_path):
 
         # graph definition
-        _, graph = parser.parse_net(model_path,view=False)
+        if model_path.split("/")[-1].split(".onnx")[0] == "x3d_m":
+            _, graph = parser.parse_net(model_path, dimensionality='3D')
+        else:
+            _, graph = parser.parse_net(model_path)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))
@@ -206,7 +224,10 @@ class TestIntervalMatrix(unittest.TestCase):
     def test_net(self,model_path):
 
         # graph definition
-        _, graph = parser.parse_net(model_path,view=False)
+        if model_path.split("/")[-1].split(".onnx")[0] == "x3d_m":
+            _, graph = parser.parse_net(model_path, dimensionality='3D')
+        else:
+            _, graph = parser.parse_net(model_path)
 
         # get matrix and expected dimensions
         n_nodes         = len(matrix.get_node_list_matrix(graph))

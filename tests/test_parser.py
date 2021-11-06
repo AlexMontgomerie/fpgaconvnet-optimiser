@@ -7,7 +7,7 @@ import fpgaconvnet_optimiser.tools.parser as parser
 
 #     def setUp(self):
 #         self.network_path = "examples/models/lenet.onnx"
-#         _, self.graph = parser.parse_net(self.network_path,view=False)
+#         _, self.graph = parser.parse_net(self.network_path, dimensionality='2D')
 
 #     def test_graph(self):
 

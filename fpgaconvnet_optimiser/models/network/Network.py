@@ -45,14 +45,20 @@ class Network():
         # network name
         self.name = name
 
+        # dimensionality of the input
+        self.dimensionality = "2D"
+        if name == "x3d_m":
+            self.dimensionality = "3D"
+
         # initialise variables
         self.batch_size = batch_size
         self.fuse_bn = fuse_bn
 
         # load network
         self.model, self.graph = parser.parse_net(network_path,
-                data_width=self.data_width, weight_width=self.weight_width,
-                acc_width=self.acc_width, fuse_bn=self.fuse_bn)
+                dimensionality=self.dimensionality, data_width=self.data_width, 
+                weight_width=self.weight_width, acc_width=self.acc_width, 
+                fuse_bn=self.fuse_bn)
 
         # node and edge lists
         self.node_list = list(self.graph.nodes())

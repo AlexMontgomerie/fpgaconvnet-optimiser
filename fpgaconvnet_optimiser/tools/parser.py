@@ -274,7 +274,7 @@ def add_dimensions(model, graph, dimensionality='2D'):
                 graph.nodes[node]['hw'].rows     = dim[1]
                 graph.nodes[node]['hw'].cols     = dim[2]
 
-def parse_net(filepath,dimensionality="3D",data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
+def parse_net(filepath,dimensionality="2D",data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
     # load onnx model
     model = onnx_helper.load(filepath, fuse_bn)

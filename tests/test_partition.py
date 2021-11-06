@@ -10,7 +10,7 @@ import networkx as nx
 #    @classmethod
 #    def setUpClass(self):
 #        # load example network
-#        _, graph = parser.parse_net("examples/models/lenet.onnx",view=False)
+#        _, graph = parser.parse_net("examples/models/lenet.onnx", dimensionality='2D')
 
 #        #initialise partition
 #        self.partition = Partition(graph)
