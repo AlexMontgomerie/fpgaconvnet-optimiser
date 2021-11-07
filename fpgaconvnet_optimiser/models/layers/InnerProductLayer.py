@@ -60,7 +60,7 @@ class InnerProductLayer(Layer):
                 self.filters, self.coarse_in, self.coarse_out)
         # TODO double check this is init correctly (currently copied above mods)
         self.modules["bias"] = Bias(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
-                self.filters, 1, self.biases_width)
+                self.filters, 1)
 
         self.update()
 
