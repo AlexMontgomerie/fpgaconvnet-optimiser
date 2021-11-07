@@ -113,30 +113,13 @@ def main():
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
 
-    # #Initialize "auto" annealing variables
-    # if net.T == "auto":
-    #     net.estimate_starting_temperature()
 
-    # for i in range(10):
-    #     samples = (i+1)*50
-    #     print("Samples:" + str((i+1)*50))
+    # while True:
     #     temps = []
-    #     maxes = []
-    #     for j in range(10):
-    #         t, maxi = net.estimate_starting_temperature(sample_target = 10)
-    #         temps.append(t)
-    #         maxes.append(maxi)
-    #     print(f"Sample run: {samples}")
-    #     print(temps)
+    #     for i in range(10):
+    #         temps.append(net.estimate_starting_temperature(sample_target=250))
     #     print(sum(temps)/len(temps))
-    #     print(sum(maxes)/len(maxes))
-
-    while True:
-        temps = []
-        for i in range(10):
-            temps.append(net.estimate_starting_temperature(sample_target=250))
-        print(sum(temps)/len(temps))
-        input()
+    #     input()
     # run optimiser
     net.run_optimiser()
 

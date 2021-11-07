@@ -21,7 +21,7 @@ output_path="outputs/lenet"
 
 mkdir -p $output_path
 
-python -m run_optimiser -n $name \
+python -m fpgaconvnet_optimiser -n $name \
     -m $model_path \
     -p $platform_path \
     -o $output_path \

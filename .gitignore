@@ -14,8 +14,9 @@ rpt/
 
 outputs/
 onnx/
-
+scripts/
 .eggs/
+.idea/
 
 docs/fpgaconvnet_optimiser/
 

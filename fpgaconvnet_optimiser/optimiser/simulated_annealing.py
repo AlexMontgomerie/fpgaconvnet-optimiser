@@ -1,5 +1,4 @@
 import decimal
-import os
 import sys
 import copy
 import random
@@ -7,7 +6,6 @@ import math
 
 from decimal import *
 from fpgaconvnet_optimiser.optimiser.optimiser import Optimiser
-from multiprocessing import Pool
 
 LATENCY = 0
 THROUGHPUT = 1
@@ -24,22 +22,29 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
         # Initialise Network
         super().__init__(name, network_path)
+
+        # Simulated Annealing Variables
         self.DEBUG = False
         self.t_min = float(t_min)
         self.cool = float(cool)
-        self.iterations = int(iterations)
         self.seed = seed
         self.network_path = network_path
 
-        # Simulated Annealing Variables
-        if t == "auto":
+        # Simulated Annealing auto variables
+        if t == "auto" or k == "auto":
             self.t = "auto"
             self.k = 1
         else:
             self.t = float(t)
             self.k = float(k)
 
-        # Set up debug dictionary for counting transform usage
+        if iterations == "auto":
+            self.iterations = 3
+        else:
+            self.iterations = int(iterations)
+
+
+        # Set up debug dictionary and transform counter
         self.csv_path = csv_path
         self.transform_count = {}
         for transform in self.transforms:
@@ -64,9 +69,10 @@ Randomly chooses a transform and hardware component to change. The change is acc
         FF = max([resource['FF'] for resource in resources])
         sys.stdout.write("\033[K")
         print(
-            "TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-                temp=self.t, cost=cost, objective=objective, BRAM=int(BRAM), DSP=int(DSP), LUT=int(LUT), FF=int(FF)),
-            end='\n')  # ,end='\r')
+            "TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)\t"
+            "{transforms}".format(
+                temp=self.t, cost=cost, objective=objective, BRAM=int(BRAM), DSP=int(DSP), LUT=int(LUT), FF=int(FF),
+                transforms="\t".join(self.transforms)), end='\n')  # ,end='\r')
 
         # More internal information written to csv
         if self.csv_path is not None:
@@ -81,15 +87,13 @@ Randomly chooses a transform and hardware component to change. The change is acc
             throughput = self.get_throughput()
 
             # Process transform counts
-            count_string = ""
-            for value in self.transform_count.values():
-                count_string += f", {value}"
+            transform_count_string = ", ".join([str(self.transform_count[key]) for key in self.transform_count.keys()])
 
             csv_file = open(self.csv_path, 'a')
 
             # CSV output format
             csv_file.write(f"{self.t}, {cost}, {BRAM}, {BRAM_AVG}, {DSP}, {DSP_AVG}, {LUT}, {LUT_AVG}, {FF}, {FF_AVG},"
-                           f" {latency}, {throughput}{count_string}\n")
+                           f" {latency}, {throughput}, {transform_count_string}\n")
             csv_file.close()
 
     def run_optimiser(self, log=True):
@@ -130,9 +134,14 @@ Randomly chooses a transform and hardware component to change. The change is acc
                     break
                 except AssertionError as error:
                     pass
+
         # Write debug csv column info
         if self.csv_path is not None:
             self.write_csv_header()
+
+        # Following proper initialization estimate temperature
+        if self.t == "auto":
+            self.t = self.estimate_starting_temperature()
 
         # Cooling Loop
         while self.t_min < self.t:
@@ -196,7 +205,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
             # reduce temperature
             self.t *= self.cool
-        print(self.transform_count)
+        if self.DEBUG:
+            print(self.transform_count)
 
     def estimate_starting_temperature(self, chi_target=0.94, chi_tolerance=0.01, sample_target=100, mode="Ameur"):
         """
@@ -242,7 +252,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # Ben-Ameur algorithm from paper implemented
 
             #Set precision
-            decimal.getcontext().prec = 100
+            decimal.getcontext().prec = 28
 
             # Arbitrary starting temperature
             t = Decimal(7.5)
@@ -270,10 +280,10 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 # In case algorithm fails to converge in reasonable time, some data points are replaced
                 i += 1
                 if i > 1000:
-                    print("Failed to converge, adding sample and restarting ")
+                    if self.DEBUG:
+                        print("Failed to converge, adding sample and restarting ")
 
                     print(sample_list)
-                    input()
                     five_percent = int(len(sample_list) / 20)
                     sample_list.extend(self.generate_transitions(five_percent)[0])
 
@@ -282,9 +292,9 @@ Randomly chooses a transform and hardware component to change. The change is acc
                     i = 0
                     t = Decimal(7.5)
 
-            print("Starting temperature: " + str(t))
-            self.t = float(t)
-            return t
+            if self.DEBUG:
+                print("Starting temperature: " + str(t))
+            return float(t)
 
         #Estimation of starting temperature as maximum difference
         elif mode == "Max":
@@ -293,9 +303,9 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 if j[1]-j[0] > max:
                     max = j[1]-j[0]
 
-            print("Starting temperature: " + str(max))
-            self.t = max
-            return max
+            if self.DEBUG:
+                print("Starting temperature: " + str(max))
+            return float(max)
 
     def generate_transitions(self, sample_target, positive=False, negative=True):
         """Function generates a specified number (sample_target) of random transitions for its network in either the
@@ -312,7 +322,6 @@ Randomly chooses a transform and hardware component to change. The change is acc
         min_partitions = []
         min_cost = float('inf')
         sample_list = []
-        pid = os.getpid()
 
         # Main sample collection loop
         while len(sample_list) < sample_target:
@@ -394,15 +403,17 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # Add transition to sample list based on Negative (perf. decreases) and Positive(perf. increases) flags
             if (self.get_cost() > cost) and negative:
                 sample_list.append((cost, self.get_cost()))
-                print(
-                    f"Negative transition, difference: {self.get_cost() - cost},"
-                    f" Sample point {len(sample_list)}/{sample_target}, PID:{pid}")
+                if self.DEBUG:
+                    print(
+                        f"Negative transition added, difference: {self.get_cost() - cost},"
+                        f" Sample point {len(sample_list)}/{sample_target}")
 
             elif (self.get_cost() < cost) and positive:
                 sample_list.append((cost, self.get_cost()))
-                print(
-                    f"Positive transition, difference: {self.get_cost() - cost},"
-                    f" Sample point {len(sample_list)}/{sample_target}, PID:{pid}")
+                if self.DEBUG:
+                    print(
+                        f"Positive transition added, difference: {self.get_cost() - cost},"
+                        f" Sample point {len(sample_list)}/{sample_target}")
 
             # Update the record of the best performing partition
             if self.get_cost() < min_cost:
@@ -416,10 +427,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
         self.csv_path"""
 
         # Generate column header for transform counter
-        key_header = ""
-        for key in self.transform_count.keys():
-            key_header += f", {key}"
-        key_header += "\n"
+        key_header = ", ".join(self.transform_count.keys())
 
         # Write to csv
         csv_file = open(self.csv_path, 'a')
