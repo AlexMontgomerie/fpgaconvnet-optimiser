@@ -19,8 +19,9 @@ import fpgaconvnet_optimiser.tools.graphs as graphs
 from fpgaconvnet_optimiser.tools.layer_enum import from_onnx_op_type
 
 def main():
-    parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
-    parser.add_argument('-n','--name', metavar='PATH', required=True,
+    print(os.getcwd())
+    parser = argparse.ArgumentParser(description="Optimiser Script")
+    parser.add_argument('-n','--name',metavar='PATH',required=True,
         help='network name')
     parser.add_argument('-m','--model_path', metavar='PATH', required=True,
         help='Path to ONNX model')
@@ -44,9 +45,6 @@ def main():
     # parse the arguments
     args = parser.parse_args()
 
-    # setup seed
-    random.seed(args.seed)
-    np.random.seed(args.seed)
 
     # make the output directory if it does not exist
     if not os.path.exists(args.output_path):
@@ -87,26 +85,24 @@ def main():
                 iterations=int(optimiser_config["annealing"]["iterations"]),
                 transforms_config=optimiser_config["transforms"])
     elif args.optimiser == "simulated_annealing":
-        net = SimulatedAnnealing(args.name,args.model_path,
-                T=float(optimiser_config["annealing"]["T"]),
-                T_min=float(optimiser_config["annealing"]["T_min"]),
-                k=float(optimiser_config["annealing"]["k"]),
-                cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]),
-                transforms_config=optimiser_config["transforms"],
-                checkpoint=bool(optimiser_config["general"]["checkpoints"]),
-                checkpoint_path=os.path.join(args.output_path,"checkpoint"))
-    elif optimiser == "greedy_partition":
-        net = GreedyPartition(name, model_path,
-                T=float(optimiser_config["annealing"]["T"]),
-                T_min=float(optimiser_config["annealing"]["T_min"]),
-                k=float(optimiser_config["annealing"]["k"]),
-                cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]),
-                transforms_config=optimiser_config["transforms"])
 
-    # update the resouce allocation
-    net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
+        #Testing, remove before commit
+        optimiser_config["annealing"]["T"] = "auto"
+        optimiser_config["annealing"]["T_min"] = 0.001
+        optimiser_config["annealing"]["k"] = 0.9
+        optimiser_config["annealing"]["cool"] = 0.98
+        optimiser_config["annealing"]["iterations"] = 10
+
+
+        # create network
+        net = SimulatedAnnealing(args.name,args.model_path,
+                t=optimiser_config["annealing"]["T"],
+                t_min=optimiser_config["annealing"]["T_min"],
+                k=optimiser_config["annealing"]["k"],
+                cool=optimiser_config["annealing"]["cool"],
+                iterations=optimiser_config["annealing"]["iterations"],
+                csv_path=(args.output_path + "out.csv"),
+                seed=args.seed )
 
     # turn on debugging
     net.DEBUG = True
@@ -145,13 +141,13 @@ def main():
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
 
-    if bool(optimiser_config["general"]["starting_point_distillation"]):
-        net.update_partitions()
-        net.starting_point_distillation(args.teacher_partition_path)
-        net.update_partitions()
-        net.merge_memory_bound_partitions()
-        net.update_partitions()
 
+    # while True:
+    #     temps = []
+    #     for i in range(10):
+    #         temps.append(net.estimate_starting_temperature(sample_target=250))
+    #     print(sum(temps)/len(temps))
+    #     input()
     # run optimiser
     net.run_optimiser()
 
@@ -163,13 +159,17 @@ def main():
     #    net.get_optimal_batch_size()
 
     # visualise network
-    net.visualise(os.path.join(args.output_path,"topology.png"))
+    net.visualise(os.path.join(args.output_path, "topology.png"))
 
     # create report
-    net.create_report(os.path.join(args.output_path,"report.json"))
+    net.create_report(os.path.join(args.output_path, "report.json"))
 
     # save all partitions
     net.save_all_partitions(args.output_path)
 
     # create scheduler
-    net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+    net.get_schedule_csv(os.path.join(args.output_path, "scheduler.csv"))
+
+#Testing, remove before commit
+
+main()
