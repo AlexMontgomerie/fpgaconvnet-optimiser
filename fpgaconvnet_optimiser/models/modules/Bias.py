@@ -21,40 +21,40 @@ from fpgaconvnet_optimiser.tools.resource_model import dsp_multiplier_resource_m
 @dataclass
 class Bias(Module):
     filters: int
-    groups: int
     biases_width: int = field(default=16, init=False)
 
     def __post_init__(self):
         # load the resource model coefficients
         #TODO add model coefs FOR BIAS - currently using conv to approx.
+        # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/conv_lut.npy"))
+                "../../coefficients/accum_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/conv_ff.npy"))
+                "../../coefficients/accum_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/conv_bram.npy"))
+                "../../coefficients/accum_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/conv_dsp.npy"))
+                "../../coefficients/accum_dsp.npy"))
 
 
 
-    def utilisation_model(self):#TODO - copied from conv, FIXME
+    def utilisation_model(self):#TODO - copied from acum, FIXME
         return {
-            "LUT"  : np.array([math.log(self.filters,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
-            "FF"   : np.array([math.log(self.filters,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
-            "DSP"  : np.array([1]),
-            "BRAM" : np.array([1])
+            "LUT"   : np.array([self.filters,1,self.data_width,self.cols,self.rows,1]),
+            "FF"    : np.array([self.filters,1,self.data_width,self.cols,self.rows,1]),
+            "DSP"   : np.array([self.filters,1,self.data_width,self.cols,self.rows,1]),
+            "BRAM"  : np.array([self.filters,1,self.data_width,self.cols,self.rows,1]),
         }
 
-    #def rate_out(self):#TODO
-    #    return 1
+    def rate_out(self):
+        return (self.filters)
 
-    #def pipeline_depth(self):#TODO
-    #    return 1
+    def pipeline_depth(self):
+        return (self.filters)
 
     def channels_in(self):
         return self.filters
@@ -68,55 +68,41 @@ class Bias(Module):
         # add module-specific info fields
 
         info['filters'] = self.filters
-        info["groups"] = self.groups
 
         # return the info
         return info
 
-    #def rsc(self,coef=None):#TODO
-    #    # use module resource coefficients if none are given
-    #    if coef == None:
-    #        coef = self.rsc_coef
-    #    # get the BRAM estimate ?
-    #    #TODO
-    #    # get the DSP estimate ?
-    #    #TODO
-    #    # get the linear model estimation
-    #    rsc = Module.rsc(self, coef)
-    #    # add the resource estimation
-    #    #TODO
-    #    # return the resource usage
-    #    return rsc
+    def rsc(self,coef=None):#TODO replace conv version of func
+        # use module resource coefficients if none are given
+        if coef == None:
+            coef = self.rsc_coef
+        # get an estimate for the dsp usage
+        dot_product_dsp = dsp_multiplier_resource_model(self.biases_width, self.data_width)
+        # get the linear model estimation
+        rsc = Module.rsc(self, coef)
+        # update the dsp usage
+        rsc["DSP"] = dot_product_dsp
+        # set the BRAM usage to zero
+        rsc["BRAM"] = 0
+        # return the resource model
+        return rsc
 
     def functional_model(self,data,biases):
-        #f_c_out = int(self.filters/self.coarse_out)
-
         # check input dimensionality
         assert data.shape[0] == self.rows                   , "ERROR: invalid row dimension"
         assert data.shape[1] == self.cols                   , "ERROR: invalid column dimension"
         assert data.shape[2] == self.filters                , "ERROR: invalid filter dimension"
-        #assert data.shape[3] == self.coarse_out             , "ERROR: invalid c_out dimension"
-        #TODO check filter group thing dimension
-        #assert data.shape[3] == self.filters//self.groups   , "ERROR: invalid filter dimension"
-
         # check bias dimensionality
         assert biases.shape[0] == self.filters              , "ERROR: invalid filter dimension"
-        #assert biases.shape[1] == self.coarse_out           , "ERROR: invalid c_out dimension"
-
-        #TODO is this required?
-        #channels_per_group = self.channels//self.groups
-        #filters_per_group  = self.filters//self.groups
 
         out = np.zeros((
             self.rows,
             self.cols,
             self.filters,
-            #self.coarse_out
             ), dtype=float)
 
         for index,_ in np.ndenumerate(out):
             out[index] = data[index] + biases[index[2]]
-            #out[index] = data[index] + biases[index[2],index[3]]
 
         # sanity check because numpy indexing confuses me
         for f_i in range(self.filters):
@@ -126,25 +112,10 @@ class Bias(Module):
             # set values of input and output
             cf[:] = data[:,:,f_i]
             cfo[:] = out[:,:,f_i]
-            # subtraction should give biaois
+            # subtraction should give bias
             v = cfo - cf
             for _,val in np.ndenumerate(v):
                 # check each filter result has been added correctly to the bias
                 assert np.allclose(biases[f_i],val,
                         rtol=1.e-8,atol=1.e-8), "ERROR: the biases don't match!"
-
-            #for co_i in range(self.coarse_out):
-            #    # create copy of input and output filter
-            #    cf = np.empty_like(data[:,:,0,0])
-            #    cfo = np.empty_like(data[:,:,0,0])
-            #    # set values of input and output
-            #    cf[:] = data[:,:,f_i,co_i]
-            #    cfo[:] = out[:,:,f_i,co_i]
-            #    # subtraction should give biaois
-            #    v = cfo - cf
-            #    for _,val in np.ndenumerate(v):
-            #        # check each filter result has been added correctly to the bias
-            #        assert np.allclose(biases[f_i,co_i],val,
-            #                rtol=1.e-8,atol=1.e-8), "ERROR: the biases don't match!"
-
         return out

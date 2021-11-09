@@ -28,7 +28,8 @@ class InnerProductLayer(Layer):
             output_width: int = 16,
             weight_width: int = 16,
             acc_width: int = 16,
-            biases_width: int = 16
+            biases_width: int = 16,
+            has_bias: int = 0
         ):
 
         # initialise parent class
@@ -41,6 +42,8 @@ class InnerProductLayer(Layer):
         self.weight_width = weight_width
         self.acc_width = acc_width
         self.biases_width = biases_width
+        # save bias flag
+        self.has_bias = has_bias
 
         # update flags
         # self.flags['channel_dependant'] = True
@@ -58,9 +61,8 @@ class InnerProductLayer(Layer):
                 self.filters, 1)
         self.modules["glue"] = Glue(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
                 self.filters, self.coarse_in, self.coarse_out)
-        # TODO double check this is init correctly (currently copied above mods)
         self.modules["bias"] = Bias(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
-                self.filters, 1)
+                self.filters)
 
         self.update()
 
@@ -90,6 +92,7 @@ class InnerProductLayer(Layer):
         parameters.weight_width = self.weight_width
         parameters.acc_width    = self.acc_width
         parameters.biases_width = self.biases_width
+        parameters.has_bias     = self.has_bias
 
     def update(self): # TODO: update all parameters
         # fork
@@ -153,7 +156,7 @@ class InnerProductLayer(Layer):
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         bias_rsc    = self.modules['bias'].rsc()
         # condition if there are no biases for the layer
-        if False: #FIXME
+        if self.has_bias:
             bias_rsc = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # TODO: add to modules instead
@@ -164,7 +167,7 @@ class InnerProductLayer(Layer):
             self.coarse_in*self.coarse_out
 
         # FIXME: sort mem requirements correctly
-        bias_memory_depth = float(self.filters**self.rows_in()*\
+        bias_memory_depth = float(self.filters*self.rows_in()*\
             self.cols_in())/float(self.coarse_out)
         biases_bram_usage = \
             bram_memory_resource_model(int(bias_memory_depth), self.biases_width)*self.coarse_out

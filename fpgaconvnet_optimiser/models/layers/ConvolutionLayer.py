@@ -68,7 +68,8 @@ class ConvolutionLayer(Layer):
             output_width: int = 16,
             weight_width: int = 16,
             acc_width: int = 16,
-            biases_width: int = 16
+            biases_width: int = 16,
+            has_bias: int = 0 # default to no bias for old configs
         ):
 
         # initialise parent class
@@ -81,6 +82,8 @@ class ConvolutionLayer(Layer):
         self.weight_width = weight_width
         self.acc_width = acc_width
         self.biases_width = biases_width
+        # save bias flag
+        self.has_bias = has_bias
 
         # init variables
         self._kernel_size = self.format_kernel_size(kernel_size)
@@ -110,8 +113,7 @@ class ConvolutionLayer(Layer):
                 int(self.filters/self.coarse_out), self.groups)
         self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1,
                 int(self.filters/self.coarse_out), self.coarse_in, self.coarse_out)
-        self.modules["bias"] = Bias(self.rows_out(), self.cols_out(), 1,
-                self.filters, self.groups)
+        self.modules["bias"] = Bias(self.rows_out(), self.cols_out(), 1, self.filters)
 
         self.update()
 
@@ -225,6 +227,7 @@ class ConvolutionLayer(Layer):
         parameters.weight_width = self.weight_width
         parameters.acc_width    = self.acc_width
         parameters.biases_width = self.biases_width
+        parameters.has_bias     = self.has_bias
 
     def update(self):
         # sliding window
@@ -312,7 +315,7 @@ class ConvolutionLayer(Layer):
         if self.coarse_in == 1:
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         # condition if there are no biases for the layer
-        if False: #FIXME
+        if self.has_bias:
             bias_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # weight usage
@@ -360,7 +363,7 @@ class ConvolutionLayer(Layer):
                       bias_rsc['DSP']*self.coarse_out
         }
 
-    def visualise(self,name): #TODO
+    def visualise(self,name): #TODO for biases
         cluster = pydot.Cluster(name,label=name)
         nodes_in = []
         nodes_out = []
