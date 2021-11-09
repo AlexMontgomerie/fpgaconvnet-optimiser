@@ -251,12 +251,12 @@ def convert_matmul_to_gemm(model):
             new_bias = onnx.helper.make_tensor(
                 name="_".join([node.input[1],"bias"]),
                 data_type=init.data_type,
-                dims=(weights.shape[1],),
-                vals=np.zeros(weights.shape[1]).flatten().tolist())
+                dims=(weights.shape[0],),
+                vals=np.zeros(weights.shape[0]).flatten().tolist())
             new_bias_value_info = onnx.helper.make_tensor_value_info(
                     new_bias.name,
                     onnx.TensorProto.FLOAT,
-                    [weights.shape[1]])
+                    [weights.shape[0]])
             # update the graph
             model.graph.initializer.insert(-1,new_bias)
             model.graph.input.insert(-1,new_bias_value_info)
@@ -265,7 +265,11 @@ def convert_matmul_to_gemm(model):
                 "Gemm",
                 name=node.name,
                 inputs=[*node.input, "_".join([node.input[1],"bias"])],
-                outputs=node.output
+                outputs=node.output,
+                alpha=1.0,
+                beta=1.0,
+                transA=0,
+                transB=1
             )
             # remove old node and add new one
             model.graph.node.remove(node)
