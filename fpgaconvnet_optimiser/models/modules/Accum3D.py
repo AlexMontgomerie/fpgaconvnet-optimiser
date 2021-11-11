@@ -84,20 +84,23 @@ class Accum3D(Module3D):
 
     def functional_model(self,data):
         # check input dimensionality
-        assert data.shape[0] == self.rows                   , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols                   , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels               , "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.filters//self.groups   , "ERROR: invalid filter  dimension"
+        assert data.shape[0] == self.depth                  , "ERROR: invalid row dimension"
+        assert data.shape[1] == self.rows                   , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols                   , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.channels               , "ERROR: invalid channel dimension"
+        assert data.shape[4] == self.filters//self.groups   , "ERROR: invalid filter  dimension"
 
         channels_per_group = self.channels//self.groups
         filters_per_group  = self.filters//self.groups
 
         out = np.zeros((
+            self.depth,
             self.rows,
             self.cols,
             self.filters),dtype=float)
 
         tmp = np.zeros((
+            self.depth,
             self.rows,
             self.cols,
             channels_per_group,
@@ -105,7 +108,7 @@ class Accum3D(Module3D):
 
         for index,_ in np.ndenumerate(tmp):
             for g in range(self.groups):
-                out[index[0],index[1],g*filters_per_group+index[3]] += data[index[0],index[1],g*channels_per_group+index[2],index[3]]
+                out[index[0],index[1],index[2],g*filters_per_group+index[3]] += data[index[0],index[1],index[2],g*channels_per_group+index[3],index[4]]
 
         return out
 

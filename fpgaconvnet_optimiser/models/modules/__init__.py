@@ -19,3 +19,4 @@ from .ReLU3D            import ReLU3D
 from .SlidingWindow     import SlidingWindow
 from .SlidingWindow3D   import SlidingWindow3D
 from .Squeeze           import Squeeze
+from .Squeeze3D         import Squeeze3D

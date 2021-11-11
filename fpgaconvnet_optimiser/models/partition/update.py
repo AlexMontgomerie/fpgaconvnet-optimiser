@@ -3,7 +3,7 @@ import copy
 import fpgaconvnet_optimiser.tools.graphs as graphs
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
-def update(self):
+def update(self, dimensionality="2D"):
 
     ## remove auxiliary layers
     self.remove_squeeze()
@@ -16,7 +16,7 @@ def update(self):
     self.streams_out = min(self.max_streams_out, self.graph.nodes[output_node]["hw"].streams_out())
 
     ## add auxiliary layers
-    self.add_squeeze()
+    self.add_squeeze(dimensionality)
 
     ## update streams in and out
     self.input_nodes = graphs.get_input_nodes(self.graph)

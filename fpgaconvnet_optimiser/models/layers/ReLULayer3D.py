@@ -86,9 +86,10 @@ class ReLULayer3D(Layer3D):
 
     def functional_model(self,data,batch_size=1):
 
-        assert data.shape[0] == self.rows_in()    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols_in()    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels_in(), "ERROR: invalid channel dimension"
+        assert data.shape[0] == self.depth_in()   , "ERROR: invalid depth dimension"
+        assert data.shape[1] == self.rows_in()    , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols_in()    , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.channels_in(), "ERROR: invalid channel dimension"
 
         # instantiate relu layer
         relu_layer = torch.nn.ReLU()

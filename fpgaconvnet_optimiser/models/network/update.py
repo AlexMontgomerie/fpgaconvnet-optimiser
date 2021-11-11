@@ -22,7 +22,7 @@ def update_partitions(self):
     for partition_index in range(len(self.partitions)):
 
         ## update the partitions
-        self.partitions[partition_index].update()
+        self.partitions[partition_index].update(self.dimensionality)
 
         ## update batch size for partitions
         self.partitions[partition_index].batch_size = self.batch_size

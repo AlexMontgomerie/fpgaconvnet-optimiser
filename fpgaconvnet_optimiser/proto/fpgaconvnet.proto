@@ -32,6 +32,10 @@ message parameter {
     optional int32 acc_width    = 24;
     optional int32 input_width  = 25;
     optional int32 output_width = 26;
+    optional int32 depth_in     = 27;
+    optional int32 depth_out    = 28;
+    optional int32 pad_front    = 29;
+    optional int32 pad_back     = 30;
 }
 
 message layer {
@@ -52,6 +56,9 @@ message layer {
         CONCAT          = 5;
         BATCH_NORM      = 6;
         SPLIT           = 7;
+        CONVOLUTION3D   = 8;
+        RELU3D          = 9;
+        SQUEEZE3D       = 10;
     }
 
     required layer_type type = 7;

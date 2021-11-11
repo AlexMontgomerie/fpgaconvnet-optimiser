@@ -1,0 +1,61 @@
+import numpy as np
+import math
+import os
+import sys
+from dataclasses import dataclass, field
+
+from fpgaconvnet_optimiser.models.modules import Module3D
+
+@dataclass
+class Squeeze3D(Module3D):
+    coarse_in: int
+    coarse_out: int
+
+    def __post_init__(self):
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/squeeze_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/squeeze_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/squeeze_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/squeeze_dsp.npy"))
+
+    def module_info(self):
+        # get the base module fields
+        info = Module3D.module_info(self)
+        # add module-specific info fields
+        info["coarse_in"] = self.coarse_in
+        info["coarse_out"] = self.coarse_out
+        # return the info
+        return info
+
+    def lcm(a, b):
+        return abs(a*b) // math.gcd(a, b)
+
+    def functional_model(self, data):
+        # check input dimensionality
+        assert data.shape[0] == self.depth                      , "ERROR: invalid depth dimension"
+        assert data.shape[1] == self.rows                       , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols                       , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.channels//self.coarse_in   , "ERROR: invalid channel dimension"
+        assert data.shape[4] == self.coarse_in                  , "ERROR: invalid coarse dimension"
+
+        out = np.ndarray((
+            self.depth,
+            self.rows,
+            self.cols,
+            self.channels//self.coarse_out,
+            self.coarse_out),dtype=float)
+
+        out = np.reshape(data,(self.depth,self.rows,self.cols,self.channels))
+        out = np.reshape(data,(self.depth,self.rows,self.cols,self.channels//self.coarse_out,self.coarse_out))
+
+        return out
+
+

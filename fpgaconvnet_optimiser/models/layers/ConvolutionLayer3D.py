@@ -397,19 +397,21 @@ class ConvolutionLayer3D(Layer3D):
 
     def functional_model(self,data,weights,bias,batch_size=1):
 
-        assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == self.depth_in()()   , "ERROR (data): invalid depth dimension"
+        assert data.shape[1] == self.rows_in()      , "ERROR (data): invalid row dimension"
+        assert data.shape[2] == self.cols_in()      , "ERROR (data): invalid column dimension"
+        assert data.shape[3] == self.channels_in()  , "ERROR (data): invalid channel dimension"
 
-        assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == self.channels//self.groups, "ERROR (weights): invalid channel dimension"
-        assert weights.shape[2] == self.kernel_size[0]  , "ERROR (weights): invalid kernel dimension"
-        assert weights.shape[3] == self.kernel_size[1]  , "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[0] == self.filters                 , "ERROR (weights): invalid filter dimension"
+        assert weights.shape[1] == self.channels//self.groups   , "ERROR (weights): invalid channel dimension"
+        assert weights.shape[2] == self.kernel_size[0]          , "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[3] == self.kernel_size[1]          , "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[4] == self.kernel_size[2]          , "ERROR (weights): invalid kernel dimension"
 
         assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
 
         # instantiate convolution layer
-        convolution_layer = torch.nn.Conv2d(self.channels_in(), self.filters, self.kernel_size,
+        convolution_layer = torch.nn.Conv3d(self.channels_in(), self.filters, self.kernel_size,
                 stride=self.stride, padding=self.pad[0], groups=self.groups)
 
         # update weights

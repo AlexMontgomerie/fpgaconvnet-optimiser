@@ -2,18 +2,19 @@
 Layers are comprised of modules. They have the same functionality of the equivalent layers of the CNN model.
 """
 
-from .Layer               import Layer
-from .Layer3D             import Layer3D
-from .MultiPortLayer      import MultiPortLayer
+from .Layer                 import Layer
+from .Layer3D               import Layer3D
+from .MultiPortLayer        import MultiPortLayer
 
-from .BatchNormLayer      import BatchNormLayer
-from .InnerProductLayer   import InnerProductLayer
-from .PoolingLayer        import PoolingLayer
-from .ReLULayer           import ReLULayer
-from .ReLULayer3D         import ReLULayer3D
-from .ConvolutionLayer    import ConvolutionLayer
-from .ConvolutionLayer3D  import ConvolutionLayer3D
-from .SqueezeLayer        import SqueezeLayer
-from .SplitLayer          import SplitLayer
-# from .LRNLayer            import LRNLayer
-# from .SoftMaxLayer        import SoftMaxLayer
+from .BatchNormLayer        import BatchNormLayer
+from .InnerProductLayer     import InnerProductLayer
+from .PoolingLayer          import PoolingLayer
+from .ReLULayer             import ReLULayer
+from .ReLULayer3D           import ReLULayer3D
+from .ConvolutionLayer      import ConvolutionLayer
+from .ConvolutionLayer3D    import ConvolutionLayer3D
+from .SqueezeLayer          import SqueezeLayer
+from .SqueezeLayer3D        import SqueezeLayer3D
+from .SplitLayer            import SplitLayer
+# from .LRNLayer              import LRNLayer
+# from .SoftMaxLayer          import SoftMaxLayer

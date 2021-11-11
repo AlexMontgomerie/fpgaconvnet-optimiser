@@ -201,7 +201,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
             continue
         # ReLU3D Layer
         if graph.nodes[name]['type'] == LAYER_TYPE.ReLU3D:
-            # create relu layer hardware
+            # create relu3D layer hardware
             graph.nodes[name]['hw'] = ReLULayer3D(
                 0, # initialise depth to 0
                 0, # initialise rows to 0
@@ -297,6 +297,7 @@ def parse_net(filepath,dimensionality="2D",data_width=16,weight_width=8,acc_widt
     filter_node_types(graph, LAYER_TYPE.Clip)
     filter_node_types(graph, LAYER_TYPE.Cast)
     filter_node_types(graph, LAYER_TYPE.Squeeze)
+    filter_node_types(graph, LAYER_TYPE.Squeeze3D)
     filter_node_types(graph, LAYER_TYPE.Shape)
     filter_node_types(graph, LAYER_TYPE.Softmax)
     filter_node_types(graph, LAYER_TYPE.LRN)

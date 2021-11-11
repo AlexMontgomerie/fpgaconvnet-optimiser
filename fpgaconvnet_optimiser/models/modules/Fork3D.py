@@ -64,27 +64,33 @@ class Fork3D(Module3D):
 
     def functional_model(self, data):
         # check input dimensionality
-        assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.kernel_size[0]  , "ERROR: invalid column dimension"
-        assert data.shape[4] == self.kernel_size[1]  , "ERROR: invalid column dimension"
+        assert data.shape[0] == self.depth   , "ERROR: invalid depth dimension"
+        assert data.shape[1] == self.rows    , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols    , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.channels, "ERROR: invalid channel dimension"
+        assert data.shape[4] == self.kernel_size[0]  , "ERROR: invalid column dimension"
+        assert data.shape[5] == self.kernel_size[1]  , "ERROR: invalid column dimension"
+        assert data.shape[6] == self.kernel_size[2]  , "ERROR: invalid column dimension"
 
         out = np.ndarray((
+            self.depth,
             self.rows,
             self.cols,
             self.channels,
             self.coarse,
             self.kernel_size[0],
-            self.kernel_size[1]),dtype=float)
+            self.kernel_size[1],
+            self.kernel_size[2]),dtype=float)
 
         for index,_ in np.ndenumerate(out):
             out[index] = data[
               index[0],
               index[1],
               index[2],
-              index[4],
-              index[5]]
+              index[3],
+              index[5],
+              index[6],
+              index[7]]
 
         return out
 

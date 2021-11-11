@@ -37,11 +37,13 @@ class ReLU3D(Module3D):
 
     def functional_model(self, data):
         # check input dimensionality
-        assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
+        assert data.shape[0] == self.depth   , "ERROR: invalid depth dimension"
+        assert data.shape[1] == self.rows    , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols    , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.channels, "ERROR: invalid channel dimension"
 
         out = np.ndarray((
+            self.depth,
             self.rows,
             self.cols,
             self.channels),dtype=float)

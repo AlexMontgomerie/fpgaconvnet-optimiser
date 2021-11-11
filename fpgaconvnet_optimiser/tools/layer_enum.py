@@ -12,7 +12,6 @@ class LAYER_TYPE(Enum):
     LRN          =15
     Pooling      =17
     ReLU         =18
-    ReLU3D       =81
     Sigmoid      =19
     Softmax      =20
     Eltwise      =25
@@ -27,7 +26,9 @@ class LAYER_TYPE(Enum):
     Cast      = 47
     Clip      = 48
     Shape     = 49
-
+    ReLU3D    = 50
+    Squeeze3D   = 51
+    
     @classmethod
     def get_type(cls, t):
         if type(t) is str:
@@ -37,23 +38,29 @@ class LAYER_TYPE(Enum):
 
 def to_proto_layer_type(layer_type):
     layer_types = {
-        LAYER_TYPE.Convolution  : fpgaconvnet_pb2.layer.layer_type.CONVOLUTION,
-        LAYER_TYPE.InnerProduct : fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT,
-        LAYER_TYPE.Pooling      : fpgaconvnet_pb2.layer.layer_type.POOLING,
-        LAYER_TYPE.ReLU         : fpgaconvnet_pb2.layer.layer_type.RELU,
-        LAYER_TYPE.Squeeze      : fpgaconvnet_pb2.layer.layer_type.SQUEEZE,
-        LAYER_TYPE.Concat       : fpgaconvnet_pb2.layer.layer_type.CONCAT,
-        LAYER_TYPE.BatchNorm    : fpgaconvnet_pb2.layer.layer_type.BATCH_NORM
+        LAYER_TYPE.Convolution   : fpgaconvnet_pb2.layer.layer_type.CONVOLUTION,
+        LAYER_TYPE.Convolution3D : fpgaconvnet_pb2.layer.layer_type.CONVOLUTION3D,
+        LAYER_TYPE.InnerProduct  : fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT,
+        LAYER_TYPE.Pooling       : fpgaconvnet_pb2.layer.layer_type.POOLING,
+        LAYER_TYPE.ReLU          : fpgaconvnet_pb2.layer.layer_type.RELU,
+        LAYER_TYPE.ReLU3D        : fpgaconvnet_pb2.layer.layer_type.RELU3D,
+        LAYER_TYPE.Squeeze       : fpgaconvnet_pb2.layer.layer_type.SQUEEZE,
+        LAYER_TYPE.Squeeze3D     : fpgaconvnet_pb2.layer.layer_type.SQUEEZE3D,
+        LAYER_TYPE.Concat        : fpgaconvnet_pb2.layer.layer_type.CONCAT,
+        LAYER_TYPE.BatchNorm     : fpgaconvnet_pb2.layer.layer_type.BATCH_NORM
     }
     return layer_types.get(layer_type, lambda: "Invalid Layer Type")
 
 def from_proto_layer_type(layer_type):
     layer_types = {
         fpgaconvnet_pb2.layer.layer_type.CONVOLUTION   : LAYER_TYPE.Convolution,
+        fpgaconvnet_pb2.layer.layer_type.CONVOLUTION3D : LAYER_TYPE.Convolution3D,
         fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT : LAYER_TYPE.InnerProduct,
         fpgaconvnet_pb2.layer.layer_type.POOLING       : LAYER_TYPE.Pooling,
         fpgaconvnet_pb2.layer.layer_type.RELU          : LAYER_TYPE.ReLU,
+        fpgaconvnet_pb2.layer.layer_type.RELU3D        : LAYER_TYPE.ReLU3D,
         fpgaconvnet_pb2.layer.layer_type.SQUEEZE       : LAYER_TYPE.Squeeze,
+        fpgaconvnet_pb2.layer.layer_type.SQUEEZE3D     : LAYER_TYPE.Squeeze3D,
         fpgaconvnet_pb2.layer.layer_type.CONCAT        : LAYER_TYPE.Concat,
         fpgaconvnet_pb2.layer.layer_type.BATCH_NORM    : LAYER_TYPE.BatchNorm,
     }
@@ -78,6 +85,6 @@ def from_onnx_op_type(op_type, dimensionality="2D"):
         "Cast"      : LAYER_TYPE.Cast,
         "Clip"      : LAYER_TYPE.Clip,
         "Shape"     : LAYER_TYPE.Shape,
-        "Squeeze"   : LAYER_TYPE.Squeeze,
+        "Squeeze"   : LAYER_TYPE.Squeeze3D if dimensionality == "3D" else LAYER_TYPE.Squeeze,
     }
     return layer_types.get(op_type, lambda: TypeError)

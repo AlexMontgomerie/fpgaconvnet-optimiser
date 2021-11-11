@@ -103,7 +103,7 @@ class Partition():
         #              self.graph.nodes() ])
         max_latency = 0
         for node in self.graph.nodes():
-            if self.graph.nodes[node]["type"] != LAYER_TYPE.Squeeze:
+            if self.graph.nodes[node]["type"] != LAYER_TYPE.Squeeze and self.graph.nodes[node]["type"] != LAYER_TYPE.Squeeze3D:
                 latency = self.graph.nodes[node]["hw"].get_latency()
                 if latency > max_latency:
                     max_latency = latency
@@ -118,7 +118,7 @@ class Partition():
             if self.graph.nodes[node]["type"] == LAYER_TYPE.InnerProduct:
                 return False
 
-        return self.graph.nodes[input_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[input_node]["hw"].get_latency() > max_compute_latency
+        return (self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze or self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze3D) and self.graph.nodes[input_node]["hw"].get_latency() > max_compute_latency
 
     def is_output_memory_bound(self):
         output_node  = graphs.get_output_nodes(self.graph)[0]
@@ -128,7 +128,7 @@ class Partition():
             if self.graph.nodes[node]["type"] == LAYER_TYPE.InnerProduct:
                 return False
 
-        return self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[output_node]["hw"].get_latency() > max_compute_latency
+        return (self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze or self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze3D) and self.graph.nodes[output_node]["hw"].get_latency() > max_compute_latency
 
     def reset(self):
         self.remove_squeeze()

@@ -64,13 +64,15 @@ class Glue3D(Module3D):
 
     def functional_model(self,data):
         # check input dimensionality
-        assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
-        assert data.shape[2] == int(self.filters/self.coarse_out) , "ERROR: invalid  dimension"
-        assert data.shape[3] == self.coarse_in , "ERROR: invalid  dimension"
-        assert data.shape[4] == self.coarse_out , "ERROR: invalid  dimension"
+        assert data.shape[0] == self.depth   , "ERROR: invalid depth dimension"
+        assert data.shape[1] == self.rows    , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols    , "ERROR: invalid column dimension"
+        assert data.shape[3] == int(self.filters/self.coarse_out) , "ERROR: invalid  dimension"
+        assert data.shape[4] == self.coarse_in , "ERROR: invalid  dimension"
+        assert data.shape[5] == self.coarse_out , "ERROR: invalid  dimension"
 
         out = np.zeros((
+            self.depth,
             self.rows,
             self.cols,
             int(self.filters/self.coarse_out),
@@ -78,7 +80,7 @@ class Glue3D(Module3D):
 
         for index,_ in np.ndenumerate(out):
             for c in range(self.coarse_in):
-                out[index] += data[index[0],index[1],index[2],c,index[3]]
+                out[index] += data[index[0],index[1],index[2],index[3],c,index[4]]
 
         return out
 

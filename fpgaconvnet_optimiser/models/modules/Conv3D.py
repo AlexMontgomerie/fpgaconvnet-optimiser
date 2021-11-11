@@ -124,18 +124,22 @@ class Conv3D(Module3D):
 
     def functional_model(self,data,weights):
         # check input dimensionality
-        assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
-        assert data.shape[3] == self.kernel_size[0]  , "ERROR: invalid column dimension"
-        assert data.shape[4] == self.kernel_size[1]  , "ERROR: invalid column dimension"
+        assert data.shape[0] == self.depth   , "ERROR: invalid depth dimension"
+        assert data.shape[1] == self.rows    , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols    , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.channels, "ERROR: invalid channel dimension"
+        assert data.shape[4] == self.kernel_size[0]  , "ERROR: invalid column dimension"
+        assert data.shape[5] == self.kernel_size[1]  , "ERROR: invalid column dimension"
+        assert data.shape[6] == self.kernel_size[2]  , "ERROR: invalid column dimension"
         # check weight dimensionality
         assert weights.shape[0] == self.channels, "ERROR: invalid channel dimension"
         assert weights.shape[1] == int(self.filters/float(self.groups)) , "ERROR: invalid filter dimension"
         assert weights.shape[2] == self.kernel_size[0]  , "ERROR: invalid column dimension"
         assert weights.shape[3] == self.kernel_size[1]  , "ERROR: invalid column dimension"
+        assert weights.shape[4] == self.kernel_size[2]  , "ERROR: invalid column dimension"
 
         out = np.zeros((
+            self.depth,
             self.rows,
             self.cols,
             self.channels,
@@ -145,9 +149,10 @@ class Conv3D(Module3D):
         for index,_ in np.ndenumerate(out):
             for k1 in range(self.kernel_size[0]):
                 for k2 in range(self.kernel_size[1]):
-                    out[index] += data[
-                      index[0],index[1],index[2],k1,k2]*weights[
-                      index[2],index[3],k1,k2]
+                    for k3 in range(self.kernel_size[2]):
+                        out[index] += data[
+                        index[0],index[1],index[2],index[3],k1,k2,k3]*weights[
+                        index[3],index[4],k1,k2,k3]
 
         return out
 

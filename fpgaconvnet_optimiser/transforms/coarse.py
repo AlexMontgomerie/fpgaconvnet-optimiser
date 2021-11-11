@@ -46,7 +46,7 @@ def apply_random_coarse_layer(self, layer):
         coarse_in_feasible = self.graph.nodes[layer]['hw'].get_coarse_in_feasible()
         # update coarse folding for layer
         coarse_in_factor = random.choice(coarse_in_feasible)
-        if (self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution or self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution3D):
+        if (self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution or self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution3D) and self.graph.nodes[layer]["hw"].groups != 1:
             while coarse_in_factor * self.graph.nodes[layer]['hw'].coarse_group > self.graph.nodes[layer]['hw'].channels_in():
                 coarse_in_factor = random.choice(coarse_in_feasible)
             assert coarse_in_factor * self.graph.nodes[layer]['hw'].coarse_group <= self.graph.nodes[layer]['hw'].channels_in()
@@ -59,7 +59,7 @@ def apply_random_coarse_layer(self, layer):
         coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()
         # choose random coarse out factor
         coarse_out_factor = random.choice(coarse_out_feasible)
-        if (self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution or self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution3D):
+        if (self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution or self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution3D) and self.graph.nodes[layer]["hw"].groups != 1:
             while coarse_out_factor * self.graph.nodes[layer]['hw'].coarse_group > self.graph.nodes[layer]['hw'].channels_out():
                 coarse_out_factor = random.choice(coarse_out_feasible)
             assert coarse_out_factor * self.graph.nodes[layer]['hw'].coarse_group <= self.graph.nodes[layer]['hw'].channels_out()
