@@ -165,6 +165,7 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
             groups=config["groups"],
             pad=config["pad"],
             fine=config["fine"]
+            has_bias=config["has_bias"]
         )
 
         # run tests

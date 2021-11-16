@@ -50,12 +50,6 @@ class Bias(Module):
             "BRAM"  : np.array([self.filters,1,self.data_width,self.cols,self.rows,1]),
         }
 
-    def rate_out(self):
-        return (self.filters)
-
-    def pipeline_depth(self):
-        return (self.filters)
-
     def channels_in(self):
         return self.filters
 

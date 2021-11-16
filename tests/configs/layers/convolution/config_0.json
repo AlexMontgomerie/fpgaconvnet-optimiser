@@ -12,5 +12,11 @@
     "coarse_out": 1,
     "fine": 1,
     "batch_size": 1,
+    "input_width": 16,
+    "acc_width": 30,
+    "weight_width": 16,
+    "has_bias": 0,
+    "biases_width": 16,
+    "output_width": 16,
     "description": "layer name: inception_3b/5x5, net name: googlenet.prototxt"
 }
