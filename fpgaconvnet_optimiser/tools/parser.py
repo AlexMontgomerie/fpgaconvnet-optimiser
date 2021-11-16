@@ -71,7 +71,6 @@ def build_graph(model):
                     if len(input_details.type.tensor_type.shape.dim) == 2:
                         graph.nodes[name]['inputs']['weights'] = input_node
                     if len(input_details.type.tensor_type.shape.dim) == 1:
-                        print("THIS NODE HAS BIAS")
                         graph.nodes[name]['inputs']['bias'] = input_node
                 continue
             input_node = onnx_helper._format_name(input_node)
@@ -112,7 +111,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, biases_width=16, a
             attr.setdefault("dilations", [1,1])
             # check for bias
             has_bias = 0
-            if graph.nodes[name]["inputs"]["weights"] != "": # no bias
+            if graph.nodes[name]["inputs"]["bias"] != "": # no bias
                 has_bias = 1
             # create convolution layer hardware
             graph.nodes[name]['hw'] = ConvolutionLayer(
@@ -135,7 +134,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, biases_width=16, a
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             # check for bias
             has_bias = 0
-            if graph.nodes[name]["inputs"]["weights"] != "": # no bias
+            if graph.nodes[name]["inputs"]["bias"] != "": # no bias
                 has_bias = 1
             # create inner product layer hardware
             graph.nodes[name]['hw'] = InnerProductLayer(
