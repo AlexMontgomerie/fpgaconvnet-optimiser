@@ -13,5 +13,6 @@
     "cols_out": 1,
     "channels_out": 5,
     "batch_size": 1,
+    "has_bias": 1,
     "description": "layer name: fc8_sbt, net name: alexnet.prototxt"
 }
