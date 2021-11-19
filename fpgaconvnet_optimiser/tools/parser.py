@@ -88,7 +88,7 @@ def build_graph(model):
     # return graph
     return graph
 
-def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
+def add_hardware(model, graph, data_width=16, weight_width=8, biases_width=16, acc_width=30):
     # iterate over nodes in graph
     for node in model.graph.node:
         # get node name
@@ -109,6 +109,10 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
             attr.setdefault("strides", [1,1])
             attr.setdefault("pads", [0,0,0,0])
             attr.setdefault("dilations", [1,1])
+            # check for bias
+            has_bias = 0
+            if graph.nodes[name]["inputs"]["bias"] != "": # no bias
+                has_bias = 1
             # create convolution layer hardware
             graph.nodes[name]['hw'] = ConvolutionLayer(
                 filters,
@@ -119,6 +123,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
                 stride =attr["strides"],
                 pad =attr["pads"],
                 groups =attr["group"],
+                has_bias = has_bias
             )
             continue
         # FC Layer
@@ -127,12 +132,17 @@ def add_hardware(model, graph, data_width=16, weight_width=8, acc_width=30):
             weights_input = graph.nodes[name]["inputs"]["weights"]
             weights_dim = onnx_helper.get_model_input(model,weights_input)
             filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
+            # check for bias
+            has_bias = 0
+            if graph.nodes[name]["inputs"]["bias"] != "": # no bias
+                has_bias = 1
             # create inner product layer hardware
             graph.nodes[name]['hw'] = InnerProductLayer(
                 filters,
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
+                has_bias = has_bias
             )
             continue
         # Pooling layer
@@ -204,7 +214,7 @@ def add_dimensions(model, graph):
             graph.nodes[node]['hw'].rows     = dim[1]
             graph.nodes[node]['hw'].cols     = dim[2]
 
-def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
+def parse_net(filepath,view=True,data_width=16,weight_width=8,biases_width=16,acc_width=30,fuse_bn=True):#TODO add bias width
 
     # load onnx model
     model = onnx_helper.load(filepath,fuse_bn)
@@ -232,7 +242,7 @@ def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_
     filter_node_types(graph, LAYER_TYPE.LRN)
 
     # add hardware to graph
-    add_hardware(model, graph, data_width, weight_width, acc_width)
+    add_hardware(model, graph, data_width, weight_width,biases_width, acc_width)
 
     # add layer dimensions
     add_dimensions(model, graph)

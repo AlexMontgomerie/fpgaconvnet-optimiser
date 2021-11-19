@@ -32,6 +32,8 @@ message parameter {
     optional int32 acc_width    = 24;
     optional int32 input_width  = 25;
     optional int32 output_width = 26;
+    optional int32 has_bias     = 27;
+    optional int32 biases_width = 28;
 }
 
 message layer {
