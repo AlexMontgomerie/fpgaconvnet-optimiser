@@ -77,5 +77,6 @@ def from_onnx_op_type(op_type):
         "Clip"      : LAYER_TYPE.Clip,
         "Shape"     : LAYER_TYPE.Shape,
         "Squeeze"   : LAYER_TYPE.Squeeze,
+        "Transpose" : LAYER_TYPE.Transpose,
     }
     return layer_types.get(op_type, lambda: TypeError)

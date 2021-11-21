@@ -221,15 +221,19 @@ def parse_net(filepath,view=True,data_width=16,weight_width=8,acc_width=30,fuse_
         graph.remove_node(node)
 
     # remove unnecessary nodes
-    filter_node_types(graph, LAYER_TYPE.Dropout)
-    filter_node_types(graph, LAYER_TYPE.Transpose)
-    filter_node_types(graph, LAYER_TYPE.Flatten)
-    filter_node_types(graph, LAYER_TYPE.Clip)
-    filter_node_types(graph, LAYER_TYPE.Cast)
-    filter_node_types(graph, LAYER_TYPE.Squeeze)
-    filter_node_types(graph, LAYER_TYPE.Shape)
-    filter_node_types(graph, LAYER_TYPE.Softmax)
-    filter_node_types(graph, LAYER_TYPE.LRN)
+    remove_layer_types = [
+            LAYER_TYPE.Dropout,
+            LAYER_TYPE.Transpose,
+            LAYER_TYPE.Flatten,
+            LAYER_TYPE.Clip,
+            LAYER_TYPE.Cast,
+            LAYER_TYPE.Squeeze,
+            LAYER_TYPE.Shape,
+            LAYER_TYPE.Softmax,
+            LAYER_TYPE.LRN
+    ]
+    for layer_type in remove_layer_types:
+        filter_node_types(graph, layer_type)
 
     # add hardware to graph
     add_hardware(model, graph, data_width, weight_width, acc_width)
