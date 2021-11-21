@@ -25,6 +25,13 @@ class LAYER_TYPE(Enum):
     Cast      = 47
     Clip      = 48
     Shape     = 49
+    #EE Layers - arbitrarily assigned
+    If        = 50
+    ReduceMax = 51
+    Greater   = 52
+    Identity  = 53
+    #Not an ONNX op in this case
+    Buffer    = 54
 
     @classmethod
     def get_type(cls, t):
@@ -78,5 +85,14 @@ def from_onnx_op_type(op_type):
         "Shape"     : LAYER_TYPE.Shape,
         "Squeeze"   : LAYER_TYPE.Squeeze,
         "Transpose" : LAYER_TYPE.Transpose,
+        #placeholder layers for branching + exit decision
+        "If"        : LAYER_TYPE.If,
+        "ReduceMax" : LAYER_TYPE.ReduceMax,
+        "Greater"   : LAYER_TYPE.Greater,
+        "Identity"  : LAYER_TYPE.Identity,
+        #hw layer to help split dataflow
+        "Split"     : LAYER_TYPE.Split,
+        #flexble buffer point for intermediate results
+        "Buffer"    : LAYER_TYPE.Buffer,
     }
     return layer_types.get(op_type, lambda: TypeError)

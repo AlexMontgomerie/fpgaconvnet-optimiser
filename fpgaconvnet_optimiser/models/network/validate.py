@@ -67,6 +67,19 @@ def check_workload(self):
             workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_out()*\
                 self.partitions[partition_index].graph.nodes[node]['hw'].streams_out()*wr_factor
             assert workload_actual >= workload_ref, f"({node}) workload out imbalance"
+#=======
+#            for port_index in range(self.graph.nodes[node]['hw'].ports_in):
+#                workload_ref = self.graph.nodes[node]['hw'].workload_in(port_index)*self.graph.nodes[node]['hw'].streams_in(port_index)
+#                workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_in(port_index)*\
+#                    self.partitions[partition_index].graph.nodes[node]['hw'].streams_in(port_index)*wr_factor
+#                assert workload_actual >= workload_ref, f"({node}) workload in imbalance"
+#            # check workload out
+#            for port_index in range(self.graph.nodes[node]['hw'].ports_out):
+#                workload_ref = self.graph.nodes[node]['hw'].workload_out(port_index)*self.graph.nodes[node]['hw'].streams_out(port_index)
+#                workload_actual = self.partitions[partition_index].graph.nodes[node]['hw'].workload_out(port_index)*\
+#                    self.partitions[partition_index].graph.nodes[node]['hw'].streams_out(port_index)*wr_factor
+#                assert workload_actual >= workload_ref, f"({node}) workload out imbalance"
+#>>>>>>> b273d34... started split layer (#26)
 
 def check_streams(self):
     for partition_index in range(len(self.partitions)):

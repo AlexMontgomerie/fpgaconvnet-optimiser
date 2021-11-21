@@ -53,6 +53,23 @@ def apply_random_coarse_layer(self, layer):
     elif coarse_type == 'coarse_out':
         # get all feasible coarse out
         coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible()
+#=======
+#        coarse_in_feasible = self.graph.nodes[layer]['hw'].get_coarse_in_feasible(0)
+#        # if input layer, make sure streams aren't too large
+#        if layer in graphs.get_input_nodes(self.graph):
+#            coarse_in_feasible = [ x for x in coarse_in_feasible if x <= self.max_streams_in ]
+#        # choose random coarse in factor
+#        coarse_in = random.choice(coarse_in_feasible)
+#        # update coarse folding for both node info and actual layers
+#        self.graph.nodes[layer]['hw'].update_coarse_in(coarse_in)
+#    ## coarse out
+#    if coarse_type == 'coarse_out':
+#        # get all feasible coarse out
+#        coarse_out_feasible = self.graph.nodes[layer]['hw'].get_coarse_out_feasible(0)
+#        # if output layer, make sure streams aren't too large
+#        if layer in graphs.get_output_nodes(self.graph):
+#            coarse_out_feasible = [ x for x in coarse_out_feasible if x <= self.max_streams_out ]
+#>>>>>>> b273d34... started split layer (#26)
         # choose random coarse out factor
         coarse_out_factor = random.choice(coarse_out_feasible)
         self.graph.nodes[layer]['hw'].coarse_out = coarse_out_factor
@@ -84,3 +101,13 @@ def fix_coarse(self):
             coarse_group_max = self.graph.nodes[node]['hw'].get_coarse_group_feasible()[-1]
             self.graph.nodes[node]['hw'].update_coarse_group(min(coarse_group,coarse_group_max))
 
+#=======
+#        coarse_in = self.graph.nodes[node]['hw'].coarse_in[0]
+#        coarse_in_max = self.graph.nodes[node]['hw'].get_coarse_in_feasible(0)[-1]
+#        self.graph.nodes[node]['hw'].update_coarse_in(min(coarse_in,coarse_in_max))
+#        # check if coarse out is greater than max feasible coarse out
+#        coarse_out = self.graph.nodes[node]['hw'].coarse_out[0]
+#        coarse_out_max = self.graph.nodes[node]['hw'].get_coarse_out_feasible(0)[-1]
+#        self.graph.nodes[node]['hw'].update_coarse_out(min(coarse_out,coarse_out_max))
+#
+#>>>>>>> b273d34... started split layer (#26)

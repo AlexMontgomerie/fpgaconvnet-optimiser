@@ -13,6 +13,7 @@ from fpgaconvnet_optimiser.models.modules import Conv
 from fpgaconvnet_optimiser.models.modules import Fork
 from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
+from fpgaconvnet_optimiser.models.modules import Bias
 from fpgaconvnet_optimiser.models.layers import Layer
 
 class ConvolutionLayer(Layer):
@@ -66,7 +67,9 @@ class ConvolutionLayer(Layer):
             input_width: int = 16,
             output_width: int = 16,
             weight_width: int = 16,
-            acc_width: int = 16
+            acc_width: int = 16,
+            biases_width: int = 16,
+            has_bias: int = 0 # default to no bias for old configs
         ):
 
         # initialise parent class
@@ -78,6 +81,9 @@ class ConvolutionLayer(Layer):
         self.output_width = output_width
         self.weight_width = weight_width
         self.acc_width = acc_width
+        self.biases_width = biases_width
+        # save bias flag
+        self.has_bias = has_bias
 
         # init variables
         self._kernel_size = self.format_kernel_size(kernel_size)
@@ -94,16 +100,20 @@ class ConvolutionLayer(Layer):
         self._pad_left = self._pad[1]
 
         # init modules
-        self.modules["sliding_window"] = SlidingWindow(self.rows_in(), self.cols_in(), int(self.channels_in()/self.coarse_in),
-                self.kernel_size, self.stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left)
-        self.modules["fork"] = Fork(self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
-                self.kernel_size, self.coarse_out)
-        self.modules["conv"] = Conv(self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
-                int(self.filters/self.coarse_out), self.fine, self.kernel_size, self.groups)
-        self.modules["accum"] = Accum(self.rows_out(), self.cols_out(), int(self.channels_in()/self.coarse_in),
+        self.modules["sliding_window"] = SlidingWindow(self.rows_in(), self.cols_in(),
+                int(self.channels_in()/self.coarse_in), self.kernel_size, self.stride,
+                self.pad_top, self.pad_right, self.pad_bottom, self.pad_left)
+        self.modules["fork"] = Fork(self.rows_out(), self.cols_out(),
+                int(self.channels_in()/self.coarse_in), self.kernel_size, self.coarse_out)
+        self.modules["conv"] = Conv(self.rows_out(), self.cols_out(),
+                int(self.channels_in()/self.coarse_in), int(self.filters/self.coarse_out),
+                self.fine, self.kernel_size, self.groups)
+        self.modules["accum"] = Accum(self.rows_out(), self.cols_out(),
+                int(self.channels_in()/self.coarse_in),
                 int(self.filters/self.coarse_out), self.groups)
-        self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1, int(self.filters/self.coarse_out),
-                self.coarse_in, self.coarse_out)
+        self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1,
+                int(self.filters/self.coarse_out), self.coarse_in, self.coarse_out)
+        self.modules["bias"] = Bias(self.rows_out(), self.cols_out(), 1, self.filters)
 
         self.update()
 
@@ -216,6 +226,8 @@ class ConvolutionLayer(Layer):
         parameters.output_width = self.output_width
         parameters.weight_width = self.weight_width
         parameters.acc_width    = self.acc_width
+        parameters.biases_width = self.biases_width
+        parameters.has_bias     = self.has_bias
 
     def update(self):
         # sliding window
@@ -254,6 +266,12 @@ class ConvolutionLayer(Layer):
         self.modules['glue'].coarse_out = self.coarse_out
         self.modules['glue'].data_width = self.output_width
         self.modules['glue'].acc_width  = self.acc_width
+        # bias
+        self.modules['bias'].rows           = self.rows_out()
+        self.modules['bias'].cols           = self.cols_out()
+        self.modules['bias'].filters        = self.filters
+        self.modules['bias'].data_width     = self.output_width
+        self.modules['bias'].biases_width   = self.biases_width
 
     def get_coarse_group_feasible(self):
         return get_factors(self.groups)
@@ -286,6 +304,7 @@ class ConvolutionLayer(Layer):
         conv_rsc    = self.modules['conv'].rsc()
         accum_rsc   = self.modules['accum'].rsc()
         glue_rsc    = self.modules['glue'].rsc()
+        bias_rsc    = self.modules['bias'].rsc()
 
         if self.kernel_size[0] == 1 and self.kernel_size[1] == 1:
             sw_rsc      = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
@@ -295,11 +314,28 @@ class ConvolutionLayer(Layer):
             accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         if self.coarse_in == 1:
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        # condition if there are no biases for the layer
+        if self.has_bias:
+            bias_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # weight usage
-        weight_memory_depth = float((self.filters/self.groups)*self.channels_in()*self.kernel_size[0]*self.kernel_size[1]) / \
+        weight_memory_depth = float((self.filters/self.groups)* \
+                                    self.channels_in()* \
+                                    self.kernel_size[0]* \
+                                    self.kernel_size[1]) / \
             float(self.fine*self.coarse_in*self.coarse_out*self.coarse_group)
-        weights_bram_usage = bram_memory_resource_model(int(weight_memory_depth),self.weight_width)*self.coarse_in*self.coarse_out*self.coarse_group*self.fine
+        weights_bram_usage = bram_memory_resource_model(
+                    int(weight_memory_depth),self.weight_width) * \
+                self.coarse_in*self.coarse_out*self.coarse_group*self.fine
+
+        # bias usage FIXME depth, FIXME bram usage
+        bias_memory_depth = float(self.filters) / float(self.coarse_out)
+        biases_bram_usage = bram_memory_resource_model(
+                    int(bias_memory_depth),self.biases_width) * self.coarse_out
+#=======
+#        n_filters = float(self.filters*self.channels_in(0)*self.k_size*self.k_size)/float(self.fine*self.groups*self.coarse_in[0]*self.coarse_out[0])
+#        weights_bram_usage = int(math.ceil((self.weight_width*n_filters)/18000))*self.coarse_in[0]*self.coarse_out[0]*self.fine
+#>>>>>>> b273d34... started split layer (#26)
 
         # Total
         return {
@@ -307,49 +343,70 @@ class ConvolutionLayer(Layer):
                       fork_rsc['LUT']*self.coarse_in*self.coarse_group +
                       conv_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['LUT']*self.coarse_group,
+                      glue_rsc['LUT']*self.coarse_group +
+                      bias_rsc['LUT']*self.coarse_out,
             "FF"   :  sw_rsc['FF']*self.coarse_in*self.coarse_group +
                       fork_rsc['FF']*self.coarse_in*self.coarse_group +
                       conv_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['FF']*self.coarse_group,
+                      glue_rsc['FF']*self.coarse_group +
+                      bias_rsc['FF']*self.coarse_out,
             "BRAM" :  sw_rsc['BRAM']*self.coarse_in*self.coarse_group +
                       fork_rsc['BRAM']*self.coarse_in*self.coarse_group +
                       conv_rsc['BRAM']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['BRAM']*self.coarse_out*self.coarse_group +
                       glue_rsc['BRAM']*self.coarse_group +
-                      weights_bram_usage,
+                      bias_rsc['BRAM']*self.coarse_out +
+                      weights_bram_usage +
+                      biases_bram_usage,
             "DSP" :   sw_rsc['DSP']*self.coarse_in*self.coarse_group +
                       fork_rsc['DSP']*self.coarse_in*self.coarse_group +
                       conv_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['DSP']*self.coarse_group
+                      glue_rsc['DSP']*self.coarse_group +
+                      bias_rsc['DSP']*self.coarse_out
         }
 
-    def visualise(self,name):
+    def visualise(self,name): #TODO for biases
         cluster = pydot.Cluster(name,label=name)
         nodes_in = []
         nodes_out = []
 
         for g in range(self.coarse_group):
             for i in range(self.coarse_in):
-                cluster.add_node(pydot.Node( "_".join([name,"sw",str(g*self.coarse_in+i)]), label="sw" ))
+                cluster.add_node(pydot.Node(
+                    "_".join([name,"sw",str(g*self.coarse_in+i)]), label="sw" ))
 
             for i in range(self.coarse_in):
-                cluster.add_node(pydot.Node( "_".join([name,"fork",str(g*self.coarse_in+i)]), label="fork" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"sw",str(g*self.coarse_in+i)]) , "_".join([name,"fork",str(i)]) ))
+                cluster.add_node(pydot.Node(
+                    "_".join([name,"fork",str(g*self.coarse_in+i)]), label="fork" ))
+                cluster.add_edge(pydot.Edge(
+                    "_".join([name,"sw",str(g*self.coarse_in+i)]),
+                    "_".join([name,"fork",str(i)]) ))
 
             for i in range(self.coarse_in):
                 for j in range(self.coarse_out):
-                    cluster.add_node(pydot.Node( "_".join([name,"conv",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), label="conv" ))
-                    cluster.add_edge(pydot.Edge( "_".join([name,"fork",str(g*self.coarse_in+i)]) , "_".join([name,"conv",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]) ))
+                    cluster.add_node(pydot.Node(
+                        "_".join([name,"conv",str(g*self.coarse_in+i),
+                            str(g*self.coarse_out+j)]), label="conv" ))
+                    cluster.add_edge(pydot.Edge(
+                        "_".join([name,"fork",str(g*self.coarse_in+i)]),
+                        "_".join([name,"conv",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]) ))
 
             for i in range(self.coarse_in):
                 for j in range(self.coarse_out):
-                    cluster.add_node(pydot.Node( "_".join([name,"glue",str(g*self.coarse_out+j)]), label="+" ))
-                    cluster.add_node(pydot.Node( "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), label="accum" ))
-                    cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]) ))
-                    cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]), "_".join([name,"glue",str(g*self.coarse_out+j)]) ))
+                    cluster.add_node(pydot.Node(
+                        "_".join([name,"glue",str(g*self.coarse_out+j)]), label="+" ))
+                    cluster.add_node(pydot.Node(
+                        "_".join([name,"accum",str(g*self.coarse_in+i),
+                            str(g*self.coarse_out+j)]), label="accum" ))
+                    cluster.add_edge(pydot.Edge(
+                        "_".join([name,"conv" ,str(g*self.coarse_in+i),str(g*self.coarse_out+j)]),
+                        "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)])
+                        ))
+                    cluster.add_edge(pydot.Edge(
+                        "_".join([name,"accum",str(g*self.coarse_in+i),str(g*self.coarse_out+j)]),
+                        "_".join([name,"glue",str(g*self.coarse_out+j)]) ))
 
             # get nodes in and out
             for i in range(self.coarse_in):
@@ -366,12 +423,15 @@ class ConvolutionLayer(Layer):
         assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
         assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
-        assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == self.channels//self.groups, "ERROR (weights): invalid channel dimension"
-        assert weights.shape[2] == self.kernel_size[0]  , "ERROR (weights): invalid kernel dimension"
-        assert weights.shape[3] == self.kernel_size[1]  , "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[0] == self.filters ,   "ERROR (weights): invalid filter dimension"
+        assert weights.shape[1] == self.channels//self.groups,\
+                                                    "ERROR (weights): invalid channel dimension"
+        assert weights.shape[2] == self.kernel_size[0],\
+                                                    "ERROR (weights): invalid kernel dimension"
+        assert weights.shape[3] == self.kernel_size[1],\
+                                                    "ERROR (weights): invalid kernel dimension"
 
-        assert bias.shape[0] == self.filters  , "ERROR (bias): invalid filter dimension"
+        assert bias.shape[0] == self.filters  ,     "ERROR (bias): invalid filter dimension"
 
         # instantiate convolution layer
         convolution_layer = torch.nn.Conv2d(self.channels_in(), self.filters, self.kernel_size,

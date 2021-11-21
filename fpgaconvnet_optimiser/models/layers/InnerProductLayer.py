@@ -12,6 +12,7 @@ from fpgaconvnet_optimiser.models.modules import Conv
 from fpgaconvnet_optimiser.models.modules import Fork
 from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
+from fpgaconvnet_optimiser.models.modules import Bias
 from fpgaconvnet_optimiser.models.layers import Layer
 
 class InnerProductLayer(Layer):
@@ -26,7 +27,10 @@ class InnerProductLayer(Layer):
             input_width: int = 16,
             output_width: int = 16,
             weight_width: int = 16,
-            acc_width: int = 16
+            acc_width: int = 16,
+            biases_width: int = 16,
+            has_bias: int = 0
+            #matmul_flag=False
         ):
 
         # initialise parent class
@@ -38,6 +42,9 @@ class InnerProductLayer(Layer):
         self.output_width = output_width
         self.weight_width = weight_width
         self.acc_width = acc_width
+        self.biases_width = biases_width
+        # save bias flag
+        self.has_bias = has_bias
 
         # update flags
         # self.flags['channel_dependant'] = True
@@ -45,13 +52,19 @@ class InnerProductLayer(Layer):
 
         # save parameters
         self._filters = filters
+        #self.matmul_flag    = matmul_flag
 
         # init modules
-        self.modules["fork"] = Fork(self.rows_in(), self.cols_in(), self.channels_in(), 1, self.coarse_out)
-        self.modules["conv"] = Conv(1,1,self.channels_in()*self.rows_in()*self.cols_in(), self.filters, 1, 1, 1)
-        self.modules["accum"] = Accum(1,1,self.channels_in()*self.rows_in()*self.cols_in(), self.filters, 1)
+        self.modules["fork"] = Fork(self.rows_in(), self.cols_in(), self.channels_in(), 1,
+                self.coarse_out)
+        self.modules["conv"] = Conv(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
+                self.filters, 1, 1, 1)
+        self.modules["accum"] = Accum(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
+                self.filters, 1)
         self.modules["glue"] = Glue(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
                 self.filters, self.coarse_in, self.coarse_out)
+        self.modules["bias"] = Bias(1,1,self.channels_in()*self.rows_in()*self.cols_in(),
+                self.filters)
 
         self.update()
 
@@ -80,6 +93,9 @@ class InnerProductLayer(Layer):
         parameters.output_width = self.output_width
         parameters.weight_width = self.weight_width
         parameters.acc_width    = self.acc_width
+        parameters.biases_width = self.biases_width
+        parameters.has_bias     = self.has_bias
+        #parameters.matmul_flag  = self.matmul_flag
 
     def update(self): # TODO: update all parameters
         # fork
@@ -91,7 +107,8 @@ class InnerProductLayer(Layer):
         # conv
         self.modules['conv'].rows     = 1
         self.modules['conv'].cols     = 1
-        self.modules['conv'].channels = self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
+        self.modules['conv'].channels =\
+                                self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
         self.modules['conv'].filters  = self.filters//self.coarse_out
         self.modules['conv'].fine     = 1
         self.modules['conv'].data_width = self.input_width
@@ -100,7 +117,8 @@ class InnerProductLayer(Layer):
         # accum
         self.modules['accum'].rows     = 1
         self.modules['accum'].cols     = 1
-        self.modules['accum'].channels = self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
+        self.modules['accum'].channels =\
+                                self.rows_in()*self.cols_in()*self.channels_in()//self.coarse_in
         self.modules['accum'].filters  = self.filters//self.coarse_out
         self.modules['accum'].data_width = self.acc_width
         # glue
@@ -111,13 +129,19 @@ class InnerProductLayer(Layer):
         self.modules['glue'].coarse_out = self.coarse_out
         self.modules['glue'].data_width = self.output_width
         self.modules['glue'].acc_width  = self.acc_width
+        # bias FIXME
+        self.modules['bias'].rows           = 1#self.rows_out()
+        self.modules['bias'].cols           = 1#self.cols_out()
+        self.modules['bias'].filters        = self.filters
+        self.modules['bias'].data_width     = self.output_width
+        self.modules['bias'].biases_width   = self.biases_width
 
     def get_weights_reloading_feasible(self):
         return get_factors(int(self.filters/self.coarse_out))
 
     def get_parameters_size(self):
         weights_size = self.channels * self.filters
-        bias_size = 0
+        bias_size = 0 #TODO change to actual value
         return {
             "weights"   : weights_size,
             "bias"      : bias_size
@@ -133,33 +157,50 @@ class InnerProductLayer(Layer):
         glue_rsc    = self.modules['glue'].rsc()
         if self.coarse_in == 1:
             glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        bias_rsc    = self.modules['bias'].rsc()
+        # condition if there are no biases for the layer
+        if self.has_bias:
+            bias_rsc = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
 
         # TODO: add to modules instead
-        weights_memory_depth = float(self.filters*self.channels_in()*self.rows_in()*self.cols_in())/float(self.coarse_in*self.coarse_out)
-        weights_bram_usage = bram_memory_resource_model(int(weights_memory_depth), self.weight_width)*self.coarse_in*self.coarse_out
+        weights_memory_depth = float(self.filters*self.channels_in()*self.rows_in()*\
+                self.cols_in())/float(self.coarse_in*self.coarse_out)
+        weights_bram_usage = \
+            bram_memory_resource_model(int(weights_memory_depth), self.weight_width)*\
+            self.coarse_in*self.coarse_out
 
+        # FIXME: sort mem requirements correctly
+        bias_memory_depth = float(self.filters*self.rows_in()*\
+            self.cols_in())/float(self.coarse_out)
+        biases_bram_usage = \
+            bram_memory_resource_model(int(bias_memory_depth), self.biases_width)*self.coarse_out
         # Total
         return {
             "LUT"  :  fork_rsc['LUT']*self.coarse_in +
                       conv_rsc['LUT']*self.coarse_in*self.coarse_out +
                       accum_rsc['LUT']*self.coarse_in*self.coarse_out +
-                      glue_rsc['LUT'],
+                      glue_rsc['LUT'] +
+                      bias_rsc['LUT']*self.coarse_out,
             "FF"   :  fork_rsc['FF']*self.coarse_in +
                       conv_rsc['FF']*self.coarse_in*self.coarse_out +
                       accum_rsc['FF']*self.coarse_in*self.coarse_out +
-                      glue_rsc['FF'],
+                      glue_rsc['FF'] +
+                      bias_rsc['FF']*self.coarse_out,
             "BRAM" :  fork_rsc['BRAM']*self.coarse_in +
                       conv_rsc['BRAM']*self.coarse_in*self.coarse_out +
                       accum_rsc['BRAM']*self.coarse_out +
                       glue_rsc['BRAM'] +
-                      weights_bram_usage,
+                      weights_bram_usage +
+                      bias_rsc['BRAM']*self.coarse_out +
+                      biases_bram_usage,
             "DSP"  :  fork_rsc['DSP']*self.coarse_in +
                       conv_rsc['DSP']*self.coarse_in*self.coarse_out +
                       accum_rsc['DSP']*self.coarse_out +
-                      glue_rsc['DSP']
+                      glue_rsc['DSP'] +
+                      bias_rsc['DSP']*self.coarse_out
         }
 
-    def visualise(self,name):
+    def visualise(self,name): # TODO add bias module to vis
         cluster = pydot.Cluster(name,label=name)
 
         for i in range(self.coarse_in):
@@ -168,14 +209,18 @@ class InnerProductLayer(Layer):
         for i in range(self.coarse_in):
             for j in range(self.coarse_out):
                 cluster.add_node(pydot.Node( "_".join([name,"conv",str(i),str(j)]), label="conv" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"fork",str(i)]) , "_".join([name,"conv",str(i),str(j)]) ))
+                cluster.add_edge(pydot.Edge( "_".join([name,"fork",str(i)]),
+                    "_".join([name,"conv",str(i),str(j)]) ))
 
         for i in range(self.coarse_in):
             for j in range(self.coarse_out):
                 cluster.add_node(pydot.Node( "_".join([name,"glue",str(j)]), label="+" ))
-                cluster.add_node(pydot.Node( "_".join([name,"accum",str(i),str(j)]), label="accum" ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(i),str(j)]), "_".join([name,"accum",str(i),str(j)]) ))
-                cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(i),str(j)]), "_".join([name,"glue",str(j)]) ))
+                cluster.add_node(pydot.Node( "_".join([name,"accum",str(i),str(j)]),
+                                            label="accum" ))
+                cluster.add_edge(pydot.Edge( "_".join([name,"conv" ,str(i),str(j)]),
+                    "_".join([name,"accum",str(i),str(j)]) ))
+                cluster.add_edge(pydot.Edge( "_".join([name,"accum",str(i),str(j)]),
+                    "_".join([name,"glue",str(j)]) ))
 
         # get nodes in and out
         nodes_in  = [ "_".join([name,"fork",str(i)]) for i in range(self.coarse_in) ]
@@ -189,12 +234,14 @@ class InnerProductLayer(Layer):
         assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
         assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
-        assert weights.shape[0] == self.filters , "ERROR (weights): invalid filter dimension"
-        assert weights.shape[1] == self.rows_in()*self.cols_in()*self.channels_in(), "ERROR (weights): invalid channel dimension"
+        assert weights.shape[0] == self.filters ,   "ERROR (weights): invalid filter dimension"
+        assert weights.shape[1] == self.rows_in()*self.cols_in()*self.channels_in(),\
+                                                    "ERROR (weights): invalid channel dimension"
 
 
         # instantiate inner product layer
-        inner_product_layer = torch.nn.Linear(self.channels_in()*self.rows_in()*self.cols_in(), self.filters, bias=False)
+        inner_product_layer = torch.nn.Linear(
+                self.channels_in()*self.rows_in()*self.cols_in(), self.filters)#, bias=False)
 
         # update weights
         inner_product_layer.weight = torch.nn.Parameter(torch.from_numpy(weights))

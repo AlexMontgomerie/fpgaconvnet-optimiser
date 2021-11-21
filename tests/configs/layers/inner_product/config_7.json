@@ -13,5 +13,6 @@
     "cols_out": 1,
     "channels_out": 4096,
     "batch_size": 1,
+    "has_bias": 1,
     "description": "layer name: fc7, net name: vgg16.prototxt"
 }

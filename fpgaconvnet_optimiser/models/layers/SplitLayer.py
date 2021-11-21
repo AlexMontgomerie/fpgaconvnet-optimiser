@@ -4,6 +4,7 @@ Takes one stream input and outputs several streams using the fork module.
 """
 
 from typing import List
+
 import pydot
 import numpy as np
 import os
@@ -126,6 +127,50 @@ class SplitLayer(MultiPortLayer):
         self.modules['fork'].channels = self.channels_in()//self.coarse
         self.modules['fork'].coarse   = self.ports_out
 
+#=======
+#    ## LAYER INFO ##
+#    def layer_info(self,parameters,batch_size=1) :
+#        parameters.batchsize = batch_size
+#        parameters.buffer_depth = self.buffer_depth
+#        parameters.rows_in      = self.rows_in(0)
+#        parameters.cols_in      = self.cols_in(0)
+#        parameters.channels_in  = self.channels_in(0)
+#        parameters.rows_out     = self.rows_out(0)
+#        parameters.cols_out     = self.cols_out(0)
+#        parameters.channels_out = self.channels_out(0)
+#        parameters.coarse_in    = self.coarse
+#        parameters.coarse_out   = self.coarse
+#
+#    ## UPDATE MODULES ##
+#    def update(self):
+#        # fork
+#        self.modules['fork'].rows     = self.rows_out(0)
+#        self.modules['fork'].cols     = self.cols_out(0)
+#        self.modules['fork'].channels = int(self.channels[0]/self.coarse)
+#        self.modules['fork'].coarse   = self.ports_out
+#
+#    def update_coarse_in(self, coarse_in, port_index=0):
+#        self.coarse = coarse_in
+#        self.coarse_in[0] = self.coarse
+#        for i in range(self.ports_out):
+#            self.coarse_out[0] = self.coarse
+#
+#    def update_coarse_out(self, coarse_out, port_index=0):
+#        self.coarse = coarse_out
+#        self.coarse_in[0] = self.coarse
+#        for i in range(self.ports_out):
+#            self.coarse_out[0] = self.coarse
+#
+#        ### RATES ###
+#    def rates_graph(self):
+#        rates_graph = np.zeros( shape=(1,2) , dtype=float)
+#        # fork
+#        rates_graph[0,0] = self.modules['fork'].rate_in(0)
+#        rates_graph[0,1] = self.modules['fork'].rate_out(0)
+#
+#        return rates_graph
+#
+#>>>>>>> b273d34... started split layer (#26)
     def resource(self):
 
         # get module resources
@@ -146,14 +191,33 @@ class SplitLayer(MultiPortLayer):
             cluster.add_node(pydot.Node( "_".join([name,"split",str(i)]), label="split" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"split",str(i)]) for i in range(self.coarse) ]
-        nodes_out = [ "_".join([name,"split",str(i)]) for i in range(self.ports_out) ]
+        nodes_in  = [ "_".join([name,"fork",str(i)]) for i in range(self.coarse) ]
+        nodes_out = [ "_".join([name,"fork",str(i)]) for i in range(self.ports_out*self.coarse) ]
 
         return cluster, nodes_in, nodes_out
 
     def functional_model(self, data, batch_size=1):
-
+        #default is port_index of 0
         assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
         assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
         assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
+        assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
+        assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
+        assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
+
+
+        out = np.ndarray((
+            self.rows,
+            self.cols,
+            self.channels,
+            self.coarse),dtype=float)
+
+        for index,_ in np.ndenumerate(out):
+            out[index] = data[
+              index[0],
+              index[1],
+              index[2],
+              index[3]]
+
+        return out
 

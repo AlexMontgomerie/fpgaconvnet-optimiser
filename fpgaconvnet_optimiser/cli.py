@@ -18,6 +18,10 @@ from fpgaconvnet_optimiser.optimiser.greedy_partition import GreedyPartition
 import fpgaconvnet_optimiser.tools.graphs as graphs
 from fpgaconvnet_optimiser.tools.layer_enum import from_onnx_op_type
 
+import fpgaconvnet_optimiser.tools.graphs as graphs
+
+import fpgaconvnet_optimiser.tools.graphs as graphs
+
 def main():
     parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
     parser.add_argument('-n','--name', metavar='PATH', required=True,
@@ -151,6 +155,10 @@ def main():
         net.update_partitions()
         net.merge_memory_bound_partitions()
         net.update_partitions()
+
+
+    #for partition in net.partitions:
+    #    graphs.print_graph(partition.graph)
 
     # run optimiser
     net.run_optimiser()
