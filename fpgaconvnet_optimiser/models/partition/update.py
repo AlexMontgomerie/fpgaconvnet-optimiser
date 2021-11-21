@@ -12,8 +12,17 @@ def update(self):
     input_node  = graphs.get_input_nodes(self.graph)[0]
     output_node = graphs.get_output_nodes(self.graph)[0]
 
-    self.streams_in = min(self.max_streams_in, self.graph.nodes[input_node]["hw"].streams_in())
-    self.streams_out = min(self.max_streams_out, self.graph.nodes[output_node]["hw"].streams_out())
+    ## get valid streams in and out
+    streams_in_valid = self.graph.nodes[input_node]["hw"].get_coarse_in_feasible()
+    streams_out_valid = self.graph.nodes[output_node]["hw"].get_coarse_out_feasible()
+
+    # get the max stream values in and out
+    streams_in_max = min(self.max_streams_in, self.graph.nodes[input_node]["hw"].streams_in())
+    streams_out_max = min(self.max_streams_out, self.graph.nodes[output_node]["hw"].streams_out())
+
+    # choose the max of all the valid stream values, below the max
+    self.streams_in = max([ s for s in streams_in_valid if s <= streams_in_max ])
+    self.streams_out = max([ s for s in streams_out_valid if s <= streams_out_max ])
 
     ## add auxiliary layers
     self.add_squeeze()

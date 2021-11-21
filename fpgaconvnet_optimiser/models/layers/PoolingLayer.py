@@ -182,7 +182,7 @@ class PoolingLayer(Layer):
 
     @fine.setter
     def fine(self, val: int) -> None:
-        self._fine = self.val
+        self._fine = val
         self.update()
 
     def layer_info(self,parameters,batch_size=1):
