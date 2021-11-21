@@ -145,6 +145,8 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
         # "tests/configs/layers/convolution/config_17.json",
         # "tests/configs/layers/convolution/config_18.json",
         # "tests/configs/layers/convolution/config_19.json",
+         "tests/configs/layers/convolution/config_23.json",
+         "tests/configs/layers/convolution/config_25.json",
     )
     def test_layer_configurations(self, config_path):
 
@@ -164,7 +166,8 @@ class TestConvolutionLayer(TestLayerTemplate,unittest.TestCase):
             stride=config["stride"],
             groups=config["groups"],
             pad=config["pad"],
-            fine=config["fine"]
+            fine=config["fine"],
+            has_bias=config["has_bias"]
         )
 
         # run tests
@@ -235,6 +238,7 @@ class TestInnerProductLayer(TestLayerTemplate,unittest.TestCase):
         "tests/configs/layers/inner_product/config_7.json",
         "tests/configs/layers/inner_product/config_8.json",
         "tests/configs/layers/inner_product/config_9.json",
+        "tests/configs/layers/inner_product/config_10.json",
     )
     def test_layer_configurations(self, config_path):
 
@@ -250,6 +254,7 @@ class TestInnerProductLayer(TestLayerTemplate,unittest.TestCase):
             config["channels"],
             config["coarse_in"],
             config["coarse_out"],
+            has_bias=config["has_bias"]
         )
 
         # run tests

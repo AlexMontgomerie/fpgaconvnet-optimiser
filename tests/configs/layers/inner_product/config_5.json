@@ -7,5 +7,6 @@
     "coarse_in": 4,
     "coarse_out": 200,
     "batch_size": 1,
+    "has_bias": 1,
     "description": "layer name: fc1000, net name: resnet.prototxt"
 }
