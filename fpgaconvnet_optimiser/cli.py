@@ -130,6 +130,11 @@ def main():
     # specify available transforms
     net.get_transforms()
 
+    if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
+        print("applying fine max transform")
+        for partition_index in range(len(net.partitions)):
+            net.partitions[partition_index].apply_complete_fine()
+
     # initialize graph
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):

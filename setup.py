@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="fpgaconvnet-optimiser", # Replace with your own username
+    name="fcn_baseline_ben", # Replace with your own username
     version="0.1.0",
     author="Alex Montgomerie",
     author_email="am9215@ic.ac.uk",
