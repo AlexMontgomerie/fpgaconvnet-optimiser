@@ -5,9 +5,9 @@ transforms:
         start_complete: true
     coarse:
         apply_transform: true
-        probability: 0.25
+        probability: 0.5
     weights_reloading:
-        apply_transform: false
+        apply_transform: true 
         probability: 0.25
         start_max: false
     partition:
