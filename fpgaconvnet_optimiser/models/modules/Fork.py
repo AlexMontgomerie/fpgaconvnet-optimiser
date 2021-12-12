@@ -22,7 +22,6 @@ class Fork(Module):
     kernel_size: Union[List[int],int]
     coarse: int
 
-<<<<<<< HEAD
     def __post_init__(self):
         # format kernel size as a 2 element list
         if isinstance(self.kernel_size, int):
@@ -31,17 +30,6 @@ class Fork(Module):
             assert len(self.kernel_size) == 2, "Must specify two kernel dimensions"
         else:
             raise TypeError
-=======
-        # load resource coefficients
-        # self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #     "../../coefficients/fork_rsc_coef.npy"))
-        rsc_types = ['bram', 'lut', 'dsp', 'ff']
-        self.rsc_coef = {}
-        for rsc_t in rsc_types:
-            filename = "../../coefficients/fork_" + rsc_t + ".npy"
-            filersc = np.load(os.path.join(os.path.dirname(__file__), filename))
-            self.rsc_coef[rsc_t.upper()] = filersc
->>>>>>> bd3c0ab... SAVE-POINT, started to add softmax layer and modules, amended buffer layer and EC layer
 
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
