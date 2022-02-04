@@ -1,7 +1,7 @@
 import json
 import copy
 import fpgaconvnet_optimiser.tools.graphs as graphs
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 
 def update(self):
 

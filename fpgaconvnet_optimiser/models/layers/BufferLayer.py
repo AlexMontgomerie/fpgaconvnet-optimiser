@@ -34,54 +34,78 @@ class BufferLayer(Layer):
             cols: int,
             channels: int,
             coarse: int,
-            ctrledge,
-            drop_mode   =True,
-            data_width  =16,
+            ctrledge: str,
+            drop_mode: bool   =True,
+            data_width: int  =16,
         ):
         # initialise parent class
-        super().__init__([rows],[cols],[channels],[coarse],[coarse])
+        super().__init__(rows, cols, channels, coarse, coarse,
+                data_width=data_width)
 
+        self._coarse = coarse
         #ctrledge links to exit condition layer
-        self.ctrledge = ctrledge
-        self.drop_mode = drop_mode
+        self._ctrledge = ctrledge
+        self._drop_mode = drop_mode
 
         #init modules
         self.modules = {
-                "buffer" : Buffer(rows,cols,channels, ctrledge, data_width)
+                "buffer" : Buffer(self.rows,self.cols,self.channels, self.ctrledge)
         }
+        self.update()
+
+    @property
+    def ctrledge(self) -> str:
+        return self._ctrledge
+
+    @property
+    def drop_mode(self) -> bool:
+        return self._drop_mode
+
+    @property
+    def coarse(self) -> int:
+        return self._coarse
+
+    @property
+    def coarse_in(self) -> int:
+        return self._coarse
+
+    @property
+    def coarse_out(self) -> int:
+        return self._coarse
+
+    @coarse.setter
+    def coarse(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self._coarse_out = val
+        self.update()
+
+    @coarse_in.setter
+    def coarse_in(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self._coarse_out = val
+        self.update()
+
+    @coarse_out.setter
+    def coarse_out(self, val: int) -> None:
+        self._coarse = val
+        self._coarse_in = val
+        self._coarse_out = val
         self.update()
 
     ## LAYER INFO ##
     def layer_info(self,parameters,batch_size=1):
-        parameters.batch_size   = batch_size
-        parameters.buffer_depth = self.buffer_depth
-        parameters.rows_in      = self.rows_in(0)
-        parameters.cols_in      = self.cols_in(0)
-        parameters.channels_in  = self.channels_in(0)
-        parameters.rows_out     = self.rows_out(0)
-        parameters.cols_out     = self.cols_out(0)
-        parameters.channels_out = self.channels_out(0)
-        parameters.coarse_in    = self.coarse_in[0]
-        parameters.coarse_out   = self.coarse_in[0]
+        Layer.layer_info(self, parameters, batch_size)
+        parameters.coarse       = self.coarse
         parameters.ctrledge     = self.ctrledge
         parameters.drop_mode    = self.drop_mode
 
 
-    ## UPDATE MODULES ##
     def update(self):
-        self.modules['buffer'].rows     = self.rows_in(0)
-        self.modules['buffer'].cols     = self.cols_in(0)
-        self.modules['buffer'].channels = self.channels_in(0)
-        #TODO work out if channels = int(self.channels/self.coarse_in)
-
-
-    ### RATES ###
-    def rates_graph(self):
-        rates_graph = np.zeros( shape=(1,2) , dtype=float )
-        #buffer
-        rates_graph[0,0] = self.modules['buffer'].rate_in(0)
-        rates_graph[0,1] = self.modules['buffer'].rate_out(0)
-        return rates_graph
+        self.modules['buffer'].rows     = self.rows_in()
+        self.modules['buffer'].cols     = self.cols_in()
+        self.modules['buffer'].channels = int(self.channels/self.coarse_in)
 
     def resource(self):
 
@@ -89,10 +113,10 @@ class BufferLayer(Layer):
 
         # Total
         return {
-            "LUT"  :  buff_rsc['LUT']*self.coarse_in[0],
-            "FF"   :  buff_rsc['FF']*self.coarse_in[0],
-            "BRAM" :  buff_rsc['BRAM']*self.coarse_in[0],
-            "DSP" :   buff_rsc['DSP']*self.coarse_in[0],
+            "LUT"  :  buff_rsc['LUT']*self.coarse_in,
+            "FF"   :  buff_rsc['FF']*self.coarse_in,
+            "BRAM" :  buff_rsc['BRAM']*self.coarse_in,
+            "DSP" :   buff_rsc['DSP']*self.coarse_in,
         }
 
     def visualise(self,name):
@@ -102,8 +126,8 @@ class BufferLayer(Layer):
             cluster.add_node(pydot.Node( "_".join([name,"buff",str(i)]), label="buff" ))
 
         # get nodes in and out
-        nodes_in  = [ "_".join([name,"buff",str(i)]) for i in range(self.coarse_in[0]) ]
-        nodes_out = [ "_".join([name,"buff",str(i)]) for i in range(self.coarse_out[0]) ]
+        nodes_in  = [ "_".join([name,"buff",str(i)]) for i in range(self.coarse_in) ]
+        nodes_out = [ "_".join([name,"buff",str(i)]) for i in range(self.coarse_out) ]
 
         return cluster, nodes_in, nodes_out
 
@@ -111,9 +135,9 @@ class BufferLayer(Layer):
         #Buffer is not an ONNX or pytorch op
         # check input dimensionality
         assert data.shape[0] == batch_size          , "ERROR: invalid mismatched batch"
-        assert data.shape[1] == self.rows_in(0)     , "ERROR: invalid row dimension"
-        assert data.shape[2] == self.cols_in(0)     , "ERROR: invalid column dimension"
-        assert data.shape[3] == self.channels_in(0) , "ERROR: invalid channel dimension"
+        assert data.shape[1] == self.rows_in()     , "ERROR: invalid row dimension"
+        assert data.shape[2] == self.cols_in()     , "ERROR: invalid column dimension"
+        assert data.shape[3] == self.channels_in() , "ERROR: invalid channel dimension"
 
         data_out=[]
         for b, ctrl in zip(data, ctrl_drop):

@@ -22,6 +22,7 @@ from fpgaconvnet_optimiser.models.layers import BufferLayer
 from fpgaconvnet_optimiser.models.layers import SplitLayer
 from fpgaconvnet_optimiser.models.layers import ExitConditionLayer
 from fpgaconvnet_optimiser.models.layers import ExitSelectLayer
+from fpgaconvnet_optimiser.models.layers import SoftMaxCmpLayer
 #from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
@@ -347,8 +348,8 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 1
-                1, # initialise coarse out to 1
+                1, # initialise coarse to 1
+                #1, # initialise coarse out to 1
                 #ctrl_origin
             )
             continue
@@ -398,9 +399,9 @@ def add_dimensions(model, submodels, graph):
         input_cols      = int(model.graph.input[0].type.tensor_type.shape.dim[3].dim_value)
     # update input node hardware
     input_node = graphs.get_input_nodes(graph)[0]
-    graph.nodes[input_node]['hw'].channels[0]  = input_channels
-    graph.nodes[input_node]['hw'].rows[0]      = input_rows
-    graph.nodes[input_node]['hw'].cols[0]      = input_cols
+    graph.nodes[input_node]['hw'].channels  = input_channels
+    graph.nodes[input_node]['hw'].rows      = input_rows
+    graph.nodes[input_node]['hw'].cols      = input_cols
     # iterate over layers in model
     nodes = list(graph.nodes())
     nodes.remove(input_node)
@@ -417,6 +418,7 @@ def add_dimensions(model, submodels, graph):
     for node in nodes:
         # find previous node
         prev_nodes = graphs.get_prev_nodes(graph, node)
+
         # TODO: support parallel networks
         if len(prev_nodes) > 1 and graph.nodes[node]['type'] != LAYER_TYPE.If:
             #If layer has 2 dataflow inputs of identical shape - so use the first
@@ -425,12 +427,25 @@ def add_dimensions(model, submodels, graph):
         #split and buffer layers won't have value info - so use prev prev nodes.
         if graph.nodes[prev_node]['type'] in [LAYER_TYPE.Split, LAYER_TYPE.Buffer]:
             prev_node = _find_valid_prev_node(graph, prev_node)
+
         # get previous node output dimensions
         dim = onnx_helper._out_dim(model, submodels, prev_node)
         # update input dimensions
-        graph.nodes[node]['hw'].channels[0] = dim[0]
-        graph.nodes[node]['hw'].rows[0]     = dim[1]
-        graph.nodes[node]['hw'].cols[0]     = dim[2]
+        if graph.nodes[node]['type'] == LAYER_TYPE.Split: # requires same len as input ports num
+            # multiport layers
+            graph.nodes[node]['hw'].channels = [dim[0]]
+            graph.nodes[node]['hw'].rows     = [dim[1]]
+            graph.nodes[node]['hw'].cols     = [dim[2]]
+        elif graph.nodes[node]['type'] == LAYER_TYPE.If: # requires same len as input ports num
+            # multiport layers
+            graph.nodes[node]['hw'].channels = [dim[0],dim[0]]
+            graph.nodes[node]['hw'].rows     = [dim[1],dim[1]]
+            graph.nodes[node]['hw'].cols     = [dim[2],dim[2]]
+        else:
+            # non multiport layers
+            graph.nodes[node]['hw'].channels = dim[0]
+            graph.nodes[node]['hw'].rows     = dim[1]
+            graph.nodes[node]['hw'].cols     = dim[2]
 
 def parse_net(filepath,view=True,data_width=16,weight_width=8,biases_width=16,acc_width=30,fuse_bn=True):#TODO add bias width
 
@@ -478,11 +493,19 @@ def parse_net(filepath,view=True,data_width=16,weight_width=8,biases_width=16,ac
     for eedge in exitedges:
         graph.add_edge(*eedge)
 
+
     #NOTE Currently using integrated softmax and comparison layer
     filter_node_types(graph, LAYER_TYPE.Softmax)
 
     #remove pass through node
     filter_node_types(graph, LAYER_TYPE.Identity)
+
+    print("PRINTING NODES")
+    print(graph.nodes)
+    print("PRINTING EDGES")
+    print(graph.edges)
+    print("PRINTING CONTROL EDGES")
+    print(ctrledges)
 
     # add hardware to graph
     add_hardware(model, submodels, graph, ctrledges, hw_only_nodes,

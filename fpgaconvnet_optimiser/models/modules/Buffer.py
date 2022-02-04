@@ -19,73 +19,47 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+from dataclasses import dataclass, field
+#NOTE using accum resource model for now
+from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
 
+@dataclass
 class Buffer(Module):
-    def __init__(
-            self,
-            rows,
-            cols,
-            channels,
-            ctrledge,
-            drop_mode   =True,
-            data_width=16
-        ):
-        # module name
-        self.name = "buff"
+    ctrledge: int
+    drop_mode: bool = True
 
-        # init module
-        Module.__init__(self,rows,cols,channels,data_width)
-
-        # init variables
-        self.ctrledge = ctrledge
-        self.drop_mode = drop_mode
-        #self.filters = filters
-        #self.groups  = groups
-
-        # load resource coefficients
-        #TODO resource coefficients file for buffer module
-        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #    "../../coefficients/buffer_rsc_coef.npy"))
-
-    def module_info(self):
-        return {
-            'type'          : self.__class__.__name__.upper(),
-            'rows'          : self.rows_in(),
-            'cols'          : self.cols_in(),
-            'groups'        : self.groups,
-            'channels'      : self.channels_in(),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
+    def __post_init__(self):
+        #NOTE using accum resource model for now
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/accum_dsp.npy"))
 
     def utilisation_model(self):
-        #TODO work out what this should be
-        #how should the FIFOs be laid out?
-        return [
-            1,
-            self.data_width,
-            self.data_width*self.channels
-        ]
-
-    def pipeline_depth(self):
-        #TODO work out if this module can be/needs pipelining
-        return 0
-
-
-    def rsc(self):
-        #basic version is just a single FIFO matching input dims
-        bram_buffer_size =  self.rows*self.cols*self.channels*self.data_width
-
-        bram_buffer = 0
-        if bram_buffer_size >= 512: #taken from Accum.py modules
-            bram_buffer = math.ceil( (bram_buffer_size)/18000)
         return {
-          "LUT"  : 0, #int(np.dot(self.utilisation_model(), self.rsc_coef[0])),
-          "BRAM" : bram_buffer,
-          "DSP"  : 0,
-          "FF"   : 0 #int(np.dot(self.utilisation_model(), self.rsc_coef[3])),
+            "LUT"   : np.array([1,1,self.data_width,self.cols,self.rows,self.channels]),
+            "FF"    : np.array([1,1,self.data_width,self.cols,self.rows,self.channels]),
+            "DSP"   : np.array([1,1,self.data_width,self.cols,self.rows,self.channels]),
+            "BRAM"  : np.array([1,1,self.data_width,self.cols,self.rows,self.channels]),
         }
+
+    def module_info(self):
+        # get the base module fields
+        info = Module.module_info(self)
+        # add module-specific info fields
+        info["ctrledge"] = self.ctrledge
+        info["drop_mode"] = "true" if self.drop_mode == True else "false"
+        # return the info
+        return info
 
     def functional_model(self, data, ctrl_drop):
         # check input dimensionality

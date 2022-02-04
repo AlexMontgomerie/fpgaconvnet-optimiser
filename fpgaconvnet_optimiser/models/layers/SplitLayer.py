@@ -108,7 +108,7 @@ class SplitLayer(MultiPortLayer):
         self.update()
 
     def layer_info(self,parameters,batch_size=1):
-        Layer.layer_info(self, parameters, batch_size)
+        MultiPortLayer.layer_info(self, parameters, batch_size)
         parameters.coarse = self.coarse
         parameters.ports_out = self.ports_out
 
@@ -116,7 +116,9 @@ class SplitLayer(MultiPortLayer):
         # fork
         self.modules['fork'].rows     = self.rows_in()
         self.modules['fork'].cols     = self.cols_in()
-        self.modules['fork'].channels = self.channels_in()//self.coarse
+        #FIXME treating coarse as consistent for now
+        #self.modules['fork'].channels = self.channels_in()//self.coarse
+        self.modules['fork'].channels = self.channels_in()
         self.modules['fork'].coarse   = self.ports_out
 
 #=======
@@ -187,9 +189,9 @@ class SplitLayer(MultiPortLayer):
         assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
         assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
         assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
-        assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
+        #assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
+        #assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
+        #assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
 
 
         out = np.ndarray((

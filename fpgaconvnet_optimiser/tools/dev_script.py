@@ -24,11 +24,10 @@ from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 #from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
 import fpgaconvnet_optimiser.tools.parser as parser
-#import parser
 
-#importing vis relevant files
 from fpgaconvnet_optimiser.models.network import Network
 from fpgaconvnet_optimiser.models.partition import Partition
+from fpgaconvnet_optimiser.optimiser.simulated_annealing import SimulatedAnnealing
 
 def parser_expr(filepath):
     #attempt to parse the graph and see what errors
@@ -82,7 +81,7 @@ def output_network(filepath, is_branchy, save_name=None):
     print("outputing experiments for backend")
 
     # create a new network
-    if is_branchy:
+    if is_branchy and save_name is None:
         net = Network("branchynet", filepath)
     else:
         net = Network(save_name, filepath)
@@ -100,12 +99,30 @@ def output_network(filepath, is_branchy, save_name=None):
     print("Saving Network")
     net.save_all_partitions("tmp") # NOTE saves as one partition
     #net.get_schedule_csv("scheduler.csv") #for scheduler for running on board
+    print("#################### Finished saving full network #######################")
 
     if is_branchy:
         # split into partitions for timing
         # NOTE partitions are incomplete but are correct otherwise
         print("Saving branchynet FOR PROFILING LATENCY")
         net.save_partition_subgraphs("tmp", partition_index=0)
+
+
+###########################################################
+####################### optimiser expr ####################
+###########################################################
+
+def optim_expr(filepath, is_branchy, save_name=None):
+    #now you have the partitions - create a optimiser object and go to work
+    net = SimulatedAnnealing(args.name,args.model_path,
+        T=float(optimiser_config["annealing"]["T"]),
+        T_min=float(optimiser_config["annealing"]["T_min"]),
+        k=float(optimiser_config["annealing"]["k"]),
+        cool=float(optimiser_config["annealing"]["cool"]),
+        iterations=int(optimiser_config["annealing"]["iterations"]),
+        transforms_config=optimiser_config["transforms"],
+        checkpoint=bool(optimiser_config["general"]["checkpoints"]),
+        checkpoint_path=os.path.join(args.output_path,"checkpoint"))
 
 def main():
     parser = argparse.ArgumentParser(description="script for running experiments")
@@ -175,6 +192,9 @@ def main():
     #FC and conv have no bias, normalised data set, threshold at .9
     filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io-match_trained_norm_no-bias.onnx"
 
+    #brn se - less layers to simplify debug, fc has bias, 2 conv, 3 fc only
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se_SMOL.onnx"
+
     if args.expr == 'parser':
         parser_expr(filepath)
     elif args.expr == 'vis':
@@ -182,7 +202,10 @@ def main():
     elif args.expr == 'out':
         output_network(filepath, False, args.save_name)
     elif args.expr == 'out_brn':
-        output_network(filepath, True)
+        if args.save_name is not None:
+            output_network(filepath, True, args.save_name)
+        else:
+            output_network(filepath, True)
     else:
         raise NameError("Experiment doesn\'t exist")
 

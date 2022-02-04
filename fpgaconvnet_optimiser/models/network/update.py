@@ -23,6 +23,8 @@ def update_partitions(self):
 
         ## update the partitions
         self.partitions[partition_index].update()
+        ## update batch size for partitions
+        self.partitions[partition_index].batch_size = self.batch_size
 #=======
 #    for partition_index in range(len(self.partitions)):
 #
@@ -44,11 +46,9 @@ def update_partitions(self):
 #                self.partitions[partition_index].graph.nodes[input_node]["hw"].coarse_in[0])
 #        self.partitions[partition_index].streams_out = min(self.partitions[partition_index].max_streams_out,
 #                self.partitions[partition_index].graph.nodes[output_node]["hw"].coarse_out[0])
-#>>>>>>> b273d34... started split layer (#26)
-
-        ## update batch size for partitions
-        self.partitions[partition_index].batch_size = self.batch_size
-#=======
+#
+#        ## update batch size for partitions
+#        self.partitions[partition_index].batch_size = self.batch_size
 #
 #        ## update sizes
 #        self.partitions[partition_index].size_in  = self.partitions[partition_index].graph.nodes[input_nodes[0]]['hw'].size_in(0)

@@ -13,62 +13,32 @@ import math
 import os
 import torch
 import torch.nn as nn
+from dataclasses import dataclass, field
 
+@dataclass
 class ReduceMax(Module):
-    def __init__(
-            self,
-            rows,
-            cols,
-            channels,
-            data_width=16
-        ):
-        # module name
-        self.name = "RedMx"
-        #TODO additional input for denominator
-
-        # init module
-        Module.__init__(self,rows,cols,channels,data_width)
-
-        # init variables
-
-        # load resource coefficients
-        #TODO resource coefficients file for Cmp module
-        #self.rsc_coef = np.load(os.path.join(os.path.dirname(__file__),
-        #    "../../coefficients/buffer_rsc_coef.npy"))
-
-    def module_info(self):
-        return {
-            'type'          : self.__class__.__name__.upper(),
-            'rows'          : self.rows_in(),
-            'cols'          : self.cols_in(),
-            'groups'        : self.groups,
-            'channels'      : self.channels_in(),
-            'rows_out'      : self.rows_out(),
-            'cols_out'      : self.cols_out(),
-            'channels_out'  : self.channels_out()
-        }
+    def __post_init__(self):
+        #FIXME currently using relu but probably more like accum in terms of bram
+        # load the resource model coefficients
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/relu_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/relu_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/relu_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/relu_dsp.npy"))
 
     def utilisation_model(self):
-        #TODO work out what this should be
-        #how should the module be laid out?
-        return [
-            1,
-            self.data_width,
-            self.data_width*self.channels
-        ]
-
-    def pipeline_depth(self):
-        #TODO work out if this module can be/needs pipelining
-        return 0
-
-
-    def rsc(self):
-        #TODO
         return {
-          "LUT"  : 0,
-          "BRAM" : 0,
-          "DSP"  : 0,
-          "FF"   : 0
+            "LUT"  : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "FF"   : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1])
         }
 
     def functional_model(self, data):
