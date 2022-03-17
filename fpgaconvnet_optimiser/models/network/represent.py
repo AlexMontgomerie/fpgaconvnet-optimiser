@@ -53,7 +53,7 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
             stream_in  = layer.streams_in.add()
             prev_nodes = graphs.get_prev_nodes(self.partitions[i].graph, node)
             if not prev_nodes:
-                layer.node_in   = node
+                layer.node_in   = layer.name
                 stream_in.name  = "in"
             else :
                 prev_layer_name = onnx_helper.gen_layer_name(
@@ -65,7 +65,7 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
             stream_out = layer.streams_out.add()
             next_nodes = graphs.get_next_nodes(self.partitions[i].graph, node)
             if not next_nodes:
-                layer.node_out  = node
+                layer.node_out  = layer.name
                 stream_out.name = "out"
             else:
                 next_layer_name = onnx_helper.gen_layer_name(
