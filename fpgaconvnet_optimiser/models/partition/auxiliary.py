@@ -21,13 +21,13 @@ def add_squeeze(self):
     for edge in range(err.shape[0]):
         # mismatch
         if err[edge] != 0:
-            print("Found mismatch")
             # add node to graph
             start_name = onnx_helper.gen_layer_name(self.graph, edge_list[edge][0])
             end_name   = onnx_helper.gen_layer_name(self.graph, edge_list[edge][1])
             start_node = edge_list[edge][0]
             end_node   = edge_list[edge][1]
             new_node   = "_".join([start_name,"squeeze",end_name])
+            #print("partitions:add_squeeze() found mismatch at NEW_NODE:{} {}".format(new_node, edge_list[edge]))
             # add node to node info
             self.graph.add_node(new_node,type=LAYER_TYPE.Squeeze,
                 hw=SqueezeLayer(
@@ -62,14 +62,15 @@ def add_squeeze(self):
         self.graph.add_edge(new_node,input_node)
     # check difference in output streams
     output_nodes = graphs.get_output_nodes(self.graph)
+    #print("add_squeeze, output nodes:",output_nodes)
     for output_node in output_nodes:
-
-        if self.graph.nodes[output_node]['type'] == LAYER_TYPE.Greater:
+        if self.graph.nodes[output_node]['type'] in [LAYER_TYPE.Greater, LAYER_TYPE.Buffer]:
             #DO NOT ADD SQUEEZE LAYER - TODO check need for sink layers
             #Output of the exit condition is a control signal not data
+
+            #Also do not add squeeze layer to buffer outputs - broken connection from ee split
             continue
         else:
-
             if self.streams_out != self.graph.nodes[output_node]['hw'].streams_out():
                 # add node to graph
                 new_node  = "_".join(["squeeze",output_node])
@@ -84,6 +85,7 @@ def add_squeeze(self):
                     )
                 )
                 self.graph.add_edge(output_node,new_node)
+
 
 def remove_squeeze(self):
     # get input and output graphs
@@ -105,7 +107,12 @@ def remove_squeeze(self):
             remove_nodes.append(node)
             # place edge back
             prev_node = graphs.get_prev_nodes(self.graph,node)[0]
-            next_node = graphs.get_next_nodes(self.graph,node)[0]
+            try:
+                next_node = graphs.get_next_nodes(self.graph,node)[0]
+            except IndexError:
+                print("\nERROR in auxilliary, node:{} prev_node:{} next_nodes:{}\n".format(
+                    node,prev_node,graphs.get_next_nodes(self.graph,node)))
+                raise Exception
             self.graph.add_edge(prev_node,next_node)
     # remove squeeze nodes
     self.graph.remove_nodes_from(remove_nodes)

@@ -66,7 +66,7 @@ def add_stream_in(self, p_i, node, layer, s_name="in", control=False, coarse=Non
         ci = self.partitions[p_i].graph.nodes[node]['hw'].coarse_in
         #FIXME extend for multiport layers
         if isinstance(ci, list):
-            print("WARNING in add_stream_in",layer, ci)
+            #print("WARNING in add_stream_in",layer.name, ci)
             ci = ci[0]
         new_stream.coarse = ci
     else:
@@ -228,9 +228,9 @@ def save_partition_subgraphs(self, filepath, partition_index):
             exit_layer = node
             print("exit node:", node)
 
-    backbone_subgraph = nx.shortest_path(main_partition.graph, first_layer, comparison_layer)
+    ee1_subgraph = nx.shortest_path(main_partition.graph, first_layer, comparison_layer)
 
-    subgraph_nodes=[backbone_subgraph]
+    subgraph_nodes=[ee1_subgraph]
     #print("backbone\n",subgraph_nodes[0])
     # get remaining paths to exit layer, minus exit layer and nodes before buffer
     for ee_subgraph in nx.all_simple_paths(main_partition.graph, first_layer, exit_layer):
@@ -286,3 +286,87 @@ def save_partition_subgraphs(self, filepath, partition_index):
 
     self.update_partitions()
     self.save_all_partitions(filepath, input_output_from_model=True,separate_partitions=True)
+
+"""
+Generate the partitions required for early-exit network.
+This includes split and buffer layers.
+"""
+def exit_split(self, partition_index):
+
+    # fragment partition into individual partitions
+    main_partition = self.partitions[partition_index]
+    node_num = len(main_partition.graph.nodes)
+
+    # NOTE: Assumptions
+    # one GREATER (comparison) layer #NOTE FOR NOW
+    # one IF (exit) layer
+    # first node in the graph is the start
+    # there will be layers between backbone and exit - VERY IMPORTANT for simple graphs
+    # assuming simple paths will always align with exits
+
+    # TODO might be more reliable to do this split when parsing the subgraphs
+
+    #find comparison layer, IF layer, and starting layer
+    node_list = graphs.ordered_node_list(main_partition.graph)
+    buffer_list = []
+    for node in node_list:
+        if not graphs.get_prev_nodes(main_partition.graph, node):
+            first_layer = node
+            print("top node:", node)
+
+        if main_partition.graph.nodes[node]['type'] in [LAYER_TYPE.Greater]:
+            comparison_layer = node
+            print("comparison node:", node)
+
+        if main_partition.graph.nodes[node]['type'] in [LAYER_TYPE.If]:
+            exit_layer = node
+            print("exit node:", node)
+
+        if main_partition.graph.nodes[node]['type'] in [LAYER_TYPE.Buffer]: #keep buffer on EE side
+            buffer_list.append(node)
+    print("buffer list:", buffer_list)
+
+    #find backbone
+    bb_remaining = None
+    bb_remaining_len = 0
+    for b_layer in buffer_list:
+        tmp = nx.shortest_path(main_partition.graph, b_layer, exit_layer)
+        if len(tmp) > bb_remaining_len:
+            bb_remaining_len = len(tmp)
+            bb_remaining = tmp
+
+    # amend split
+    bb_remaining.pop(0) #remove buffer
+    bb_remaining.pop(-1) #remove exit
+    print("Remaining bb:", bb_remaining)
+
+    ee1_nodes = list(filter(lambda x: (x not in bb_remaining), node_list))
+    print("EE1 nodes (after filter)",ee1_nodes)
+
+    subgraph_nodes=[ee1_nodes, bb_remaining]
+
+    # remove weights reloading transform
+    self.partitions[partition_index].remove_weights_reloading_transform()
+
+    # turn node lists into graph objects
+    subgraphs = [main_partition.graph.subgraph(sgn).copy() for sgn in subgraph_nodes]
+
+    #increases number of partitions in the list of partitions at self
+    for _ in range(len(subgraphs) - 1): # assuming this will be > 1
+        self.partitions.insert(partition_index,copy.deepcopy(self.partitions[partition_index]))
+
+    #removes weights reloading layer
+    #counts nodes for double check
+    new_node_num = 0
+    wr_layer = self.partitions[partition_index].wr_layer
+    for i in range(len(subgraphs)):
+        pi = partition_index + i
+        self.partitions[pi].graph = subgraphs[i]
+        new_node_num += len(self.partitions[pi].graph.nodes)
+        if wr_layer not in self.partitions[pi].graph.nodes:
+            self.partitions[pi].wr_layer = None
+
+    # quick node check for validation
+    assert(node_num == new_node_num, "ERROR: number of nodes has changed on exit split")
+
+    self.update_partitions()

@@ -22,7 +22,7 @@ def create_report(self, output_path):
             "num_partitions" : len(self.partitions),
             "max_resource_usage" : {
                 "LUT" : max([ partition.get_resource_usage()["LUT"] for partition in self.partitions ]),
-                "FF" : max([ partition.get_resource_usage()["FF"] for partition in self.partitions ]),                 
+                "FF" : max([ partition.get_resource_usage()["FF"] for partition in self.partitions ]),
                 "BRAM" : max([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ]),
                 "DSP" : max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ])
             }
@@ -34,17 +34,19 @@ def create_report(self, output_path):
         # get some information on the partition
         resource_usage = self.partitions[i].get_resource_usage()
         latency = self.partitions[i].get_latency(self.platform["freq"])
+        throughput = float(self.partitions[i].batch_size)/latency #NOTE same method as network
         # add partition information
         report["partitions"][i] = {
             "partition_index" : i,
             "batch_size" : self.partitions[i].batch_size,
             "num_layers" : len(self.partitions[i].graph.nodes()),
             "latency" : latency,
+            "throughput" : throughput,
             "weights_reloading_factor" : self.partitions[i].wr_factor,
             "weights_reloading_layer" : self.partitions[i].wr_layer,
             "resource_usage" : {
                 "LUT" : resource_usage["LUT"],
-                "FF" : resource_usage["FF"],            
+                "FF" : resource_usage["FF"],
                 "BRAM" : resource_usage["BRAM"],
                 "DSP" : resource_usage["DSP"]
             },
@@ -64,7 +66,7 @@ def create_report(self, output_path):
                 "latency" : hw.latency(),
                 "resource_usage" : {
                     "LUT" : resource_usage["LUT"],
-                    "FF" : resource_usage["FF"],            
+                    "FF" : resource_usage["FF"],
                     "BRAM" : resource_usage["BRAM"],
                     "DSP" : resource_usage["DSP"]
                 }

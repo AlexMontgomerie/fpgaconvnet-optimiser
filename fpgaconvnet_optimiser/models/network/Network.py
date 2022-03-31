@@ -28,13 +28,23 @@ from fpgaconvnet_optimiser.models.layers import SqueezeLayer
 
 class Network():
 
-    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True, rsc_allocation=1.0):
+    def __init__(   self,
+                    name,
+                    network_path,
+                    batch_size=1,
+                    freq=125,
+                    reconf_time=0.0,
+                    data_width=16,
+                    weight_width=8,
+                    acc_width=30,
+                    fuse_bn=True): #, rsc_allocation=1.0):
+        print("Network __init__")
 
-        # empty transforms configuration
-        self.transforms_config = {}
+        # empty transforms configuration #FIXME why is this here??
+        #self.transforms_config = {}
 
         ## percentage resource allocation
-        self.rsc_allocation = rsc_allocation
+        #self.rsc_allocation = rsc_allocation
 
         ## bitwidths
         self.data_width     = data_width
@@ -127,10 +137,13 @@ class Network():
     from fpgaconvnet_optimiser.models.network.represent import get_model_input_node
     from fpgaconvnet_optimiser.models.network.represent import get_model_output_node
     from fpgaconvnet_optimiser.models.network.represent import save_all_partitions
-    from fpgaconvnet_optimiser.models.network.represent import save_partition_subgraphs
     from fpgaconvnet_optimiser.models.network.represent import gen_layer_name
     from fpgaconvnet_optimiser.models.network.represent import add_stream_in
     from fpgaconvnet_optimiser.models.network.represent import add_stream_out
+    # EE partitioning
+    from fpgaconvnet_optimiser.models.network.represent import save_partition_subgraphs
+    from fpgaconvnet_optimiser.models.network.represent import exit_split
+
 
     from fpgaconvnet_optimiser.models.network.validate import check_ports
     from fpgaconvnet_optimiser.models.network.validate import check_resources
@@ -160,7 +173,7 @@ class Network():
 
         return math.ceil(((max_input_size + max_output_size)*self.data_width)/8)
 
-    def get_latency(self, partition_list=None):
+    def get_latency(self, partition_list=None, ignore_reconf=False):
         if partition_list == None:
             partition_list = list(range(len(self.partitions)))
         latency = 0
@@ -171,6 +184,8 @@ class Network():
             # accumulate latency for each partition
             latency += partition.get_latency(self.platform["freq"])
         # return the total latency as well as reconfiguration time
+        if ignore_reconf:
+            return latency
         return latency + (len(partition_list)-1)*self.platform["reconf_time"]
 
     def get_throughput(self, partition_list=None):
