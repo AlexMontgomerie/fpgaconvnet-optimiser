@@ -22,7 +22,17 @@ class Optimiser(Network):
     Base class for all optimisation strategies. This inherits the `Network` class.
     """
 
-    def __init__(self,name,network_path,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
+    def __init__(   self,
+                    name,
+                    network_path,
+                    transforms_config={},
+                    fix_starting_point_config={},
+                    data_width=16,
+                    weight_width=8,
+                    acc_width=30,
+                    fuse_bn=True,
+                    rsc_allocation=1.0):
+        print("Optimiser __init__")
         """
         Parameters
         ----------
@@ -43,22 +53,29 @@ class Optimiser(Network):
             are `['coarse','fine','partition','weights_reloading']`
         """
         # Initialise Network
-        Network.__init__(self,name,network_path,data_width=data_width,weight_width=weight_width,acc_width=acc_width,fuse_bn=fuse_bn)
+        Network.__init__(   self,
+                            name,
+                            network_path,
+                            data_width=data_width,
+                            weight_width=weight_width,
+                            acc_width=acc_width,
+                            fuse_bn=fuse_bn)#, rsc_allocation=rsc_allocation)
 
-        self.objective   = 0
-        self.constraints = {
+        self.objective      = 0
+        self.rsc_allocation = rsc_allocation
+        self.constraints    = {
             'latency'    : float("inf"),
             'throughput' : 0.0,
             'power'      : float("inf")
         }
-
-        self.transforms = ['coarse','fine','partition']
 
         self.transforms_config = transforms_config
         if len(fix_starting_point_config) == 0:
             self.fix_starting_point_config = transforms_config
         else:
             self.fix_starting_point_config = fix_starting_point_config
+
+        self.get_transforms()
 
     # import optimiser utilities
     from fpgaconvnet_optimiser.optimiser.utils import starting_point_distillation
@@ -67,6 +84,7 @@ class Optimiser(Network):
     def get_transforms(self):
         self.transforms = []
         for transform_type, attr in self.transforms_config.items():
+
             if bool(attr["apply_transform"]):
                 self.transforms.append(transform_type)
 
@@ -106,10 +124,13 @@ class Optimiser(Network):
         AssertionError
             If not within performance constraints
         """
-        assert self.get_latency()       <= self.constraints['latency']  , "ERROR : (constraint violation) Latency constraint exceeded"
-        assert self.get_throughput()    >= self.constraints['throughput'], "ERROR : (constraint violation) Throughput constraint exceeded"
+        assert(self.get_latency()       <= self.constraints['latency'],
+            "ERROR : (constraint violation) Latency constraint exceeded")
+        assert(self.get_throughput()    >= self.constraints['throughput'],
+            "ERROR : (constraint violation) Throughput constraint exceeded")
 
-    def apply_transform(self, transform, partition_index=None, node=None,iteration=None,cooltimes=None):
+    def apply_transform(self, transform, partition_index=None,
+                        node=None,iteration=None,cooltimes=None):
         """
         function to apply chosen transform to the network. Partition index
         and node can be specified. If not, a random partition and node is
@@ -136,10 +157,20 @@ class Optimiser(Network):
             node = random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph))
 
         # Apply a random transform
+
+        avoid_layers = [LAYER_TYPE.Split,LAYER_TYPE.If,LAYER_TYPE.Squeeze]
         ## Coarse transform (node_info transform)
         if transform == 'coarse':
-            self.partitions[partition_index].apply_random_coarse_layer(node)
-            return
+            try:
+                while self.partitions[partition_index].graph.nodes[node]['type'] in avoid_layers:
+                    node = random.choice(graphs.ordered_node_list(
+                        self.partitions[partition_index].graph))
+                    #print("WARNING coarse.py: avoiding coarse transform of layer")
+
+                self.partitions[partition_index].apply_random_coarse_layer(node)
+                return
+            except KeyError:
+                print("failing type check node:",node)
 
         ## Fine transform (node_info transform)
         if transform == 'fine':

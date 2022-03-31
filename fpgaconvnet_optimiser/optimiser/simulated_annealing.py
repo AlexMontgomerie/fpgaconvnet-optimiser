@@ -24,14 +24,33 @@ class SimulatedAnnealing(Optimiser):
     change is accepted based on a probability-based decision function
     """
 
-    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,
-            iterations=10,transforms_config={},fix_starting_point_config={},
-            data_width=16,weight_width=8,acc_width=30,fuse_bn=True,checkpoint=False,
-            checkpoint_path="."):
+    def __init__(   self,
+                    name,
+                    network_path,
+                    T=10.0,k=0.001,T_min=0.0001,cool=0.97,
+                    iterations=10,
+                    transforms_config={},
+                    fix_starting_point_config={},
+                    data_width=16,
+                    weight_width=8,
+                    acc_width=30,
+                    fuse_bn=True,
+                    checkpoint=False,
+                    checkpoint_path=".",
+                    rsc_allocation=1.0):
+        print("SA __init__")
 
         # Initialise Network
-        Optimiser.__init__(self,name,network_path,transforms_config,
-                fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
+        Optimiser.__init__( self,
+                            name,
+                            network_path,
+                            transforms_config=transforms_config,
+                            fix_starting_point_config=fix_starting_point_config,
+                            data_width=data_width,
+                            weight_width=weight_width,
+                            acc_width=acc_width,
+                            fuse_bn=fuse_bn,
+                            rsc_allocation=rsc_allocation)
 
         # Simulate Annealing Variables
         self.T          = T
@@ -39,6 +58,7 @@ class SimulatedAnnealing(Optimiser):
         self.T_min      = T_min
         self.cool       = cool
         self.iterations = iterations
+        print("ITERATIONS:",self.iterations)
 
         # checkpoint directory routes
         self.checkpoint = checkpoint
@@ -63,6 +83,7 @@ class SimulatedAnnealing(Optimiser):
 
         # Setup
         cost = self.get_cost()
+        #print(f"INITIAL COST: {cost}")
 
         start = False
 
@@ -73,6 +94,7 @@ class SimulatedAnnealing(Optimiser):
         except AssertionError as error:
             print("WARNING: Exceeds resource usage (trying to find valid starting point)")
             bad_partitions = self.get_resources_bad_partitions()
+            print(f"BAD PARTITIONS: {bad_partitions}")
 
         # Attempt to find a good starting point
         print(START_LOOP)
@@ -82,9 +104,12 @@ class SimulatedAnnealing(Optimiser):
             self.get_transforms()
 
             for i in range(START_LOOP):
-                print('The %dth iteration' %(i))
+                print('The %dth iteration' %(i), end="\r")
                 transform = random.choice(self.transforms)
                 partition_index = list(bad_partitions.keys())[-1]
+
+                #FIXME FAILURE TO APPLY TRANSFORMS - weights reloading fails ofc
+
                 self.apply_transform(transform,partition_index)
                 self.update_partitions()
 
@@ -102,7 +127,7 @@ class SimulatedAnnealing(Optimiser):
             self.check_constraints()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
-            return
+            return False #failed to start
 
         # print the header for the optimiser status
         objectives = ['latency (s)','throughput (fps)']
@@ -112,7 +137,6 @@ class SimulatedAnnealing(Optimiser):
         # Cooling Loop
         cooltimes=0
         while self.T_min < self.T:
-
             # update partitions
             self.update_partitions()
 
@@ -178,3 +202,4 @@ class SimulatedAnnealing(Optimiser):
         # end optimisation loop
         self.optimiser_status(return_char='\n')
         print("optimiser complete!")
+        return True #pass

@@ -16,7 +16,9 @@ import fpgaconvnet_optimiser.tools.graphs as graphs
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 from fpgaconvnet_optimiser.transforms.helper import get_factors
 
-transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
+#transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ] #NOTE not used
+
+avoid_layers = [LAYER_TYPE.Split, LAYER_TYPE.If, LAYER_TYPE.Squeeze]
 
 def apply_random_coarse_layer(self, layer):
     """
@@ -33,6 +35,9 @@ def apply_random_coarse_layer(self, layer):
         name of layer to update coarse factor
 
     """
+    assert(self.graph.nodes[layer]['type'] not in avoid_layers,
+            f"ERROR random_coarse_layer: unsupported layer type:{self.graph.nodes[layer]['type']}")
+
     # get possible coarse folding types
     coarse_types = ["coarse_in", "coarse_out"]
     if self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution and self.graph.nodes[layer]["hw"].groups != 1:

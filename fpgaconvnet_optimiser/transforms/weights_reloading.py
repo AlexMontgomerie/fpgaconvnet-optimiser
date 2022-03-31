@@ -8,7 +8,7 @@ import random
 import fpgaconvnet_optimiser.tools.graphs as graphs
 import fpgaconvnet_optimiser.transforms.helper as helper
 
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
+from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 
 transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
 
@@ -95,7 +95,15 @@ def remove_weights_reloading_transform(self):
         for layer in layers_after:
             ## get channels and reduce by wr factor
             channels = self.graph.nodes[layer]['hw'].channels_in()
-            self.graph.nodes[layer]['hw'].channels = channels*self.wr_factor
+            #print("rm wr layer after layer:", layer)
+            #print(channels)
+            #print(self.graph.nodes[layer]['type'])
+            if self.graph.nodes[layer]['type'] == LAYER_TYPE.If:
+                #FIXME assigns a list to work with multiport layers
+                self.graph.nodes[layer]['hw'].channels = [channels*self.wr_factor,
+                        channels*self.wr_factor]
+            else:
+                self.graph.nodes[layer]['hw'].channels = channels*self.wr_factor
     # set wr_factor to 1
     self.wr_factor = 1
 
@@ -112,17 +120,43 @@ def apply_weights_reloading_transform(self):
         )
         # iterate until the end to update the rest of the channels
         layers_after = graphs.get_next_nodes_all(self.graph, self.wr_layer)
+        #print("LAYERS AFTER:", layers_after)
         for layer in layers_after:
             ## get channels and reduce by wr factor
             channels = self.graph.nodes[layer]['hw'].channels_in()
-            self.graph.nodes[layer]['hw'].channels = channels//self.wr_factor
-            # make sure the coarse out factor is not larger than the filters
-            self.graph.nodes[layer]['hw'].coarse_in = min(
-                max(self.graph.nodes[layer]['hw'].get_coarse_in_feasible()),
-                self.graph.nodes[layer]['hw'].coarse_in
-            )
-            # make sure the coarse out factor is not larger than the filters
-            self.graph.nodes[layer]['hw'].coarse_out = min(
-                max(self.graph.nodes[layer]['hw'].get_coarse_out_feasible()),
-                self.graph.nodes[layer]['hw'].coarse_out
-            )
+            #print("LAYER",layer)
+            #print("TYPE",self.graph.nodes[layer]['type'])
+            #print("CO",self.graph.nodes[layer]['hw'].coarse_out)
+            if self.graph.nodes[layer]['type'] == LAYER_TYPE.Split:
+                #FIXME assigns a list to work with multiport layers
+                #print("found split to apply wr to")
+                self.graph.nodes[layer]['hw'].channels = [channels//self.wr_factor]
+
+                # make sure the coarse out factor is not larger than the filters
+                #print(max(self.graph.nodes[layer]['hw'].get_coarse_in_feasible()))
+                #print(self.graph.nodes[layer]['hw'].coarse_in[0])
+                #print(max(self.graph.nodes[layer]['hw'].get_coarse_out_feasible()))
+                co = self.graph.nodes[layer]['hw'].coarse_out[0]
+
+                self.graph.nodes[layer]['hw'].coarse_in = [min(
+                    max(self.graph.nodes[layer]['hw'].get_coarse_in_feasible()),
+                    self.graph.nodes[layer]['hw'].coarse_in[0]
+                )]
+                # make sure the coarse out factor is not larger than the filters
+                self.graph.nodes[layer]['hw'].coarse_out = [min(
+                    max(self.graph.nodes[layer]['hw'].get_coarse_out_feasible()),
+                    co
+                )]
+
+            else:
+                self.graph.nodes[layer]['hw'].channels = channels//self.wr_factor
+                # make sure the coarse out factor is not larger than the filters
+                self.graph.nodes[layer]['hw'].coarse_in = min(
+                    max(self.graph.nodes[layer]['hw'].get_coarse_in_feasible()),
+                    self.graph.nodes[layer]['hw'].coarse_in
+                )
+                # make sure the coarse out factor is not larger than the filters
+                self.graph.nodes[layer]['hw'].coarse_out = min(
+                    max(self.graph.nodes[layer]['hw'].get_coarse_out_feasible()),
+                    self.graph.nodes[layer]['hw'].coarse_out
+                )
