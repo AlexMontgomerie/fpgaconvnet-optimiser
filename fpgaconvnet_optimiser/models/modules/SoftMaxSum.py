@@ -2,7 +2,9 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+from dataclasses import dataclass, field
 
+@dataclass
 class SoftMaxSum(Module):
     def __post_init__(self):
         #FIXME currently using relu but probably more like accum in terms of bram

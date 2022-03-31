@@ -20,7 +20,7 @@ class ExitSelectLayer(MultiPortLayer):
             rows: int,
             cols: int,
             channels: int,
-            coarse: int,
+            coarse: int = 1,
             #early_exit_edge, #edges record where batch ID comes from
             #late_exit_edge,
             ports_in: int = 2,
@@ -61,7 +61,11 @@ class ExitSelectLayer(MultiPortLayer):
         parameters.ports_in = self.ports_in
 
     def update(self): #TODO
-        return
+        self.modules["emerge"].rows = self.rows_in()
+        self.modules["emerge"].cols = self.cols_in()
+        #FIXME provision for different coarse rates in exitmerge module
+        self.modules["emerge"].channels = int(self.channels_in()/self.coarse_in[0])
+            #[int(self.channels_in(chan_i)/crse) for chan_i,crse in enumerate(self.coarse_in)]
 
     def resource(self): #TODO
         emerge_rsc    = self.modules['emerge'].rsc()

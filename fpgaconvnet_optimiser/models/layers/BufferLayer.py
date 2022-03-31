@@ -33,9 +33,9 @@ class BufferLayer(Layer):
             rows: int,
             cols: int,
             channels: int,
-            coarse: int,
             ctrledge: str,
             drop_mode: bool   =True,
+            coarse: int = 1,
             data_width: int  =16,
         ):
         # initialise parent class

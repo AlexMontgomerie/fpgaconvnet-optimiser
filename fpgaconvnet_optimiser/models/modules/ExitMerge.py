@@ -1,7 +1,7 @@
 """
 Exit Merge Module
 
-For combining early eixt streams with later exit streams.
+For combining early exit streams with later exit streams.
 The result is passed to the memory write module.
 Future work will be adding more inputs OR stacking these modules for more exits.
 
@@ -11,6 +11,8 @@ from fpgaconvnet_optimiser.models.modules import Module
 import numpy as np
 import math
 import os
+import sys
+from typing import Union, List
 from dataclasses import dataclass, field
 
 @dataclass
@@ -19,6 +21,31 @@ class ExitMerge(Module):
     #late_exit_edge,
     #batch ID input edge?
     #ID pipeline connection
+
+    def __post_init__(self):
+        # load the resource model coefficients
+        #NOTE using fork coeifficients until module profiled
+        self.rsc_coef["LUT"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/fork_lut.npy"))
+        self.rsc_coef["FF"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/fork_ff.npy"))
+        self.rsc_coef["BRAM"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/fork_bram.npy"))
+        self.rsc_coef["DSP"] = np.load(
+                os.path.join(os.path.dirname(__file__),
+                "../../coefficients/fork_dsp.npy"))
+    def utilisation_model(self):
+        #NOTE using fork utilisation until module profiled
+        #FIXME make utilisation aware of potential different sizes
+        return {
+            "LUT"  : np.array([math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "FF"   : np.array([math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "DSP"  : np.array([1]),
+            "BRAM" : np.array([1]),
+        }
 
     def functional_model(self, EEdata, LEdata, EE_ID=None, LE_ID=None):
         #Exit merge is not an ONNX or pytorch op

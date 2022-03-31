@@ -300,8 +300,8 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 1
-                1, # initialise coarse out to 1
+                #1, # initialise coarse in to 1
+                #1, # initialise coarse out to 1
             )
             continue
         # Softmax Layer #NOTE not currently used
@@ -310,8 +310,8 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 1
-                1, # initialise coarse out to 1
+                #1, # initialise coarse in to 1
+                #1, # initialise coarse out to 1
             )
             continue
         #top1 exit criterion layer
@@ -332,10 +332,10 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse in to 1
-                1, # initialise coarse out to 1
-                ctrlout,
-                threshold
+                #1, # initialise coarse in to 1
+                #1, # initialise coarse out to 1
+                ctrledges = ctrlout,
+                threshold = threshold
             )
             continue
         #ExitSelect/merging layer
@@ -348,7 +348,7 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse to 1
+                #1, # initialise coarse to 1
                 #1, # initialise coarse out to 1
                 #ctrl_origin
             )
@@ -364,7 +364,7 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse to 1
+                #1, # initialise coarse to 1
                 ports_out = 2, #TODO make this variable
             )
             continue
@@ -379,9 +379,9 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
-                1, # initialise coarse to 1
-                ctrl_origin,
-                drop_mode=EE_flag
+                #1, # initialise coarse to 1
+                ctrledge = ctrl_origin,
+                drop_mode = EE_flag
             )
             continue
         raise NameError(name, graph.nodes[name]['type'])
@@ -436,6 +436,9 @@ def add_dimensions(model, submodels, graph):
             graph.nodes[node]['hw'].channels = [dim[0]]
             graph.nodes[node]['hw'].rows     = [dim[1]]
             graph.nodes[node]['hw'].cols     = [dim[2]]
+            graph.nodes[node]['hw'].channels_op = [dim[0]]*graph.nodes[node]['hw'].ports_out
+            graph.nodes[node]['hw'].rows_op     = [dim[1]]*graph.nodes[node]['hw'].ports_out
+            graph.nodes[node]['hw'].cols_op     = [dim[2]]*graph.nodes[node]['hw'].ports_out
         elif graph.nodes[node]['type'] == LAYER_TYPE.If: # requires same len as input ports num
             # multiport layers
             graph.nodes[node]['hw'].channels = [dim[0],dim[0]]

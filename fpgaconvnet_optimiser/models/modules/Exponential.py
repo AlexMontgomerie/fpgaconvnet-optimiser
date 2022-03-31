@@ -19,23 +19,23 @@ class Exponential(Module):
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_lut.npy"))
+                "../../coefficients/conv_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_ff.npy"))
+                "../../coefficients/conv_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_bram.npy"))
+                "../../coefficients/conv_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_dsp.npy"))
+                "../../coefficients/conv_dsp.npy"))
 
     def utilisation_model(self):
         #TODO work out what this should be for exponential function
-        #currently using ReLU model
+        #currently using conv model - getting maths error
         return {
-            "LUT"  : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
-            "FF"   : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
+            "LUT"  : np.array([math.log(1,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
+            "FF"   : np.array([math.log(1,2),math.log(self.cols*self.rows,2),math.log(self.channels,2)]),
             "DSP"  : np.array([1]),
             "BRAM" : np.array([1])
         }

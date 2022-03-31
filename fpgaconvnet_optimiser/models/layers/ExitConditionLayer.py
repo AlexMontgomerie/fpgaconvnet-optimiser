@@ -1,4 +1,6 @@
 """
+################NOT CURRENTLY USED##############
+
 Exit Condition layer
 
 Takes the input and performs Softmax, then takes the maximum value, and

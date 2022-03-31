@@ -19,7 +19,7 @@ class SplitLayer(MultiPortLayer):
             rows: int,
             cols: int,
             channels: int,
-            coarse: int,
+            coarse: int = 1,
             ports_out: int = 1,
             data_width: int = 16
         ):
@@ -60,32 +60,47 @@ class SplitLayer(MultiPortLayer):
         """
 
         # initialise parent class
-        super().__init__([rows], [cols], [channels], [coarse], [coarse],
-                ports_out=ports_out, data_width=data_width)
+        super().__init__(
+                [rows],
+                [cols],
+                [channels],
+                [coarse],
+                [coarse],
+                _rows_op     =   [rows]*ports_out,
+                _cols_op     =   [cols]*ports_out,
+                _channels_op =   [channels]*ports_out,
+                ports_out   =   ports_out,
+                data_width  =   data_width)
 
         # parameters
         self._coarse = coarse
 
         # init modules
         #One fork module, fork coarse_out corresponds to number of layer output ports
-        self.modules["fork"] = Fork( self.rows_in(), self.cols_in(),
-                self.channels_in(), 1, self.ports_out)
+        self.modules["fork"] = Fork( self.rows_out(), self.cols_out(),
+                self.channels_out(), 1, self.ports_out) #kernel default 1
 
         # update the modules
         self.update()
 
+    """
+    row out properties for multiple output ports
+    """
     @property
     def coarse(self) -> int:
         return self._coarse
 
     @property
-    def coarse_in(self) -> int:
+    def coarse_in(self) -> List[int]:
         return [self._coarse]
 
     @property
-    def coarse_out(self) -> int:
+    def coarse_out(self) -> List[int]:
         return [self._coarse]*self.ports_out
 
+    """
+    split layer setters for multiple output ports
+    """
     @coarse.setter
     def coarse(self, val: int) -> None:
         self._coarse = val
