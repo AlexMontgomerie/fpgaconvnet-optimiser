@@ -17,11 +17,10 @@ class SoftMaxCmpLayer(Layer):
             rows: int,
             cols: int,
             channels: int,
-            coarse_in: int,
-            coarse_out: int,
-            #size_in #number of values to softmax over
             ctrledges: List[str], #expecting list
             threshold: float,
+            coarse_in: int = 1,
+            coarse_out: int = 1,
             cond_type: str   = 'top1',
             data_width: int  = 16
         ):
@@ -35,16 +34,15 @@ class SoftMaxCmpLayer(Layer):
 
         self.ctrl_out_size = len(ctrledges)
 
-        #update flags TODO
         #update parameters TODO
-        self.modules = {
-            'exp'       : Exponential(self.rows_in(), self.cols_in(), self.channels_in()),
-            'fork_in'   : Fork(self.rows_in(), self.cols_in(), self.channels_in(), 1, 2),
-            'sm_sum'    : SoftMaxSum(self.rows_in(), self.cols_in(), self.channels_in()),
-            'redmx'     : ReduceMax(self.rows_in(), self.cols_in(), self.channels_in()),
-            'cmp'       : Compare(self.rows_in(), self.cols_in(), self.channels_in(), self.threshold),
-            'fork_out'  : Fork(self.rows_out(), self.cols_out(), self.channels_in(), 1, self.ctrl_out_size),
-        }
+        self.modules['exp'     ] = Exponential(self.rows_in(), self.cols_in(), self.channels_in())
+        #kernel size=1 coarse=2
+        self.modules['fork_in' ] = Fork(self.rows_in(), self.cols_in(), self.channels_in(), 1, 2)
+        self.modules['sm_sum'  ] = SoftMaxSum(self.rows_in(), self.cols_in(), self.channels_in())
+        self.modules['redmx'   ] = ReduceMax(self.rows_in(), self.cols_in(), self.channels_in())
+        self.modules['cmp'     ] = Compare(self.rows_in(), self.cols_in(), self.channels_in(), self.threshold)
+        #kernel size=1, coarse=num of ctrl signals
+        self.modules['fork_out'] = Fork(self.rows_out(), self.cols_out(), self.channels_in(), 1, self.ctrl_out_size)
 
         self.update()
 
@@ -93,18 +91,32 @@ class SoftMaxCmpLayer(Layer):
         parameters.ctrl_out_size = self.ctrl_out_size+1 #NOTE implied connection to ID pipeline
         parameters.ctrledges.extend(self.ctrledges) #NOTE list to repeated
 
-
-    def update(self): #TODO
-        # TODO check channels are correct
-        #self.modules['redmx'].rows     = self.rows_in()
-        #self.modules['redmx'].cols     = self.cols_in()
-        #self.modules['redmx'].channels = int(self.channels[]/self.coarse_in[])
-        ##
-        #self.modules['cmp'].rows     = self.rows_in()
-        #self.modules['cmp'].cols     = self.cols_in()
-        #self.modules['cmp'].channels = int(self.channels/self.coarse_in)
+    def update(self):
         #TODO fix this when possible
-        return
+        #FIXME coarse doesn't mean anything for this layer currently
+        self.modules['exp'     ].rows     = self.rows_in()
+        self.modules['exp'     ].cols     = self.cols_in()
+        self.modules['exp'     ].channels = int(self.channels_in()/self.coarse_in)
+
+        self.modules['fork_in' ].rows     = self.rows_in()
+        self.modules['fork_in' ].cols     = self.cols_in()
+        self.modules['fork_in' ].channels = int(self.channels_in()/self.coarse_in)
+
+        self.modules['sm_sum'  ].rows     = self.rows_in()
+        self.modules['sm_sum'  ].cols     = self.cols_in()
+        self.modules['sm_sum'  ].channels = int(self.channels_in()/self.coarse_in)
+
+        self.modules['redmx'   ].rows     = self.rows_in()
+        self.modules['redmx'   ].cols     = self.cols_in()
+        self.modules['redmx'   ].channels = int(self.channels_in()/self.coarse_in)
+
+        self.modules['cmp'     ].rows     = self.rows_in()
+        self.modules['cmp'     ].cols     = self.cols_in()
+        self.modules['cmp'     ].channels = int(self.channels_in()/self.coarse_in)
+
+        self.modules['fork_out'].rows     = self.rows_in()
+        self.modules['fork_out'].cols     = self.cols_in()
+        self.modules['fork_out'].channels = int(self.channels_in()/self.coarse_in)
 
     def resource(self): #TODO
         exp_rsc     = self.modules['exp'].rsc()

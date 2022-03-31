@@ -47,6 +47,9 @@ class MultiPortLayer:
     _coarse_in: List[int]
     _coarse_out: List[int]
     ports_in: int = field(default=1, init=True)
+    _rows_op: List[int] = field(default=None, init=True)
+    _cols_op: List[int] = field(default=None, init=True)
+    _channels_op: List[int] = field(default=None, init=True)
     ports_out: int = field(default=1, init=True)
     data_width: int = field(default=16, init=True)
     buffer_depth: int = field(default=0, init=False)
@@ -55,18 +58,43 @@ class MultiPortLayer:
     """
     properties
     """
-
+    #legacy (input ports)
     @property
     def rows(self) -> List[int]:
+        assert(isinstance(self._rows,list))
         return self._rows
 
     @property
     def cols(self) -> List[int]:
+        assert(isinstance(self._cols,list))
         return self._cols
 
     @property
     def channels(self) -> List[int]:
+        assert(isinstance(self._channels,list))
         return self._channels
+
+    #output ports
+    @property
+    def rows_op(self) -> List[int]:
+        if self._rows_op is None: #treating None as 1 op port
+            return [self._rows[0]]*self.ports_out
+        assert(len(self._rows_op) == self.ports_out)
+        return self._rows_op
+
+    @property
+    def cols_op(self) -> List[int]:
+        if self._cols_op is None: #treating None as 1 op port
+            return [self._cols[0]]*self.ports_out
+        assert(len(self._cols_op) == self.ports_out)
+        return self._cols_op
+
+    @property
+    def channels_op(self) -> List[int]:
+        if self._channels_op is None: #treating None as 1 op port
+            return [self._channels[0]]*self.ports_out
+        assert(len(self._channels_op) == self.ports_out)
+        return self._channels_op
 
     @property
     def coarse_in(self) -> List[int]:
@@ -82,24 +110,51 @@ class MultiPortLayer:
 
     @rows.setter
     def rows(self, val: List[int]) -> None:
+        assert(isinstance(val,list))
         assert(len(val) == self.ports_in)
         self._rows = val
         self.update()
 
     @cols.setter
     def cols(self, val: List[int]) -> None:
+        assert(isinstance(val,list))
         assert(len(val) == self.ports_in)
         self._cols = val
         self.update()
 
     @channels.setter
     def channels(self, val: List[int]) -> None:
+        assert(isinstance(val,list))
         assert(len(val) == self.ports_in)
         self._channels = val
         self.update()
 
+    #output ports
+
+    @rows_op.setter
+    def rows_op(self, val: List[int]) -> None:
+        assert(isinstance(val,list))
+        assert(len(val) == self.ports_out)
+        self._rows_op = val
+        self.update()
+
+    @cols_op.setter
+    def cols_op(self, val: List[int]) -> None:
+        assert(isinstance(val,list))
+        assert(len(val) == self.ports_out)
+        self._cols_op = val
+        self.update()
+
+    @channels_op.setter
+    def channels_op(self, val: List[int]) -> None:
+        assert(isinstance(val,list))
+        assert(len(val) == self.ports_out)
+        self._channels_op = val
+        self.update()
+
     @coarse_in.setter
     def coarse_in(self, val: List[int]) -> None:
+        assert(isinstance(val,list))
         assert(len(val) == self.ports_in)
         for i in range(val):
             assert(val[i] in self.coarse_in_feasible(port_index=i))
@@ -109,6 +164,7 @@ class MultiPortLayer:
 
     @coarse_out.setter
     def coarse_out(self, val: List[int]) -> None:
+        assert(isinstance(val,list))
         assert(len(val) == self.ports_out)
         for i in range(val):
             assert(val[i] in self.coarse_out_feasible(port_index=i))
@@ -173,8 +229,9 @@ class MultiPortLayer:
         int
             row dimension of the output featuremap
         """
-        assert(port_index < self.ports_out)
-        return self.rows[port_index]
+        assert(port_index < self.ports_out,
+                "ERROR: multiport layer rows_out: rows-{} port-{}".format(self.rows,port_index))
+        return self.rows_op[port_index]
 
     def cols_out(self, port_index=0):
         """
@@ -188,8 +245,9 @@ class MultiPortLayer:
         int
             column dimension of the output featuremap
         """
-        assert(port_index < self.ports_out)
-        return self.cols[port_index]
+        assert(port_index < self.ports_out,
+                "ERROR: multiport layer cols_out: cols-{} port-{}".format(self.cols,port_index))
+        return self.cols_op[port_index]
 
     def channels_out(self, port_index=0):
         """
@@ -203,8 +261,10 @@ class MultiPortLayer:
         int
             channel dimension of the output featuremap
         """
-        assert(port_index < self.ports_out)
-        return self.channels[port_index]
+        assert(port_index < self.ports_out,
+                "ERROR: multiport layer channels_out: chans-{} port-{}".format(
+                    self.channels,port_index))
+        return self.channels_op[port_index]
 
     def rates_graph(self):
 
@@ -373,7 +433,7 @@ class MultiPortLayer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : math.ceil(self.buffer_depth*self.data_width/18000)*self.streams_in(),
+            "BRAM"  : bram_stream_resource_model(self.buffer_depth,self.data_width)*self.streams_in(),
             "DSP"   : 0
         }
 
