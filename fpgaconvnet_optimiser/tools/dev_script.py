@@ -29,6 +29,13 @@ from fpgaconvnet_optimiser.models.network import Network
 from fpgaconvnet_optimiser.models.partition import Partition
 from fpgaconvnet_optimiser.optimiser.simulated_annealing import SimulatedAnnealing
 
+#for optimiser
+import yaml
+#for graphing
+import numpy as np
+import matplotlib.pyplot as plt
+import json
+
 def parser_expr(filepath):
     #attempt to parse the graph and see what errors
     print("Parser experiments")
@@ -76,20 +83,20 @@ def vis_expr(filepath):
     test_outpath += "-" + timestamp + ".png"
     test_net.visualise(test_outpath)
 
-def output_network(filepath, is_branchy, save_name=None):
+def output_network(args,filepath, is_branchy):
     #save the json files
     print("outputing experiments for backend")
 
     # create a new network
-    if is_branchy and save_name is None:
+    if is_branchy and args.save_name is None:
         net = Network("branchynet", filepath)
     else:
-        net = Network(save_name, filepath)
+        net = Network(args.save_name, filepath)
 
     # load from json format
     #net.load_network(".json") #for loading previous network config
     net.batch_size = 1 #256
-    net.update_platform("/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zedboard.json")
+    net.update_platform("/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json")
     # update partitions
     net.update_partitions()
     # create report
@@ -112,23 +119,241 @@ def output_network(filepath, is_branchy, save_name=None):
 ####################### optimiser expr ####################
 ###########################################################
 
-def optim_expr(filepath, is_branchy, save_name=None):
-    #now you have the partitions - create a optimiser object and go to work
-    net = SimulatedAnnealing(args.name,args.model_path,
-        T=float(optimiser_config["annealing"]["T"]),
-        T_min=float(optimiser_config["annealing"]["T_min"]),
-        k=float(optimiser_config["annealing"]["k"]),
-        cool=float(optimiser_config["annealing"]["cool"]),
-        iterations=int(optimiser_config["annealing"]["iterations"]),
-        transforms_config=optimiser_config["transforms"],
-        checkpoint=bool(optimiser_config["general"]["checkpoints"]),
-        checkpoint_path=os.path.join(args.output_path,"checkpoint"))
+def optim_expr(args, filepath, is_branchy, opt_path):
+    #opt_path is path of optimiser example config .yml file
+    if not os.path.exists(args.output_path):
+        os.makedirs(args.output_path)
+        print("gen op path")
+
+    #add optimiser config
+    with open(opt_path,"r") as f:
+        optimiser_config = yaml.load(f, Loader=yaml.Loader)
+        print("loading opt conf")
+
+    print("Starting optimisation")
+    net = SimulatedAnnealing(
+            args.save_name,
+            filepath,#args.model_path,
+            T=float(optimiser_config["annealing"]["T"]),
+            T_min=float(optimiser_config["annealing"]["T_min"]),
+            k=float(optimiser_config["annealing"]["k"]),
+            cool=float(optimiser_config["annealing"]["cool"]),
+            iterations=int(optimiser_config["annealing"]["iterations"]),
+            transforms_config=optimiser_config["transforms"],
+            checkpoint=bool(optimiser_config["general"]["checkpoints"]),
+            checkpoint_path=os.path.join(args.output_path,"checkpoint"),
+            rsc_allocation=float(optimiser_config["general"]["resource_allocation"])
+            )
+    net.DEBUG=True #NOTE this is required, object doesnt have DEBUG unless declared
+    net.objective  = 1 #NOTE throughput objective (default is latency)
+    print("generated simulated annealing object")
+
+    #updating params
+    net.batch_size = 1 #256 #since batch size is 1 for testing - latency obj co-optim
+    net.update_platform("/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json")
+    # update partitions
+    net.update_partitions()
+
+    # complete fine transform for conv layers is more resource efficient
+    if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
+        print("applying fine max transform")
+        for partition_index in range(len(net.partitions)):
+            net.partitions[partition_index].apply_complete_fine()
+
+    #print("Saving Network - no partition")
+    #net.save_all_partitions(args.output_path) # NOTE saves as one partition
+    #net.get_schedule_csv("scheduler.csv") #for scheduler for running on board
+    #print("#################### Finished saving full network #######################")
+
+    #print("Pre Number of partitions:",len(net.partitions))
+    #saving un-optimised, unsplit network
+    old_name = net.name
+    net.name = old_name+"-noOpt-noESplit"
+    net.save_all_partitions(args.output_path)
+    print("Saved no opt, no exit split")
+    # network function to create ee partitions
+    net.name = old_name+"-noOpt"
+    net.exit_split(partition_index=0)
+    print("Exit split complete")
+    net.save_all_partitions(args.output_path)
+    print("Saved no opt")
+    #print("Post Number of partitions:",len(net.partitions))
+    net.name = old_name
+
+    auto_flag=True #carry out lots of runs at different rsc if true
+    if not auto_flag: #one run on partitions at optimiser_example specified rsc usage
+        net.run_optimiser()
+        net.update_partitions()
+
+        #create folder to store results - percentage/iteration
+        post_optim_path = os.path.join(args.output_path,
+                "post_optim-rsc{}p".format(int(net.rsc_allocation*100)))
+        if not os.path.exists(post_optim_path):
+            os.makedirs(post_optim_path)
+        # save all partitions
+        net.save_all_partitions(post_optim_path)
+        print("Partitions saved")
+        # visualise network
+        #net.visualise(os.path.join(post_optim_path,"topology.png"))
+        # create report
+        net.create_report(os.path.join(post_optim_path,
+            "report_{}.json".format(net.name)))
+
+    ### FOR LOOP FOR REPEATED OPTIM ###
+    #NOTE expose these to the expr top level
+    rsc_limits = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    full_sa_runs = 5
+
+    if auto_flag:
+        for rsc in rsc_limits:
+            for sa_i in range(full_sa_runs):
+                #deep copy the network
+                nets = [copy.deepcopy(net), copy.deepcopy(net)]
+
+                #remove other partition
+                nets[0].partitions.pop(0)
+                nets[1].partitions.pop(1)
+
+                #change the network name
+                if len(nets[0].partitions[0].graph.nodes) > len(nets[1].partitions[0].graph.nodes):
+                    nets[0].name = nets[0].name+"-ee1-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+                    nets[1].name = nets[1].name+"-eef-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+                else:
+                    nets[0].name = nets[0].name+"-eef-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+                    nets[1].name = nets[1].name+"-ee1-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+
+                for split in nets:
+                    split.rsc_allocation = rsc
+                    print("\nRunning split: {}".format(split.name))
+                    pass_flag = split.run_optimiser() #true = pass
+
+                    if pass_flag:
+                        # update all partitions
+                        split.update_partitions()
+
+                        #create folder to store results - percentage/iteration
+                        post_optim_path = os.path.join(args.output_path,
+                                "post_optim-rsc{}p".format(int(rsc*100)))
+                        if not os.path.exists(post_optim_path):
+                            os.makedirs(post_optim_path)
+
+                        # save all partitions
+                        split.save_all_partitions(post_optim_path)
+                        print("Partitions saved")
+
+                        # visualise network
+                        #split.visualise(os.path.join(post_optim_path,"topology.png"))
+
+                        # create report
+                        split.create_report(os.path.join(post_optim_path,
+                            "report_{}.json".format(split.name)))
+
+                        # create scheduler
+                        #split.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+
+def data_split(args):
+    rsc_names = ["LUT","FF","BRAM","DSP"]
+    #generate csv and some graph data
+    print("save name",args.save_name)
+    print("op path",args.output_path)
+    print("ip path",args.input_path)
+
+    print("cwd",os.getcwd())
+    print("dir list",os.listdir())
+
+    os.chdir(args.input_path)
+    print("cwd 2",os.getcwd())
+    dirs_list = os.listdir()
+    print("dir list 2",dirs_list)
+
+    ee1_data = {"throughput":[],"resource_max":[]}
+    eef_data = {"throughput":[],"resource_max":[]}
+
+    #go through each dir and check if file or not
+    for dirs in dirs_list:
+        if not os.path.isfile(dirs):
+            print("in dir",dirs)
+            reports = os.listdir(dirs)
+            #print("reports", reports)
+
+            rsc_p = int(dirs.split("-")[1][3:-1])
+            print("rsc_p",rsc_p)
+
+            for repf in reports:
+                if 'report' in repf :
+
+                    #print("found report")
+                    open_repf = open(os.path.join(dirs,repf),"r")
+                    repf_data = json.loads(open_repf.read())
+
+                    #pull out throughput info, rsc usage, maybe platform?
+                    #"network"
+                    #    "performance"
+                    #    "throughput"
+                    #"max_resource_usage"
+                    #    "LUT"
+                    #    "FF"
+                    #    "BRAM"
+                    #    "DSP"
+                    platform_dict = repf_data["platform"]["constraints"]
+                    throughput = float(repf_data["network"]["performance"]["throughput"])
+                    rsc_dict = repf_data["network"]["max_resource_usage"]
+                    #print("RSC names")
+                    actual_rsc = [float(rsc_dict[rn])/float(platform_dict[rn])
+                            for rn in rsc_names]
+                    actual_rsc_max = max(actual_rsc)
+
+                    #print(repf, throughput, actual_rsc_max)
+
+                    if 'ee1' in repf:
+                        ee1_data["throughput"].append(throughput)
+                        ee1_data["resource_max"].append(actual_rsc_max)
+                    elif 'eef' in repf:
+                        eef_data["throughput"].append(throughput)
+                        eef_data["resource_max"].append(actual_rsc_max)
+                    else:
+                        raise IndexError("not an exit in range")
+
+    #checking size of data
+    print("ee1 len:{}".format(len(ee1_data["resource_max"])))
+    print("eef len:{}".format(len(eef_data["resource_max"])))
+    #generate graphs of max resource vs throughput
+    fig, ax = plt.subplots()
+    ax.scatter(ee1_data["resource_max"], ee1_data["throughput"], c="blue", label='EE1')
+    ax.scatter(eef_data["resource_max"], eef_data["throughput"], c="black", label='EEF')
+    ax.set(xlabel='Resource Max (%)', ylabel='Throughput (sample/s)',
+            title='Exit resource throughput plot')
+    ax.legend(loc='best')
+    ax.grid()
+    #save plot
+    if args.save_name is not None:
+        fig.savefig("dual_plot_test-{}.png".format(args.save_name))
+    else:
+        fig.savefig("dual_plot_test.png")
+    print("Saved Graphs")
 
 def main():
     parser = argparse.ArgumentParser(description="script for running experiments")
-    parser.add_argument('--expr',choices=['parser','vis', 'out', 'out_brn'],
-                        help='for testing parser, vis or outputing network json')
+    parser.add_argument('--expr',
+            choices=['parser','vis', 'out', 'out_brn', 'opt_brn', 'data_split'],
+            help='for testing parser, vis or outputing network json')
+
     parser.add_argument('--save_name', type=str, help='save name for json file')
+
+    parser.add_argument('-o','--output_path', metavar='PATH', required=True,
+            help='Path to output directory')
+
+    parser.add_argument('-i', '--input_path', metavar='PATH',
+            help='folder location for report JSONs')
+
+    #parser.add_argument('--objective', choices=['throughput','latency'], required=True,
+    #            help='Optimiser objective')
+    #parser.add_argument('--optimiser', choices=['simulated_annealing', 'improve', 'greedy_partition'],
+    #            default='improve', help='Optimiser strategy')
+    #parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
+    #        help='Configuration file (.yml) for optimiser')
+
+
     args = parser.parse_args()
 
     #exits BEFORE softmax
@@ -193,7 +418,11 @@ def main():
     filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io-match_trained_norm_no-bias.onnx"
 
     #brn se - less layers to simplify debug, fc has bias, 2 conv, 3 fc only
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se_SMOL.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se_SMOL.onnx"
+
+
+    #optimiser path - taken from opt example
+    optpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/optimiser_example.yml"
 
     if args.expr == 'parser':
         parser_expr(filepath)
@@ -206,6 +435,10 @@ def main():
             output_network(filepath, True, args.save_name)
         else:
             output_network(filepath, True)
+    elif args.expr == 'opt_brn':
+        optim_expr(args, filepath, True, optpath)
+    elif args.expr == 'data_split':
+        data_split(args)
     else:
         raise NameError("Experiment doesn\'t exist")
 
