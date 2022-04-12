@@ -251,12 +251,11 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
             # get number of filters
             weights_input = graph.nodes[name]["inputs"]["weights"]
             weights_dim = onnx_helper.get_model_input(model,weights_input,submodels)
-            matmul_flag = False
-            filters = int(weights_dim.type.tensor_type.shape.dim[0].dim_value)
             # check for bias
             has_bias = 0
-            if graph.nodes[name]["inputs"]["bias"] != "": # no bias
+            if graph.nodes[name]["inputs"]["bias"] != "": #has a bias
                 has_bias = 1
+            filters = int(weights_dim.type.tensor_type.shape.dim[(1-has_bias)].dim_value)
             # create inner product layer hardware
             graph.nodes[name]['hw'] = InnerProductLayer(
                 filters,
