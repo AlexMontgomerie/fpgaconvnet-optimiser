@@ -119,7 +119,7 @@ def output_network(args,filepath, is_branchy):
 ####################### optimiser expr ####################
 ###########################################################
 
-def optim_expr(args, filepath, is_branchy, opt_path):
+def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
     #opt_path is path of optimiser example config .yml file
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
@@ -150,7 +150,7 @@ def optim_expr(args, filepath, is_branchy, opt_path):
 
     #updating params
     net.batch_size = 1 #256 #since batch size is 1 for testing - latency obj co-optim
-    net.update_platform("/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json")
+    net.update_platform(plat_path)
     # update partitions
     net.update_partitions()
 
@@ -209,7 +209,6 @@ def optim_expr(args, filepath, is_branchy, opt_path):
             for sa_i in range(full_sa_runs):
                 #deep copy the network
                 nets = [copy.deepcopy(net), copy.deepcopy(net)]
-
                 #remove other partition
                 nets[0].partitions.pop(0)
                 nets[1].partitions.pop(1)
@@ -226,11 +225,9 @@ def optim_expr(args, filepath, is_branchy, opt_path):
                     split.rsc_allocation = rsc
                     print("\nRunning split: {}".format(split.name))
                     pass_flag = split.run_optimiser() #true = pass
-
                     if pass_flag:
                         # update all partitions
                         split.update_partitions()
-
                         #create folder to store results - percentage/iteration
                         post_optim_path = os.path.join(args.output_path,
                                 "post_optim-rsc{}p".format(int(rsc*100)))
@@ -240,102 +237,270 @@ def optim_expr(args, filepath, is_branchy, opt_path):
                         # save all partitions
                         split.save_all_partitions(post_optim_path)
                         print("Partitions saved")
-
                         # visualise network
                         #split.visualise(os.path.join(post_optim_path,"topology.png"))
-
                         # create report
                         split.create_report(os.path.join(post_optim_path,
                             "report_{}.json".format(split.name)))
-
                         # create scheduler
                         #split.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
 
-def data_split(args):
+#pull out throughput info, rsc usage
+#"network"
+#    "performance"
+#    "throughput"
+#"max_resource_usage"
+#    "LUT"
+#    "FF"
+#    "BRAM"
+#    "DSP"
+def extract_rpt_data(data_dict, input_path, report_str=""):
+    #resources to search through
     rsc_names = ["LUT","FF","BRAM","DSP"]
-    #generate csv and some graph data
-    print("save name",args.save_name)
-    print("op path",args.output_path)
-    print("ip path",args.input_path)
-
-    print("cwd",os.getcwd())
-    print("dir list",os.listdir())
-
-    os.chdir(args.input_path)
-    print("cwd 2",os.getcwd())
-    dirs_list = os.listdir()
-    print("dir list 2",dirs_list)
-
-    ee1_data = {"throughput":[],"resource_max":[]}
-    eef_data = {"throughput":[],"resource_max":[]}
-
-    #go through each dir and check if file or not
+    dirs_list = os.listdir(input_path)
+    platform_dict={}
     for dirs in dirs_list:
-        if not os.path.isfile(dirs):
-            print("in dir",dirs)
-            reports = os.listdir(dirs)
-            #print("reports", reports)
-
+        current_path = os.path.join(input_path,dirs)
+        if (not os.path.isfile(current_path)) and\
+            ("post_optim" in dirs):
+            reports = os.listdir(current_path)
             rsc_p = int(dirs.split("-")[1][3:-1])
-            print("rsc_p",rsc_p)
+            print("In directory:",dirs,"\nResource percentage:",rsc_p)
 
             for repf in reports:
-                if 'report' in repf :
+                # check for report and report contains specified string in the title
+                if 'report' in repf and report_str in repf:
+                    #open report file
+                    open_repf = open(os.path.join(current_path,repf),"r")
+                    #load report into json (dict)
+                    repf_json = json.loads(open_repf.read())
+                    #get dict of available resources for platform used
+                    platform_dict = repf_json["platform"]["constraints"]
+                    #get overall throughput
+                    throughput = float(repf_json["network"]["performance"]["throughput"])
+                    #get overall resource usage
+                    rsc_dict = repf_json["network"]["max_resource_usage"]
+                    #get the percentage of available resources for all the resource types
+                    actual_rsc = []
+                    for rn in rsc_names:
+                        res_percent = float(rsc_dict[rn])/float(platform_dict[rn])
+                        #data_dict[rn].append(res_percent)
+                        data_dict[rn].append(rsc_dict[rn]) #store actual resource value
+                        actual_rsc.append([res_percent,rn])
+                    #get maximum of each of the resource types (limiting resource possibly)
+                    idx_max = max(range(len(actual_rsc)), key=actual_rsc.__getitem__)
+                    #print(repf,"::",actual_rsc,"::",actual_rsc[idx_max])
+                    #append lists with report data
+                    data_dict["throughput"].append(throughput)
+                    data_dict["resource_max"].append(actual_rsc[idx_max][0])
+                    data_dict["limiting_resource"].append(actual_rsc[idx_max][1])
+                    data_dict["report_name"].append(repf)
+    #need the platform stats
+    return platform_dict
 
-                    #print("found report")
-                    open_repf = open(os.path.join(dirs,repf),"r")
-                    repf_data = json.loads(open_repf.read())
+def combine_network_sections(args, ee1_data, eef_data,
+        platform_dict, baseline_data, eef_exit_fraction=0.5):
+    rsc_names = ["LUT","FF","BRAM","DSP"]
 
-                    #pull out throughput info, rsc usage, maybe platform?
-                    #"network"
-                    #    "performance"
-                    #    "throughput"
-                    #"max_resource_usage"
-                    #    "LUT"
-                    #    "FF"
-                    #    "BRAM"
-                    #    "DSP"
-                    platform_dict = repf_data["platform"]["constraints"]
-                    throughput = float(repf_data["network"]["performance"]["throughput"])
-                    rsc_dict = repf_data["network"]["max_resource_usage"]
-                    #print("RSC names")
-                    actual_rsc = [float(rsc_dict[rn])/float(platform_dict[rn])
-                            for rn in rsc_names]
-                    actual_rsc_max = max(actual_rsc)
+    combined_dict ={"report_name":[],"throughput":[],
+                    "ee1_throughput":[], "eef_throughput":[],
+                    "resource_max":[], "limiting_resource":[],
+                    "LUT":[], "FF":[], "BRAM":[], "DSP":[]}
 
-                    #print(repf, throughput, actual_rsc_max)
+    ee1_len = len(ee1_data["report_name"])
+    eef_len = len(eef_data["report_name"])
+    for ee1_idx in range(ee1_len):
+        for eef_idx in range(eef_len):
+            ee1_thr = ee1_data["throughput"][ee1_idx]
+            eef_thr = float(eef_data["throughput"][eef_idx])/eef_exit_fraction
+            #pair up each
+            combined_dict["report_name"].append(
+                    (ee1_data["report_name"][ee1_idx],eef_data["report_name"][eef_idx]))
+            #raw throughputs
+            combined_dict["ee1_throughput"].append(ee1_thr)
+            combined_dict["eef_throughput"].append(eef_data["throughput"][eef_idx])
+            #minimum of the exit throughputs (limiting thr)
+            combined_dict["throughput"].append(min(ee1_thr, eef_thr))
+            #for getting the limiting rsc
+            actual_rsc = []
+            for rn in rsc_names:
+                rsc_sum = ee1_data[rn][ee1_idx]+eef_data[rn][eef_idx]
+                res_percent = rsc_sum/float(platform_dict[rn])
+                combined_dict[rn].append(res_percent)
+                #data_dict[rn].append(rsc_dict[rn]) #store actual resource value
+                actual_rsc.append([res_percent,rn])
+            idx_max = max(range(len(actual_rsc)), key=actual_rsc.__getitem__)
+            combined_dict["resource_max"].append(actual_rsc[idx_max][0])
+            combined_dict["limiting_resource"].append(actual_rsc[idx_max][1])
 
-                    if 'ee1' in repf:
-                        ee1_data["throughput"].append(throughput)
-                        ee1_data["resource_max"].append(actual_rsc_max)
-                    elif 'eef' in repf:
-                        eef_data["throughput"].append(throughput)
-                        eef_data["resource_max"].append(actual_rsc_max)
-                    else:
-                        raise IndexError("not an exit in range")
+    return combined_dict
 
-    #checking size of data
-    print("ee1 len:{}".format(len(ee1_data["resource_max"])))
-    print("eef len:{}".format(len(eef_data["resource_max"])))
-    #generate graphs of max resource vs throughput
+def pareto_front(data_dict, resource_string):
+    #generate list of indices for pareto front
+    #get list of throughputs and resource(s)
+
+    point_len = len(data_dict["throughput"])
+    #construct numpy array of throughput and resource max
+    np_data = np.empty((point_len,2))
+    for i,(thr,rsc) in enumerate(
+            zip(data_dict["throughput"],data_dict[resource_string])):
+        np_data[i][0] = 1/float(thr)
+        np_data[i][1] = rsc
+    #print("PARETO\n",np_data)
+
+    is_efficient = np.arange(np_data.shape[0])
+    point_total = np_data.shape[0]
+    next_point_index = 0
+    while next_point_index<len(np_data):
+        nd_point_mask = np.any(np_data<np_data[next_point_index], axis=1)
+        nd_point_mask[next_point_index] = True
+        is_efficient = is_efficient[nd_point_mask]
+        np_data = np_data[nd_point_mask]
+        next_point_index = np.sum(nd_point_mask[:next_point_index])+1
+    #return mask
+        #is_efficient_mask = np.zeros(point_total, dtype=bool)
+        #is_efficient_mask[is_efficient] = True
+    #print("efficieny mask\n", is_efficient_mask)
+    #print("is eff\n",is_efficient)
+    return is_efficient
+
+
+#function to reduce copy pasting code for graph gen
+def _gen_graph(args,ee_flag,baseline_flag,rsc_str,
+        ee1_data,eef_data,baseline_data):
+    #generate graphs of chosen resource vs throughput
+    #plot baseline or otherwise as chosen
     fig, ax = plt.subplots()
-    ax.scatter(ee1_data["resource_max"], ee1_data["throughput"], c="blue", label='EE1')
-    ax.scatter(eef_data["resource_max"], eef_data["throughput"], c="black", label='EEF')
-    ax.set(xlabel='Resource Max (%)', ylabel='Throughput (sample/s)',
-            title='Exit resource throughput plot')
+
+    subtitle_str = ""
+    if ee_flag:
+        print("ee1 len:{}".format(len(ee1_data[rsc_str])))
+        print("eef len:{}".format(len(eef_data[rsc_str])))
+        ax.scatter(ee1_data[rsc_str], ee1_data["throughput"], c="blue", label='EE1')
+        ax.scatter(eef_data[rsc_str], eef_data["throughput"], c="black", label='EEF')
+        subtitle_str+= "-EE-"
+
+    if baseline_flag:
+        print("base len:{}".format(len(baseline_data[rsc_str])))
+        ax.scatter(baseline_data[rsc_str], baseline_data["throughput"], c="red", label='BASE')
+        subtitle_str+="-BASE-"
+
+    #fix the title of the plot
+    ax.set(xlabel='Fraction of {}s'.format(rsc_str), ylabel='Throughput (sample/s)',
+            title='Exit resource throughput plot {}\n({})'.format(subtitle_str,args.save_name))
     ax.legend(loc='best')
     ax.grid()
+    plt.xlim(0.05,0.95)
     #save plot
     if args.save_name is not None:
-        fig.savefig("dual_plot_test-{}.png".format(args.save_name))
+        fig.savefig(os.path.join(args.output_path,"plot_{}_{}.png".format(args.save_name,rsc_str)))
     else:
-        fig.savefig("dual_plot_test.png")
-    print("Saved Graphs")
+        fig.savefig(os.path.join(args.output_path,"plot_{}.png".format(rsc_str)))
+    print("Saved {} Graph".format(rsc_str))
+
+def gen_graph(args):
+    '''
+    function for graphing optimiser results for EE and baseline
+
+    if -bi only then only do baseline results
+        red colour
+        graph labelled baseline
+
+    if -i then just do EE results
+        EE1 is blue
+        EEF is black
+        graph labelled early exit
+
+    if -i ... -bi ... then plot both
+
+    make folder paths part of the saving process somehow, report?
+        network name
+        -i path
+        number of points for EE1 and EEF
+        -bi path
+        number of points for baseline
+    '''
+    rsc_names = ["LUT","FF","BRAM","DSP"]
+    #print("save name",args.save_name)
+    #print("op path",args.output_path)
+    if not os.path.exists(args.output_path):
+        print("Creating output path:",args.output_path)
+        os.makedirs(args.output_path)
+    #print("ip path",args.input_path)
+    #print("baseline ip path",args.baseline_input_path)
+    #print("current dir",os.getcwd())
+
+    if args.input_path is None:
+        #doing baseline
+        assert(args.baseline_input_path is not None)
+        baseline_flag=True
+        ee_flag=False
+    elif args.baseline_input_path is None:
+        #do EE only
+        assert(args.input_path is not None)
+        baseline_flag=False
+        ee_flag=True
+    else:
+        #neither are none so do joint graph
+        print("Joint graph")
+        baseline_flag=True
+        ee_flag=True
+
+    #init data dicts
+    ee1_data = {"report_name":[], "throughput":[],
+                "resource_max":[], "limiting_resource":[],
+                "LUT":[], "FF":[], "BRAM":[], "DSP":[]}
+    eef_data = copy.deepcopy(ee1_data)
+    baseline_data = copy.deepcopy(ee1_data)
+
+    if ee_flag:
+        platform_dict=extract_rpt_data(ee1_data, args.input_path, 'ee1')
+        extract_rpt_data(eef_data, args.input_path, 'eef')
+    if baseline_flag:
+        platform_dict=extract_rpt_data(baseline_data,
+                args.baseline_input_path)
+
+    #gen max graph
+    _gen_graph(args,ee_flag,baseline_flag,"resource_max",
+            ee1_data,eef_data,baseline_data)
+    #generate individual rsc graph
+    #for rsc in rsc_names:
+    #    _gen_graph(args,ee_flag,baseline_flag,rsc,
+    #       ee1_data,eef_data,baseline_data)
+
+    #create combined plot
+    if baseline_flag and ee_flag:
+        eef_exit_fraction_l = [0.1,0.2,0.25,0.33,0.5]
+        for eef_frac in eef_exit_fraction_l:
+            combined_data = combine_network_sections(args, ee1_data, eef_data,
+                platform_dict, baseline_data, eef_exit_fraction=eef_frac)
+            #print graph of combined vs baseline vs ee1
+            rsc_str = "resource_max"
+            fig, ax = plt.subplots()
+            ax.scatter(ee1_data[rsc_str], ee1_data["throughput"], c="blue", label='EE1')
+            ax.scatter(combined_data[rsc_str], combined_data["throughput"], c="green", label='COMB')
+            ax.scatter(baseline_data[rsc_str], baseline_data["throughput"], c="red", label='BASE')
+            #fix the title of the plot
+            ax.set( xlabel='Fraction of {}s'.format(rsc_str),
+                    ylabel='Throughput (sample/s)',
+                    title='Exit resource vs throughput EEF: {}%\n({})'.format(
+                        str(100*eef_frac),args.save_name))
+            ax.legend(loc='best')
+            ax.grid()
+            plt.xlim(0.0,1.00)
+            #save plot
+            fig.savefig(os.path.join(args.output_path,"plot_{}_{}_{}eefp.png".format(
+                args.save_name, rsc_str, str(int(100*eef_frac)))))
+            print("Saved Combined {} Graph. EEF Frac: {}".format(rsc_str,str(100*eef_frac)))
+
+###########################################################
+#################        main         #####################
+###########################################################
 
 def main():
     parser = argparse.ArgumentParser(description="script for running experiments")
     parser.add_argument('--expr',
-            choices=['parser','vis', 'out', 'out_brn', 'opt_brn', 'data_split'],
+            choices=['parser','vis', 'out', 'out_brn', 'opt_brn', 'gen_graph'],
             help='for testing parser, vis or outputing network json')
 
     parser.add_argument('--save_name', type=str, help='save name for json file')
@@ -345,6 +510,8 @@ def main():
 
     parser.add_argument('-i', '--input_path', metavar='PATH',
             help='folder location for report JSONs')
+    parser.add_argument('-bi', '--baseline_input_path', metavar='PATH',
+            help='folder location for baseline report JSONs')
 
     #parser.add_argument('--objective', choices=['throughput','latency'], required=True,
     #            help='Optimiser objective')
@@ -352,7 +519,6 @@ def main():
     #            default='improve', help='Optimiser strategy')
     #parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
     #        help='Configuration file (.yml) for optimiser')
-
 
     args = parser.parse_args()
 
@@ -423,6 +589,9 @@ def main():
 
     #optimiser path - taken from opt example
     optpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/optimiser_example.yml"
+    #platform path
+    #platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json"
+    platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/xcvu440-flga2892-3-e.json"
 
     if args.expr == 'parser':
         parser_expr(filepath)
@@ -436,9 +605,9 @@ def main():
         else:
             output_network(filepath, True)
     elif args.expr == 'opt_brn':
-        optim_expr(args, filepath, True, optpath)
-    elif args.expr == 'data_split':
-        data_split(args)
+        optim_expr(args, filepath, True, optpath, platpath)
+    elif args.expr == 'gen_graph':
+        gen_graph(args)
     else:
         raise NameError("Experiment doesn\'t exist")
 
