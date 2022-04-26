@@ -59,7 +59,8 @@ class Optimiser(Network):
                             data_width=data_width,
                             weight_width=weight_width,
                             acc_width=acc_width,
-                            fuse_bn=fuse_bn)#, rsc_allocation=rsc_allocation)
+                            fuse_bn=fuse_bn)
+        #, rsc_allocation=rsc_allocation)
 
         self.objective      = 0
         self.rsc_allocation = rsc_allocation
@@ -158,7 +159,7 @@ class Optimiser(Network):
 
         # Apply a random transform
 
-        avoid_layers = [LAYER_TYPE.Split,LAYER_TYPE.If,LAYER_TYPE.Squeeze]
+        avoid_layers = [LAYER_TYPE.If,LAYER_TYPE.Squeeze] #LAYER_TYPE.Split
         ## Coarse transform (node_info transform)
         if transform == 'coarse':
             try:
