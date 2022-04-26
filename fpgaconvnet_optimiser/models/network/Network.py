@@ -40,7 +40,8 @@ class Network():
                     fuse_bn=True): #, rsc_allocation=1.0):
         print("Network __init__")
 
-        # empty transforms configuration #FIXME why is this here??
+        # empty transforms configuration
+        #FIXME why is this here??
         #self.transforms_config = {}
 
         ## percentage resource allocation
@@ -59,9 +60,10 @@ class Network():
         self.fuse_bn = fuse_bn
 
         # load network
-        self.model, self.submodels, self.graph, self.ctrledges =\
+        self.model,self.submodels,self.graph,self.ctrledges=\
                 parser.parse_net(network_path, view=False,
-                data_width=self.data_width, weight_width=self.weight_width,
+                data_width=self.data_width,
+                weight_width=self.weight_width,
                 acc_width=self.acc_width, fuse_bn=self.fuse_bn)
 
         # node and edge lists
@@ -69,13 +71,17 @@ class Network():
         self.edge_list = list(self.graph.edges())
 
         # matrices
-        self.connections_matrix = matrix.get_connections_matrix(self.graph)
-        self.workload_matrix    = matrix.get_workload_matrix(self.graph)
+        self.connections_matrix =\
+                matrix.get_connections_matrix(self.graph)
+        self.workload_matrix    =\
+                matrix.get_workload_matrix(self.graph)
 
         # partitions
-        self.partitions = [ Partition(copy.deepcopy(self.graph), self.ctrledges,
-                data_width=self.data_width, weight_width=self.weight_width,
-                acc_width=self.acc_width) ]
+        self.partitions = [ Partition(copy.deepcopy(
+            self.graph), self.ctrledges,
+            data_width=self.data_width,
+            weight_width=self.weight_width,
+            acc_width=self.acc_width) ]
 
         # platform
         self.platform = {
@@ -96,8 +102,10 @@ class Network():
         }
 
         # all types of layers
-        self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
-        self.pool_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Pooling)
+        self.conv_layers = helper.get_all_layers(
+                self.graph, LAYER_TYPE.Convolution)
+        self.pool_layers = helper.get_all_layers(
+                self.graph, LAYER_TYPE.Pooling)
 
         # update partitions
         self.update_partitions()
@@ -173,7 +181,7 @@ class Network():
 
         return math.ceil(((max_input_size + max_output_size)*self.data_width)/8)
 
-    def get_latency(self, partition_list=None, ignore_reconf=False):
+    def get_latency(self, partition_list=None, ignore_reconf=False, print_lim_layer=False):
         if partition_list == None:
             partition_list = list(range(len(self.partitions)))
         latency = 0
@@ -182,17 +190,19 @@ class Network():
             if partition_index not in partition_list:
                 continue
             # accumulate latency for each partition
-            latency += partition.get_latency(self.platform["freq"])
+            latency += partition.get_latency(self.platform["freq"],
+                    print_lim_layer=print_lim_layer)
         # return the total latency as well as reconfiguration time
         if ignore_reconf:
             return latency
         return latency + (len(partition_list)-1)*self.platform["reconf_time"]
 
-    def get_throughput(self, partition_list=None):
+    def get_throughput(self, partition_list=None, print_lim_layer=False):
         if partition_list == None:
             partition_list = list(range(len(self.partitions)))
         # return the frames per second
-        return float(self.batch_size)/self.get_latency(partition_list)
+        return float(self.batch_size)/self.get_latency(partition_list,
+                print_lim_layer=print_lim_layer)
 
     def visualise(self, output_path):
         g = pydot.Dot(graph_type='digraph')

@@ -16,7 +16,7 @@ def create_report(self, output_path):
             "memory_usage" : self.get_memory_usage_estimate(),
             "performance" : {
                 "latency" : self.get_latency(),
-                "throughput" : self.get_throughput(),
+                "throughput" : self.get_throughput(print_lim_layer=True),
                 "performance" : total_operations/self.get_latency()
             },
             "num_partitions" : len(self.partitions),

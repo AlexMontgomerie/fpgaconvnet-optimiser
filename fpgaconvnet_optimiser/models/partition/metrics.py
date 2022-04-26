@@ -24,7 +24,7 @@ def get_pipeline_depth(self, node): # TODO: change to longest path problem
         return pipeline_depth + max([
             self.get_pipeline_depth(edge) for edge in graphs.get_next_nodes(self.graph,node) ])
 
-def get_interval(self):
+def get_interval(self, print_lim_layer=False):
     """
     Returns
     -------
@@ -36,9 +36,20 @@ def get_interval(self):
     # get the interval matrix
     interval_matrix = matrix.get_interval_matrix(self.graph)
     # return the overall interval
-    return np.max(np.absolute(interval_matrix))
+    max_abs = np.max(np.absolute(interval_matrix))
+    if print_lim_layer:
+        #print("PRINTING INTERVAL MAT:\n",interval_matrix)
 
-def get_latency(self, frequency):
+        #colmax = np.amax(interval_matrix, axis=0)
+        #rowmax = np.amax(interval_matrix, axis=1)
+
+        index = np.where(interval_matrix == np.amax(interval_matrix))
+
+        print("indices row:",index[0],"col:",index[1], "max:",max_abs)
+
+    return max_abs
+
+def get_latency(self, frequency, print_lim_layer=False):
     """
     Parameters
     ----------
@@ -51,7 +62,7 @@ def get_latency(self, frequency):
         the latency of running the partition, in seconds.
     """
     # get the interval for the partition
-    interval = self.get_interval()
+    interval = self.get_interval(print_lim_layer=print_lim_layer)
     # get pipeline depth of partition
     input_node = graphs.get_input_nodes(self.graph)[0]
     pipeline_depth = self.get_pipeline_depth(input_node) # TODO: find max of all input nodes
