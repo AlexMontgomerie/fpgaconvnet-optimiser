@@ -32,6 +32,9 @@ class Fork(Module):
             raise TypeError
 
         # load the resource model coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/fork_lut.npy"))
@@ -44,6 +47,8 @@ class Fork(Module):
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/fork_dsp.npy"))
+
+        os.chdir(work_dir)
 
     def utilisation_model(self):
         return {

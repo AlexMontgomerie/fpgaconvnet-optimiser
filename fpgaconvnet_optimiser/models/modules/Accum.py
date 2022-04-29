@@ -16,7 +16,7 @@ import sys
 from dataclasses import dataclass, field
 
 from fpgaconvnet_optimiser.models.modules import Module
-from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
+from fpgaconvnet_optimiser.tools.resource_model import bram_array_resource_model
 
 @dataclass
 class Accum(Module):
@@ -24,6 +24,8 @@ class Accum(Module):
     groups: int
 
     def __post_init__(self):
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
@@ -37,6 +39,7 @@ class Accum(Module):
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/accum_dsp.npy"))
+        os.chdir(work_dir)
 
     def utilisation_model(self):
         return {
@@ -74,7 +77,8 @@ class Accum(Module):
         if coef == None:
             coef = self.rsc_coef
         # get the accumulation buffer BRAM estimate
-        acc_buffer_bram = bram_memory_resource_model(int(self.filters/self.groups), self.data_width)
+        acc_buffer_size =  int(self.filters/self.groups) if int(self.channels/self.groups) > 1 else 0
+        acc_buffer_bram = bram_array_resource_model(acc_buffer_size, self.data_width, 'memory')
         # get the linear model estimation
         rsc = Module.rsc(self, coef)
         # add the bram estimation

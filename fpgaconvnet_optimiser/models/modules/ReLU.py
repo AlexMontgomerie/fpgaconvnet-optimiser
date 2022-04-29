@@ -5,6 +5,7 @@
 import numpy as np
 import math
 import os
+import sys
 from dataclasses import dataclass, field
 
 from fpgaconvnet_optimiser.models.modules import Module
@@ -14,6 +15,9 @@ class ReLU(Module):
 
     def __post_init__(self):
         # load the resource model coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/relu_lut.npy"))
@@ -26,6 +30,8 @@ class ReLU(Module):
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/relu_dsp.npy"))
+                
+        os.chdir(work_dir)
 
     def utilisation_model(self):
         return {

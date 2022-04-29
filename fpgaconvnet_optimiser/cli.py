@@ -52,13 +52,17 @@ def main():
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
-    # copy input files to the output path
+    shutil.copy(args.optimiser_config_path, os.path.join(args.output_path,os.path.basename(args.optimiser_config_path)) )
     shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
     # load optimiser config
     with open(args.optimiser_config_path,"r") as f:
         optimiser_config = yaml.load(f, Loader=yaml.Loader)
+
+    # get platform
+    with open(platform_path,'r') as f:
+        platform = json.load(f)
 
     # Initialise logger
     if bool(optimiser_config["general"]["logging"]):
@@ -71,15 +75,9 @@ def main():
     if not os.path.exists(os.path.join(args.output_path,"checkpoint")):
         os.makedirs(os.path.join(args.output_path,"checkpoint"))
 
-    # format the partition transform allowed partitions
-    allowed_partitions = []
-    for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
-        allowed_partitions.append((from_onnx_op_type(allowed_partition[0]), from_onnx_op_type(allowed_partition[1])))
-    optimiser_config["transforms"]["partition"]["allowed_partitions"] = allowed_partitions
-
     # load network based on the given optimiser strategy
     if args.optimiser == "improve":
-        net = Improve(args.name,args.model_path,
+        net = Improve(args.name,args.model_path,platform,
                 T=float(optimiser_config["annealing"]["T"]),
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
@@ -87,7 +85,7 @@ def main():
                 iterations=int(optimiser_config["annealing"]["iterations"]),
                 transforms_config=optimiser_config["transforms"])
     elif args.optimiser == "simulated_annealing":
-        net = SimulatedAnnealing(args.name,args.model_path,
+        net = SimulatedAnnealing(args.name,args.model_path,platform,
                 T=float(optimiser_config["annealing"]["T"]),
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
@@ -96,8 +94,8 @@ def main():
                 transforms_config=optimiser_config["transforms"],
                 checkpoint=bool(optimiser_config["general"]["checkpoints"]),
                 checkpoint_path=os.path.join(args.output_path,"checkpoint"))
-    elif optimiser == "greedy_partition":
-        net = GreedyPartition(name, model_path,
+    elif args.optimiser == "greedy_partition":
+        net = GreedyPartition(args.name, args.model_path,platform,
                 T=float(optimiser_config["annealing"]["T"]),
                 T_min=float(optimiser_config["annealing"]["T_min"]),
                 k=float(optimiser_config["annealing"]["k"]),
@@ -145,11 +143,9 @@ def main():
         for partition_index in range(len(net.partitions)):
             net.partitions[partition_index].apply_max_weights_reloading()
 
-    if bool(optimiser_config["general"]["starting_point_distillation"]):
+    if bool(optimiser_config["general"]["starting_point_distillation"]) and args.teacher_partition_path != None:
         net.update_partitions()
-        net.starting_point_distillation(args.teacher_partition_path)
-        net.update_partitions()
-        net.merge_memory_bound_partitions()
+        net.starting_point_distillation(args.teacher_partition_path, not run_optimiser)
         net.update_partitions()
 
     # run optimiser
@@ -157,6 +153,10 @@ def main():
 
     # update all partitions
     net.update_partitions()
+
+    if args.optimiser == "greedy_partition":
+        net.merge_memory_bound_partitions()
+        net.update_partitions()
 
     # find the best batch_size
     #if args.objective == "throughput":

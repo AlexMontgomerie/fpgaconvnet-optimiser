@@ -123,6 +123,11 @@ def add_hardware(model, graph, data_width=16, weight_width=8, biases_width=16, a
                 stride =attr["strides"],
                 pad =attr["pads"],
                 groups =attr["group"],
+                input_width=data_width,
+                output_width=data_width,
+                weight_width=weight_width,
+                acc_width=acc_width,
+                biases_width=biases_width,
                 has_bias = has_bias
             )
             continue
@@ -142,6 +147,11 @@ def add_hardware(model, graph, data_width=16, weight_width=8, biases_width=16, a
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
+                input_width=data_width,
+                output_width=data_width,
+                weight_width=weight_width,
+                acc_width=acc_width,
+                biases_width=biases_width,
                 has_bias = has_bias
             )
             continue
@@ -162,6 +172,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, biases_width=16, a
                 kernel_size =attr["kernel_shape"],
                 stride =attr["strides"],
                 pad =attr["pads"],
+                data_width=data_width
             )
             continue
         # ReLU Layer
@@ -171,6 +182,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, biases_width=16, a
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
+                data_width=data_width
             )
             continue
         # BatchNorm Layer
@@ -181,6 +193,7 @@ def add_hardware(model, graph, data_width=16, weight_width=8, biases_width=16, a
                 0, # initialise channels to 0
                 1, # initialise coarse in to 0
                 1, # initialise coarse out to 0
+                data_width=data_width
             )
             continue
         raise NameError(f"{name}: type {str(graph.nodes[name]['type'])} does not exist!")

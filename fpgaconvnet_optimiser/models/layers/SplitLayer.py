@@ -136,6 +136,7 @@ class SplitLayer(MultiPortLayer):
             "LUT"   :   fork_rsc['LUT']*self.coarse,
             "FF"    :   fork_rsc['FF']*self.coarse,
             "BRAM"  :   fork_rsc['BRAM']*self.coarse,
+            "URAM" :  0,
             "DSP"   :   fork_rsc['DSP']*self.coarse
         }
 

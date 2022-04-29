@@ -22,7 +22,7 @@ class Optimiser(Network):
     Base class for all optimisation strategies. This inherits the `Network` class.
     """
 
-    def __init__(self,name,network_path,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
+    def __init__(self,name,network_path,platform,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
         """
         Parameters
         ----------
@@ -43,7 +43,7 @@ class Optimiser(Network):
             are `['coarse','fine','partition','weights_reloading']`
         """
         # Initialise Network
-        Network.__init__(self,name,network_path,data_width=data_width,weight_width=weight_width,acc_width=acc_width,fuse_bn=fuse_bn)
+        Network.__init__(self,name,network_path,platform,data_width=data_width,weight_width=weight_width,acc_width=acc_width,fuse_bn=fuse_bn)
 
         self.objective   = 0
         self.constraints = {
@@ -52,7 +52,7 @@ class Optimiser(Network):
             'power'      : float("inf")
         }
 
-        self.transforms = ['coarse','fine','partition']
+        self.transforms = ['coarse','fine','partition','weights_reloading']
 
         self.transforms_config = transforms_config
         if len(fix_starting_point_config) == 0:
@@ -62,7 +62,6 @@ class Optimiser(Network):
 
     # import optimiser utilities
     from fpgaconvnet_optimiser.optimiser.utils import starting_point_distillation
-    from fpgaconvnet_optimiser.optimiser.utils import merge_memory_bound_partitions
 
     def get_transforms(self):
         self.transforms = []
@@ -158,7 +157,7 @@ class Optimiser(Network):
             # remove squeeze layers prior to partitioning
             self.partitions[partition_index].remove_squeeze()
             self.apply_random_partition(partition_index)
-            return
+            return          
 
     def optimiser_status(self):
         """

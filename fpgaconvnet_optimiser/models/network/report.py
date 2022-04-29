@@ -2,6 +2,15 @@ import json
 import datetime
 import numpy as np
 
+def get_max_resource_usage(self):
+    return  {
+                "LUT" : max([ partition.get_resource_usage()["LUT"] for partition in self.partitions ]),
+                "FF" : max([ partition.get_resource_usage()["FF"] for partition in self.partitions ]),                 
+                "BRAM" : max([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ]),
+                "URAM" : max([ partition.get_resource_usage()["URAM"] for partition in self.partitions ]),
+                "DSP" : max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ])
+            }
+
 def create_report(self, output_path):
     # create report dictionary
     total_operations = sum([partition.get_total_operations() for partition in self.partitions])
@@ -20,12 +29,7 @@ def create_report(self, output_path):
                 "performance" : total_operations/self.get_latency()
             },
             "num_partitions" : len(self.partitions),
-            "max_resource_usage" : {
-                "LUT" : max([ partition.get_resource_usage()["LUT"] for partition in self.partitions ]),
-                "FF" : max([ partition.get_resource_usage()["FF"] for partition in self.partitions ]),                 
-                "BRAM" : max([ partition.get_resource_usage()["BRAM"] for partition in self.partitions ]),
-                "DSP" : max([ partition.get_resource_usage()["DSP"] for partition in self.partitions ])
-            }
+            "max_resource_usage" : self.get_max_resource_usage()
         }
     }
     # add information for each partition
@@ -46,7 +50,8 @@ def create_report(self, output_path):
                 "LUT" : resource_usage["LUT"],
                 "FF" : resource_usage["FF"],            
                 "BRAM" : resource_usage["BRAM"],
-                "DSP" : resource_usage["DSP"]
+                "URAM" : resource_usage["URAM"],
+                "DSP" : resource_usage["DSP"],
             },
             "bandwidth" : {
                 "in" : self.partitions[i].get_bandwidth_in(self.platform["freq"]),
@@ -66,7 +71,8 @@ def create_report(self, output_path):
                     "LUT" : resource_usage["LUT"],
                     "FF" : resource_usage["FF"],            
                     "BRAM" : resource_usage["BRAM"],
-                    "DSP" : resource_usage["DSP"]
+                    "URAM" : resource_usage["URAM"],
+                    "DSP" : resource_usage["DSP"],
                 }
             }
     # save as json

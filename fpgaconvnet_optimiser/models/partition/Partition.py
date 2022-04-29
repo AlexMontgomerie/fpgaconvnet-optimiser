@@ -15,7 +15,8 @@ class Partition():
             wr_factor=1,
             data_width=16,
             weight_width=8,
-            acc_width=30
+            acc_width=30,
+            port_width=64
         ):
 
         ## graph for partition
@@ -39,7 +40,7 @@ class Partition():
         self.size_wr    = 0
 
         ## bitwidths (TODO: add as parameters)
-        self.port_width     = 64
+        self.port_width     = port_width
         self.data_width     = data_width
         self.weight_width   = weight_width
         self.acc_width      = acc_width
@@ -48,21 +49,29 @@ class Partition():
         self.max_streams_in     = self.ports_in*int(self.port_width/self.data_width)
         self.max_streams_out    = self.ports_out*int(self.port_width/self.data_width)
 
+        self.need_optimise = True
+
+
     ## fine transform
-    from fpgaconvnet_optimiser.transforms.fine import apply_random_fine_layer
+    from fpgaconvnet_optimiser.transforms.fine import apply_random_fine_layer 
     from fpgaconvnet_optimiser.transforms.fine import apply_complete_fine
+    from fpgaconvnet_optimiser.transforms.fine import apply_more_fine  
 
     ## weights reloading transform
     from fpgaconvnet_optimiser.transforms.weights_reloading import get_wr_layer
     from fpgaconvnet_optimiser.transforms.weights_reloading import get_weights_reloading_factors
-    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_random_weights_reloading
-    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_max_weights_reloading
-    from fpgaconvnet_optimiser.transforms.weights_reloading import remove_weights_reloading_transform
+    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_random_weights_reloading 
+    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_max_weights_reloading 
+    from fpgaconvnet_optimiser.transforms.weights_reloading import remove_weights_reloading_transform 
     from fpgaconvnet_optimiser.transforms.weights_reloading import apply_weights_reloading_transform
+    from fpgaconvnet_optimiser.transforms.weights_reloading import apply_less_weight_reloading  
 
     ## coarse transform
     from fpgaconvnet_optimiser.transforms.coarse import apply_random_coarse_layer
     from fpgaconvnet_optimiser.transforms.coarse import fix_coarse
+    from fpgaconvnet_optimiser.transforms.coarse import apply_more_coarse
+    from fpgaconvnet_optimiser.transforms.coarse import apply_more_coarse_favour_coarse_in, apply_more_coarse_favour_coarse_out
+    from fpgaconvnet_optimiser.transforms.coarse import apply_more_coarse_fix_coarse_in, apply_more_coarse_fix_coarse_out
 
     # auxiliary layer functions
     from fpgaconvnet_optimiser.models.partition.auxiliary import add_squeeze
@@ -99,41 +108,43 @@ class Partition():
         return cluster
 
     def max_compute_node_latency(self):
-        # return max([ self.graph.nodes[node]["hw"].get_latency() for node in
-        #              self.graph.nodes() ])
         max_latency = 0
         for node in self.graph.nodes():
             if self.graph.nodes[node]["type"] != LAYER_TYPE.Squeeze:
-                latency = self.graph.nodes[node]["hw"].get_latency()
+                latency = self.graph.nodes[node]["hw"].latency()
                 if latency > max_latency:
                     max_latency = latency
 
         return max_latency
 
     def is_input_memory_bound(self):
-        input_node  = graphs.get_input_nodes(self.graph)[0]
         max_compute_latency = self.max_compute_node_latency()
 
         for node in self.graph.nodes():
-            if self.graph.nodes[node]["type"] == LAYER_TYPE.InnerProduct:
-                return False
+            if self.graph.nodes[node]["type"] == LAYER_TYPE.Squeeze:
+                latency = self.graph.nodes[node]["hw"].latency()
+                if latency > max_compute_latency and self.graph.nodes[node]["hw"].coarse_in < self.graph.nodes[node]["hw"].coarse_out:
+                    return True
 
-        return self.graph.nodes[input_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[input_node]["hw"].get_latency() > max_compute_latency
+        return False
 
+    
     def is_output_memory_bound(self):
-        output_node  = graphs.get_output_nodes(self.graph)[0]
         max_compute_latency = self.max_compute_node_latency()
 
         for node in self.graph.nodes():
-            if self.graph.nodes[node]["type"] == LAYER_TYPE.InnerProduct:
-                return False
+            if self.graph.nodes[node]["type"] == LAYER_TYPE.Squeeze:
+                latency = self.graph.nodes[node]["hw"].latency()
+                if latency > max_compute_latency and self.graph.nodes[node]["hw"].coarse_in > self.graph.nodes[node]["hw"].coarse_out:
+                    return True
 
-        return self.graph.nodes[output_node]["type"] == LAYER_TYPE.Squeeze and self.graph.nodes[output_node]["hw"].get_latency() > max_compute_latency
+        return False
 
     def reset(self):
         self.remove_squeeze()
         self.remove_weights_reloading_transform()
-
+        self.need_optimise = True
+        
         for node in self.graph.nodes():
             self.graph.nodes[node]["hw"].coarse_in = 1
             self.graph.nodes[node]["hw"].coarse_out = 1

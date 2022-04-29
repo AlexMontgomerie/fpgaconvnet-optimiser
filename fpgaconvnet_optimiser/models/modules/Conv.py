@@ -17,7 +17,7 @@ from typing import Union, List
 from dataclasses import dataclass, field
 
 from fpgaconvnet_optimiser.models.modules import Module
-from fpgaconvnet_optimiser.tools.resource_model import dsp_multiplier_resource_model
+from fpgaconvnet_optimiser.tools.resource_model import dsp_multiplier_resource_model, bram_array_resource_model
 
 @dataclass
 class Conv(Module):
@@ -61,6 +61,9 @@ class Conv(Module):
             raise TypeError
 
         # load the resource model coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/conv_lut.npy"))
@@ -73,6 +76,10 @@ class Conv(Module):
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/conv_dsp.npy"))
+
+        os.chdir(work_dir)
+
+        self.uram_weight = False
 
     def utilisation_model(self):
         return {
@@ -115,8 +122,16 @@ class Conv(Module):
         rsc = Module.rsc(self, coef)
         # update the dsp usage
         rsc["DSP"] = dot_product_dsp
-        # set the BRAM usage to zero
-        rsc["BRAM"] = 0
+        # weights bram
+        n_filters = float(self.filters*self.channels/self.groups*self.kernel_size[0]*self.kernel_size[1])/self.fine
+        weights_bram = bram_array_resource_model(n_filters, self.weight_width, 'memory')
+
+        if self.uram_weight and weights_bram > 0:
+            rsc["BRAM"] = 0
+            rsc["URAM"] = math.ceil(n_filters/4096)*math.ceil(self.fine*self.weight_width/72)
+        else:
+            rsc["BRAM"] = weights_bram*self.fine
+            rsc["URAM"] = 0
         # return the resource model
         return rsc
 

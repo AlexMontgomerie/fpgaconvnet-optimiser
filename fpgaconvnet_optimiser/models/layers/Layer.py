@@ -12,7 +12,7 @@ from fpgaconvnet_optimiser.models.layers.utils import get_factors
 from fpgaconvnet_optimiser.models.layers.utils import balance_module_rates
 
 import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
-from fpgaconvnet_optimiser.tools.resource_model import bram_stream_resource_model
+from fpgaconvnet_optimiser.tools.resource_model import bram_array_resource_model
 
 @dataclass
 class Layer:
@@ -48,7 +48,7 @@ class Layer:
     _coarse_in: int
     _coarse_out: int
     data_width: int = field(default=16, init=True)
-    buffer_depth: int = field(default=0, init=False)
+    buffer_depth: int = field(default=2, init=False)
     modules: dict = field(default_factory=collections.OrderedDict, init=False)
 
     @property
@@ -287,7 +287,8 @@ class Layer:
         return {
             "LUT"   : 0,
             "FF"    : 0,
-            "BRAM"  : bram_stream_resource_model(self.buffer_depth,self.data_width)*self.streams_in(),
+            "BRAM"  : bram_array_resource_model(self.buffer_depth, self.data_width, 'stream')*self.streams_in(),
+            "URAM" :  0,
             "DSP"   : 0
         }
 
@@ -310,8 +311,8 @@ class Layer:
         parameters.rows_out     = self.rows_out()
         parameters.cols_out     = self.cols_out()
         parameters.channels_out = self.channels_out()
-        parameters.coarse_in    = self.streams_in()
-        parameters.coarse_out   = self.streams_out()
+        parameters.coarse_in    = self.coarse_in
+        parameters.coarse_out   = self.coarse_out
 
     def get_operations(self):
         return 0

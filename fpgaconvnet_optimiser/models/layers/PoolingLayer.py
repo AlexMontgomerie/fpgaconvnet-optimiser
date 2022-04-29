@@ -6,6 +6,7 @@ from typing import Union, List
 
 from fpgaconvnet_optimiser.models.modules import SlidingWindow
 from fpgaconvnet_optimiser.models.modules import Pool
+from fpgaconvnet_optimiser.models.modules import FIFO
 from fpgaconvnet_optimiser.models.layers import Layer
 
 class PoolingLayer(Layer):
@@ -210,17 +211,27 @@ class PoolingLayer(Layer):
 
     def resource(self):
 
+        # instances
         sw_rsc      = self.modules['sliding_window'].rsc()
         pool_rsc    = self.modules['pool'].rsc()
 
+        # streams
+        sw_out = FIFO(1, 1, 1, self.coarse*self.kernel_size[0]*self.kernel_size[1], self.buffer_depth)
+        sw_out.data_width = self.data_width
+        sw_out_rsc = sw_out.rsc()
+        
         # Total
         return {
             "LUT"  :  sw_rsc['LUT']*self.coarse +
-                      pool_rsc['LUT']*self.coarse,
+                      pool_rsc['LUT']*self.coarse + 
+                      sw_out_rsc['LUT'],
             "FF"   :  sw_rsc['FF']*self.coarse +
-                      pool_rsc['FF']*self.coarse,
+                      pool_rsc['FF']*self.coarse + 
+                      sw_out_rsc['FF'],
             "BRAM" :  sw_rsc['BRAM']*self.coarse +
-                      pool_rsc['BRAM']*self.coarse,
+                      pool_rsc['BRAM']*self.coarse+ 
+                      sw_out_rsc['BRAM'],
+            "URAM" :  0,
             "DSP" :   sw_rsc['DSP']*self.coarse +
                       pool_rsc['DSP']*self.coarse
         }

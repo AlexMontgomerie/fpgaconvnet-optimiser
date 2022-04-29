@@ -4,6 +4,7 @@ Base class for all hardware module models.
 
 import numpy as np
 import os
+import sys
 import copy
 from typing import List
 from dataclasses import dataclass, field

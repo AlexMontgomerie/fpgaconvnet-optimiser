@@ -374,6 +374,7 @@ class MultiPortLayer:
             "LUT"   : 0,
             "FF"    : 0,
             "BRAM"  : math.ceil(self.buffer_depth*self.data_width/18000)*self.streams_in(),
+            "URAM" :  0,
             "DSP"   : 0
         }
 

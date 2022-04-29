@@ -24,13 +24,13 @@ class SimulatedAnnealing(Optimiser):
     change is accepted based on a probability-based decision function
     """
 
-    def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,
+    def __init__(self,name,network_path,platform,T=10.0,k=0.001,T_min=0.0001,cool=0.97,
             iterations=10,transforms_config={},fix_starting_point_config={},
             data_width=16,weight_width=8,acc_width=30,fuse_bn=True,checkpoint=False,
             checkpoint_path="."):
 
         # Initialise Network
-        Optimiser.__init__(self,name,network_path,transforms_config,
+        Optimiser.__init__(self,name,network_path,platform,transforms_config,
                 fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
 
         # Simulate Annealing Variables
@@ -50,11 +50,12 @@ class SimulatedAnnealing(Optimiser):
         # resources
         resources = [ partition.get_resource_usage() for partition in self.partitions ]
         BRAM = max([ resource['BRAM'] for resource in resources ])
+        URAM = max([ resource['URAM'] for resource in resources ])
         DSP  = max([ resource['DSP']  for resource in resources ])
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
         # print the current status of the optimiser
-        print(f"{self.T:.5e}\t{abs(self.get_cost()):.5e}\t\t  {int(BRAM):4d} | {int(DSP):4d} | {int(LUT):6d} | {int(FF):6d}",end=return_char)
+        print(f"{self.T:.5e}\t{abs(self.get_cost()):.5e}\t\t  {int(BRAM):4d} | {int(URAM):4d} | {int(DSP):4d} | {int(LUT):6d} | {int(FF):6d}",end=return_char)
 
     def run_optimiser(self, log=True):
 
@@ -107,7 +108,7 @@ class SimulatedAnnealing(Optimiser):
         # print the header for the optimiser status
         objectives = ['latency (s)','throughput (fps)']
         objective  = objectives[self.objective]
-        print(f"Temperature\t{objective}\t  BRAM | DSP  | LUT    | FF    ")
+        print(f"Temperature\t{objective}\t  BRAM | URAM  | DSP  | LUT    | FF    ")
 
         # Cooling Loop
         cooltimes=0

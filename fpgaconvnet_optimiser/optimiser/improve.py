@@ -19,10 +19,10 @@ class Improve(Optimiser):
     Chooses the hardware component causing a bottleneck and performs the same decision as simulated annealing
     """
 
-    def __init__(self,name,network_path,T=10.0,k=0.0001,T_min=0.0001,cool=0.95,iterations=50,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
+    def __init__(self,name,network_path,platform,T=10.0,k=0.0001,T_min=0.0001,cool=0.95,iterations=50,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
 
         # Initialise Network
-        Optimiser.__init__(self,name,network_path,transforms_config,fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
+        Optimiser.__init__(self,name,network_path,platform,transforms_config,fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
 
         # Simulate Annealing Variables
         self.T          = T
@@ -47,12 +47,13 @@ class Improve(Optimiser):
         # Resources
         resources = [ partition.get_resource_usage() for partition in self.partitions ]
         BRAM = max([ resource['BRAM'] for resource in resources ])
+        URAM = max([ resource['URAM'] for resource in resources ])
         DSP  = max([ resource['DSP']  for resource in resources ])
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
         sys.stdout.write("\033[K")
-        print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-            temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
+        print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{URAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|URAM|DSP|LUT|FF)".format(
+            temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),URAM=int(URAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
     def run_optimiser(self, log=True):
         # update all partitions
@@ -130,7 +131,7 @@ class Improve(Optimiser):
                 partition_index    = np.random.choice(np.arange(len(self.partitions)), 1, p=(partition_latencys/sum(partition_latencys)))[0]
 
                 ## Choose slowest node in partition
-                node_latencys = np.array([ self.partitions[partition_index].graph.nodes[layer]['hw'].get_latency() \
+                node_latencys = np.array([ self.partitions[partition_index].graph.nodes[layer]['hw'].latency() \
                         for layer in graphs.ordered_node_list(self.partitions[partition_index].graph) ])
                 node = np.random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph), 1, p=(node_latencys/sum(node_latencys)))[0]
 

@@ -40,7 +40,8 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
             partition.output_node = self.partitions[i].output_nodes[0]
         partition.batch_size  = self.partitions[i].batch_size
         partition.weights_reloading_factor = self.partitions[i].wr_factor
-        partition.weights_reloading_layer  = str(self.partitions[i].wr_layer)
+        partition.weights_reloading_layer  = onnx_helper.gen_layer_name(
+                    self.partitions[i].graph, self.partitions[i].wr_layer)
         # add all layers (in order)
         for node in graphs.ordered_node_list(self.partitions[i].graph):
             # create layer
@@ -60,7 +61,7 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
                     self.partitions[i].graph, prev_nodes[0]) # REQUIRED EDIT
                 layer.node_in   = prev_layer_name #REQUIRED EDIT
                 stream_in.name  = "_".join([prev_layer_name, layer.name]) # REQUIRED EDIT
-            stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_in
+            stream_in.coarse = self.partitions[i].graph.nodes[node]['hw'].streams_in()
             # add stream(s) out
             stream_out = layer.streams_out.add()
             next_nodes = graphs.get_next_nodes(self.partitions[i].graph, node)
@@ -72,7 +73,7 @@ def save_all_partitions(self,filepath,input_output_from_model=True):
                     self.partitions[i].graph, next_nodes[0]) # REQUIRED EDIT
                 layer.node_out  = next_layer_name
                 stream_out.name = "_".join([layer.name, next_layer_name])
-            stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].coarse_out
+            stream_out.coarse = self.partitions[i].graph.nodes[node]['hw'].streams_out()
             # add parameters
             self.partitions[i].graph.nodes[node]['hw'].layer_info(layer.parameters, batch_size=self.partitions[i].batch_size)
             # add weights key

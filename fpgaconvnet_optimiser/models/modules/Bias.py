@@ -15,7 +15,7 @@ import sys
 from dataclasses import dataclass, field
 
 from fpgaconvnet_optimiser.models.modules import Module
-#from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
+from fpgaconvnet_optimiser.tools.resource_model import bram_array_resource_model
 from fpgaconvnet_optimiser.tools.resource_model import dsp_multiplier_resource_model
 
 @dataclass
@@ -25,6 +25,9 @@ class Bias(Module):
 
     def __post_init__(self):
         # load the resource model coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+
         #TODO add model coefs FOR BIAS - currently using conv to approx.
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
@@ -40,6 +43,7 @@ class Bias(Module):
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/accum_dsp.npy"))
 
+        os.chdir(work_dir)
 
 
     def utilisation_model(self):#TODO - copied from acum, FIXME
@@ -71,13 +75,13 @@ class Bias(Module):
         if coef == None:
             coef = self.rsc_coef
         # get an estimate for the dsp usage
-        dot_product_dsp = dsp_multiplier_resource_model(self.biases_width, self.data_width)
+        #dot_product_dsp = dsp_multiplier_resource_model(self.biases_width, self.data_width)
         # get the linear model estimation
         rsc = Module.rsc(self, coef)
         # update the dsp usage
-        rsc["DSP"] = dot_product_dsp
-        # set the BRAM usage to zero
-        rsc["BRAM"] = 0
+        #rsc["DSP"] = dot_product_dsp
+        # bias usage
+        rsc["BRAM"] = bram_array_resource_model(self.filters, self.biases_width, "memory")
         # return the resource model
         return rsc
 

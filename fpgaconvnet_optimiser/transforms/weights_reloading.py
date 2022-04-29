@@ -10,6 +10,8 @@ import fpgaconvnet_optimiser.transforms.helper as helper
 
 from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE
 
+import numpy as np
+
 transformable_layers = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
 
 def get_wr_layer(self):
@@ -105,24 +107,28 @@ def apply_weights_reloading_transform(self):
         # update number of filters in wr layer
         filters = self.graph.nodes[self.wr_layer]['hw'].filters
         self.graph.nodes[self.wr_layer]['hw'].filters = filters//self.wr_factor
-        # make sure the coarse out factor is not larger than the filters
-        self.graph.nodes[self.wr_layer]['hw'].coarse_out = min(
-            max(self.graph.nodes[self.wr_layer]['hw'].get_coarse_out_feasible()),
-            self.graph.nodes[self.wr_layer]['hw'].coarse_out
-        )
         # iterate until the end to update the rest of the channels
         layers_after = graphs.get_next_nodes_all(self.graph, self.wr_layer)
         for layer in layers_after:
             ## get channels and reduce by wr factor
             channels = self.graph.nodes[layer]['hw'].channels_in()
             self.graph.nodes[layer]['hw'].channels = channels//self.wr_factor
-            # make sure the coarse out factor is not larger than the filters
-            self.graph.nodes[layer]['hw'].coarse_in = min(
-                max(self.graph.nodes[layer]['hw'].get_coarse_in_feasible()),
-                self.graph.nodes[layer]['hw'].coarse_in
-            )
-            # make sure the coarse out factor is not larger than the filters
-            self.graph.nodes[layer]['hw'].coarse_out = min(
-                max(self.graph.nodes[layer]['hw'].get_coarse_out_feasible()),
-                self.graph.nodes[layer]['hw'].coarse_out
-            )
+
+    self.fix_coarse()     
+
+def apply_less_weight_reloading(self):
+    # get the weights reloading layer in partition
+    self.wr_layer = self.get_wr_layer()
+    wr_factor = self.wr_factor
+
+    if self.wr_layer and wr_factor > 1:
+        # remove weights reloading transform
+        self.remove_weights_reloading_transform()
+        sorted_wr_feasible = np.sort(self.graph.nodes[self.wr_layer]['hw'].get_weights_reloading_feasible())[::-1]
+        wr_factor_index = sorted_wr_feasible.tolist().index(wr_factor) + 1
+        self.wr_factor = int(sorted_wr_feasible[wr_factor_index])
+        # apply weights reloading transform
+        self.apply_weights_reloading_transform()
+        return True
+
+    return False

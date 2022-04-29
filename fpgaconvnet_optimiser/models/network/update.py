@@ -27,16 +27,30 @@ def update_partitions(self):
         ## update batch size for partitions
         self.partitions[partition_index].batch_size = self.batch_size
 
-def update_platform(self, platform_path):
-
-    # get platform
-    with open(platform_path,'r') as f:
-        platform = json.load(f)
+def update_platform(self, platform):
+    # platform
+    self.platform = {
+        'name'          : 'platform',
+        'freq'          : self.freq,
+        'reconf_time'   : 0.0,
+        'wr_time'       : 0.0,
+        'ports'         : 4,
+        'port_width'    : 64,
+        'mem_bandwidth' : 0,
+        'mem_capacity'  : 0,
+        'constraints'   : {
+            'FF'    : 0,
+            'LUT'   : 0,
+            'DSP'   : 0,
+            'BRAM'  : 0,
+            'URAM'  : 0
+        }
+    }
 
     # update platform information
     #self.platform['name']           = paltform['name']
     self.platform['ports']          = int(platform['ports'])
-    #self.platform['port_width']     = int(platform['port_width'])
+    self.platform['port_width']     = int(platform['port_width'])
     #self.platform['freq']           = int(platform['freq'])
     self.platform['reconf_time']    = float(platform['reconf_time'])
     self.platform['mem_capacity']   = int(platform['mem_capacity'])
@@ -47,6 +61,12 @@ def update_platform(self, platform_path):
     self.platform['constraints']['DSP']  = platform['DSP']
     self.platform['constraints']['LUT']  = platform['LUT']
     self.platform['constraints']['BRAM'] = platform['BRAM']
+
+    if 'URAM' in platform.keys():
+        self.platform['constraints']['URAM'] = platform['URAM']
+
+    if 'rsc_allocation' in platform.keys():
+        self.rsc_allocation = platform['rsc_allocation']
 
 def update_coarse_in_out_partition(self):
     if len(self.partitions) > 1:

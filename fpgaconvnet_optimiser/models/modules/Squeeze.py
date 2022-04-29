@@ -1,5 +1,4 @@
 import numpy as np
-import math
 import os
 import sys
 from dataclasses import dataclass, field
@@ -13,6 +12,8 @@ class Squeeze(Module):
 
     def __post_init__(self):
         # load the resource model coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/squeeze_lut.npy"))
@@ -25,7 +26,8 @@ class Squeeze(Module):
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/squeeze_dsp.npy"))
-
+        os.chdir(work_dir)
+        
     def module_info(self):
         # get the base module fields
         info = Module.module_info(self)
@@ -34,9 +36,6 @@ class Squeeze(Module):
         info["coarse_out"] = self.coarse_out
         # return the info
         return info
-
-    def lcm(a, b):
-        return abs(a*b) // math.gcd(a, b)
 
     def functional_model(self, data):
         # check input dimensionality

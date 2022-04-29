@@ -28,13 +28,16 @@ from fpgaconvnet_optimiser.models.layers import SqueezeLayer
 
 class Network():
 
-    def __init__(self, name, network_path, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True, rsc_allocation=1.0):
+    def __init__(self, name, network_path, platform, batch_size=1, freq=125, reconf_time=0.0, data_width=16, weight_width=8, acc_width=30, fuse_bn=True, rsc_allocation=0.75):
+        self.freq = freq
 
         # empty transforms configuration
         self.transforms_config = {}
 
         ## percentage resource allocation
         self.rsc_allocation = rsc_allocation
+
+        self.update_platform(platform)
 
         ## bitwidths
         self.data_width     = data_width
@@ -64,25 +67,7 @@ class Network():
         # partitions
         self.partitions = [ Partition(copy.deepcopy(self.graph),
                 data_width=self.data_width, weight_width=self.weight_width,
-                acc_width=self.acc_width) ]
-
-        # platform
-        self.platform = {
-            'name'          : 'platform',
-            'freq'          : freq,
-            'reconf_time'   : 0.0,
-            'wr_time'       : 0.0,
-            'ports'         : 4,
-            'port_width'    : 64,
-            'mem_bandwidth' : 0,
-            'mem_capacity'  : 0,
-            'constraints'   : {
-                'FF'    : 0,
-                'LUT'   : 0,
-                'DSP'   : 0,
-                'BRAM'  : 0
-            }
-        }
+                acc_width=self.acc_width, port_width=self.platform['port_width']) ]
 
         # all types of layers
         self.conv_layers = helper.get_all_layers(self.graph, LAYER_TYPE.Convolution)
@@ -92,6 +77,7 @@ class Network():
         self.update_partitions()
 
     from fpgaconvnet_optimiser.transforms.partition import check_parallel_block
+    from fpgaconvnet_optimiser.transforms.partition import check_config_allowed_partitions 
     from fpgaconvnet_optimiser.transforms.partition import get_all_horizontal_splits
     from fpgaconvnet_optimiser.transforms.partition import get_all_vertical_splits
     from fpgaconvnet_optimiser.transforms.partition import get_all_horizontal_merges
@@ -108,7 +94,7 @@ class Network():
     from fpgaconvnet_optimiser.transforms.partition import merge_complete
     from fpgaconvnet_optimiser.transforms.partition import apply_random_partition
 
-    from fpgaconvnet_optimiser.models.network.report import create_report
+    from fpgaconvnet_optimiser.models.network.report import create_report, get_max_resource_usage
 
     from fpgaconvnet_optimiser.models.network.scheduler import get_partition_order
     from fpgaconvnet_optimiser.models.network.scheduler import get_input_base_addr

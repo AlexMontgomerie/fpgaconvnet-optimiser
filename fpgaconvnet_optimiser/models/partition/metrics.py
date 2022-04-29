@@ -94,7 +94,8 @@ def get_resource_usage(self):
             'FF'    : 0,
             'LUT'   : 0,
             'DSP'   : 0,
-            'BRAM'  : 0
+            'BRAM'  : 0,
+            'URAM'  : 0
         }
         # iterate over nodes in partition
         for node in self.graph.nodes():
@@ -105,6 +106,7 @@ def get_resource_usage(self):
             resource_usage['LUT']   += resource_usage_node['LUT']
             resource_usage['DSP']   += resource_usage_node['DSP']
             resource_usage['BRAM']  += resource_usage_node['BRAM']
+            resource_usage['URAM']  += resource_usage_node['URAM']
         # return resource usage for partition
         return resource_usage
 

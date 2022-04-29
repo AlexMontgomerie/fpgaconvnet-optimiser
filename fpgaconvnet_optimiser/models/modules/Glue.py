@@ -18,10 +18,14 @@ class Glue(Module):
     filters: int
     coarse_in: int
     coarse_out: int
+    coarse_group: int
     acc_width: int = field(default=16, init=False)
 
     def __post_init__(self):
         # load the resource model coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/glue_lut.npy"))
@@ -34,6 +38,8 @@ class Glue(Module):
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/glue_dsp.npy"))
+
+        os.chdir(work_dir)
 
     def utilisation_model(self):
         return {
@@ -49,8 +55,8 @@ class Glue(Module):
     def channels_out(self):
         return self.filters
 
-    def get_latency(self):
-        return self.rows *self.cols *self.filters / self.coarse_out
+    def latency(self):
+        return self.rows *self.cols *self.filters / (self.coarse_out * self.coarse_group)
 
     def module_info(self):
         # get the base module fields

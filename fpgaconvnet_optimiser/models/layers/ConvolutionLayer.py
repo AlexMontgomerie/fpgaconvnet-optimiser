@@ -6,13 +6,12 @@ from typing import Union, List
 
 from fpgaconvnet_optimiser.models.layers.utils import get_factors
 
-from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model
-
 from fpgaconvnet_optimiser.models.modules import SlidingWindow
 from fpgaconvnet_optimiser.models.modules import Conv
 from fpgaconvnet_optimiser.models.modules import Fork
 from fpgaconvnet_optimiser.models.modules import Accum
 from fpgaconvnet_optimiser.models.modules import Glue
+from fpgaconvnet_optimiser.models.modules import FIFO
 from fpgaconvnet_optimiser.models.modules import Bias
 from fpgaconvnet_optimiser.models.layers import Layer
 
@@ -100,20 +99,17 @@ class ConvolutionLayer(Layer):
         self._pad_left = self._pad[1]
 
         # init modules
-        self.modules["sliding_window"] = SlidingWindow(self.rows_in(), self.cols_in(),
-                int(self.channels_in()/self.coarse_in), self.kernel_size, self.stride,
-                self.pad_top, self.pad_right, self.pad_bottom, self.pad_left)
-        self.modules["fork"] = Fork(self.rows_out(), self.cols_out(),
-                int(self.channels_in()/self.coarse_in), self.kernel_size, self.coarse_out)
-        self.modules["conv"] = Conv(self.rows_out(), self.cols_out(),
-                int(self.channels_in()/self.coarse_in), int(self.filters/self.coarse_out),
-                self.fine, self.kernel_size, self.groups)
-        self.modules["accum"] = Accum(self.rows_out(), self.cols_out(),
-                int(self.channels_in()/self.coarse_in),
-                int(self.filters/self.coarse_out), self.groups)
-        self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1,
-                int(self.filters/self.coarse_out), self.coarse_in, self.coarse_out)
-        self.modules["bias"] = Bias(self.rows_out(), self.cols_out(), 1, self.filters)
+        self.modules["sliding_window"] = SlidingWindow(self.rows_in(), self.cols_in(), self.channels_in()//(self.coarse_in*self.coarse_group),
+                self.kernel_size, self.stride, self.pad_top, self.pad_right, self.pad_bottom, self.pad_left)
+        self.modules["fork"] = Fork(self.rows_out(), self.cols_out(), self.channels_in()//(self.coarse_in*self.coarse_group),
+                self.kernel_size, self.coarse_out)
+        self.modules["conv"] = Conv(self.rows_out(), self.cols_out(), self.channels_in()//(self.coarse_in*self.coarse_group),
+                self.filters//(self.coarse_out*self.coarse_group), self.fine, self.kernel_size, self.groups//self.coarse_group)
+        self.modules["accum"] = Accum(self.rows_out(), self.cols_out(), self.channels_in()//(self.coarse_in*self.coarse_group),
+                self.filters//(self.coarse_out*self.coarse_group), self.groups//self.coarse_group)
+        self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1, self.filters//self.coarse_group,
+                self.coarse_in, self.coarse_out, self.coarse_group)
+        self.modules["bias"] = Bias(self.rows_out(), self.cols_out(), 1, self.filters//(self.coarse_out*self.coarse_group))
 
         self.update()
 
@@ -210,6 +206,12 @@ class ConvolutionLayer(Layer):
     def channels_out(self) -> int:
         return self.filters
 
+    def streams_in(self) -> int:
+        return self.coarse_in * self.coarse_group
+
+    def streams_out(self) -> int:
+        return self.coarse_out * self.coarse_group
+
     def layer_info(self,parameters,batch_size=1):
         Layer.layer_info(self, parameters, batch_size)
         parameters.filters      = self.filters
@@ -264,14 +266,21 @@ class ConvolutionLayer(Layer):
         self.modules['glue'].filters    = self.filters//self.coarse_group
         self.modules['glue'].coarse_in  = self.coarse_in
         self.modules['glue'].coarse_out = self.coarse_out
+        self.modules['glue'].coarse_group = self.coarse_group
         self.modules['glue'].data_width = self.output_width
         self.modules['glue'].acc_width  = self.acc_width
         # bias
         self.modules['bias'].rows           = self.rows_out()
         self.modules['bias'].cols           = self.cols_out()
-        self.modules['bias'].filters        = self.filters
+        self.modules['bias'].filters        = self.filters//(self.coarse_out*self.coarse_group)
         self.modules['bias'].data_width     = self.output_width
         self.modules['bias'].biases_width   = self.biases_width
+
+    def get_coarse_in_feasible(self,wr_factor=1):
+        return get_factors(int(self.channels_in()/(self.groups*wr_factor)))
+
+    def get_coarse_out_feasible(self,wr_factor=1):
+        return get_factors(int(self.channels_out()/(self.groups*wr_factor)))
 
     def get_coarse_group_feasible(self):
         return get_factors(self.groups)
@@ -284,7 +293,10 @@ class ConvolutionLayer(Layer):
             return [ 1, self.kernel_size[0], self.kernel_size[0]*self.kernel_size[1] ]
 
     def get_weights_reloading_feasible(self):
-        return get_factors(self.filters//(self.groups*self.coarse_out))
+        if self.groups == 1:
+            return get_factors(self.filters//(self.groups*self.coarse_out))
+        else:
+            return [1]
 
     def get_parameters_size(self):
         weights_size = self.channels_in() * ( self.filters // self.groups ) * self.kernel_size[0] * self.kernel_size[1]
@@ -299,6 +311,7 @@ class ConvolutionLayer(Layer):
 
     def resource(self):
 
+        # instances
         sw_rsc      = self.modules['sliding_window'].rsc()
         fork_rsc    = self.modules['fork'].rsc()
         conv_rsc    = self.modules['conv'].rsc()
@@ -306,32 +319,37 @@ class ConvolutionLayer(Layer):
         glue_rsc    = self.modules['glue'].rsc()
         bias_rsc    = self.modules['bias'].rsc()
 
+        # streams
+        sw_out = FIFO(1, 1, 1, self.coarse_in*self.coarse_group*self.kernel_size[0]*self.kernel_size[1], self.buffer_depth)
+        sw_out.data_width = self.data_width
+        sw_out_rsc = sw_out.rsc()
+
+        fork_out = FIFO(1, 1, 1, self.coarse_in*self.coarse_group*self.coarse_out*self.kernel_size[0]*self.kernel_size[1], self.buffer_depth)
+        fork_out.data_width = self.data_width
+        fork_out_rsc = fork_out.rsc()
+
+        conv_out = FIFO(1, 1, 1, self.coarse_in*self.coarse_group*self.coarse_out, self.buffer_depth)
+        conv_out.data_width = self.acc_width
+        conv_out_rsc = conv_out.rsc()
+
+        accum_out = FIFO(1, 1, 1, self.coarse_in*self.coarse_group*self.coarse_out, self.modules['accum'].filters // self.modules['accum'].groups + 1)
+        accum_out.data_width = self.acc_width
+        accum_out_rsc = accum_out.rsc()
+
         if self.kernel_size[0] == 1 and self.kernel_size[1] == 1:
             sw_rsc      = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if self.coarse_out == 1:
-            fork_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if int(self.channels_in()/(self.coarse_in*self.coarse_group)) == 1:
-            accum_rsc   = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-        if self.coarse_in == 1:
-            glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+            sw_out_rsc  = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #if self.coarse_out == 1:
+        #    fork_rsc     = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #    fork_out_rsc = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #if int(self.channels/(self.coarse_in*self.group)) == 1:
+        #    accum_rsc     = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #    accum_out_rsc = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
+        #if self.coarse_in == 1:
+        #    glue_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
         # condition if there are no biases for the layer
-        if self.has_bias:
+        if not self.has_bias:
             bias_rsc    = {"LUT" : 0,"BRAM" : 0,"DSP" : 0,"FF" : 0}
-
-        # weight usage
-        weight_memory_depth = float((self.filters/self.groups)* \
-                                    self.channels_in()* \
-                                    self.kernel_size[0]* \
-                                    self.kernel_size[1]) / \
-            float(self.fine*self.coarse_in*self.coarse_out*self.coarse_group)
-        weights_bram_usage = bram_memory_resource_model(
-                    int(weight_memory_depth),self.weight_width) * \
-                self.coarse_in*self.coarse_out*self.coarse_group*self.fine
-
-        # bias usage FIXME depth, FIXME bram usage
-        bias_memory_depth = float(self.filters) / float(self.coarse_out)
-        biases_bram_usage = bram_memory_resource_model(
-                    int(bias_memory_depth),self.biases_width) * self.coarse_out
 
         # Total
         return {
@@ -339,28 +357,39 @@ class ConvolutionLayer(Layer):
                       fork_rsc['LUT']*self.coarse_in*self.coarse_group +
                       conv_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['LUT']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['LUT']*self.coarse_group +
-                      bias_rsc['LUT']*self.coarse_out,
+                      glue_rsc['LUT'] +
+                      bias_rsc['LUT']*self.coarse_out*self.coarse_group +
+                      sw_out_rsc['LUT'] +
+                      fork_out_rsc['LUT'] +
+                      conv_out_rsc['LUT'] +
+                      accum_out_rsc['LUT'],
             "FF"   :  sw_rsc['FF']*self.coarse_in*self.coarse_group +
                       fork_rsc['FF']*self.coarse_in*self.coarse_group +
                       conv_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['FF']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['FF']*self.coarse_group +
-                      bias_rsc['FF']*self.coarse_out,
+                      glue_rsc['FF'] +
+                      bias_rsc['FF']*self.coarse_out*self.coarse_group +
+                      sw_out_rsc['FF'] +
+                      fork_out_rsc['FF'] +
+                      conv_out_rsc['FF'] +
+                      accum_out_rsc['FF'],
             "BRAM" :  sw_rsc['BRAM']*self.coarse_in*self.coarse_group +
                       fork_rsc['BRAM']*self.coarse_in*self.coarse_group +
                       conv_rsc['BRAM']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      accum_rsc['BRAM']*self.coarse_out*self.coarse_group +
-                      glue_rsc['BRAM']*self.coarse_group +
-                      bias_rsc['BRAM']*self.coarse_out +
-                      weights_bram_usage +
-                      biases_bram_usage,
+                      accum_rsc['BRAM']*self.coarse_in*self.coarse_out*self.coarse_group +
+                      glue_rsc['BRAM'] +
+                      bias_rsc['BRAM']*self.coarse_out*self.coarse_group +
+                      sw_out_rsc['BRAM'] +
+                      fork_out_rsc['BRAM'] +
+                      conv_out_rsc['BRAM'] +
+                      accum_out_rsc['BRAM'],
+            "URAM" :  conv_rsc['URAM']*self.coarse_in*self.coarse_out*self.coarse_group,
             "DSP" :   sw_rsc['DSP']*self.coarse_in*self.coarse_group +
                       fork_rsc['DSP']*self.coarse_in*self.coarse_group +
                       conv_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
                       accum_rsc['DSP']*self.coarse_in*self.coarse_out*self.coarse_group +
-                      glue_rsc['DSP']*self.coarse_group +
-                      bias_rsc['DSP']*self.coarse_out
+                      glue_rsc['DSP']+
+                      bias_rsc['DSP']*self.coarse_out*self.coarse_group
         }
 
     def visualise(self,name): #TODO for biases

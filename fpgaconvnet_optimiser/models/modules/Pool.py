@@ -28,6 +28,9 @@ class Pool(Module):
             raise TypeError
 
         # load the resource model coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/pool_lut.npy"))
@@ -40,6 +43,8 @@ class Pool(Module):
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/pool_dsp.npy"))
+
+        os.chdir(work_dir)
 
     def utilisation_model(self):
         return {

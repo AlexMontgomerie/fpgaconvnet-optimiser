@@ -23,6 +23,7 @@ def check_resources(self):
         assert partition_resource_usage['LUT']  <= (self.rsc_allocation*self.platform['constraints']['LUT']), "ERROR: LUT usage exceeded"
         assert partition_resource_usage['DSP']  <= (self.rsc_allocation*self.platform['constraints']['DSP']) , "ERROR: DSP usage exceeded"
         assert partition_resource_usage['BRAM'] <= (self.rsc_allocation*self.platform['constraints']['BRAM']), "ERROR: BRAM usage exceeded"
+        assert partition_resource_usage['URAM'] <= (self.rsc_allocation*self.platform['constraints']['URAM']), "ERROR: URAM usage exceeded"
 
 def get_resources_bad_partitions(self):
     bad_partitions = {}
@@ -32,14 +33,16 @@ def get_resources_bad_partitions(self):
         bad_resource = {}
         # get the resource usage for the platform
         partition_resource_usage = partition.get_resource_usage()
-        #if partition_resource_usage['FF']   > (self.platform['constraints']['FF']):
-        #    bad_resource['FF'] = partition_resource_usage['FF']
-        #if partition_resource_usage['LUT']  > (self.platform['constraints']['LUT']):
-        #    bad_resource['LUT'] = partition_resource_usage['LUT']
+        if partition_resource_usage['FF']   > (self.rsc_allocation*self.platform['constraints']['FF']):
+            bad_resource['FF'] = partition_resource_usage['FF']
+        if partition_resource_usage['LUT']  > (self.rsc_allocation*self.platform['constraints']['LUT']):
+            bad_resource['LUT'] = partition_resource_usage['LUT']
         if partition_resource_usage['DSP']  > (self.rsc_allocation*self.platform['constraints']['DSP']):
             bad_resource['DSP'] = partition_resource_usage['DSP']
         if partition_resource_usage['BRAM'] > (self.rsc_allocation*self.platform['constraints']['BRAM']):
             bad_resource['BRAM'] = partition_resource_usage['BRAM']
+        if partition_resource_usage['URAM'] > (self.rsc_allocation*self.platform['constraints']['URAM']):
+            bad_resource['URAM'] = partition_resource_usage['URAM']
 
         if len(bad_resource) > 0:
             bad_partitions[partition_index] = bad_resource

@@ -17,7 +17,7 @@ from typing import Union, List
 from dataclasses import dataclass, field
 
 from fpgaconvnet_optimiser.models.modules import Module
-from fpgaconvnet_optimiser.tools.resource_model import bram_memory_resource_model, bram_stream_resource_model
+from fpgaconvnet_optimiser.tools.resource_model import bram_array_resource_model
 
 @dataclass
 class SlidingWindow(Module):
@@ -76,6 +76,9 @@ class SlidingWindow(Module):
             raise TypeError
 
         # load the resource model coefficients
+        work_dir = os.getcwd()
+        os.chdir(sys.path[0])
+
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/sliding_window_lut.npy"))
@@ -88,6 +91,8 @@ class SlidingWindow(Module):
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/sliding_window_dsp.npy"))
+
+        os.chdir(work_dir)
 
     def utilisation_model(self):
         return {
@@ -158,10 +163,10 @@ class SlidingWindow(Module):
             coef = self.rsc_coef
         # get the line buffer BRAM estimate
         line_buffer_depth = (self.cols+self.pad_left+self.pad_right)*self.channels+1
-        line_buffer_bram = (self.kernel_size[0]-1) * bram_stream_resource_model(line_buffer_depth, self.data_width)
+        line_buffer_bram = (self.kernel_size[0]-1) * bram_array_resource_model(line_buffer_depth, self.data_width, 'stream')
         # get the window buffer BRAM estimate
         window_buffer_depth = self.channels+1
-        window_buffer_bram = self.kernel_size[0]*(self.kernel_size[1]-1) * bram_stream_resource_model(window_buffer_depth, self.data_width)
+        window_buffer_bram = self.kernel_size[0]*(self.kernel_size[1]-1) * bram_array_resource_model(window_buffer_depth, self.data_width, 'stream')
         # get the linear model estimation
         rsc = Module.rsc(self,coef)
         # add the bram estimation

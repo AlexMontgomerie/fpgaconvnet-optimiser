@@ -41,9 +41,10 @@ def add_squeeze(self):
 
     # check difference in input streams
     input_node  = graphs.get_input_nodes(self.graph)[0]
+    input_name = onnx_helper.gen_layer_name(self.graph, input_node)
     if self.streams_in != self.graph.nodes[input_node]['hw'].streams_in():
         # add node to graph
-        new_node  = "_".join([input_node,"squeeze"])
+        new_node  = "_".join(["squeeze",input_name])
         # add node to node info
         self.graph.add_node(new_node, type=LAYER_TYPE.Squeeze,
             hw=SqueezeLayer(
@@ -58,9 +59,10 @@ def add_squeeze(self):
         self.graph.add_edge(new_node,input_node)
     # check difference in output streams
     output_node = graphs.get_output_nodes(self.graph)[0]
+    output_name = onnx_helper.gen_layer_name(self.graph, output_node)
     if self.streams_out != self.graph.nodes[output_node]['hw'].streams_out():
         # add node to graph
-        new_node  = "_".join(["squeeze",output_node])
+        new_node  = "_".join([output_name,"squeeze"])
         # add node to node info
         self.graph.add_node(new_node,type=LAYER_TYPE.Squeeze,
             hw=SqueezeLayer(
