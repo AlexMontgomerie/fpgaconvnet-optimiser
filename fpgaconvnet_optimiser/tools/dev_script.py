@@ -34,6 +34,7 @@ import yaml
 #for graphing
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import json
 
 def parser_expr(filepath):
@@ -311,39 +312,40 @@ def combine_network_sections(args, ee1_data, eef_data,
     eef_len = len(eef_data["report_name"])
     for ee1_idx in range(ee1_len):
         for eef_idx in range(eef_len):
-            ee1_thr = ee1_data["throughput"][ee1_idx]
-            eef_thr = float(eef_data["throughput"][eef_idx])/eef_exit_fraction
+            ee1_thru = ee1_data["throughput"][ee1_idx]
+            eef_thru = float(eef_data["throughput"][eef_idx])/eef_exit_fraction
             #pair up each
             combined_dict["report_name"].append(
                     (ee1_data["report_name"][ee1_idx],eef_data["report_name"][eef_idx]))
             #raw throughputs
-            combined_dict["ee1_throughput"].append(ee1_thr)
+            combined_dict["ee1_throughput"].append(ee1_thru)
             combined_dict["eef_throughput"].append(eef_data["throughput"][eef_idx])
             #minimum of the exit throughputs (limiting thr)
-            combined_dict["throughput"].append(min(ee1_thr, eef_thr))
+            combined_dict["throughput"].append(min(ee1_thru, eef_thru))
             #for getting the limiting rsc
             actual_rsc = []
             for rn in rsc_names:
                 rsc_sum = ee1_data[rn][ee1_idx]+eef_data[rn][eef_idx]
                 res_percent = rsc_sum/float(platform_dict[rn])
                 combined_dict[rn].append(res_percent)
-                #data_dict[rn].append(rsc_dict[rn]) #store actual resource value
                 actual_rsc.append([res_percent,rn])
             idx_max = max(range(len(actual_rsc)), key=actual_rsc.__getitem__)
             combined_dict["resource_max"].append(actual_rsc[idx_max][0])
             combined_dict["limiting_resource"].append(actual_rsc[idx_max][1])
-
+    #change to numpy arrays
+    for key in combined_dict.keys():
+        combined_dict[key] = np.array(combined_dict[key])
     return combined_dict
 
 def pareto_front(data_dict, resource_string):
     #generate list of indices for pareto front
     #get list of throughputs and resource(s)
-
     point_len = len(data_dict["throughput"])
     #construct numpy array of throughput and resource max
     np_data = np.empty((point_len,2))
     for i,(thr,rsc) in enumerate(
-            zip(data_dict["throughput"],data_dict[resource_string])):
+            zip(data_dict["throughput"],
+                data_dict[resource_string])):
         np_data[i][0] = 1/float(thr)
         np_data[i][1] = rsc
     #print("PARETO\n",np_data)
@@ -358,11 +360,11 @@ def pareto_front(data_dict, resource_string):
         np_data = np_data[nd_point_mask]
         next_point_index = np.sum(nd_point_mask[:next_point_index])+1
     #return mask
-        #is_efficient_mask = np.zeros(point_total, dtype=bool)
-        #is_efficient_mask[is_efficient] = True
+    is_efficient_mask = np.zeros(point_total, dtype=bool)
+    is_efficient_mask[is_efficient] = True
     #print("efficieny mask\n", is_efficient_mask)
     #print("is eff\n",is_efficient)
-    return is_efficient
+    return is_efficient, is_efficient_mask
 
 
 #function to reduce copy pasting code for graph gen
@@ -370,8 +372,8 @@ def _gen_graph(args,ee_flag,baseline_flag,rsc_str,
         ee1_data,eef_data,baseline_data):
     #generate graphs of chosen resource vs throughput
     #plot baseline or otherwise as chosen
+    rsc_markers = {"LUT":'o',"FF":'s',"BRAM":'d',"DSP":'h'}
     fig, ax = plt.subplots()
-
     subtitle_str = ""
     if ee_flag:
         print("ee1 len:{}".format(len(ee1_data[rsc_str])))
@@ -421,14 +423,9 @@ def gen_graph(args):
         number of points for baseline
     '''
     rsc_names = ["LUT","FF","BRAM","DSP"]
-    #print("save name",args.save_name)
-    #print("op path",args.output_path)
     if not os.path.exists(args.output_path):
         print("Creating output path:",args.output_path)
         os.makedirs(args.output_path)
-    #print("ip path",args.input_path)
-    #print("baseline ip path",args.baseline_input_path)
-    #print("current dir",os.getcwd())
 
     if args.input_path is None:
         #doing baseline
@@ -459,7 +456,6 @@ def gen_graph(args):
     if baseline_flag:
         platform_dict=extract_rpt_data(baseline_data,
                 args.baseline_input_path)
-
     #gen max graph
     _gen_graph(args,ee_flag,baseline_flag,"resource_max",
             ee1_data,eef_data,baseline_data)
@@ -467,27 +463,46 @@ def gen_graph(args):
     #for rsc in rsc_names:
     #    _gen_graph(args,ee_flag,baseline_flag,rsc,
     #       ee1_data,eef_data,baseline_data)
-
+    # switch lists to numpy arrays
+    for key in ee1_data.keys():
+        ee1_data[key] = np.array(ee1_data[key])
+    for key in baseline_data.keys():
+        baseline_data[key] = np.array(baseline_data[key])
+    rsc_markers = {"LUT":'s',"FF":'d',"BRAM":'x',"DSP":'o'}
     #create combined plot
     if baseline_flag and ee_flag:
-        eef_exit_fraction_l = [0.1,0.2,0.25,0.33,0.5]
+        #get the numpy masks for the pareto front for ee1 and baseline
+        _, pareto_ee1_mask = pareto_front(ee1_data, "resource_max")
+        _, pareto_base_mask = pareto_front(baseline_data, "resource_max")
+        eef_exit_fraction_l = [0.1,0.2,0.25,0.33,0.5,0.7,0.9]
         for eef_frac in eef_exit_fraction_l:
             combined_data = combine_network_sections(args, ee1_data, eef_data,
                 platform_dict, baseline_data, eef_exit_fraction=eef_frac)
+            #gen pareto front for combined data
+            _, pareto_comb_mask = pareto_front(combined_data, "resource_max")
             #print graph of combined vs baseline vs ee1
             rsc_str = "resource_max"
             fig, ax = plt.subplots()
-            ax.scatter(ee1_data[rsc_str], ee1_data["throughput"], c="blue", label='EE1')
-            ax.scatter(combined_data[rsc_str], combined_data["throughput"], c="green", label='COMB')
-            ax.scatter(baseline_data[rsc_str], baseline_data["throughput"], c="red", label='BASE')
+            for rsc,mrkr in rsc_markers.items():
+                mask = pareto_ee1_mask & (ee1_data["limiting_resource"]==rsc)
+                ax.scatter(ee1_data[rsc_str][mask], ee1_data["throughput"][mask],
+                        c="blue",marker=mrkr,label=f'EE1 {rsc}s')
+            for rsc,mrkr in rsc_markers.items():
+                mask = pareto_comb_mask & (combined_data["limiting_resource"]==rsc)
+                ax.scatter(combined_data[rsc_str][mask], combined_data["throughput"][mask],
+                        c="green",marker=mrkr,label=f'COMB {rsc}s')
+            for rsc,mrkr in rsc_markers.items():
+                mask = pareto_base_mask & (baseline_data["limiting_resource"]==rsc)
+                ax.scatter(baseline_data[rsc_str][mask], baseline_data["throughput"][mask],
+                        c="red",marker=mrkr,label=f'BASE {rsc}s')
             #fix the title of the plot
             ax.set( xlabel='Fraction of {}s'.format(rsc_str),
                     ylabel='Throughput (sample/s)',
                     title='Exit resource vs throughput EEF: {}%\n({})'.format(
                         str(100*eef_frac),args.save_name))
-            ax.legend(loc='best')
+            ax.legend(loc='lower right')
             ax.grid()
-            plt.xlim(0.0,1.00)
+            plt.xlim(0.0,1.50)
             #save plot
             fig.savefig(os.path.join(args.output_path,"plot_{}_{}_{}eefp.png".format(
                 args.save_name, rsc_str, str(int(100*eef_frac)))))
