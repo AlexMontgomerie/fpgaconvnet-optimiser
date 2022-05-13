@@ -34,7 +34,9 @@ import yaml
 #for graphing
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.collections as mcol
 import matplotlib.lines as mlines
+import matplotlib.patches as mpat
 import json
 
 def parser_expr(filepath):
@@ -364,7 +366,12 @@ def pareto_front(data_dict, resource_string):
     is_efficient_mask[is_efficient] = True
     #print("efficieny mask\n", is_efficient_mask)
     #print("is eff\n",is_efficient)
-    return is_efficient, is_efficient_mask
+
+    #sort along the pareto front
+    sort_xy = np.lexsort((data_dict['resource_max'][is_efficient_mask],
+                            data_dict["throughput"][is_efficient_mask]))
+
+    return is_efficient, is_efficient_mask, sort_xy
 
 
 #function to reduce copy pasting code for graph gen
@@ -468,41 +475,76 @@ def gen_graph(args):
         ee1_data[key] = np.array(ee1_data[key])
     for key in baseline_data.keys():
         baseline_data[key] = np.array(baseline_data[key])
-    rsc_markers = {"LUT":'s',"FF":'d',"BRAM":'x',"DSP":'o'}
+
     #create combined plot
+    rsc_markers = {"LUT":'s',"FF":'d',"BRAM":'x',"DSP":'o'}
     if baseline_flag and ee_flag:
         #get the numpy masks for the pareto front for ee1 and baseline
-        _, pareto_ee1_mask = pareto_front(ee1_data, "resource_max")
-        _, pareto_base_mask = pareto_front(baseline_data, "resource_max")
+        _, pareto_ee1_mask,srt_ee1_idx = pareto_front(ee1_data, "resource_max")
+        _, pareto_base_mask,srt_base_idx = pareto_front(baseline_data, "resource_max")
+        #generate separate plots for EEF fraction
         eef_exit_fraction_l = [0.1,0.2,0.25,0.33,0.5,0.7,0.9]
         for eef_frac in eef_exit_fraction_l:
             combined_data = combine_network_sections(args, ee1_data, eef_data,
                 platform_dict, baseline_data, eef_exit_fraction=eef_frac)
             #gen pareto front for combined data
-            _, pareto_comb_mask = pareto_front(combined_data, "resource_max")
+            _, pareto_comb_mask,srt_comb_idx = pareto_front(combined_data, "resource_max")
             #print graph of combined vs baseline vs ee1
             rsc_str = "resource_max"
-            fig, ax = plt.subplots()
+            fig = plt.figure()
+            ax = plt.subplot(111)
+
+            #plot the pareto front with a line
+            ax.plot(ee1_data['resource_max'][pareto_ee1_mask][srt_ee1_idx],
+                    ee1_data['throughput'][pareto_ee1_mask][srt_ee1_idx],
+                    c="blue",label=f'EE1')
             for rsc,mrkr in rsc_markers.items():
                 mask = pareto_ee1_mask & (ee1_data["limiting_resource"]==rsc)
                 ax.scatter(ee1_data[rsc_str][mask], ee1_data["throughput"][mask],
-                        c="blue",marker=mrkr,label=f'EE1 {rsc}s')
-            for rsc,mrkr in rsc_markers.items():
-                mask = pareto_comb_mask & (combined_data["limiting_resource"]==rsc)
-                ax.scatter(combined_data[rsc_str][mask], combined_data["throughput"][mask],
-                        c="green",marker=mrkr,label=f'COMB {rsc}s')
+                        c="blue",marker=mrkr)#,label=f'{rsc}s')
+            #plot the pareto front with a line
+            ax.plot(baseline_data['resource_max'][pareto_base_mask][srt_base_idx],
+                    baseline_data['throughput'][pareto_base_mask][srt_base_idx],
+                    c="red",label=f'BASE')
+            #plot the points and limiting resource for baseline
             for rsc,mrkr in rsc_markers.items():
                 mask = pareto_base_mask & (baseline_data["limiting_resource"]==rsc)
                 ax.scatter(baseline_data[rsc_str][mask], baseline_data["throughput"][mask],
-                        c="red",marker=mrkr,label=f'BASE {rsc}s')
+                        c="red",marker=mrkr)#,label=f'{rsc}s')
+            #plot the pareto front with a line
+            ax.plot(combined_data['resource_max'][pareto_comb_mask][srt_comb_idx],
+                    combined_data['throughput'][pareto_comb_mask][srt_comb_idx],
+                    c="green",label=f'COMB')
+            #plot the points and limiting resource for combined exits
+            for rsc,mrkr in rsc_markers.items():
+                mask = pareto_comb_mask & (combined_data["limiting_resource"]==rsc)
+                ax.scatter(combined_data[rsc_str][mask], combined_data["throughput"][mask],
+                        c="green",marker=mrkr)#,label=f'{rsc}s')
             #fix the title of the plot
-            ax.set( xlabel='Fraction of {}s'.format(rsc_str),
+            ax.set( xlabel='Fraction of {}'.format(rsc_str),
                     ylabel='Throughput (sample/s)',
                     title='Exit resource vs throughput EEF: {}%\n({})'.format(
                         str(100*eef_frac),args.save_name))
-            ax.legend(loc='lower right')
             ax.grid()
-            plt.xlim(0.0,1.50)
+            ax.set_xlim(0.0,1.0)
+            #get figure position
+            box = ax.get_position()
+            #adjust figure width to fit legend
+            ax.set_position([box.x0, box.y0, box.width * 0.80, box.height])
+            # Put a legend to the right of the current axis
+            handles, labels = ax.get_legend_handles_labels()
+            #add title type thing for the resource limiters
+            l_w = mpat.Patch(color='white')
+            handles.append(l_w)
+            handles.append(l_w)
+            labels.append('Limiting')
+            labels.append('Resource:')
+            #add resource markers to legend
+            for rsc,mrkr in rsc_markers.items():
+                new_hd = mlines.Line2D([0], [0], marker=mrkr, color='black', label=rsc)
+                handles.append(new_hd)
+                labels.append(f'{rsc}s')
+            ax.legend(handles,labels, loc='center left', bbox_to_anchor=(1.01, 0.5))
             #save plot
             fig.savefig(os.path.join(args.output_path,"plot_{}_{}_{}eefp.png".format(
                 args.save_name, rsc_str, str(int(100*eef_frac)))))
@@ -596,10 +638,10 @@ def main():
     #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/conv5c_fc-bias.onnx"
 
     #FC and conv have no bias, normalised data set, threshold at .9
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io-match_trained_norm_no-bias.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io-match_trained_norm_no-bias.onnx"
 
     #brn se - less layers to simplify debug, fc has bias, 2 conv, 3 fc only
-    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se_SMOL.onnx"
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se_SMOL.onnx"
 
 
     #optimiser path - taken from opt example
