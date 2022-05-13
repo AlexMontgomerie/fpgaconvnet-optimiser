@@ -18,26 +18,25 @@ from dataclasses import dataclass, field
 @dataclass
 class ReduceMax(Module):
     def __post_init__(self):
-        #FIXME currently using relu but probably more like accum in terms of bram
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_lut.npy"))
+                "../../coefficients/reducemax_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_ff.npy"))
+                "../../coefficients/reducemax_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_bram.npy"))
+                "../../coefficients/reducemax_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/relu_dsp.npy"))
+                "../../coefficients/reducemax_dsp.npy"))
 
     def utilisation_model(self):
         return {
-            "LUT"  : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
-            "FF"   : np.array([self.data_width, math.ceil(math.log(self.channels*self.rows*self.cols,2))]),
-            "DSP"  : np.array([1]),
+            "LUT"  : np.array([self.data_width]),
+            "FF"   : np.array([self.data_width]),
+            "DSP"  : np.array([self.data_width]),
             "BRAM" : np.array([1])
         }
 

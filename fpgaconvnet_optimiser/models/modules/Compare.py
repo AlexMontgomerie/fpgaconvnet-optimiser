@@ -24,27 +24,25 @@ class Compare(Module):
     cmp_type: str = "gt"
 
     def __post_init__(self):
-        #NOTE using pool resources for now
         # load the resource model coefficients
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/pool_lut.npy"))
+                "../../coefficients/compare_lut.npy"))
         self.rsc_coef["FF"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/pool_ff.npy"))
+                "../../coefficients/compare_ff.npy"))
         self.rsc_coef["BRAM"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/pool_bram.npy"))
+                "../../coefficients/compare_bram.npy"))
         self.rsc_coef["DSP"] = np.load(
                 os.path.join(os.path.dirname(__file__),
-                "../../coefficients/pool_dsp.npy"))
+                "../../coefficients/compare_dsp.npy"))
 
     def utilisation_model(self):
-        #NOTE using pool resources for now
         return {
-            "LUT"  : np.array([1,1,self.cols,self.rows,self.channels,self.data_width]),
-            "FF"   : np.array([1,1,self.cols,self.rows,self.channels,self.data_width]),
-            "DSP"  : np.array([1]),
+            "LUT"  : np.array([self.data_width]),
+            "FF"   : np.array([self.data_width]),
+            "DSP"  : np.array([self.data_width]),
             "BRAM" : np.array([1]),
         }
 

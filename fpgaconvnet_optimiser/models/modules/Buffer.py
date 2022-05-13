@@ -84,7 +84,7 @@ class Buffer(Module):
                 int(self.rows*self.cols*self.channels), self.data_width)
         # get the linear model estimation
         rsc = Module.rsc(self, coef)
-        print("linear model:",rsc['BRAM'], "mem rsc model", buf_buffer_bram)
+        #print("linear model:",rsc['BRAM'], "mem rsc model", buf_buffer_bram)
         # add the bram estimation
         rsc["BRAM"] = buf_buffer_bram
         # return the resource usage
