@@ -107,7 +107,7 @@ class ConvolutionLayer(Layer):
                 self.filters//(self.coarse_out*self.coarse_group), self.fine, self.kernel_size, self.groups//self.coarse_group)
         self.modules["accum"] = Accum(self.rows_out(), self.cols_out(), self.channels_in()//(self.coarse_in*self.coarse_group),
                 self.filters//(self.coarse_out*self.coarse_group), self.groups//self.coarse_group)
-        self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1, self.filters//self.coarse_group,
+        self.modules["glue"] = Glue(self.rows_out(), self.cols_out(), 1, self.filters,
                 self.coarse_in, self.coarse_out, self.coarse_group)
         self.modules["bias"] = Bias(self.rows_out(), self.cols_out(), 1, self.filters//(self.coarse_out*self.coarse_group))
 

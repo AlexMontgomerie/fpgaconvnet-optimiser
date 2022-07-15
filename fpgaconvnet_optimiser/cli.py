@@ -61,7 +61,7 @@ def main():
         optimiser_config = yaml.load(f, Loader=yaml.Loader)
 
     # get platform
-    with open(platform_path,'r') as f:
+    with open(args.platform_path,'r') as f:
         platform = json.load(f)
 
     # Initialise logger
@@ -108,13 +108,6 @@ def main():
 
     # turn on debugging
     net.DEBUG = True
-
-    # get platform
-    with open(args.platform_path,'r') as f:
-        platform = json.load(f)
-
-    # update platform information
-    net.update_platform(args.platform_path)
 
     # specify optimiser objective
     if args.objective == "throughput":
