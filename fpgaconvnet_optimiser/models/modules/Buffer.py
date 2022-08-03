@@ -29,22 +29,6 @@ class Buffer(Module):
     drop_mode: bool = True
 
     def __post_init__(self):
-        #NOTE using accum resource model for now
-        # load the resource model coefficients
-        #self.rsc_coef["LUT"] = np.load(
-        #        os.path.join(os.path.dirname(__file__),
-        #        "../../coefficients/accum_lut.npy"))
-        #self.rsc_coef["FF"] = np.load(
-        #        os.path.join(os.path.dirname(__file__),
-        #        "../../coefficients/accum_ff.npy"))
-        #self.rsc_coef["BRAM"] = np.load(
-        #        os.path.join(os.path.dirname(__file__),
-        #        "../../coefficients/accum_bram.npy"))
-        #self.rsc_coef["DSP"] = np.load(
-        #        os.path.join(os.path.dirname(__file__),
-        #        "../../coefficients/accum_dsp.npy"))
-        #trying buffer coefs
-        #print("NEW BUFFER COEFFS")
         self.rsc_coef["LUT"] = np.load(
                 os.path.join(os.path.dirname(__file__),
                 "../../coefficients/buffer_lut.npy"))

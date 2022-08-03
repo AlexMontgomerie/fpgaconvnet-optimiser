@@ -168,25 +168,33 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
     #net.get_schedule_csv("scheduler.csv") #for scheduler for running on board
     #print("#################### Finished saving full network #######################")
 
-    #print("Pre Number of partitions:",len(net.partitions))
-    #saving un-optimised, unsplit network
-    old_name = net.name
-    net.name = old_name+"-noOpt-noESplit"
-    net.save_all_partitions(args.output_path)
-    print("Saved no opt, no exit split")
-    # network function to create ee partitions
-    net.name = old_name+"-noOpt"
-    net.exit_split(partition_index=0)
-    print("Exit split complete")
-    net.save_all_partitions(args.output_path)
-    print("Saved no opt")
-    #print("Post Number of partitions:",len(net.partitions))
-    net.name = old_name
+    if is_branchy:
 
-    auto_flag=True #carry out lots of runs at different rsc if true
+        #print("Pre Number of partitions:",len(net.partitions))
+        #saving un-optimised, unsplit network
+        old_name = net.name
+        net.name = old_name+"-noOpt-noESplit"
+        net.save_all_partitions(args.output_path)
+        print("Saved no opt, no exit split")
+        #NOTE removing for time being
+
+        # network function to create ee partitions
+        #net.name = old_name+"-noOpt"
+        #net.exit_split(partition_index=0)
+        #print("Exit split complete")
+        #net.save_all_partitions(args.output_path)
+        #print("Saved no opt")
+        #print("Post Number of partitions:",len(net.partitions))
+        net.name = old_name
+
+    auto_flag=False #carry out lots of runs at different rsc if true
     if not auto_flag: #one run on partitions at optimiser_example specified rsc usage
+        net.rsc_allocation = 0.5 #forcing low rsc usage for debug
+        print("Attempting optim")
         net.run_optimiser()
+        print("Optimiser done, attempting partition update")
         net.update_partitions()
+        print("Update done, attempting results saving")
 
         #create folder to store results - percentage/iteration
         post_optim_path = os.path.join(args.output_path,
@@ -307,6 +315,7 @@ def combine_network_sections(args, ee1_data, eef_data,
 
     combined_dict ={"report_name":[],"throughput":[],
                     "ee1_throughput":[], "eef_throughput":[],
+                    "eef_throughput_scaled":[],
                     "resource_max":[], "limiting_resource":[],
                     "LUT":[], "FF":[], "BRAM":[], "DSP":[]}
 
@@ -322,6 +331,7 @@ def combine_network_sections(args, ee1_data, eef_data,
             #raw throughputs
             combined_dict["ee1_throughput"].append(ee1_thru)
             combined_dict["eef_throughput"].append(eef_data["throughput"][eef_idx])
+            combined_dict["eef_throughput_scaled"].append(eef_thru)
             #minimum of the exit throughputs (limiting thr)
             combined_dict["throughput"].append(min(ee1_thru, eef_thru))
             #for getting the limiting rsc
@@ -395,16 +405,16 @@ def _gen_graph(args,ee_flag,baseline_flag,rsc_str,
         subtitle_str+="-BASE-"
 
     #fix the title of the plot
-    ax.set(xlabel='Fraction of {}s'.format(rsc_str), ylabel='Throughput (sample/s)',
+    ax.set(xlabel='Fraction of {}s'.format(rsc_str), ylabel='Throughput (samples/s)',
             title='Exit resource throughput plot {}\n({})'.format(subtitle_str,args.save_name))
     ax.legend(loc='best')
     ax.grid()
     plt.xlim(0.05,0.95)
     #save plot
     if args.save_name is not None:
-        fig.savefig(os.path.join(args.output_path,"plot_{}_{}.png".format(args.save_name,rsc_str)))
+        fig.savefig(os.path.join(args.output_path,"plot_{}_{}.pdf".format(args.save_name,rsc_str)))
     else:
-        fig.savefig(os.path.join(args.output_path,"plot_{}.png".format(rsc_str)))
+        fig.savefig(os.path.join(args.output_path,"plot_{}.pdf".format(rsc_str)))
     print("Saved {} Graph".format(rsc_str))
 
 def gen_graph(args):
@@ -473,6 +483,8 @@ def gen_graph(args):
     # switch lists to numpy arrays
     for key in ee1_data.keys():
         ee1_data[key] = np.array(ee1_data[key])
+    for key in eef_data.keys():
+        eef_data[key] = np.array(eef_data[key])
     for key in baseline_data.keys():
         baseline_data[key] = np.array(baseline_data[key])
 
@@ -481,9 +493,23 @@ def gen_graph(args):
     if baseline_flag and ee_flag:
         #get the numpy masks for the pareto front for ee1 and baseline
         _, pareto_ee1_mask,srt_ee1_idx = pareto_front(ee1_data, "resource_max")
+        _, pareto_eef_mask,srt_eef_idx = pareto_front(eef_data, "resource_max")
         _, pareto_base_mask,srt_base_idx = pareto_front(baseline_data, "resource_max")
+
+        #save to csv
+        base_x=baseline_data['resource_max'][pareto_base_mask][srt_base_idx]
+        base_y=baseline_data['throughput'][pareto_base_mask][srt_base_idx]
+        base_xy=np.vstack((base_x,base_y)).T
+        np.savetxt(os.path.join(args.output_path,"baseline.csv"),
+                base_xy, #fmt='%10.5f',
+                delimiter=',',
+                #header='x,y'
+                )
+
         #generate separate plots for EEF fraction
-        eef_exit_fraction_l = [0.1,0.2,0.25,0.33,0.5,0.7,0.9]
+        eef_exit_fraction_l = [0.25,0.5]
+        subop_fraction = [-0.05,0.05] #lines representing suboptimal EEF %
+
         for eef_frac in eef_exit_fraction_l:
             combined_data = combine_network_sections(args, ee1_data, eef_data,
                 platform_dict, baseline_data, eef_exit_fraction=eef_frac)
@@ -495,38 +521,108 @@ def gen_graph(args):
             ax = plt.subplot(111)
 
             #plot the pareto front with a line
-            ax.plot(ee1_data['resource_max'][pareto_ee1_mask][srt_ee1_idx],
-                    ee1_data['throughput'][pareto_ee1_mask][srt_ee1_idx],
-                    c="blue",label=f'EE1')
-            for rsc,mrkr in rsc_markers.items():
-                mask = pareto_ee1_mask & (ee1_data["limiting_resource"]==rsc)
-                ax.scatter(ee1_data[rsc_str][mask], ee1_data["throughput"][mask],
-                        c="blue",marker=mrkr)#,label=f'{rsc}s')
+            #ax.plot(ee1_data['resource_max'][pareto_ee1_mask][srt_ee1_idx],
+            #        ee1_data['throughput'][pareto_ee1_mask][srt_ee1_idx],
+            #        c="blue",label=f'EE1')
+            #for rsc,mrkr in rsc_markers.items():
+            #    mask = pareto_ee1_mask & (ee1_data["limiting_resource"]==rsc)
+            #    ax.scatter(ee1_data[rsc_str][mask], ee1_data["throughput"][mask],
+            #            c="blue",marker=mrkr)#,label=f'{rsc}s')
+            #plot eef just for bants
+            #ax.plot(eef_data['resource_max'][pareto_eef_mask][srt_eef_idx],
+            #        eef_data['throughput'][pareto_eef_mask][srt_eef_idx],
+            #        c="#78ff9c",label=f'EEF')
+
+            base_col='red'
             #plot the pareto front with a line
-            ax.plot(baseline_data['resource_max'][pareto_base_mask][srt_base_idx],
-                    baseline_data['throughput'][pareto_base_mask][srt_base_idx],
-                    c="red",label=f'BASE')
+            ax.plot(base_x,base_y,c=base_col,label=f'Baseline')
             #plot the points and limiting resource for baseline
             for rsc,mrkr in rsc_markers.items():
                 mask = pareto_base_mask & (baseline_data["limiting_resource"]==rsc)
-                ax.scatter(baseline_data[rsc_str][mask], baseline_data["throughput"][mask],
-                        c="red",marker=mrkr)#,label=f'{rsc}s')
+                #generating csv for each resource
+                rsc_x=baseline_data[rsc_str][mask]
+                rsc_y=baseline_data["throughput"][mask]
+                rsc_xy=np.vstack((rsc_x,rsc_y)).T
+                np.savetxt(os.path.join(args.output_path,
+                            'baseline_{}.csv'.format(rsc)),
+                        rsc_xy,delimiter=',')
+                ax.scatter(rsc_x, rsc_y, c=base_col,marker=mrkr)#,label=f'{rsc}s')
+
+            #combined network data
+            comb_x=combined_data['resource_max'][pareto_comb_mask][srt_comb_idx]
+            comb_y=combined_data['throughput'][pareto_comb_mask][srt_comb_idx]
+            comb_xy = np.vstack((comb_x,comb_y)).T
+
+            comb_rn=combined_data["report_name"][pareto_comb_mask][srt_comb_idx]
+
+            #comb_rn = comb_rn.T
+            print("###### COMBINED REPORT NAMES #####\n")
+            for rn,rsc_thr in zip(comb_rn, comb_xy):
+                print("report name:",rn)
+                print("xy:",rsc_thr)
+
+            comb_ee1=combined_data["ee1_throughput"][pareto_comb_mask][srt_comb_idx]
+            comb_eef=combined_data["eef_throughput"][pareto_comb_mask][srt_comb_idx]
+            comb_eefsc=combined_data["eef_throughput_scaled"][pareto_comb_mask][srt_comb_idx]
+            comb_all = np.vstack((comb_x,comb_y, comb_ee1,comb_eef,comb_eefsc)).T
+
+            #NOTE can't put strings in numpy array for savetxt
+            #comb_all_proto2 = comb_all_proto.astype(str)
+            #print("proto shape", comb_all_proto2.shape)
+            #comb_all = np.concatenate( (comb_all_proto2, comb_rn), axis=1)
+            #print("comb all", comb_all.shape)
+
+            #save to csv for latex pgfplots
+            np.savetxt(os.path.join(args.output_path,
+                        'Opt_{}_curve.csv'.format(str(int(100*eef_frac))) ),
+                    comb_xy,delimiter=',')
+
+            np.savetxt(os.path.join(args.output_path,
+                        'INVESTIGATION_Opt_{}_curve.csv'.format(str(int(100*eef_frac))) ),
+                    comb_all,delimiter=',')
+
             #plot the pareto front with a line
-            ax.plot(combined_data['resource_max'][pareto_comb_mask][srt_comb_idx],
-                    combined_data['throughput'][pareto_comb_mask][srt_comb_idx],
-                    c="green",label=f'COMB')
+            comb_col = "#9a57FF"
+            ax.plot(comb_x,comb_y,c=comb_col,label='Opt ({:.1f}%)'.format(100*eef_frac))
             #plot the points and limiting resource for combined exits
             for rsc,mrkr in rsc_markers.items():
                 mask = pareto_comb_mask & (combined_data["limiting_resource"]==rsc)
-                ax.scatter(combined_data[rsc_str][mask], combined_data["throughput"][mask],
-                        c="green",marker=mrkr)#,label=f'{rsc}s')
+                #generating csv for each resource
+                rsc_x=combined_data[rsc_str][mask]
+                rsc_y=combined_data["throughput"][mask]
+                rsc_xy=np.vstack((rsc_x,rsc_y)).T
+                np.savetxt(os.path.join(args.output_path,
+                            'Opt_{}_{}.csv'.format(str(int(100*eef_frac)),rsc )),
+                        rsc_xy,delimiter=',')
+                #matplotlibbing
+                ax.scatter(rsc_x, rsc_y,c=comb_col,marker=mrkr)#,label=f'{rsc}s')
+
+            for subop_frac,ls in zip(subop_fraction,['dashed','dotted']):
+                scaling = eef_frac/(eef_frac+subop_frac)
+                #sort out the scaled throughput
+                bounded_thru = np.minimum(combined_data['ee1_throughput'][pareto_comb_mask][srt_comb_idx],
+                    combined_data['eef_throughput_scaled'][pareto_comb_mask][srt_comb_idx]*scaling)
+                bound_xy = np.vstack((comb_x,bounded_thru)).T
+                #save to csv for latex pgfplots
+                np.savetxt(os.path.join(args.output_path,
+                            'Opt_{}_bound_{}.csv'.format(
+                                str(int(100*eef_frac)),
+                                str(int(100*(eef_frac+subop_frac)))) ),
+                        bound_xy,delimiter=',')
+                #plot the pareto front with a line
+                ax.plot(comb_x,bounded_thru, c=comb_col, linestyle=ls,
+                        label='{:.1f}%'.format(100*(eef_frac+subop_frac)) ) #change the names
+                #don't worry about the limiting resource fo the suboptimal plot
+
             #fix the title of the plot
-            ax.set( xlabel='Fraction of {}'.format(rsc_str),
-                    ylabel='Throughput (sample/s)',
-                    title='Exit resource vs throughput EEF: {}%\n({})'.format(
-                        str(100*eef_frac),args.save_name))
+            ax.set( xlabel='Fraction of Maximum Limiting Resource', #.format(rsc_str),
+                    ylabel='Throughput (samples/s)',
+                    #title='Resource Fraction vs Throughput\nEarly-Exit Samples: {}%'.format(
+                    #    str(100*(1-eef_frac))))#,args.save_name)
+                    )
             ax.grid()
-            ax.set_xlim(0.0,1.0)
+            ax.set_xlim(right=1.0)
+            ax.set_ylim(top=85000)
             #get figure position
             box = ax.get_position()
             #adjust figure width to fit legend
@@ -546,7 +642,7 @@ def gen_graph(args):
                 labels.append(f'{rsc}s')
             ax.legend(handles,labels, loc='center left', bbox_to_anchor=(1.01, 0.5))
             #save plot
-            fig.savefig(os.path.join(args.output_path,"plot_{}_{}_{}eefp.png".format(
+            fig.savefig(os.path.join(args.output_path,"plot_{}_{}_{}eefp.pdf".format(
                 args.save_name, rsc_str, str(int(100*eef_frac)))))
             print("Saved Combined {} Graph. EEF Frac: {}".format(rsc_str,str(100*eef_frac)))
 
@@ -557,7 +653,7 @@ def gen_graph(args):
 def main():
     parser = argparse.ArgumentParser(description="script for running experiments")
     parser.add_argument('--expr',
-            choices=['parser','vis', 'out', 'out_brn', 'opt_brn', 'gen_graph'],
+            choices=['parser','vis', 'out', 'out_brn', 'opt_brn','opt', 'gen_graph'],
             help='for testing parser, vis or outputing network json')
 
     parser.add_argument('--save_name', type=str, help='save name for json file')
@@ -647,8 +743,8 @@ def main():
     #optimiser path - taken from opt example
     optpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/optimiser_example.yml"
     #platform path
-    #platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json"
-    platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/xcvu440-flga2892-3-e.json"
+    platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json"
+    #platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/xcvu440-flga2892-3-e.json"
 
     if args.expr == 'parser':
         parser_expr(filepath)
@@ -663,6 +759,8 @@ def main():
             output_network(filepath, True)
     elif args.expr == 'opt_brn':
         optim_expr(args, filepath, True, optpath, platpath)
+    elif args.expr == 'opt':
+        optim_expr(args, filepath, False, optpath, platpath)
     elif args.expr == 'gen_graph':
         gen_graph(args)
     else:

@@ -31,3 +31,11 @@ examples/models
 **.dcp
 **/tools/tmp/*
 modelop.txt
+
+baseline_setup.py
+baseline_report.txt
+**.old
+**.dev_branch
+det.py
+**/*opt_expr/**
+**/brn_se_cp/**

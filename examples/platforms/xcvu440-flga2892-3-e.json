@@ -1,0 +1,14 @@
+{
+  "name" : "xcvu440-flga2892-3-e",
+  "DSP"  : 2880,
+  "BRAM" : 5040,
+  "FF"   : 5065920,
+  "LUT"  : 2532960,
+  "freq"          : 150000000,
+  "reconf_time"   : 0.08255,
+  "mem_bandwidth" : 16,
+  "mem_capacity"  : 1024000000,
+  "ports"         : 2,
+  "port_width"    : 64,
+  "notes" : "freq, reconf time, mem bw, mem cap, ports, width - unknown so using zc706 values"
+}

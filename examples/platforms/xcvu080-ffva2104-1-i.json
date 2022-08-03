@@ -1,0 +1,14 @@
+{
+  "name" : "xcvu080-ffva2104-3-e",
+  "DSP"  : 672,
+  "BRAM" : 2842,
+  "FF"   : 891424,
+  "LUT"  : 445712,
+  "freq"          : 150000000,
+  "reconf_time"   : 0.08255,
+  "mem_bandwidth" : 16,
+  "mem_capacity"  : 1024000000,
+  "ports"         : 2,
+  "port_width"    : 64,
+  "notes" : "freq, reconf time, mem bw, mem cap, ports, width - unknown so using zc706 values"
+}

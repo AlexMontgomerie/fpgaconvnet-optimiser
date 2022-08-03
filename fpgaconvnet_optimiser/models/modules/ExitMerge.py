@@ -21,6 +21,7 @@ class ExitMerge(Module):
     #late_exit_edge,
     #batch ID input edge?
     #ID pipeline connection
+    exits: int
 
     def __post_init__(self):
         # load the resource model coefficients
@@ -47,7 +48,8 @@ class ExitMerge(Module):
             "BRAM" : np.array([1]),
         }
 
-    def functional_model(self, EEdata, LEdata, EE_ID=None, LE_ID=None):
+    def functional_model(self, data):
+        print("trying merge fn model")
         #Exit merge is not an ONNX or pytorch op
         # check input dimensionality
         assert EEdata.shape[0] == self.rows    , "ERROR: invalid row dimension"
@@ -58,7 +60,5 @@ class ExitMerge(Module):
         assert LEdata.shape[1] == self.cols    , "ERROR: invalid column dimension"
         assert LEdata.shape[2] == self.channels, "ERROR: invalid channel dimension"
 
-        if EE_ID is not None:
-            return np.concatenate(([EE_ID], EEdata))
-        elif LE_ID is not None:
-            return np.concatenate(([LE_ID], LEdata))
+        #temporary, testing more on the other hw side
+        return data
