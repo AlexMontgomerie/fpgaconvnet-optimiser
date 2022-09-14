@@ -418,10 +418,18 @@ class ConvolutionLayer(Layer):
         return cluster, nodes_in, nodes_out
 
     def functional_model(self,data,weights,bias,batch_size=1):
-
-        assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
+        # contains batch size
+        batched_flag=False
+        print(data.shape)
+        if len(data.shape) > 3:
+            batched_flag=True
+            assert data.shape[1] == self.rows_in()    , "ERROR (data): invalid row dimension"
+            assert data.shape[2] == self.cols_in()    , "ERROR (data): invalid column dimension"
+            assert data.shape[3] == self.channels_in(), "ERROR (data): invalid channel dimension"
+        else:
+            assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
+            assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
+            assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         assert weights.shape[0] == self.filters ,   "ERROR (weights): invalid filter dimension"
         assert weights.shape[1] == self.channels//self.groups,\
@@ -444,7 +452,13 @@ class ConvolutionLayer(Layer):
         convolution_layer.bias = torch.nn.Parameter(torch.from_numpy(bias))
 
         # return output featuremap
-        data = np.moveaxis(data, -1, 0)
-        data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
+        if batched_flag:
+            data = np.moveaxis(data, -1, 1)
+            print(data.shape)
+        else:
+            data = np.moveaxis(data, -1, 0)
+            # FIXME clean up use of batch size here
+            data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
+
         return convolution_layer(torch.from_numpy(data)).detach().numpy()
 

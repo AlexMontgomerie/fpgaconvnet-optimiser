@@ -189,26 +189,40 @@ class SoftMaxCmpLayer(Layer):
         return cluster, nodes_in, nodes_out
 
     def functional_model(self, data, batch_size=1):
+        # CONVERTING TO SINGLE PRECISION
+        data = data.astype(np.float32)
 
-        assert data.shape[0] == self.rows_in(0)    , "ERROR (data): invalid row dimension"
-        assert data.shape[1] == self.cols_in(0)    , "ERROR (data): invalid column dimension"
-        assert data.shape[2] == self.channels_in(0), "ERROR (data): invalid channel dimension"
+        batched_flag=False
+        print(data.shape)
+        if len(data.shape) > 3:
+            batched_flag=True
+            assert data.shape[0] == batch_size          , "ERROR: invalid mismatched batch"
+            assert data.shape[1] == self.rows_in()    , "ERROR (data): invalid row dimension"
+            assert data.shape[2] == self.cols_in()    , "ERROR (data): invalid column dimension"
+            assert data.shape[3] == self.channels_in(), "ERROR (data): invalid channel dimension"
+        else:
+            assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
+            assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
+            assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         softmax_layer = torch.nn.Softmax(dim=-1)
         out = np.zeros((batch_size, 3))
         for b in range(batch_size):
-            pk = softmax_layer(torch.from_numpy(data)).detach()
+            pk = softmax_layer(torch.from_numpy(data[b])).detach()
+            print(pk)
             #get max value
-            top1 = torch.max(torch.from_numpy(data))
+            top1 = torch.max(pk) #torch.from_numpy(data))
+            print(top1)
             #True = early exit, drop buffered data
             if top1 > self.threshold:
-                out[b][0] = 1.0
-                out[b][1] = 1.0
-                out[b][2] = 1.0
+                out[b][0] = 1
+                out[b][1] = 1
+                out[b][2] = 1
                 #return 1.0
             else:
-                out[b][0] = 0.0
-                out[b][1] = 0.0
-                out[b][2] = 0.0
+                out[b][0] = 0
+                out[b][1] = 0
+                out[b][2] = 0
                 #return 0.0
+        print(out.shape)
         return out

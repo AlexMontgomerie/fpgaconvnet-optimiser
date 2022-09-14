@@ -151,8 +151,8 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
     net.objective  = 1 #NOTE throughput objective (default is latency)
     print("generated simulated annealing object")
 
-    #updating params
-    net.batch_size = 1 #256 #since batch size is 1 for testing - latency obj co-optim
+    #updating params TODO make batch size an argument
+    net.batch_size = 4
     net.update_platform(plat_path)
     # update partitions
     net.update_partitions()
@@ -179,17 +179,17 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
         #NOTE removing for time being
 
         # network function to create ee partitions
-        #net.name = old_name+"-noOpt"
-        #net.exit_split(partition_index=0)
-        #print("Exit split complete")
-        #net.save_all_partitions(args.output_path)
-        #print("Saved no opt")
-        #print("Post Number of partitions:",len(net.partitions))
+        net.name = old_name+"-noOpt"
+        net.exit_split(partition_index=0)
+        print("Exit split complete")
+        net.save_all_partitions(args.output_path)
+        print("Saved no opt")
+        print("Post Number of partitions:",len(net.partitions))
         net.name = old_name
 
-    auto_flag=False #carry out lots of runs at different rsc if true
+    auto_flag=True #carry out lots of runs at different rsc if true
     if not auto_flag: #one run on partitions at optimiser_example specified rsc usage
-        net.rsc_allocation = 0.5 #forcing low rsc usage for debug
+        net.rsc_allocation = 0.75 #forcing low rsc usage for debug
         print("Attempting optim")
         net.run_optimiser()
         print("Optimiser done, attempting partition update")
@@ -212,33 +212,62 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
 
     ### FOR LOOP FOR REPEATED OPTIM ###
     #NOTE expose these to the expr top level
-    rsc_limits = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    full_sa_runs = 5
+    rsc_limits = [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    full_sa_runs = 10
 
     if auto_flag:
-        for rsc in rsc_limits:
-            for sa_i in range(full_sa_runs):
-                #deep copy the network
-                nets = [copy.deepcopy(net), copy.deepcopy(net)]
-                #remove other partition
-                nets[0].partitions.pop(0)
-                nets[1].partitions.pop(1)
+        if is_branchy:
+            for rsc in rsc_limits:
+                for sa_i in range(full_sa_runs):
+                    #deep copy the network
+                    nets = [copy.deepcopy(net), copy.deepcopy(net)]
+                    #remove other partition
+                    nets[0].partitions.pop(0)
+                    nets[1].partitions.pop(1)
 
-                #change the network name
-                if len(nets[0].partitions[0].graph.nodes) > len(nets[1].partitions[0].graph.nodes):
-                    nets[0].name = nets[0].name+"-ee1-rsc{}p-iter{}".format(int(rsc*100),sa_i)
-                    nets[1].name = nets[1].name+"-eef-rsc{}p-iter{}".format(int(rsc*100),sa_i)
-                else:
-                    nets[0].name = nets[0].name+"-eef-rsc{}p-iter{}".format(int(rsc*100),sa_i)
-                    nets[1].name = nets[1].name+"-ee1-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+                    #change the network name
+                    if len(nets[0].partitions[0].graph.nodes) > len(nets[1].partitions[0].graph.nodes):
+                        nets[0].name = nets[0].name+"-ee1-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+                        nets[1].name = nets[1].name+"-eef-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+                    else:
+                        nets[0].name = nets[0].name+"-eef-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+                        nets[1].name = nets[1].name+"-ee1-rsc{}p-iter{}".format(int(rsc*100),sa_i)
 
-                for split in nets:
-                    split.rsc_allocation = rsc
-                    print("\nRunning split: {}".format(split.name))
-                    pass_flag = split.run_optimiser() #true = pass
+                    for split in nets:
+                        split.rsc_allocation = rsc
+                        print("\nRunning split: {}".format(split.name))
+                        pass_flag = split.run_optimiser() #true = pass
+                        if pass_flag:
+                            # update all partitions
+                            split.update_partitions()
+                            #create folder to store results - percentage/iteration
+                            post_optim_path = os.path.join(args.output_path,
+                                    "post_optim-rsc{}p".format(int(rsc*100)))
+                            if not os.path.exists(post_optim_path):
+                                os.makedirs(post_optim_path)
+
+                            # save all partitions
+                            split.save_all_partitions(post_optim_path)
+                            print("Partitions saved")
+                            # visualise network
+                            #split.visualise(os.path.join(post_optim_path,"topology.png"))
+                            # create report
+                            split.create_report(os.path.join(post_optim_path,
+                                "report_{}.json".format(split.name)))
+                            # create scheduler
+                            #split.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+        else:
+            # not branchy optimisation loop
+            for rsc in rsc_limits:
+                for sa_i in range(full_sa_runs):
+                    runner = copy.deepcopy(net)
+                    runner.name = runner.name+"-rsc{}p-iter{}".format(int(rsc*100),sa_i)
+                    runner.rsc_allocation = rsc
+                    print("\nRunning net: {}".format(runner.name))
+                    pass_flag = runner.run_optimiser() #true = pass
                     if pass_flag:
                         # update all partitions
-                        split.update_partitions()
+                        runner.update_partitions()
                         #create folder to store results - percentage/iteration
                         post_optim_path = os.path.join(args.output_path,
                                 "post_optim-rsc{}p".format(int(rsc*100)))
@@ -246,15 +275,15 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
                             os.makedirs(post_optim_path)
 
                         # save all partitions
-                        split.save_all_partitions(post_optim_path)
+                        runner.save_all_partitions(post_optim_path)
                         print("Partitions saved")
                         # visualise network
-                        #split.visualise(os.path.join(post_optim_path,"topology.png"))
+                        #runner.visualise(os.path.join(post_optim_path,"topology.png"))
                         # create report
-                        split.create_report(os.path.join(post_optim_path,
-                            "report_{}.json".format(split.name)))
+                        runner.create_report(os.path.join(post_optim_path,
+                            "report_{}.json".format(runner.name)))
                         # create scheduler
-                        #split.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+                        #runner.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
 
 #pull out throughput info, rsc usage
 #"network"
@@ -490,10 +519,11 @@ def gen_graph(args):
 
     #create combined plot
     rsc_markers = {"LUT":'s',"FF":'d',"BRAM":'x',"DSP":'o'}
-    if baseline_flag and ee_flag:
+    if baseline_flag or ee_flag:
         #get the numpy masks for the pareto front for ee1 and baseline
-        _, pareto_ee1_mask,srt_ee1_idx = pareto_front(ee1_data, "resource_max")
-        _, pareto_eef_mask,srt_eef_idx = pareto_front(eef_data, "resource_max")
+        if ee_flag:
+            _, pareto_ee1_mask,srt_ee1_idx = pareto_front(ee1_data, "resource_max")
+            _, pareto_eef_mask,srt_eef_idx = pareto_front(eef_data, "resource_max")
         _, pareto_base_mask,srt_base_idx = pareto_front(baseline_data, "resource_max")
 
         #save to csv
@@ -505,16 +535,21 @@ def gen_graph(args):
                 delimiter=',',
                 #header='x,y'
                 )
-
+        base_rn=baseline_data["report_name"][pareto_base_mask][srt_base_idx]
+        with open(os.path.join(args.output_path,'baseline_rpt.txt'), 'w') as f:
+            f.write("###### BASELINE REPORT NAMES #####\n")
+            for rn,rsc_thr in zip(base_rn, base_xy):
+                f.write("report name:"+rn+"\n")
+                f.write("xy:"+str(rsc_thr)+"\n")
         #generate separate plots for EEF fraction
         eef_exit_fraction_l = [0.25,0.5]
         subop_fraction = [-0.05,0.05] #lines representing suboptimal EEF %
-
         for eef_frac in eef_exit_fraction_l:
-            combined_data = combine_network_sections(args, ee1_data, eef_data,
-                platform_dict, baseline_data, eef_exit_fraction=eef_frac)
-            #gen pareto front for combined data
-            _, pareto_comb_mask,srt_comb_idx = pareto_front(combined_data, "resource_max")
+            if ee_flag:
+                combined_data = combine_network_sections(args, ee1_data, eef_data,
+                    platform_dict, baseline_data, eef_exit_fraction=eef_frac)
+                #gen pareto front for combined data
+                _, pareto_comb_mask,srt_comb_idx = pareto_front(combined_data, "resource_max")
             #print graph of combined vs baseline vs ee1
             rsc_str = "resource_max"
             fig = plt.figure()
@@ -548,71 +583,73 @@ def gen_graph(args):
                         rsc_xy,delimiter=',')
                 ax.scatter(rsc_x, rsc_y, c=base_col,marker=mrkr)#,label=f'{rsc}s')
 
-            #combined network data
-            comb_x=combined_data['resource_max'][pareto_comb_mask][srt_comb_idx]
-            comb_y=combined_data['throughput'][pareto_comb_mask][srt_comb_idx]
-            comb_xy = np.vstack((comb_x,comb_y)).T
 
-            comb_rn=combined_data["report_name"][pareto_comb_mask][srt_comb_idx]
+            if ee_flag:
+                #combined network data
+                comb_x=combined_data['resource_max'][pareto_comb_mask][srt_comb_idx]
+                comb_y=combined_data['throughput'][pareto_comb_mask][srt_comb_idx]
+                comb_xy = np.vstack((comb_x,comb_y)).T
 
-            #comb_rn = comb_rn.T
-            print("###### COMBINED REPORT NAMES #####\n")
-            for rn,rsc_thr in zip(comb_rn, comb_xy):
-                print("report name:",rn)
-                print("xy:",rsc_thr)
+                comb_rn=combined_data["report_name"][pareto_comb_mask][srt_comb_idx]
 
-            comb_ee1=combined_data["ee1_throughput"][pareto_comb_mask][srt_comb_idx]
-            comb_eef=combined_data["eef_throughput"][pareto_comb_mask][srt_comb_idx]
-            comb_eefsc=combined_data["eef_throughput_scaled"][pareto_comb_mask][srt_comb_idx]
-            comb_all = np.vstack((comb_x,comb_y, comb_ee1,comb_eef,comb_eefsc)).T
+                #comb_rn = comb_rn.T
+                print("###### COMBINED REPORT NAMES #####\n")
+                for rn,rsc_thr in zip(comb_rn, comb_xy):
+                    print("report name:",rn)
+                    print("xy:",rsc_thr)
 
-            #NOTE can't put strings in numpy array for savetxt
-            #comb_all_proto2 = comb_all_proto.astype(str)
-            #print("proto shape", comb_all_proto2.shape)
-            #comb_all = np.concatenate( (comb_all_proto2, comb_rn), axis=1)
-            #print("comb all", comb_all.shape)
+                comb_ee1=combined_data["ee1_throughput"][pareto_comb_mask][srt_comb_idx]
+                comb_eef=combined_data["eef_throughput"][pareto_comb_mask][srt_comb_idx]
+                comb_eefsc=combined_data["eef_throughput_scaled"][pareto_comb_mask][srt_comb_idx]
+                comb_all = np.vstack((comb_x,comb_y, comb_ee1,comb_eef,comb_eefsc)).T
 
-            #save to csv for latex pgfplots
-            np.savetxt(os.path.join(args.output_path,
-                        'Opt_{}_curve.csv'.format(str(int(100*eef_frac))) ),
-                    comb_xy,delimiter=',')
+                #NOTE can't put strings in numpy array for savetxt
+                #comb_all_proto2 = comb_all_proto.astype(str)
+                #print("proto shape", comb_all_proto2.shape)
+                #comb_all = np.concatenate( (comb_all_proto2, comb_rn), axis=1)
+                #print("comb all", comb_all.shape)
 
-            np.savetxt(os.path.join(args.output_path,
-                        'INVESTIGATION_Opt_{}_curve.csv'.format(str(int(100*eef_frac))) ),
-                    comb_all,delimiter=',')
-
-            #plot the pareto front with a line
-            comb_col = "#9a57FF"
-            ax.plot(comb_x,comb_y,c=comb_col,label='Opt ({:.1f}%)'.format(100*eef_frac))
-            #plot the points and limiting resource for combined exits
-            for rsc,mrkr in rsc_markers.items():
-                mask = pareto_comb_mask & (combined_data["limiting_resource"]==rsc)
-                #generating csv for each resource
-                rsc_x=combined_data[rsc_str][mask]
-                rsc_y=combined_data["throughput"][mask]
-                rsc_xy=np.vstack((rsc_x,rsc_y)).T
-                np.savetxt(os.path.join(args.output_path,
-                            'Opt_{}_{}.csv'.format(str(int(100*eef_frac)),rsc )),
-                        rsc_xy,delimiter=',')
-                #matplotlibbing
-                ax.scatter(rsc_x, rsc_y,c=comb_col,marker=mrkr)#,label=f'{rsc}s')
-
-            for subop_frac,ls in zip(subop_fraction,['dashed','dotted']):
-                scaling = eef_frac/(eef_frac+subop_frac)
-                #sort out the scaled throughput
-                bounded_thru = np.minimum(combined_data['ee1_throughput'][pareto_comb_mask][srt_comb_idx],
-                    combined_data['eef_throughput_scaled'][pareto_comb_mask][srt_comb_idx]*scaling)
-                bound_xy = np.vstack((comb_x,bounded_thru)).T
                 #save to csv for latex pgfplots
                 np.savetxt(os.path.join(args.output_path,
-                            'Opt_{}_bound_{}.csv'.format(
-                                str(int(100*eef_frac)),
-                                str(int(100*(eef_frac+subop_frac)))) ),
-                        bound_xy,delimiter=',')
+                            'Opt_{}_curve.csv'.format(str(int(100*eef_frac))) ),
+                        comb_xy,delimiter=',')
+
+                np.savetxt(os.path.join(args.output_path,
+                            'INVESTIGATION_Opt_{}_curve.csv'.format(str(int(100*eef_frac))) ),
+                        comb_all,delimiter=',')
+
                 #plot the pareto front with a line
-                ax.plot(comb_x,bounded_thru, c=comb_col, linestyle=ls,
-                        label='{:.1f}%'.format(100*(eef_frac+subop_frac)) ) #change the names
-                #don't worry about the limiting resource fo the suboptimal plot
+                comb_col = "#9a57FF"
+                ax.plot(comb_x,comb_y,c=comb_col,label='Opt ({:.1f}%)'.format(100*eef_frac))
+                #plot the points and limiting resource for combined exits
+                for rsc,mrkr in rsc_markers.items():
+                    mask = pareto_comb_mask & (combined_data["limiting_resource"]==rsc)
+                    #generating csv for each resource
+                    rsc_x=combined_data[rsc_str][mask]
+                    rsc_y=combined_data["throughput"][mask]
+                    rsc_xy=np.vstack((rsc_x,rsc_y)).T
+                    np.savetxt(os.path.join(args.output_path,
+                                'Opt_{}_{}.csv'.format(str(int(100*eef_frac)),rsc )),
+                            rsc_xy,delimiter=',')
+                    #matplotlibbing
+                    ax.scatter(rsc_x, rsc_y,c=comb_col,marker=mrkr)#,label=f'{rsc}s')
+
+                for subop_frac,ls in zip(subop_fraction,['dashed','dotted']):
+                    scaling = eef_frac/(eef_frac+subop_frac)
+                    #sort out the scaled throughput
+                    bounded_thru = np.minimum(combined_data['ee1_throughput'][pareto_comb_mask][srt_comb_idx],
+                        combined_data['eef_throughput_scaled'][pareto_comb_mask][srt_comb_idx]*scaling)
+                    bound_xy = np.vstack((comb_x,bounded_thru)).T
+                    #save to csv for latex pgfplots
+                    np.savetxt(os.path.join(args.output_path,
+                                'Opt_{}_bound_{}.csv'.format(
+                                    str(int(100*eef_frac)),
+                                    str(int(100*(eef_frac+subop_frac)))) ),
+                            bound_xy,delimiter=',')
+                    #plot the pareto front with a line
+                    ax.plot(comb_x,bounded_thru, c=comb_col, linestyle=ls,
+                            label='{:.1f}%'.format(100*(eef_frac+subop_frac)) ) #change the names
+                    #don't worry about the limiting resource fo the suboptimal plot
 
             #fix the title of the plot
             ax.set( xlabel='Fraction of Maximum Limiting Resource', #.format(rsc_str),
@@ -680,17 +717,18 @@ def main():
     #exits AFTER softmax
     #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-trnInc-sftmx.onnx"
     #Removed softmax layer before exit results - only used for exit condition
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-lessOps-trained.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/speedy-brn-top1ee-bsf-lessOps-trained.onnx"
     #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/pt_fulltest.onnx"
 
     #switched pool to floor mode, adjusted FC layers to match resulting sizes
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/ceil_false.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/ceil_false.onnx"
 
     #switched pool to floor mode, adjusted FC layers to match resulting sizes, adjusted conv layer padding to fit
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match.onnx"
 
     #changed conv to no bias, normalised data set
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match_trained_norm.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match_trained_norm.onnx"
+
     # raised threshold, removed bias from conv and FC layers
     #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io_match_trained_norm_thr_high.onnx"
 
@@ -737,8 +775,12 @@ def main():
     #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/io-match_trained_norm_no-bias.onnx"
 
     #brn se - less layers to simplify debug, fc has bias, 2 conv, 3 fc only
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se_SMOL.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se_SMOL.onnx"
 
+    # se lenet (backbone only version of brn se, the new one)
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/backbone_se_new.onnx"
+    # branchy se lenet (the new version, 3 conv + FC in bb and 1xtra conv+FC in ee)
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se20220902.onnx"
 
     #optimiser path - taken from opt example
     optpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/optimiser_example.yml"

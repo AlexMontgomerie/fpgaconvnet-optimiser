@@ -110,10 +110,16 @@ class SlidingWindow(Module):
         return int((self.cols_in()-self.kernel_size[1]+self.pad_left+self.pad_right)/self.stride[1]+1)
 
     def rate_in(self):
-        return 1.0 # TODO: maybe need to reduce for padding effect
+        #return 1.0 # TODO: maybe need to reduce for padding effect
+        padded_rows_in = self.rows_in()+self.pad_top+self.pad_bottom
+        padded_cols_in = self.cols_in()+self.pad_left+self.pad_right
+        return (self.rows_in()*self.cols_in()) / float( padded_rows_in * padded_cols_in )
 
+    # FIXME check if this should be different to default of 1.0
     def rate_out(self):
-        return (self.rows_out()*self.cols_out())/float(self.rows*self.cols)
+        padded_rows_in = self.rows_in()+self.pad_top+self.pad_bottom
+        padded_cols_in = self.cols_in()+self.pad_left+self.pad_right
+        return (self.rows_out()*self.cols_out())/float( padded_rows_in * padded_cols_in )
 
     def pipeline_depth(self):
         return (self.cols+self.pad_left+self.pad_right)*(self.channels)*(self.kernel_size[0]-1)+self.channels*self.kernel_size[0]*(self.kernel_size[1]-1)

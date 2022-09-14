@@ -39,7 +39,16 @@ def apply_random_coarse_layer(self, layer):
             f"ERROR random_coarse_layer: unsupported layer type:{self.graph.nodes[layer]['type']}")
 
     # get possible coarse folding types
-    coarse_types = ["coarse_in", "coarse_out"]
+    coarse_types=[]
+    #FIXME allow multiple input/output ports(streams,coarse)
+    if layer in self.input_nodes:
+        coarse_types.append('coarse_out')
+    elif layer in self.output_nodes:
+        coarse_types.append('coarse_in')
+    else:
+        coarse_types.append('coarse_in')
+        coarse_types.append('coarse_out')
+
     if self.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution and self.graph.nodes[layer]["hw"].groups != 1:
         coarse_types.append("coarse_group")
     # choose coarse in or coarse out

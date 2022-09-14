@@ -47,13 +47,28 @@ class SqueezeLayer(Layer):
         # return module
         return cluster, nodes_in, nodes_out
 
+#what goes in must come out
     def functional_model(self,data,batch_size=1):
 
-        assert data.shape[0] == self.rows    , "ERROR: invalid row dimension"
-        assert data.shape[1] == self.cols    , "ERROR: invalid column dimension"
-        assert data.shape[2] == self.channels, "ERROR: invalid channel dimension"
+        batched_flag=False
+        print(data.shape)
+        if len(data.shape) > 3:
+            batched_flag=True
+            assert data.shape[1] == self.rows_in()    , "ERROR (data): invalid row dimension"
+            assert data.shape[2] == self.cols_in()    , "ERROR (data): invalid column dimension"
+            assert data.shape[3] == self.channels_in(), "ERROR (data): invalid channel dimension"
+        else:
+            assert data.shape[0] == self.rows_in()    , "ERROR (data): invalid row dimension"
+            assert data.shape[1] == self.cols_in()    , "ERROR (data): invalid column dimension"
+            assert data.shape[2] == self.channels_in(), "ERROR (data): invalid channel dimension"
 
         # return output featuremap
-        data = np.moveaxis(data, -1, 0)
-        return np.repeat(data[np.newaxis,...], batch_size, axis=0)
+        if batched_flag:
+            data = np.moveaxis(data, -1, 1)
+            print(data.shape)
+        else:
+            data = np.moveaxis(data, -1, 0)
+            # FIXME clean up use of batch size here
+            data = np.repeat(data[np.newaxis,...], batch_size, axis=0)
 
+        return data

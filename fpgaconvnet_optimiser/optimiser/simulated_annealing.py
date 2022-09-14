@@ -77,6 +77,9 @@ class SimulatedAnnealing(Optimiser):
         print(f"{self.T:.5e}\t{abs(self.get_cost()):.5e}\t\t  {int(BRAM):4d} | {int(DSP):4d} | {int(LUT):6d} | {int(FF):6d}",end=return_char)
 
     def run_optimiser(self, log=True):
+        #print resource constraint
+        print("Resource fraction:",self.rsc_allocation)
+        print("Transform list",self.transforms)
 
         # update all partitions
         self.update_partitions()

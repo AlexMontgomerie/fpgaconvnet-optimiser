@@ -21,7 +21,7 @@ from fpgaconvnet_optimiser.models.layers import ReLULayer
 from fpgaconvnet_optimiser.models.layers import BufferLayer
 from fpgaconvnet_optimiser.models.layers import SplitLayer
 from fpgaconvnet_optimiser.models.layers import ExitConditionLayer
-from fpgaconvnet_optimiser.models.layers import ExitSelectLayer
+from fpgaconvnet_optimiser.models.layers import ExitMergeLayer
 from fpgaconvnet_optimiser.models.layers import SoftMaxCmpLayer
 #from fpgaconvnet_optimiser.models.layers import SoftMaxLayer
 
@@ -343,13 +343,16 @@ def add_hardware(model,submodels, graph,ctrledges,hw_only_nodes,
             #will need to generalise assumptions for >2 exits
             #graph - two dataflow inputs, pick either or on hw level
             #ctrl_origin, _ = find_ctrl_origin(graph, ctrledges, name)
-            graph.nodes[name]['hw'] = ExitSelectLayer(
+            print("WARNING: parser - Limiting exits to 2")
+            exits=2
+            graph.nodes[name]['hw'] = ExitMergeLayer(
                 0, # initialise rows to 0
                 0, # initialise cols to 0
                 0, # initialise channels to 0
                 #1, # initialise coarse to 1
                 #1, # initialise coarse out to 1
                 #ctrl_origin
+                ports_in=exits
             )
             continue
         raise NameError(f"{name}: type {str(graph.nodes[name]['type'])} does not exist!")

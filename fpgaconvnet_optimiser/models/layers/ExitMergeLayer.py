@@ -1,8 +1,8 @@
 """
-Exit Selection Layer
+Exit Merge Layer
 
 This layer merges all exit results into a single point for the output to offchip mem.
-The select lines will be driven by the control signal from each exit condition layer.
+For now, this just makes sure all data samples for a given batch are kept together/fed out to memory sequentially.
 
 """
 
@@ -14,7 +14,7 @@ import torch
 from fpgaconvnet_optimiser.models.modules import ExitMerge
 from fpgaconvnet_optimiser.models.layers import MultiPortLayer
 
-class ExitSelectLayer(MultiPortLayer):
+class ExitMergeLayer(MultiPortLayer):
     def __init__(
             self,
             rows: int,
@@ -42,7 +42,7 @@ class ExitSelectLayer(MultiPortLayer):
         self._ports_in  = ports_in
 
         #init modules
-        self.modules["emerge"] = ExitMerge(self.rows_in(), self.cols_in(), self.channels_in())#, early_exit_edge, late_exit_edge)
+        self.modules["emerge"] = ExitMerge(self.rows_in(), self.cols_in(), self.channels_in(),exits=self._ports_in)
         self.update()
 
     #@property

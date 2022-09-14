@@ -160,7 +160,12 @@ class Optimiser(Network):
         # Apply a random transform
 
         #avoid_layers = [LAYER_TYPE.If,LAYER_TYPE.Squeeze,LAYER_TYPE.Greater]
-        avoid_layers = [LAYER_TYPE.If,LAYER_TYPE.Squeeze,LAYER_TYPE.Greater,LAYER_TYPE.Split,LAYER_TYPE.Buffer]
+        avoid_layers = [LAYER_TYPE.If,
+                        LAYER_TYPE.Squeeze,
+                        LAYER_TYPE.Greater,
+                        LAYER_TYPE.Split,
+                        LAYER_TYPE.Buffer]
+
         ## Coarse transform (node_info transform)
         if transform == 'coarse':
             try:
