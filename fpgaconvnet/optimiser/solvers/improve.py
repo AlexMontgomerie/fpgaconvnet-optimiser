@@ -4,6 +4,7 @@ import random
 import math
 import sys
 from operator import itemgetter
+from dataclasses import dataclass
 import numpy as np
 
 from fpgaconvnet.optimiser.solvers import Solver
@@ -13,44 +14,38 @@ THROUGHPUT=1
 
 START_LOOP=1000
 
+@dataclass
 class Improve(Solver):
+    T: float = 10.0
+    k: float = 0.001
+    T_min: float = 0.0001
+    cool: float = 0.97
+    iterations: int = 10
+
     """
     Chooses the hardware component causing a bottleneck and performs the same decision as simulated annealing
     """
 
-    def __init__(self, name, network_path, T=10.0,
-            k=0.0001, T_min=0.0001, cool=0.95, iterations=50):
-
-        # Initialise Network
-        Solver.__init__(self,name,network_path)
-
-        # Simulate Annealing Variables
-        self.T          = T
-        self.k          = k
-        self.T_min      = T_min
-        self.cool       = cool
-        self.iterations = iterations
-
-    def solver_status(self):
-        # objective
-        objectives = ['latency','throughput']
-        objective  = objectives[self.objective]
-        # cost
-        cost = self.get_cost()
-        # Resources
-        resources = [ partition.get_resource_usage() for partition in self.partitions ]
-        BRAM = max([ resource['BRAM'] for resource in resources ])
-        DSP  = max([ resource['DSP']  for resource in resources ])
-        LUT  = max([ resource['LUT']  for resource in resources ])
-        FF   = max([ resource['FF']   for resource in resources ])
-        sys.stdout.write("\033[K")
-        print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-            temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
+    # def solver_status(self):
+    #     # objective
+    #     objectives = ['latency','throughput']
+    #     objective  = objectives[self.objective]
+    #     # cost
+    #     cost = self.get_cost()
+    #     # Resources
+    #     resources = [ partition.get_resource_usage() for partition in self.partitions ]
+    #     BRAM = max([ resource['BRAM'] for resource in resources ])
+    #     DSP  = max([ resource['DSP']  for resource in resources ])
+    #     LUT  = max([ resource['LUT']  for resource in resources ])
+    #     FF   = max([ resource['FF']   for resource in resources ])
+    #     sys.stdout.write("\033[K")
+    #     print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
+    #         temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
     def run_solver(self, log=True):
 
         # update all partitions
-        self.update_partitions()
+        self.net.update_partitions()
 
         # Setup
         cost = self.get_cost()
@@ -97,42 +92,42 @@ class Improve(Solver):
         while self.T_min < self.T:
 
             # update partitions
-            self.update_partitions()
+            self.net.update_partitions()
 
             # get the current cost
             cost = self.get_cost()
 
             # Save previous iteration
-            partitions = copy.deepcopy(self.partitions)
+            net = copy.deepcopy(self.net)
 
             # several iterations per cool down
             for _ in range(self.iterations):
 
                 # update partitions
-                self.update_partitions()
+                self.net.update_partitions()
 
                 # remove all auxiliary layers
-                for i in range(len(self.partitions)):
-                    self.partitions[i].remove_squeeze()
+                for partition in self.net.partitions:
+                    partition.remove_squeeze()
 
                 # Apply a transform
                 ## Choose a random transform
                 transform = random.choice(self.transforms)
 
                 ## Choose slowest partition
-                partition_latencys = [ partition.get_latency(self.platform["freq"]) for partition in self.partitions ]
-                partition_index    = np.random.choice(np.arange(len(self.partitions)), 1, p=(partition_latencys/sum(partition_latencys)))[0]
+                partition_latencys = [ partition.get_latency(self.net.platform.board_freq) for partition in self.net.partitions ]
+                partition_index    = np.random.choice(np.arange(len(self.net.partitions)), 1, p=(partition_latencys/sum(partition_latencys)))[0]
 
                 ## Choose slowest node in partition
-                node_latencys = np.array([ self.partitions[partition_index].graph.nodes[layer]['hw'].get_latency() \
-                        for layer in graphs.ordered_node_list(self.partitions[partition_index].graph) ])
-                node = np.random.choice(graphs.ordered_node_list(self.partitions[partition_index].graph), 1, p=(node_latencys/sum(node_latencys)))[0]
+                node_latencys = np.array([ self.net.partitions[partition_index].graph.nodes[layer]['hw'].latency() \
+                        for layer in self.net.partitions[partition_index].graph.nodes() ])
+                node = np.random.choice(list(self.net.partitions[partition_index].graph.nodes()), 1, p=(node_latencys/sum(node_latencys)))[0]
 
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)
 
                 ## Update partitions
-                self.update_partitions()
+                self.net.update_partitions()
 
             # Check resources
             try:
@@ -140,17 +135,16 @@ class Improve(Solver):
                 self.check_constraints()
             except AssertionError:
                 # revert to previous state
-                self.partitions = partitions
+                self.net = net
                 continue
 
             # Simulated annealing descision
             if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
                 # revert to previous state
-                self.partitions = partitions
+                self.net = net
 
-            # update cost
-            if self.DEBUG:
-                self.solver_status()
+            # print out solver status
+            self.solver_status()
 
             # reduce temperature
             self.T *= self.cool
