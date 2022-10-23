@@ -66,7 +66,8 @@ def main():
     # Initialise logger
     if bool(optimiser_config["general"]["logging"]):
         FORMAT="%(asctime)s.%(msecs)03d %(levelname)s = (%(module)s) %(message)s"
-        logging.basicConfig(level=logging.INFO, filename=os.path.join(args.output_path,"optimiser.log"), format=FORMAT, filemode="w", datefmt='%H:%M:%S')
+        logging.basicConfig(level=logging.INFO, filename=os.path.join(args.output_path,"optimiser.log"),
+                format=FORMAT, filemode="w", datefmt='%H:%M:%S')
     else:
         logging.getLogger().disabled = True
 
@@ -122,10 +123,10 @@ def main():
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
         fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net)
 
-    # ## apply max fine factor to the graph
-    # if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
-    #     for partition in net.partitions:
-    #         partition.apply_complete_fine()
+    ## apply max fine factor to the graph
+    if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
+        for partition in net.partitions:
+            fpgaconvnet.optimiser.transforms.fine.apply_complete_fine(partition)
 
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
@@ -134,11 +135,11 @@ def main():
                     opt.net, partition_index)
 
     if bool(optimiser_config["general"]["starting_point_distillation"]):
-        net.update_partitions()
-        net.starting_point_distillation(args.teacher_partition_path)
-        net.update_partitions()
-        net.merge_memory_bound_partitions()
-        net.update_partitions()
+        opt.net.update_partitions()
+        opt.starting_point_distillation(args.teacher_partition_path)
+        opt.net.update_partitions()
+        opt.merge_memory_bound_partitions()
+        opt.net.update_partitions()
 
     # run optimiser
     opt.run_solver()

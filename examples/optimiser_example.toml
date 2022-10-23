@@ -7,7 +7,7 @@ resource_allocation = 0.75
 [transforms.fine]
 apply_transform = true
 probability = 0.25
-start_complete = false
+start_complete = true
 
 [transforms.coarse]
 apply_transform = true
