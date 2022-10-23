@@ -6,11 +6,12 @@ import math
 import logging
 from google.protobuf import json_format
 
-import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
-import fpgaconvnet_optimiser.tools.graphs as graphs
-from fpgaconvnet_optimiser.tools.layer_enum import LAYER_TYPE, from_proto_layer_type
+import fpgaconvnet.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
+import fpgaconvnet.tools.graphs as graphs
 
-def starting_point_distillation(self, teacher_partition_path):
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE, from_proto_layer_type
+
+def starting_point_distillation(net, teacher_partition_path):
     print("load starting point from:", teacher_partition_path)
     teacher_partitions = fpgaconvnet_pb2.partitions()
     with open(teacher_partition_path,'r') as f:
@@ -98,13 +99,13 @@ def starting_point_distillation(self, teacher_partition_path):
         return False
 
     for partition_index, teacher_partition in enumerate(teacher_partitions.partition):
-        student_partition = self.partitions[partition_index]
+        student_partition = net.partitions[partition_index]
         student_partition.remove_weights_reloading_transform()
 
-    self.update_partitions()
+    net.update_partitions()
 
     for partition_index, teacher_partition in enumerate(teacher_partitions.partition):
-        student_partition = self.partitions[partition_index]
+        student_partition = net.partitions[partition_index]
         student_node_index = 0
         for layer_index,layer in enumerate(teacher_partition.layers):
 
@@ -137,7 +138,7 @@ def starting_point_distillation(self, teacher_partition_path):
 
                     reach_conv = _iterate_current_teacher_partition_until_conv(teacher_partition, layer_index, factors)
                     if not reach_conv:
-                        for next_parition_index in range(partition_index+1, len(self.partitions)):
+                        for next_parition_index in range(partition_index+1, len(net.partitions)):
                             reach_conv = _iterate_next_teacher_partition_until_conv(teacher_partitions.partition[next_parition_index], factors)
                             if reach_conv:
                                 break
@@ -158,8 +159,8 @@ def starting_point_distillation(self, teacher_partition_path):
                             student_partition.graph.nodes[node]["hw"].groups = padded_channels
                         student_partition.graph.nodes[node]['hw'].filters = padded_channels
                         if not _iterate_current_student_partition_until_conv(student_partition, node, padded_channels):
-                            for next_parition_index in range(partition_index+1, len(self.partitions)):
-                                if _iterate_next_student_partition_until_conv(self.partitions[next_parition_index], self.partitions[next_parition_index].input_nodes[0], padded_channels):
+                            for next_parition_index in range(partition_index+1, len(net.partitions)):
+                                if _iterate_next_student_partition_until_conv(net.partitions[next_parition_index], net.partitions[next_parition_index].input_nodes[0], padded_channels):
                                     break
 
                 if "coarse_in" in teacher_parameters.keys():
@@ -189,16 +190,16 @@ def starting_point_distillation(self, teacher_partition_path):
             student_partition.wr_factor = wr_factor
             student_partition.apply_weights_reloading_transform()
 
-def merge_memory_bound_partitions(self):
+def merge_memory_bound_partitions(net):
     print("resolving memory bound partitions")
     for _ in range(50):
-        partitions = copy.deepcopy(self.partitions)
+        partitions = copy.deepcopy(net.partitions)
 
-        self.update_partitions()
+        net.update_partitions()
         input_memory_bound = []
         output_memory_bound = []
 
-        for partition_index, partition in enumerate(self.partitions):
+        for partition_index, partition in enumerate(net.partitions):
             if partition.is_input_memory_bound():
                 input_memory_bound.append(partition_index)
             if partition.is_output_memory_bound():
@@ -206,34 +207,34 @@ def merge_memory_bound_partitions(self):
         memory_bound = input_memory_bound + output_memory_bound
 
         if len(memory_bound) == 0:
-            self.partitions = partitions
+            net.partitions = partitions
             break
 
-        for i in range(len(self.partitions)):
-            self.partitions[i].remove_squeeze()
+        for i in range(len(net.partitions)):
+            net.partitions[i].remove_squeeze()
 
         ## Choose slowest partition
-        partition_latencys = [ self.partitions[partition_index].get_latency(self.platform["freq"]) for partition_index in memory_bound]
+        partition_latencys = [ net.partitions[partition_index].get_latency(net.platform["freq"]) for partition_index in memory_bound]
         partition_index    = np.random.choice(memory_bound, 1, p=(partition_latencys/sum(partition_latencys)))[0]
 
-        horizontal_merges = self.get_all_horizontal_merges(partition_index)
+        horizontal_merges = net.get_all_horizontal_merges(partition_index)
 
         if horizontal_merges[0] and partition_index in output_memory_bound:
-            self.partitions[horizontal_merges[0][0]].reset()
-            self.partitions[horizontal_merges[0][1]].reset()
-            self.merge_horizontal(*horizontal_merges[0])
+            net.partitions[horizontal_merges[0][0]].reset()
+            net.partitions[horizontal_merges[0][1]].reset()
+            net.merge_horizontal(*horizontal_merges[0])
         elif horizontal_merges[1] and partition_index in input_memory_bound:
-            self.partitions[horizontal_merges[1][0]].reset()
-            self.partitions[horizontal_merges[1][1]].reset()
-            self.merge_horizontal(*horizontal_merges[1])
+            net.partitions[horizontal_merges[1][0]].reset()
+            net.partitions[horizontal_merges[1][1]].reset()
+            net.merge_horizontal(*horizontal_merges[1])
 
 
-        self.update_partitions()
+        net.update_partitions()
 
         try:
-            self.check_resources()
-            self.check_constraints()
+            net.check_resources()
+            net.check_constraints()
         except AssertionError:
             # revert to previous state
-            self.partitions = partitions
+            net.partitions = partitions
             #continue

@@ -4,19 +4,22 @@ A command line interface for running the optimiser for given networks
 
 import logging
 import os
-import yaml
+import toml
 import json
 import argparse
 import shutil
 import random
 import numpy as np
 
-from fpgaconvnet_optimiser.optimiser.simulated_annealing import SimulatedAnnealing
-from fpgaconvnet_optimiser.optimiser.improve import Improve
-from fpgaconvnet_optimiser.optimiser.greedy_partition import GreedyPartition
+from fpgaconvnet.parser import Parser
+from fpgaconvnet.tools.layer_enum import from_onnx_op_type
 
-import fpgaconvnet_optimiser.tools.graphs as graphs
-from fpgaconvnet_optimiser.tools.layer_enum import from_onnx_op_type
+from fpgaconvnet.optimiser.solvers import Improve
+from fpgaconvnet.optimiser.solvers import SimulatedAnnealing
+
+import fpgaconvnet.optimiser.transforms.partition
+import fpgaconvnet.optimiser.transforms.coarse
+import fpgaconvnet.optimiser.transforms.fine
 
 def main():
     parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
@@ -56,9 +59,9 @@ def main():
     shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
-    # load optimiser config
-    with open(args.optimiser_config_path,"r") as f:
-        optimiser_config = yaml.load(f, Loader=yaml.Loader)
+    # load optimiser configuration
+    with open(args.optimiser_config_path, "r") as f:
+        optimiser_config = toml.load(f)
 
     # Initialise logger
     if bool(optimiser_config["general"]["logging"]):
@@ -77,73 +80,58 @@ def main():
         allowed_partitions.append((from_onnx_op_type(allowed_partition[0]), from_onnx_op_type(allowed_partition[1])))
     optimiser_config["transforms"]["partition"]["allowed_partitions"] = allowed_partitions
 
-    # load network based on the given optimiser strategy
-    if args.optimiser == "improve":
-        net = Improve(args.name,args.model_path,
-                T=float(optimiser_config["annealing"]["T"]),
-                T_min=float(optimiser_config["annealing"]["T_min"]),
-                k=float(optimiser_config["annealing"]["k"]),
-                cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]),
-                transforms_config=optimiser_config["transforms"])
-    elif args.optimiser == "simulated_annealing":
-        net = SimulatedAnnealing(args.name,args.model_path,
-                T=float(optimiser_config["annealing"]["T"]),
-                T_min=float(optimiser_config["annealing"]["T_min"]),
-                k=float(optimiser_config["annealing"]["k"]),
-                cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]),
-                transforms_config=optimiser_config["transforms"],
-                checkpoint=bool(optimiser_config["general"]["checkpoints"]),
-                checkpoint_path=os.path.join(args.output_path,"checkpoint"))
-    elif optimiser == "greedy_partition":
-        net = GreedyPartition(name, model_path,
-                T=float(optimiser_config["annealing"]["T"]),
-                T_min=float(optimiser_config["annealing"]["T_min"]),
-                k=float(optimiser_config["annealing"]["k"]),
-                cool=float(optimiser_config["annealing"]["cool"]),
-                iterations=int(optimiser_config["annealing"]["iterations"]),
-                transforms_config=optimiser_config["transforms"])
+    # # turn on debugging
+    # net.DEBUG = True
+
+    # parse the network
+    fpgaconvnet_parser = Parser()
+
+    # create network
+    net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)
+
+    # update platform information
+    net.platform.update(args.platform_path)
 
     # update the resouce allocation
     net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
 
-    # turn on debugging
-    net.DEBUG = True
-
-    # get platform
-    with open(args.platform_path,'r') as f:
-        platform = json.load(f)
-
-    # update platform information
-    net.update_platform(args.platform_path)
+    # load network
+    if args.optimiser == "improve":
+        # create network
+        opt = Improve(net, **optimiser_config["annealing"])
+    elif args.optimiser == "simulated_annealing":
+        # create network
+        opt = SimulatedAnnealing(net, **optimiser_config["annealing"])
+    else:
+        raise RuntimeError(f"optimiser {args.optimiser} not implmented")
 
     # specify optimiser objective
     if args.objective == "throughput":
-        net.objective  = 1
+        opt.objective  = 1
     if args.objective == "latency":
-        net.objective  = 0
+        opt.objective  = 0
 
     # specify batch size
-    net.batch_size = args.batch_size
+    opt.batch_size = args.batch_size
 
     # specify available transforms
-    net.get_transforms()
+    opt.transforms = list(optimiser_config["transforms"].keys())
 
     # initialize graph
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
-        net.split_complete()
+        fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net)
 
-    ## apply max fine factor to the graph
-    if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
-        for partition in net.partitions:
-            partition.apply_complete_fine()
+    # ## apply max fine factor to the graph
+    # if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
+    #     for partition in net.partitions:
+    #         partition.apply_complete_fine()
 
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
-        for partition_index in range(len(net.partitions)):
-            net.partitions[partition_index].apply_max_weights_reloading()
+        for partition_index in range(len(opt.net.partitions)):
+            fpgaconvnet.optimiser.transforms.weights_reloading.apply_max_weights_reloading(
+                    opt.net, partition_index)
 
     if bool(optimiser_config["general"]["starting_point_distillation"]):
         net.update_partitions()
@@ -153,23 +141,23 @@ def main():
         net.update_partitions()
 
     # run optimiser
-    net.run_optimiser()
+    opt.run_solver()
 
     # update all partitions
-    net.update_partitions()
+    opt.net.update_partitions()
 
     # find the best batch_size
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
 
     # visualise network
-    net.visualise(os.path.join(args.output_path,"topology.png"))
+    opt.net.visualise(os.path.join(args.output_path, "topology.png"))
 
     # create report
-    net.create_report(os.path.join(args.output_path,"report.json"))
+    opt.net.create_report(os.path.join(args.output_path,"report.json"))
 
     # save all partitions
-    net.save_all_partitions(args.output_path)
+    opt.net.save_all_partitions(os.path.join(args.output_path, "config.json"))
 
     # create scheduler
-    net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+    opt.net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))

@@ -1,28 +1,28 @@
-import numpy as np
 import json
 import copy
 import random
 import math
 import sys
-
-from fpgaconvnet_optimiser.optimiser.optimiser import Optimiser
-import fpgaconvnet_optimiser.tools.graphs as graphs
 from operator import itemgetter
+import numpy as np
+
+from fpgaconvnet.optimiser.solvers import Solver
 
 LATENCY   =0
 THROUGHPUT=1
 
 START_LOOP=1000
 
-class Improve(Optimiser):
+class Improve(Solver):
     """
     Chooses the hardware component causing a bottleneck and performs the same decision as simulated annealing
     """
 
-    def __init__(self,name,network_path,T=10.0,k=0.0001,T_min=0.0001,cool=0.95,iterations=50,transforms_config={},fix_starting_point_config={},data_width=16,weight_width=8,acc_width=30,fuse_bn=True):
+    def __init__(self, name, network_path, T=10.0,
+            k=0.0001, T_min=0.0001, cool=0.95, iterations=50):
 
         # Initialise Network
-        Optimiser.__init__(self,name,network_path,transforms_config,fix_starting_point_config,data_width,weight_width,acc_width,fuse_bn)
+        Solver.__init__(self,name,network_path)
 
         # Simulate Annealing Variables
         self.T          = T
@@ -31,14 +31,7 @@ class Improve(Optimiser):
         self.cool       = cool
         self.iterations = iterations
 
-    """
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    OPTIMISER
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-
-    def optimiser_status(self):
+    def solver_status(self):
         # objective
         objectives = ['latency','throughput']
         objective  = objectives[self.objective]
@@ -54,7 +47,8 @@ class Improve(Optimiser):
         print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
             temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
-    def run_optimiser(self, log=True):
+    def run_solver(self, log=True):
+
         # update all partitions
         self.update_partitions()
 
@@ -156,7 +150,7 @@ class Improve(Optimiser):
 
             # update cost
             if self.DEBUG:
-                self.optimiser_status()
+                self.solver_status()
 
             # reduce temperature
             self.T *= self.cool
