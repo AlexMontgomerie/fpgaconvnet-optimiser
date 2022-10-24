@@ -5,3 +5,4 @@ Optimisations schemes are used to explore the transform design space and find an
 from .solver import Solver
 from .improve import Improve
 from .simulated_annealing import SimulatedAnnealing
+from .greedy_partition import GreedyPartition

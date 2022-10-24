@@ -16,6 +16,7 @@ from fpgaconvnet.tools.layer_enum import from_onnx_op_type
 
 from fpgaconvnet.optimiser.solvers import Improve
 from fpgaconvnet.optimiser.solvers import SimulatedAnnealing
+from fpgaconvnet.optimiser.solvers import GreedyPartition
 
 import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
@@ -55,7 +56,7 @@ def main():
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
-    # copy input files to the output path
+    shutil.copy(args.optimiser_config_path, os.path.join(args.output_path,os.path.basename(args.optimiser_config_path)) )
     shutil.copy(args.model_path, os.path.join(args.output_path,os.path.basename(args.model_path)) )
     shutil.copy(args.platform_path, os.path.join(args.output_path,os.path.basename(args.platform_path)) )
 
@@ -98,11 +99,11 @@ def main():
 
     # load network
     if args.optimiser == "improve":
-        # create network
         opt = Improve(net, **optimiser_config["annealing"])
     elif args.optimiser == "simulated_annealing":
-        # create network
         opt = SimulatedAnnealing(net, **optimiser_config["annealing"])
+    elif args.optimiser == "greedy_partition":
+        opt = GreedyPartition(net)
     else:
         raise RuntimeError(f"optimiser {args.optimiser} not implmented")
 
@@ -134,18 +135,20 @@ def main():
             fpgaconvnet.optimiser.transforms.weights_reloading.apply_max_weights_reloading(
                     opt.net, partition_index)
 
-    if bool(optimiser_config["general"]["starting_point_distillation"]):
-        opt.net.update_partitions()
-        opt.starting_point_distillation(args.teacher_partition_path)
-        opt.net.update_partitions()
-        opt.merge_memory_bound_partitions()
-        opt.net.update_partitions()
+    if bool(optimiser_config["general"]["starting_point_distillation"]) and args.teacher_partition_path != None:
+        net.update_partitions()
+        net.starting_point_distillation(args.teacher_partition_path, not run_optimiser)
+        net.update_partitions()
 
     # run optimiser
     opt.run_solver()
 
     # update all partitions
     opt.net.update_partitions()
+
+    if args.optimiser == "greedy_partition":
+        net.merge_memory_bound_partitions()
+        net.update_partitions()
 
     # find the best batch_size
     #if args.objective == "throughput":

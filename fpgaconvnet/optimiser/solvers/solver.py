@@ -46,7 +46,6 @@ class Solver:
 
     # import optimiser utilities
     from fpgaconvnet.optimiser.solvers.utils import starting_point_distillation
-    from fpgaconvnet.optimiser.solvers.utils import merge_memory_bound_partitions
 
     def get_transforms(self):
         self.transforms = []

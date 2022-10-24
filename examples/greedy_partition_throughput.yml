@@ -1,0 +1,43 @@
+transforms:
+    fine:
+        apply_transform: true
+        probability: 0.25
+        start_complete: false
+    coarse:
+        apply_transform: true
+        probability: 0.25
+    weights_reloading:
+        apply_transform: true
+        probability: 0.25
+        start_max: true
+    partition:
+        apply_transform: false
+        probability: 0.25
+        start_complete: true
+        allowed_type: [merge]
+        allowed_partitions:
+            - [Relu, Conv]
+            - [MaxPool, Conv]
+            - [Conv, Conv]
+            - [Relu, Gemm]
+            - [MaxPool, Gemm]
+            - [AveragePool, Gemm]
+        mask_merge: true
+annealing:
+    T: 10.0
+    T_min: 0.00001
+    k: 0.001
+    cool: 0.99
+    iterations: 3
+    starting_point_distillation: true
+annealing:
+    T: 10.0
+    T_min: 0.001
+    k: 0.1
+    cool: 0.9
+    iterations: 10
+general:
+    logging: false
+    checkpoints: false
+    starting_point_distillation: false
+    resource_allocation: 0.75
