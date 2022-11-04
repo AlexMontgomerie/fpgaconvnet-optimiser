@@ -145,10 +145,22 @@ def load(filepath,fuse_bn=True):
     onnx.checker.check_model(model)
     return model
 
-def update_batch_size(model, batch_size): # from https://github.com/microsoft/onnxruntime/issues/1467#issuecomment-514322927
+def update_batch_size(model, batch_size, ee_flag=False): # from https://github.com/microsoft/onnxruntime/issues/1467#issuecomment-514322927
     # change input batch size
-    model.graph.input[0].type.tensor_type.shape.dim[0].dim_value = batch_size
-    model.graph.output[0].type.tensor_type.shape.dim[0].dim_value = batch_size
+    if ee_flag:
+        # loop inputs and outputs
+        for model_input in model.graph.input:
+            model_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+        for model_output in model.graph.output:
+            #print("output info:",model_output.type.tensor_type)
+            #print("op info done, trying to ud bs")
+            # FIXME seems that 'ReduceMax' onnx op isn't playing ball, need to add batch dim?
+            # for now, just removing from outputs, in future:
+            # during onnx generation force 'keepdims = 1' for ReduceMax operation to preserve shape
+            model_output.type.tensor_type.shape.dim[0].dim_value = batch_size
+    else: # standard version
+        model.graph.input[0].type.tensor_type.shape.dim[0].dim_value = batch_size
+        model.graph.output[0].type.tensor_type.shape.dim[0].dim_value = batch_size
     # clear value info
     model.graph.ClearField('value_info')
     # run shape inference

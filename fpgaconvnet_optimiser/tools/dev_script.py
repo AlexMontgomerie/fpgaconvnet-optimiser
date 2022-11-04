@@ -98,7 +98,7 @@ def output_network(args,filepath, is_branchy):
 
     # load from json format
     #net.load_network(".json") #for loading previous network config
-    net.batch_size = 1 #256
+    net.batch_size = 4 #256
     net.update_platform("/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json")
     # update partitions
     net.update_partitions()
@@ -152,7 +152,7 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
     print("generated simulated annealing object")
 
     #updating params TODO make batch size an argument
-    net.batch_size = 4
+    net.batch_size = 256#4
     net.update_platform(plat_path)
     # update partitions
     net.update_partitions()
@@ -212,7 +212,8 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
 
     ### FOR LOOP FOR REPEATED OPTIM ###
     #NOTE expose these to the expr top level
-    rsc_limits = [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    #rsc_limits = [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    rsc_limits = [0.2,0.3,0.4,0.5]
     full_sa_runs = 10
 
     if auto_flag:
@@ -592,11 +593,18 @@ def gen_graph(args):
 
                 comb_rn=combined_data["report_name"][pareto_comb_mask][srt_comb_idx]
 
+                #with open(os.path.join(args.output_path,'baseline_rpt.txt'), 'w') as f:
+                #    f.write("###### BASELINE REPORT NAMES #####\n")
+                #    for rn,rsc_thr in zip(base_rn, base_xy):
+                #        f.write("report name:"+rn+"\n")
+                #        f.write("xy:"+str(rsc_thr)+"\n")
+
                 #comb_rn = comb_rn.T
-                print("###### COMBINED REPORT NAMES #####\n")
-                for rn,rsc_thr in zip(comb_rn, comb_xy):
-                    print("report name:",rn)
-                    print("xy:",rsc_thr)
+                with open(os.path.join(args.output_path,'combined_rpt_eefrac{}.txt'.format(int(eef_frac*100))), 'w') as f:
+                    f.write("###### COMBINED REPORT NAMES #####\n")
+                    for rn,rsc_thr in zip(comb_rn, comb_xy):
+                        f.write(f"report name:{rn} \n")
+                        f.write(f"xy:{rsc_thr} \n")
 
                 comb_ee1=combined_data["ee1_throughput"][pareto_comb_mask][srt_comb_idx]
                 comb_eef=combined_data["eef_throughput"][pareto_comb_mask][srt_comb_idx]
