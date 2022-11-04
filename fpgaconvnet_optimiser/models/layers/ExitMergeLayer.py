@@ -78,6 +78,22 @@ class ExitMergeLayer(MultiPortLayer):
             "DSP" :   emerge_rsc['DSP']*self.coarse,
         }
 
+    def latency_in(self):
+        # NOTE from multi port but enforcing no coarse parallel for eMerge
+        #return max([
+        #    abs(self.workload_in(i)/(self.rate_in(i)*self.streams_in(i) )) for
+        #    i in range(self.ports_in) ])
+        # FIXME latency in
+        return abs((self.workload_in(0)*self.ports_in)/(self.rate_in(0)*self.streams_in(0)*self.ports_in))
+
+    def latency_out(self):
+        # NOTE from multi port but enforcing no coarse parallel for eMerge
+        #return max([
+        #    abs(self.workload_out(i)/(self.rate_out(i)*self.streams_out(i)))
+        #    for i in range(self.ports_out) ])
+        # NOTE latency out should be double in - merging port data (don't cross the streams)
+        return abs((self.workload_out(0)*self.ports_in)/(self.rate_out(0)*self.streams_out(0)))
+
     def visualise(self,name): #TODO replace 'mod' with actual modules used
         cluster = pydot.Cluster(name,label=name)
 

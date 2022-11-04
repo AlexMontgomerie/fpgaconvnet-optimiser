@@ -154,6 +154,15 @@ class SoftMaxCmpLayer(Layer):
                         fo_rsc['DSP']*self.coarse_in,
         }
 
+    # NOTE hardcoded pipeline depth for 10 class confidence calc
+    def pipeline_depth(self):
+        # NOTE from normal version
+        #return sum([ self.modules[module].pipeline_depth() for module in self.modules ])
+        # TODO make classifier for more than 10 classes
+        #return int((180/256)*self.batch_size) # 180 measured for batch size 256
+        # FIXME LAYERS HAVE NO CONCEPT OF BATCH SIZE....
+        return 180
+
     def visualise(self,name):
         cluster = pydot.Cluster(name,label=name)
 
