@@ -2,6 +2,7 @@
 A command line interface for running the optimiser for given networks
 """
 
+import pickle
 import logging
 import os
 import toml
@@ -10,6 +11,9 @@ import argparse
 import shutil
 import random
 import numpy as np
+import wandb
+import sys
+import copy
 
 from fpgaconvnet.parser import Parser
 from fpgaconvnet.tools.layer_enum import from_onnx_op_type
@@ -42,8 +46,9 @@ def main():
         help='Configuration file (.yml) for optimiser')
     parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
         help='Previously optimised partitions saved in JSON')
-    parser.add_argument('--seed', metavar='N', type=int, default=random.randint(0,2**32-1),
-        help='Seed for the optimiser run')
+    parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
+        help='seed for the optimiser run')
+    parser.add_argument('--enable-wandb', action="store_true", help='seed for the optimiser run')
 
     # parse the arguments
     args = parser.parse_args()
@@ -82,6 +87,23 @@ def main():
         allowed_partitions.append((from_onnx_op_type(allowed_partition[0]), from_onnx_op_type(allowed_partition[1])))
     optimiser_config["transforms"]["partition"]["allowed_partitions"] = allowed_partitions
 
+    # load platform configuration
+    with open(args.platform_path, "r") as f:
+        platform_config = toml.load(f)
+
+    # enable wandb
+    if args.enable_wandb:
+        # project name
+        wandb_name = f"fpgaconvnet-{args.name}-{args.objective}"
+        # wandb config
+        wandb_config = optimiser_config
+        wandb_config |= platform_config
+        # TODO: remove useless config
+        # initialize wandb
+        wandb.init(config=wandb_config,
+                project=wandb_name,
+                entity="alexmontgomerie") # or "fpgaconvnet", and can add "name"
+
     # # turn on debugging
     # net.DEBUG = True
 
@@ -118,6 +140,11 @@ def main():
 
     # specify available transforms
     opt.transforms = list(optimiser_config["transforms"].keys())
+    opt.transforms = []
+    for transform in optimiser_config["transforms"]:
+        if optimiser_config["transforms"][transform]["apply_transform"]:
+            opt.transforms.append(transform)
+
 
     # initialize graph
     ## completely partition graph
@@ -140,8 +167,15 @@ def main():
         net.starting_point_distillation(args.teacher_partition_path, not run_optimiser)
         net.update_partitions()
 
+    # print("size: ", len(pickle.dumps(opt.net)))
+    opt_onnx_model = copy.deepcopy(opt.net.model)
+    opt.net.model = None
+
     # run optimiser
     opt.run_solver()
+
+    # print("size: ", len(pickle.dumps(opt.net)))
+    opt.net.model = opt_onnx_model
 
     # update all partitions
     opt.net.update_partitions()
@@ -154,9 +188,6 @@ def main():
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
 
-    # visualise network
-    opt.net.visualise(os.path.join(args.output_path, "topology.png"))
-
     # create report
     opt.net.create_report(os.path.join(args.output_path,"report.json"))
 
@@ -165,3 +196,8 @@ def main():
 
     # create scheduler
     opt.net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+
+    # visualise network
+    opt.net.visualise(os.path.join(args.output_path, "topology.png"))
+
+

@@ -17,7 +17,7 @@ transformable_nodes = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
 
 def apply_random_coarse_node(partition, node):
     # choose coarse in or coarse out
-    coarse_type = random.choice(['coarse_in','coarse_out'])
+    coarse_type = random.choice(['coarse_in','coarse_group','coarse_out'])
     # apply coarse folding
     ## coarse in
     if coarse_type == 'coarse_in':
@@ -29,6 +29,12 @@ def apply_random_coarse_node(partition, node):
         if not partition.graph.nodes[node]['type'] in transformable_nodes:
             # if not, update both node info
             partition.graph.nodes[node]['hw'].coarse_out = coarse_in
+    ## coarse group
+    if coarse_type == 'coarse_group' and partition.graph.nodes[node]['type'] == LAYER_TYPE.Convolution:
+        # choose random coarse in factor
+        coarse_group = random.choice(partition.graph.nodes[node]['hw'].get_coarse_group_feasible())
+        # update coarse folding for both node info and actual nodes
+        partition.graph.nodes[node]['hw'].coarse_group = coarse_group
     ## coarse out
     if coarse_type == 'coarse_out':
         # choose random coarse out factor

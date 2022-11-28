@@ -5,6 +5,7 @@ import copy
 import random
 import math
 from dataclasses import dataclass
+import wandb
 
 from fpgaconvnet.optimiser.solvers import Solver
 
@@ -23,34 +24,6 @@ class SimulatedAnnealing(Solver):
     """
 Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
     """
-
-    # def __init__(self,name,network_path,T=10.0,k=0.001,T_min=0.0001,cool=0.97,iterations=10):
-
-    #     # Initialise Network
-    #     Solver.__init__(self,name,network_path)
-
-    #     # Simulate Annealing Variables
-    #     self.T          = T
-    #     self.k          = k
-    #     self.T_min      = T_min
-    #     self.cool       = cool
-    #     self.iterations = iterations
-
-    # def solver_status(self):
-    #     # objective
-    #     objectives = ['latency','throughput']
-    #     objective  = objectives[self.objective]
-    #     # cost
-    #     cost = self.get_cost()
-    #     # Resources
-    #     resources = [ partition.get_resource_usage() for partition in self.net.partitions ]
-    #     BRAM = max([ resource['BRAM'] for resource in resources ])
-    #     DSP  = max([ resource['DSP']  for resource in resources ])
-    #     LUT  = max([ resource['LUT']  for resource in resources ])
-    #     FF   = max([ resource['FF']   for resource in resources ])
-    #     sys.stdout.write("\033[K")
-    #     print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-    #         temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
     def run_solver(self, log=True):
 
@@ -98,6 +71,10 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
             # get the current cost
             cost = self.get_cost()
+
+            # wandb logging and checkpoint
+            self.wandb_log(temperature=self.T)
+            # self.wandb_checkpoint()
 
             # Save previous iteration
             net = copy.deepcopy(self.net)
@@ -147,3 +124,14 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
             # reduce temperature
             self.T *= self.cool
+
+        # # store dataframe of
+        # # https://docs.wandb.ai/guides/data-vis/log-tables
+        # table = wandb.Table(columns=[])
+        # for i, partition in enumerate(self.net.partitions):
+        #     table.add_data([])
+        # wandb.log({"partitions": table})
+
+        # store image
+        # wandb.log({"image": wandb.Image(path_to_image)})
+        # wandb.log("plot": plt)

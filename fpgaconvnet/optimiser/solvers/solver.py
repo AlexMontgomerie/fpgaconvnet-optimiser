@@ -4,6 +4,10 @@ import random
 import math
 import numpy as np
 from dataclasses import dataclass, field
+import wandb
+import uuid
+import pickle
+from datetime import datetime
 
 LATENCY   =0
 THROUGHPUT=1
@@ -94,7 +98,8 @@ class Solver:
         assert self.net.get_throughput() >= self.constraints['throughput'], \
                 "ERROR : (constraint violation) Throughput constraint exceeded"
 
-    def apply_transform(self, transform, partition_index=None, node=None,iteration=None,cooltimes=None):
+    def apply_transform(self, transform, partition_index=None, node=None,
+            iteration=None, cooltimes=None):
         """
         function to apply chosen transform to the network. Partition index
         and node can be specified. If not, a random partition and node is
@@ -169,16 +174,38 @@ class Solver:
             cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\r')
 
     def save_design_checkpoint(self, output_path):
-        # get the current state of the optimiser
-        state = {
-            "time" : str(datetime.now()),
-            "self" : self
-        }
         # pickle the current optimiser state
         checkpoint = pickle.dumps(self)
         # save to output path
         with open(output_path, "wb") as f:
             f.write(checkpoint)
+
+    def wandb_checkpoint(self):
+        # pickle optimiser object
+        checkpoint = pickle.dumps(self)
+        checkpoint_path = f"checkpoint/{uuid.uuid4().hex}.dcp"
+        with open(checkpoint_path,"wb") as f:
+            f.write(checkpoint)
+        # create a wandb artifact
+        artifact_timestamp = datetime.now().strftime("%m-%d-%Y-%H.%M.%S.%f")
+        # artifact_name = f"checkpoint-{artifact_timestamp}"
+        artifact_name = f"checkpoint"
+        artifact = wandb.Artifact(artifact_name, type="dcp")
+        artifact.add_file(checkpoint_path)
+        # log the artifact
+        wandb.log_artifact(artifact)
+
+    def wandb_log(self, **kwargs):
+        # get common log values
+        wandb_log = {
+            "latency": self.net.get_latency(),
+            "throughput": self.net.get_throughput(),
+            "num_partitions": len(self.net.partitions),
+        }
+        # add extra log values
+        wandb_log.update(kwargs)
+        # update wandb log
+        wandb.log(wandb_log)
 
     def get_optimal_batch_size(self):
         """
