@@ -11,23 +11,28 @@ from fpgaconvnet.models.layers import ConvolutionLayer, InnerProductLayer, ReLUL
 
 import fpgaconvnet.optimiser.solvers.solver
 
+from .utils import *
+
 class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
-    def __init__(self, net: Network):
+    def __init__(self, net: Network, runtime_parameters=False):
 
         # initialise base solver
         super().__init__(net, 0)
 
         # dictionary of layers, keyed by their name
-        self.latency_nodes = {}
+        self.building_blocks = {}
         for node in self.net.graph.nodes:
-            self.latency_nodes[node] = copy.deepcopy(self.net.graph.nodes[node])
-            self.latency_nodes[node]["exec_nodes"] = [ node ]
+            self.building_blocks[node] = copy.deepcopy(self.net.graph.nodes[node])
+            self.building_blocks[node]["exec_nodes"] = [ node ]
 
         # combine simple layer types
         self.simple_layer_types = [ LAYER_TYPE.ReLU, LAYER_TYPE.EltWise ]
         for layer_type in self.simple_layer_types:
             self.combine(layer_type)
+
+        # flag to say if runtime parameterisable
+        self.runtime_parameters = runtime_parameters
 
     def get_layers_of_type(self, layer_type):
         """
@@ -35,9 +40,9 @@ class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
         """
         # find all layers of given type
         layers_of_type = []
-        for layer in self.latency_nodes:
+        for layer in self.building_blocks:
             # layers of the same type
-            if self.latency_nodes[layer]["type"] == layer_type:
+            if self.building_blocks[layer]["type"] == layer_type:
                 layers_of_type.append(layer)
 
         # return layers
@@ -52,7 +57,7 @@ class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
         layers_to_combine = layers_of_type
 
         # get the hardware for all the layers to combine
-        layers_to_combine_hw = [ self.latency_nodes[layer]["hw"] \
+        layers_to_combine_hw = [ self.building_blocks[layer]["hw"] \
                 for layer in layers_to_combine ]
 
         # create a new layer name by combining
@@ -64,259 +69,129 @@ class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 pass
             case LAYER_TYPE.Convolution:
 
-                # get the max of the parameters
-                filters = max([ node.filters for node in layers_to_combine_hw ])
-                rows = max([ node.rows for node in layers_to_combine_hw ])
-                cols = max([ node.cols for node in layers_to_combine_hw ])
-                channels = max([ node.channels for node in layers_to_combine_hw ])
-                fine = min([ node.fine for node in layers_to_combine_hw ])
-                groups = max([ node.groups for node in layers_to_combine_hw ])
-                coarse_in = min([ node.coarse_in for node in layers_to_combine_hw ])
-                coarse_out = min([ node.coarse_out for node in layers_to_combine_hw ])
-                coarse_group = min([ node.coarse_group for node in layers_to_combine_hw ])
-                kernel_size = [
-                        max([ node.kernel_size[0] for node in layers_to_combine_hw ]),
-                        max([ node.kernel_size[1] for node in layers_to_combine_hw ]),
-                ]
-                stride = [
-                        min([ node.stride[0] for node in layers_to_combine_hw ]),
-                        min([ node.stride[1] for node in layers_to_combine_hw ]),
-                ]
-                pad = [
-                        max([ node.pad[0] for node in layers_to_combine_hw ]),
-                        max([ node.pad[1] for node in layers_to_combine_hw ]),
-                        max([ node.pad[2] for node in layers_to_combine_hw ]),
-                        max([ node.pad[3] for node in layers_to_combine_hw ]),
-                ]
+                # get all the parameter keys
+                max_param_keys = [ "groups",  "kernel_rows", "kernel_cols",
+                        "stride_rows", "stride_cols", "pad_top", "pad_bottom",
+                        "pad_left", "pad_right" ]
+                min_param_keys = [ "filters", "rows", "cols", "channels", "fine",
+                        "coarse_in", "coarse_out", "coarse_group" ]
+
+                # get the parameters
+                parameters = { key: self.get_max_attr_of_hw_nodes(
+                    layers_to_combine, key) for key in max_param_keys }
+                parameters.update({ key: self.get_min_attr_of_hw_nodes(
+                    layers_to_combine, key) for key in min_param_keys })
 
                 # get all the execution nodes from the layers to combine
                 exec_nodes = list(itertools.chain(*[
-                        self.latency_nodes[layer]["exec_nodes"] \
+                        self.building_blocks[layer]["exec_nodes"] \
                                 for layer in layers_to_combine ]))
 
                 # create a new layer from these parameters
-                self.latency_nodes[new_layer_name] = {
+                self.building_blocks[new_layer_name] = {
                     "type": LAYER_TYPE.Convolution,
-                    "hw": ConvolutionLayer(
-                            filters, rows, cols, channels, coarse_in,
-                            coarse_out, coarse_group, kernel_size,
-                            stride, groups, pad, fine),
+                    "hw": get_convolution_from_dict(parameters),
                     "exec_nodes": exec_nodes,
                 }
 
         # remove the combined layers
         if len(layers_to_combine) > 1:
             for layer in layers_to_combine:
-                del self.latency_nodes[layer]
+                del self.building_blocks[layer]
+
+    def get_max_attr_of_hw_nodes(self, hw_nodes, attr):
+         return max([ getattr(self.building_blocks[hw_node]["hw"], attr) \
+                for hw_node in hw_nodes ])
+
+    def get_min_attr_of_hw_nodes(self, hw_nodes, attr):
+         return min([ getattr(self.building_blocks[hw_node]["hw"], attr) \
+                for hw_node in hw_nodes ])
+
 
     def seperate(self, node):
-
+        """
+        method to seperate out hardware nodes in `self.building_blocks`
+        """
         # iterate over exec_nodes
-        for exec_node in self.latency_nodes[node]["exec_nodes"]:
+        for exec_node in self.building_blocks[node]["exec_nodes"]:
             # add hardware of exec_node to the latency nodes
-            self.latency_nodes[exec_node] = copy.deepcopy(self.net.graph.nodes[exec_node])
-            self.latency_nodes[exec_node]["exec_nodes"] = [ exec_node ]
+            self.building_blocks[exec_node] = copy.deepcopy(self.net.graph.nodes[exec_node])
+            self.building_blocks[exec_node]["exec_nodes"] = [ exec_node ]
             # keep performance parameters the same (coarse, fine, ...)
             # TODO
 
         # delete the original node from the latency nodes
-        del self.latency_nodes[node]
+        del self.building_blocks[node]
 
     def get_resources(self):
         """
-        returns the sum of the resources of all nodes in the latency_nodes
+        returns the sum of the resources of all nodes in the building_blocks
         """
         return {
             "LUT": sum([ node["hw"].resource()["LUT"] \
-                    for _, node in self.latency_nodes.items() ]),
+                    for _, node in self.building_blocks.items() ]),
             "FF": sum([ node["hw"].resource()["FF"] \
-                    for _, node in self.latency_nodes.items() ]),
+                    for _, node in self.building_blocks.items() ]),
             "DSP": sum([ node["hw"].resource()["DSP"] \
-                    for _, node in self.latency_nodes.items() ]),
+                    for _, node in self.building_blocks.items() ]),
             "BRAM": sum([ node["hw"].resource()["BRAM"] \
-                    for _, node in self.latency_nodes.items() ]),
+                    for _, node in self.building_blocks.items() ]),
         }
 
     def validate(self):
         """
-        check that all `latency_nodes` have valid parameters
+        check that all `building_blocks` have valid parameters
         """
         # iterate over laytency nodes
-        for node in self.latency_nodes:
+        for hw_node in self.building_blocks:
             # switch-case on layer type
-            match self.latency_nodes[node]["type"]:
+            match self.building_blocks[hw_node]["type"]:
                 case LAYER_TYPE.Convolution:
                     # iterate over the execution nodes
-                    for exec_node in self.latency_nodes[node]["exec_nodes"]:
+                    for exec_node in self.building_blocks[hw_node]["exec_nodes"]:
                         # assertions to check parameters are correct
                         assert self.net.graph.nodes[exec_node]["hw"].kernel_size[0] <= \
-                                self.latency_nodes[node]["hw"].kernel_size[0]
+                                self.building_blocks[hw_node]["hw"].kernel_size[0]
                         assert self.net.graph.nodes[exec_node]["hw"].kernel_size[1] <= \
-                                self.latency_nodes[node]["hw"].kernel_size[1]
+                                self.building_blocks[hw_node]["hw"].kernel_size[1]
 
-    def get_latency_node(self, exec_node):
+    def get_building_block(self, exec_node):
         """
         find the corresponding hardware node for the node to be executed
         """
-        for node in self.latency_nodes:
-            if exec_node in self.latency_nodes[node]["exec_nodes"]:
-                return node
+        for hw_node in self.building_blocks:
+            if exec_node in self.building_blocks[hw_node]["exec_nodes"]:
+                return hw_node
         raise StopIteration(f"could not find hardware for execution node {exec_node}")
 
     def evaluate_latency(self):
         """
         evaluate the latency for the execution of the graph. Maps the
-        nodes of the `self.net.graph` to those of the `self.latency_nodes`.
+        nodes of the `self.net.graph` to those of the `self.building_blocks`.
         The latency is the sum of the execution of all these elements.
         """
         # total execution latency
         total_latency = 0
+
         # get the schedule
         schedule = self.get_schedule()
-        # iterate over nodes in the execution graph
-        for node in self.net.graph:
-            # find the hardware node
-            hw_node = self.get_latency_node(node)
-            # handle different hardware types
-            match self.net.graph.nodes[node]["type"]:
-                case LAYER_TYPE.Convolution:
-                    # get repetition
-                    repetition = 1
-                    repetition *= 1 # TODO row repetition
-                    repetition *= 1 # TODO col repetition
-                    repetition *= 1 # TODO channel repetition
-                    repetition *= 1 # TODO filter repetition
-                    # get the latency for the node
-                    # TODO add run time parameters to the latency estimate
-                    node_latency = self.latency_nodes[hw_node]["hw"].latency()
-                case LAYER_TYPE.Pooling:
-                    # get repetition
-                    repetition = 1
-                    repetition *= 1 # TODO row repetition
-                    repetition *= 1 # TODO col repetition
-                    repetition *= 1 # TODO channel repetition
-                    repetition *= 1 # TODO filter repetition
-                    # get the latency for the node
-                    # TODO add run time parameters to the latency estimate
-                    node_latency = self.latency_nodes[hw_node]["hw"].latency()
-                case LAYER_TYPE.Squeeze:
-                    # get repetition
-                    repetition = 1
-                    repetition *= 1 # TODO row repetition
-                    repetition *= 1 # TODO col repetition
-                    repetition *= 1 # TODO channel repetition
-                    repetition *= 1 # TODO filter repetition
-                    # get the latency for the node
-                    # TODO add run time parameters to the latency estimate
-                    node_latency = self.latency_nodes[hw_node]["hw"].latency()
-                case LAYER_TYPE.InnerProduct:
-                    # get repetition
-                    repetition = 1
-                    repetition *= 1 # TODO row repetition
-                    repetition *= 1 # TODO col repetition
-                    repetition *= 1 # TODO channel repetition
-                    repetition *= 1 # TODO filter repetition
-                    # get the latency for the node
-                    # TODO add run time parameters to the latency estimate
-                    node_latency = self.latency_nodes[hw_node]["hw"].latency()
-                case LAYER_TYPE.ReLU:
-                    # get repetition
-                    repetition = 1
-                    repetition *= 1 # TODO row repetition
-                    repetition *= 1 # TODO col repetition
-                    repetition *= 1 # TODO channel repetition
-                    repetition *= 1 # TODO filter repetition
-                    # get the latency for the node
-                    # TODO add run time parameters to the latency estimate
-                    node_latency = self.latency_nodes[hw_node]["hw"].latency()
-                case _:
-                    raise NotImplementedError(f"layer type not implemented")
 
-            # add the node latency to the total latency
-            total_latency += repetition*node_latency
+        # iterate over nodes in the execution graph
+        for exec_node in self.net.graph:
+
+            # find the hardware node
+            hw_node = self.get_building_block(exec_node)
+
+            # get the latency of the node for all scheduled executions
+            if self.runtime_parameters:
+                total_latency += sum([ get_hw_from_dict(
+                    self.building_blocks[hw_node]["type"], param).latency() \
+                        for param in schedule[exec_node] ])
+            else:
+                total_latency += len(schedule[exec_node])*self.building_blocks[hw_node]["hw"].latency()
+
         # return the overall latency
         return total_latency
-
-    def apply_random_shape(self, node, rand_shape_range = [10, 10, 10] ,
-            use_previous_shape: bool = False) -> np.array:
-        """
-        get a random shape for executing the featuremap.
-        """
-        # get the max shape for the input
-        max_input_shape = {
-            "rows" : max([ self.graph.nodes[exec_node]["hw"].rows_in \
-                    for exec_node in self.latency_nodes[node]["exec_nodes"] ]),
-            "cols" : max([ self.graph.nodes[exec_node]["hw"].cols_in \
-                    for exec_node in self.latency_nodes[node]["exec_nodes"] ]),
-            "channels" : max([ self.graph.nodes[exec_node]["hw"].channels_in \
-                    for exec_node in self.latency_nodes[node]["exec_nodes"] ]),
-        }
-
-        if use_previous_shape:
-            # get the previous input shape
-            prev_input_shape = {
-                "rows" : self.latency_nodes[node]["hw"].rows_in,
-                "cols" : self.latency_nodes[node]["hw"].cols_in,
-                "channels" : self.latency_nodes[node]["hw"].channels_in,
-            }
-            # get a random shape based on the previous (within a range)
-            next_input_shape = {
-                "rows" : random.randint(
-                    max(1, prev_input_shape["rows"]-rand_shape_range[0]),
-                    min(prev_input_shape["rows"]+rand_shape_range[0], max_input_shape["rows"])),
-                "cols" : random.randint(
-                    max(1, prev_input_shape["cols"]-rand_shape_range[0]),
-                    min(prev_input_shape["cols"]+rand_shape_range[0], max_input_shape["cols"])),
-                "channels" : random.randint(
-                    max(1, prev_input_shape["channels"]-rand_shape_range[0]),
-                    min(prev_input_shape["channels"]+rand_shape_range[0], max_input_shape["channels"])),
-            }
-        else:
-            # get a random shape based on the previous (within a range)
-            next_input_shape = {
-                "rows" : random.randint(1, max_input_shape["rows"]),
-                "cols" : random.randint(1, max_input_shape["cols"]),
-                "channels" : random.randint(1, max_input_shape["channels"]),
-            }
-
-        # update the next shape for specific hardware types
-        match self.net.graph.nodes[node]["type"]:
-            case LAYER_TYPE.Convolution:
-                # get the max kernel size
-                max_kernel_size = [
-                    max([ self.graph.nodes[exec_node]["hw"].kernel_size[0] \
-                        for exec_node in self.latency_nodes[node]["exec_nodes"] ]),
-                    max([ self.graph.nodes[exec_node]["hw"].kernel_size[1] \
-                        for exec_node in self.latency_nodes[node]["exec_nodes"] ]),
-                ]
-                # make sure rows are greater than the kernel size
-                self.latency_nodes[node]["hw"].rows = max(max_kernel_size[0]+1, next_input_shape["rows"])
-                self.latency_nodes[node]["hw"].cols = max(max_kernel_size[1]+1, next_input_shape["cols"])
-                # fix channels to be max TODO: do we want to have runtime channels?
-                self.latency_nodes[node]["hw"].channels = max_input_shape["channels"]
-                # set a random filter dimension
-                max_filters = max([ self.graph.nodes[exec_node]["hw"].filters \
-                        for exec_node in self.latency_nodes[node]["exec_nodes"] ]),
-                # self.latency_nodes[node]["hw"].filters = random.randint(1, max_filters) TODO: support properly
-                self.latency_nodes[node]["hw"].filters = max_filters
-            case LAYER_TYPE.Pooling:
-                # get the max kernel size
-                max_kernel_size = [
-                    max([ self.graph.nodes[exec_node]["hw"].kernel_size[0] \
-                        for exec_node in self.latency_nodes[node]["exec_nodes"] ]),
-                    max([ self.graph.nodes[exec_node]["hw"].kernel_size[1] \
-                        for exec_node in self.latency_nodes[node]["exec_nodes"] ]),
-                ]
-                # make sure rows are greater than the kernel size
-                self.latency_nodes[node]["hw"].rows = max(max_kernel_size[0]+1, next_input_shape["rows"])
-                self.latency_nodes[node]["hw"].cols = max(max_kernel_size[1]+1, next_input_shape["cols"])
-            # TODO: handle the other layer types
-            case _:
-                self.latency_nodes[node]["hw"].rows = max_input_shape["rows"]
-                self.latency_nodes[node]["hw"].cols = max_input_shape["cols"]
-                self.latency_nodes[node]["hw"].channels = max_input_shape["channels"]
-
-
 
     def get_schedule(self):
         """
@@ -333,35 +208,35 @@ class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
             # add a blank list to the schedule for this node
             schedule[exec_node] = []
             # find the hardware node
-            hw_node = self.get_latency_node(exec_node)
+            hw_node = self.get_building_block(exec_node)
             # get the parameters for the exec node
             base_param = self.net.graph.nodes[exec_node]["hw"].layer_info_dict()
             # handle different hardware types
             match self.net.graph.nodes[exec_node]["type"]:
                 case LAYER_TYPE.Convolution:
                     # choose the largest factor for fine that's below the hardware's fine
-                    fine = list(filter(lambda f: f <= self.latency_nodes[hw_node]["hw"].fine,
+                    fine = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].fine,
                             self.net.graph.nodes[exec_node]["hw"].get_fine_feasible()))[-1]
                     # do the same for the coarse factors TODO: improve the channel, coarse trade-off
-                    coarse_in = list(filter(lambda f: f <= self.latency_nodes[hw_node]["hw"].coarse_in,
+                    coarse_in = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in,
                             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
-                    coarse_out = list(filter(lambda f: f <= self.latency_nodes[hw_node]["hw"].coarse_out,
+                    coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
                             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
-                    coarse_group = list(filter(lambda f: f <= self.latency_nodes[hw_node]["hw"].coarse_group,
+                    coarse_group = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_group,
                             self.net.graph.nodes[exec_node]["hw"].get_coarse_group_feasible()))[-1]
                     # get the repetition of each dimension
                     row_repetition = math.ceil(
                         self.net.graph.nodes[exec_node]["hw"].rows_out() / \
-                                self.latency_nodes[hw_node]["hw"].rows_out())
+                                self.building_blocks[hw_node]["hw"].rows_out())
                     col_repetition = math.ceil(
                         self.net.graph.nodes[exec_node]["hw"].cols_out() / \
-                                self.latency_nodes[hw_node]["hw"].cols_out())
+                                self.building_blocks[hw_node]["hw"].cols_out())
                     # channel_repetition = math.ceil(
                     #     self.net.graph.nodes[exec_node]["hw"].channels_in() / \
-                    #             self.latency_nodes[hw_node]["hw"].channels_in())
+                    #             self.building_blocks[hw_node]["hw"].channels_in())
                     # filter_repetition = math.ceil(
                     #     self.net.graph.nodes[exec_node]["hw"].filters / \
-                    #             self.latency_nodes[hw_node]["hw"].filters)
+                    #             self.building_blocks[hw_node]["hw"].filters)
                     # TODO: at the moment, assume filters and channels always fit
                     # iterate across each dimension to be repeated
                     for h in range(row_repetition):
@@ -369,15 +244,17 @@ class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
                             # for c in range(channel_repetition): # TODO
                             #     for f in range(filter_repetition): #TODO
                             # get the greatest spatial dimensions for each execution
-                            rows_out = min(self.latency_nodes[hw_node]["hw"].rows_out(),
-                                    base_param["rows_out"]-h*self.latency_nodes[hw_node]["hw"].rows_out())
-                            cols_out = min(self.latency_nodes[hw_node]["hw"].cols_out(),
-                                    base_param["cols_out"]-w*self.latency_nodes[hw_node]["hw"].cols_out())
+                            rows_out = min(self.building_blocks[hw_node]["hw"].rows_out(),
+                                    base_param["rows_out"]-h*self.building_blocks[hw_node]["hw"].rows_out())
+                            cols_out = min(self.building_blocks[hw_node]["hw"].cols_out(),
+                                    base_param["cols_out"]-w*self.building_blocks[hw_node]["hw"].cols_out())
                             # convert the output dimensions to input dimensions
                             rows_in = (rows_out*base_param["stride"][0]) + base_param["kernel_size"][0]-base_param["pad_bottom"]-base_param["pad_top"]-1
                             cols_in = (cols_out*base_param["stride"][1]) + base_param["kernel_size"][1]-base_param["pad_left"]-base_param["pad_right"]-1
                             # add the parameters to the schedule
                             param = copy.deepcopy(base_param)
+                            param["rows_in"] = rows_in
+                            param["cols_in"] = cols_in
                             param["fine"] = fine
                             param["coarse_in"] = coarse_in
                             param["coarse_out"] = coarse_out
@@ -388,6 +265,14 @@ class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # in the default case, assume it's just run once with the exec_node's parameters
                     schedule[exec_node].append(base_param)
 
+            # change rows_in, cols_in, depth_in, etc... to rows, cols, depth, ...
+            for i in range(len(schedule[exec_node])):
+                schedule[exec_node][i]["rows"] = schedule[exec_node][i]["rows_in"]
+                schedule[exec_node][i]["cols"] = schedule[exec_node][i]["cols_in"]
+                schedule[exec_node][i]["channels"] = schedule[exec_node][i]["channels_in"]
+                if "depth_in" in schedule[exec_node][i]:
+                    schedule[exec_node][i]["depth"] = schedule[exec_node][i]["depth_in"]
+
         # return the schedule
         return schedule
 
@@ -395,44 +280,86 @@ class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
     def validate_schedule(self):
         pass
 
-    # def apply_random_transform(self, node):
+    def apply_random_shape(self, hw_node, rand_shape_range = [10, 10, 10] ,
+            use_previous_shape: bool = False) -> np.array:
+        """
+        get a random shape for executing the featuremap.
+        """
 
-    #     # transforms to use
-    #     transforms = [ "input_shape", "coarse" ]
+        # get the previous input shape
+        prev_input_shape = self.building_blocks[hw_node]["hw"].shape_in()
+        prev_output_shape = self.building_blocks[hw_node]["hw"].shape_out()
 
-    #     # add extra transforms for Convolution and Inner Product layer
-    #     if self.latency_nodes[node]["type"] == LAYER_TYPE.Convolution:
-    #         transforms += [ "fine" ]
+        # get the max shape for the input and output
+        max_input_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
+                    for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
+                    i in range(len(prev_input_shape)) ]
+        max_output_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
+                    for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
+                    i in range(len(prev_output_shape)) ]
 
-    #     # choose a random transform
-    #     transform = random.choice(transforms)
+        if use_previous_shape:
+            # get a random shape based on the previous (within a range)
+            next_input_shape = [ random.randint(
+                    max(1, prev_input_shape[i]-rand_shape_range[i]),
+                    min(prev_input_shape[i]+rand_shape_range[i], max_input_shape[i])) for \
+                            i in range(len(prev_input_shape)) ]
+            next_output_shape = [ random.randint(
+                    max(1, prev_output_shape[i]-rand_shape_range[i]),
+                    min(prev_output_shape[i]+rand_shape_range[i], max_output_shape[i])) for \
+                            i in range(len(prev_output_shape)) ]
+        else:
+            # get a random shape
+            next_input_shape = [ random.randint(1, max_dim) for max_dim in max_input_shape ]
+            next_output_shape = [ random.randint(1, max_dim) for max_dim in max_output_shape ]
 
-    #     # apply the transforms
-    #     match transform:
-    #         case "input_shape":
+        # update the next shape for specific hardware types
+        self.update_building_block_shape(hw_node,
+                next_input_shape, max_input_shape,
+                next_output_shape, max_output_shape)
 
-    #             # get a random shape for the node
-    #             input_shape = self.get_random_arbitrary_shape(node)
+    def update_building_block_shape(self, hw_node, next_input_shape,
+            max_input_shape, next_output_shape, max_output_shape):
 
-    #             # apply the random shape
-    #             self.latency_nodes[node]["hw"].rows = input_shape["rows"]
-    #             self.latency_nodes[node]["hw"].cols = input_shape["cols"]
-    #             self.latency_nodes[node]["hw"].channels = input_shape["channels"]
+        # update the next shape for specific hardware types
+        match self.building_blocks[hw_node]["type"]:
+            case LAYER_TYPE.Convolution:
+                # get the max kernel size
+                max_kernel_size = [
+                    max([ self.net.graph.nodes[exec_node]["hw"].kernel_size[0] \
+                        for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]),
+                    max([ self.net.graph.nodes[exec_node]["hw"].kernel_size[1] \
+                        for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]),
+                ]
+                # make sure rows are greater than the kernel size
+                # TODO: get the actual min shape
+                self.building_blocks[hw_node]["hw"].rows = max(max_kernel_size[0]+1, next_input_shape[0])
+                self.building_blocks[hw_node]["hw"].cols = max(max_kernel_size[1]+1, next_input_shape[1])
+                # fix channels to be max TODO: do we want to have runtime channels?
+                self.building_blocks[hw_node]["hw"].channels = max_input_shape[2]
+                # set a random filter dimension
+                max_filters = max([ self.net.graph.nodes[exec_node]["hw"].filters \
+                        for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]),
+                # self.building_blocks[node]["hw"].filters = random.randint(1, max_filters) TODO: support properly
+                self.building_blocks[hw_node]["hw"].filters = max_output_shape[2]
+            case LAYER_TYPE.Pooling:
+                # get the max kernel size
+                max_kernel_size = [
+                    max([ self.net.graph.nodes[exec_node]["hw"].kernel_size[0] \
+                        for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]),
+                    max([ self.net.graph.nodes[exec_node]["hw"].kernel_size[1] \
+                        for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]),
+                ]
+                # make sure rows are greater than the kernel size
+                self.building_blocks[hw_node]["hw"].rows = max(max_kernel_size[0]+1, next_input_shape[0])
+                self.building_blocks[hw_node]["hw"].cols = max(max_kernel_size[1]+1, next_input_shape[1])
+            # TODO: handle the other layer types
+            case _:
+                self.building_blocks[hw_node]["hw"].rows = max_input_shape[0]
+                self.building_blocks[hw_node]["hw"].cols = max_input_shape[1]
+                self.building_blocks[hw_node]["hw"].channels = max_input_shape[2]
 
-    #             # for convolution layers change the filter dimension # TODO: need to support the current coarse factor (or reset it)
-    #             if self.latency_nodes[node]["type"] == LAYER_TYPE.Convolution:
-    #                 # self.latency_nodes[node]["hw"].filters = input_shape["filters"]
-    #                 pass
-
-    #         case "coarse":
-
-    #             # coarse in, out and group
-
-    #         case "fine":
-    #             pass
-    #         case _:
-    #             raise NotImplementedError(f"transform {transform} nit implemented")
+        # update the hw node
+        self.building_blocks[hw_node]["hw"].update()
 
 
-    #     # update the latency node
-    #     self.latency_nodes[node].update()
