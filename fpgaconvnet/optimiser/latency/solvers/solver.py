@@ -53,6 +53,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
         # get the layers of the given type
         layers_of_type = self.get_layers_of_type(layer_type)
+        if len(layers_of_type) == 0:
+            return
 
         # further discriminate the layers to combine TODO
         layers_to_combine = layers_of_type
@@ -101,7 +103,6 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 else:
                     raise ValueError(f"dimensionality {self.dimensionality} not supported")
             case LAYER_TYPE.Convolution:
-
                 # get the max of the parameters
                 filters = max([ node.filters for node in layers_to_combine_hw ])
                 rows = max([ node.rows for node in layers_to_combine_hw ])
@@ -114,36 +115,20 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 coarse_in = min([ node.coarse_in for node in layers_to_combine_hw ])
                 coarse_out = min([ node.coarse_out for node in layers_to_combine_hw ])
                 coarse_group = min([ node.coarse_group for node in layers_to_combine_hw ])
-                if self.dimensionality == 2:
-                    kernel_size = [
-                            max([ node.kernel_size[0] for node in layers_to_combine_hw ]),
-                            max([ node.kernel_size[1] for node in layers_to_combine_hw ]),
-                    ]
-                    stride = [
-                            min([ node.stride[0] for node in layers_to_combine_hw ]),
-                            min([ node.stride[1] for node in layers_to_combine_hw ]),
-                    ]
-                    pad = [
-                            max([ node.pad[0] for node in layers_to_combine_hw ]),
-                            max([ node.pad[1] for node in layers_to_combine_hw ]),
-                            max([ node.pad[2] for node in layers_to_combine_hw ]),
-                            max([ node.pad[3] for node in layers_to_combine_hw ]),
-                    ]
-                elif self.dimensionality == 3:
-                    kernel_rows = max([ node.kernel_rows for node in layers_to_combine_hw ])
-                    kernel_cols = max([ node.kernel_cols for node in layers_to_combine_hw ])
+
+                kernel_rows = max([ node.kernel_rows for node in layers_to_combine_hw ])
+                kernel_cols = max([ node.kernel_cols for node in layers_to_combine_hw ])
+                stride_rows = min([ node.stride_rows for node in layers_to_combine_hw ])
+                stride_cols = min([ node.stride_cols for node in layers_to_combine_hw ])
+                pad_top = max([ node.pad_top for node in layers_to_combine_hw ])
+                pad_right = max([ node.pad_right for node in layers_to_combine_hw ])
+                pad_bottom = max([ node.pad_bottom for node in layers_to_combine_hw ])
+                pad_left = max([ node.pad_left for node in layers_to_combine_hw ])
+                if self.dimensionality == 3:
                     kernel_depth = max([ node.kernel_depth for node in layers_to_combine_hw ])
-                    stride_rows = min([ node.stride_rows for node in layers_to_combine_hw ])
-                    stride_cols = min([ node.stride_cols for node in layers_to_combine_hw ])
                     stride_depth = min([ node.stride_depth for node in layers_to_combine_hw ])
-                    pad_top = max([ node.pad_top for node in layers_to_combine_hw ])
-                    pad_right = max([ node.pad_right for node in layers_to_combine_hw ])
                     pad_front = max([ node.pad_front for node in layers_to_combine_hw ])
-                    pad_bottom = max([ node.pad_bottom for node in layers_to_combine_hw ])
-                    pad_left = max([ node.pad_left for node in layers_to_combine_hw ])
                     pad_back = max([ node.pad_back for node in layers_to_combine_hw ])
-                else:
-                    raise ValueError(f"dimensionality {self.dimensionality} not supported")
 
                 # get all the execution nodes from the layers to combine
                 exec_nodes = list(itertools.chain(*[
@@ -156,8 +141,9 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                         "type": layer_type,
                         "hw": ConvolutionLayer(
                                 filters, rows, cols, channels, coarse_in,
-                                coarse_out, coarse_group, kernel_size,
-                                stride, groups, pad, fine),
+                                coarse_out, coarse_group, kernel_rows, kernel_cols,
+                                stride_rows, stride_cols, groups, pad_top,
+                                pad_right, pad_bottom, pad_left, fine),
                         "exec_nodes": exec_nodes,
                     }
                 elif self.dimensionality == 3:
@@ -173,9 +159,63 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     }
                 else:
                     raise ValueError(f"dimensionality {self.dimensionality} not supported")
-            case LAYER_TYPE.EltWise:
-                #TODO: Deal with different types of eltwise layers (add, mul) and with different dimensions of the inputs (broadcasting)
+            case LAYER_TYPE.Pooling:
                 # get the max of the parameters
+                rows = max([ node.rows for node in layers_to_combine_hw ])
+                cols = max([ node.cols for node in layers_to_combine_hw ])
+                if self.dimensionality == 3:
+                    depth = max([ node.depth for node in layers_to_combine_hw ])
+                channels = max([ node.channels for node in layers_to_combine_hw ])
+                coarse = min([ node.coarse for node in layers_to_combine_hw ])
+
+                kernel_rows = max([ node.kernel_rows for node in layers_to_combine_hw ])
+                kernel_cols = max([ node.kernel_cols for node in layers_to_combine_hw ])
+                stride_rows = min([ node.stride_rows for node in layers_to_combine_hw ])
+                stride_cols = min([ node.stride_cols for node in layers_to_combine_hw ])
+                pad_top = max([ node.pad_top for node in layers_to_combine_hw ])
+                pad_right = max([ node.pad_right for node in layers_to_combine_hw ])
+                pad_bottom = max([ node.pad_bottom for node in layers_to_combine_hw ])
+                pad_left = max([ node.pad_left for node in layers_to_combine_hw ])
+                if self.dimensionality == 3:
+                    kernel_depth = max([ node.kernel_depth for node in layers_to_combine_hw ])
+                    stride_depth = min([ node.stride_depth for node in layers_to_combine_hw ])
+                    pad_front = max([ node.pad_front for node in layers_to_combine_hw ])
+                    pad_back = max([ node.pad_back for node in layers_to_combine_hw ])
+
+                # get all the execution nodes from the layers to combine
+                exec_nodes = list(itertools.chain(*[
+                        self.latency_nodes[layer]["exec_nodes"] \
+                                for layer in layers_to_combine ]))
+
+                # create a new layer from these parameters
+                if self.dimensionality == 2:
+                    self.latency_nodes[new_layer_name] = {
+                        "type": layer_type,
+                        "hw": PoolingLayer(
+                                rows, cols, channels, coarse,
+                                "max", kernel_rows, kernel_cols,
+                                stride_rows, stride_cols, pad_top,
+                                pad_right, pad_bottom, pad_left),
+                        "exec_nodes": exec_nodes,
+                    }
+                elif self.dimensionality == 3:
+                    self.latency_nodes[new_layer_name] = {
+                    "type": layer_type,
+                    "hw": PoolingLayer3D(
+                            rows, cols, depth, channels, coarse,
+                            "max", kernel_rows, kernel_cols, kernel_depth,
+                            stride_rows, stride_cols, stride_depth, pad_top,
+                            pad_right, pad_front, pad_bottom, pad_left, pad_back),
+                    "exec_nodes": exec_nodes,
+                    }
+                else:
+                    raise ValueError(f"dimensionality {self.dimensionality} not supported")
+            case LAYER_TYPE.EltWise:
+                #TODO: Deal with different types of eltwise layers (add, mul) and with different dimensions of the inputs (broadcasting) (Maybe runtime parameters can handle this?)
+                for node in layers_to_combine_hw:
+                    print(node)
+                # get the max of the parameters
+                ops = list(set([node.op_type for node in layers_to_combine_hw]))
                 rows = max([ node.rows[0] for node in layers_to_combine_hw ])
                 cols = max([ node.cols[0] for node in layers_to_combine_hw ])
                 if self.dimensionality == 3:
@@ -234,6 +274,41 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                         "hw": AveragePoolingLayer3D(
                                 rows, cols, depth, channels, coarse),
                         "exec_nodes": exec_nodes,
+                    }
+                else:
+                    raise ValueError(f"dimensionality {self.dimensionality} not supported")
+            case LAYER_TYPE.InnerProduct:
+                # get the max of the parameters
+                filters = max([ node.filters for node in layers_to_combine_hw ])
+                rows = max([ node.rows for node in layers_to_combine_hw ])
+                cols = max([ node.cols for node in layers_to_combine_hw ])
+                if self.dimensionality == 3:
+                    depth = max([ node.depth for node in layers_to_combine_hw ])
+                channels = max([ node.channels for node in layers_to_combine_hw ])
+                coarse_in = min([ node.coarse_in for node in layers_to_combine_hw ])
+                coarse_out = min([ node.coarse_out for node in layers_to_combine_hw ])
+
+                # get all the execution nodes from the layers to combine
+                exec_nodes = list(itertools.chain(*[
+                        self.latency_nodes[layer]["exec_nodes"] \
+                                for layer in layers_to_combine ]))
+
+                # create a new layer from these parameters
+                if self.dimensionality == 2:
+                    self.latency_nodes[new_layer_name] = {
+                        "type": layer_type,
+                        "hw": InnerProductLayer(
+                                filters, rows, cols, channels, coarse_in,
+                                coarse_out),
+                        "exec_nodes": exec_nodes,
+                    }
+                elif self.dimensionality == 3:
+                    self.latency_nodes[new_layer_name] = {
+                    "type": layer_type,
+                    "hw": InnerProductLayer3D(
+                            filters, rows, cols, depth, channels, coarse_in,
+                            coarse_out),
+                    "exec_nodes": exec_nodes,
                     }
                 else:
                     raise ValueError(f"dimensionality {self.dimensionality} not supported")
@@ -335,6 +410,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                    node_pipeline_depth = self.latency_nodes[hw_node]["hw"].pipeline_depth()
                 case LAYER_TYPE.Pooling:
                     # get repetition
                     repetition = 1
@@ -345,6 +421,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                    node_pipeline_depth = self.latency_nodes[hw_node]["hw"].pipeline_depth()
                 case LAYER_TYPE.Squeeze:
                     # get repetition
                     repetition = 1
@@ -355,6 +432,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                    node_pipeline_depth = self.latency_nodes[hw_node]["hw"].pipeline_depth()
                 case LAYER_TYPE.InnerProduct:
                     # get repetition
                     repetition = 1
@@ -365,6 +443,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                    node_pipeline_depth = self.latency_nodes[hw_node]["hw"].pipeline_depth()
                 case LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
                     # get repetition
                     repetition = 1
@@ -375,6 +454,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                    node_pipeline_depth = self.latency_nodes[hw_node]["hw"].pipeline_depth()
                 case LAYER_TYPE.AveragePooling:
                     # get repetition
                     repetition = 1
@@ -385,6 +465,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                    node_pipeline_depth = self.latency_nodes[hw_node]["hw"].pipeline_depth()
                 case LAYER_TYPE.EltWise:
                     # get repetition
                     repetition = 1
@@ -395,13 +476,15 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                    node_pipeline_depth = self.latency_nodes[hw_node]["hw"].pipeline_depth()
                 case LAYER_TYPE.NOP:
                     node_latency = 0
+                    node_pipeline_depth = 0
                 case _:
                     raise NotImplementedError(f"Node {node} of layer type {self.net.graph.nodes[node]['type']} not implemented")
 
             # add the node latency to the total latency
-            total_latency += repetition*node_latency
+            total_latency += repetition*(node_latency + node_pipeline_depth)
         # return the overall latency
         return total_latency
 
