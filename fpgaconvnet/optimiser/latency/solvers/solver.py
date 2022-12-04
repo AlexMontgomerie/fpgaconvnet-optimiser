@@ -13,7 +13,7 @@ import fpgaconvnet.optimiser.solvers.solver
 
 from .utils import get_hw_from_dict
 
-class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
+class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
     def __init__(self, net: Network, runtime_parameters=False):
 

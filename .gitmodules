@@ -1,4 +1,4 @@
 [submodule "fpgaconvnet-model"]
 	path = fpgaconvnet-model
-	url = git@github.com:AlexMontgomerie/fpgaconvnet-model.git
-	branch = optimiser
+	url = https://github.com/AlexMontgomerie/fpgaconvnet-model.git
+    branch = modules-and-layers-3d-support
