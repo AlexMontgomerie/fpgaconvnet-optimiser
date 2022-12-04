@@ -15,10 +15,10 @@ import wandb
 import sys
 import copy
 
-from fpgaconvnet.parser import Parser
+from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.tools.layer_enum import from_onnx_op_type
 
-from fpgaconvnet.optimiser.latency.solvers import SimulatedAnnealing
+from fpgaconvnet.optimiser.latency.solvers import LatencySimulatedAnnealing
 
 import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
@@ -110,7 +110,7 @@ def main():
 
     # load network
     if args.optimiser == "simulated_annealing":
-        opt = SimulatedAnnealing(net, **optimiser_config["annealing"])
+        opt = LatencySimulatedAnnealing(net, **optimiser_config["annealing"])
     else:
         raise NotImplementedError(f"optimiser {args.optimiser} not implmented")
 

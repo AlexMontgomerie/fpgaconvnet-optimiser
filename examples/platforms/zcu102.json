@@ -1,0 +1,14 @@
+{
+  "name" : "zcu102",
+  "DSP"  : 2520,
+  "BRAM" : 1824,
+  "URAM" : 0,
+  "FF"   : 548160,
+  "LUT"  : 599550,
+  "freq"          : 160000000,
+  "reconf_time"   : 0.08255,
+  "mem_bandwidth" : 16,
+  "mem_capacity"  : 512000000,
+  "ports"         : 4,
+  "port_width"    : 64
+}

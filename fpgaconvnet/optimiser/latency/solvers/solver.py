@@ -11,7 +11,7 @@ from fpgaconvnet.models.layers import ConvolutionLayer, InnerProductLayer, ReLUL
 
 import fpgaconvnet.optimiser.solvers.solver
 
-class Solver(fpgaconvnet.optimiser.solvers.solver.Solver):
+class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
     def __init__(self, net: Network):
 
