@@ -17,8 +17,9 @@ import copy
 
 from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.tools.layer_enum import from_onnx_op_type
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
-from fpgaconvnet.optimiser.latency.solvers import LatencySimulatedAnnealing
+from fpgaconvnet.optimiser.latency.solvers import LatencySolver, LatencySimulatedAnnealing
 
 import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse

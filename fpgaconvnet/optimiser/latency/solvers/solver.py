@@ -7,7 +7,10 @@ import numpy as np
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 from fpgaconvnet.models.network import Network
-from fpgaconvnet.models.layers import ConvolutionLayer, InnerProductLayer, ReLULayer, EltWiseLayer
+from fpgaconvnet.models.layers import ConvolutionLayer, InnerProductLayer, ReLULayer, \
+                                        EltWiseLayer, PoolingLayer, AveragePoolingLayer, \
+                                        ConvolutionLayer3D, InnerProductLayer3D, ActivationLayer3D, \
+                                        EltWiseLayer3D, PoolingLayer3D, AveragePoolingLayer3D
 
 import fpgaconvnet.optimiser.solvers.solver
 
@@ -15,13 +18,13 @@ from .utils import get_hw_from_dict
 
 class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
-    def __init__(self, net: Network, runtime_parameters=False):
+    def __init__(self, net: Network, runtime_parameters: bool = False):
 
         # initialise base solver
         super().__init__(net, 0)
 
-        # set the dimensionality
-        self.dimensionality = 2 # TODO: make parameter
+        # get the model's dimensionality from the Network
+        self.dimensionality = net.dimensionality
 
         # dictionary of layers, keyed by their name
         self.building_blocks = {}
@@ -30,7 +33,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             self.building_blocks[node]["exec_nodes"] = [ node ]
 
         # combine simple layer types
-        self.simple_layer_types = [ LAYER_TYPE.ReLU, LAYER_TYPE.EltWise ]
+        self.simple_layer_types = [LAYER_TYPE.ReLU, LAYER_TYPE.EltWise, LAYER_TYPE.Sigmoid, LAYER_TYPE.SiLU, LAYER_TYPE.AveragePooling]
         for layer_type in self.simple_layer_types:
             self.combine(layer_type)
 
@@ -66,6 +69,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
         # get the layers of the given type
         layers_of_type = self.get_layers_of_type(layer_type)
+        if len(layers_of_type) == 0:
+            return
 
         # further discriminate the layers to combine TODO
         layers_to_combine = layers_of_type
@@ -75,7 +80,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             return
 
         # create a new layer name by combining
-        new_layer_name = "_".join(layers_to_combine)
+        new_layer_name = layer_type.name #"_".join(layers_to_combine)
 
         # parameters to create new hardware node
         parameters = None
@@ -137,7 +142,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 parameters.update({ key: self.get_min_attr_of_hw_nodes(
                     layers_to_combine, key) for key in min_param_keys })
 
-            case LAYER_TYPE.ReLU:
+            case LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
 
                 min_param_keys = [ "rows", "cols", "channels", "coarse" ]
 
@@ -161,6 +166,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 # get the parameters
                 parameters = { key: self.get_min_attr_of_hw_nodes_multi(
                     layers_to_combine, key) for key in min_param_keys }
+
+                ops = list(set([node.op_type for node in layers_to_combine_hw]))
 
                 # TODO: decide on op type and broadcast
                 parameters["op_type"] = "mul"
@@ -250,6 +257,11 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                                 self.building_blocks[hw_node]["hw"].kernel_size[0]
                         assert self.net.graph.nodes[exec_node]["hw"].kernel_size[1] <= \
                                 self.building_blocks[hw_node]["hw"].kernel_size[1]
+                        if self.dimensionality == 3:
+                            assert self.net.graph.nodes[exec_node]["hw"].kernel_depth <= \
+                                    self.latency_nodes[node]["hw"].kernel_depth
+                        else:
+                            raise ValueError(f"dimensionality {self.dimensionality} not supported")
 
     def get_building_block(self, exec_node):
         """
@@ -290,5 +302,6 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
         # return the overall latency
         return total_latency
+
 
 

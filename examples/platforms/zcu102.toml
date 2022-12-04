@@ -2,7 +2,7 @@
 name = "zcu102"
 #family = ""
 part = "xczu9eg-ffvb1156-2-e"
-# board = "" #TODO: add board file
+board = "" #TODO: add board file
 
 [resources]
 DSP   = 2520
