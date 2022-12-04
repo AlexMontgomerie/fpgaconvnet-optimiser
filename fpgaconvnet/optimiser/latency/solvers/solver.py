@@ -7,25 +7,31 @@ import numpy as np
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 from fpgaconvnet.models.network import Network
-from fpgaconvnet.models.layers import ConvolutionLayer, InnerProductLayer, ReLULayer, EltWiseLayer
+from fpgaconvnet.models.layers import ConvolutionLayer, InnerProductLayer, ReLULayer, \
+                                        EltWiseLayer, PoolingLayer, AveragePoolingLayer, \
+                                        ConvolutionLayer3D, InnerProductLayer3D, ActivationLayer3D, \
+                                        EltWiseLayer3D, PoolingLayer3D, AveragePoolingLayer3D
 
 import fpgaconvnet.optimiser.solvers.solver
 
 class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
-    def __init__(self, net: Network):
+    def __init__(self, net: Network, runtime_parameters: bool = False):
 
         # initialise base solver
         super().__init__(net, 0)
+
+        # get the model's dimensionality from the Network
+        self.dimensionality = net.dimensionality
 
         # dictionary of layers, keyed by their name
         self.latency_nodes = {}
         for node in self.net.graph.nodes:
             self.latency_nodes[node] = copy.deepcopy(self.net.graph.nodes[node])
-            self.latency_nodes[node]["exec_nodes"] = [ node ]
+            self.latency_nodes[node]["exec_nodes"] = [node]
 
         # combine simple layer types
-        self.simple_layer_types = [ LAYER_TYPE.ReLU, LAYER_TYPE.EltWise ]
+        self.simple_layer_types = [LAYER_TYPE.ReLU, LAYER_TYPE.EltWise, LAYER_TYPE.Sigmoid, LAYER_TYPE.SiLU, LAYER_TYPE.AveragePooling]
         for layer_type in self.simple_layer_types:
             self.combine(layer_type)
 
@@ -56,38 +62,18 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 for layer in layers_to_combine ]
 
         # create a new layer name by combining
-        new_layer_name = "_".join(layers_to_combine)
+        new_layer_name = layer_type.name #"_".join(layers_to_combine)
 
         # get the superset layer for the given layer type:
         match layer_type:
-            case LAYER_TYPE.ReLU:
-                pass
-            case LAYER_TYPE.Convolution:
-
+            case LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
                 # get the max of the parameters
-                filters = max([ node.filters for node in layers_to_combine_hw ])
                 rows = max([ node.rows for node in layers_to_combine_hw ])
                 cols = max([ node.cols for node in layers_to_combine_hw ])
+                if self.dimensionality == 3:
+                    depth = max([ node.depth for node in layers_to_combine_hw ])
                 channels = max([ node.channels for node in layers_to_combine_hw ])
-                fine = min([ node.fine for node in layers_to_combine_hw ])
-                groups = max([ node.groups for node in layers_to_combine_hw ])
-                coarse_in = min([ node.coarse_in for node in layers_to_combine_hw ])
-                coarse_out = min([ node.coarse_out for node in layers_to_combine_hw ])
-                coarse_group = min([ node.coarse_group for node in layers_to_combine_hw ])
-                kernel_size = [
-                        max([ node.kernel_size[0] for node in layers_to_combine_hw ]),
-                        max([ node.kernel_size[1] for node in layers_to_combine_hw ]),
-                ]
-                stride = [
-                        min([ node.stride[0] for node in layers_to_combine_hw ]),
-                        min([ node.stride[1] for node in layers_to_combine_hw ]),
-                ]
-                pad = [
-                        max([ node.pad[0] for node in layers_to_combine_hw ]),
-                        max([ node.pad[1] for node in layers_to_combine_hw ]),
-                        max([ node.pad[2] for node in layers_to_combine_hw ]),
-                        max([ node.pad[3] for node in layers_to_combine_hw ]),
-                ]
+                coarse = min([ node.coarse for node in layers_to_combine_hw ])
 
                 # get all the execution nodes from the layers to combine
                 exec_nodes = list(itertools.chain(*[
@@ -95,14 +81,164 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                                 for layer in layers_to_combine ]))
 
                 # create a new layer from these parameters
-                self.latency_nodes[new_layer_name] = {
-                    "type": LAYER_TYPE.Convolution,
-                    "hw": ConvolutionLayer(
-                            filters, rows, cols, channels, coarse_in,
-                            coarse_out, coarse_group, kernel_size,
-                            stride, groups, pad, fine),
+                if self.dimensionality == 2:
+                    if layer_type == LAYER_TYPE.ReLU:
+                        self.latency_nodes[new_layer_name] = {
+                            "type": layer_type,
+                            "hw": ReLULayer(
+                                    rows, cols, channels, coarse),
+                            "exec_nodes": exec_nodes,
+                        }
+                    else:
+                        raise NotImplementedError(f"layer type {layer_type} not implemented for 2D networks")
+                elif self.dimensionality == 3:
+                    self.latency_nodes[new_layer_name] = {
+                        "type": layer_type,
+                        "hw": ActivationLayer3D(
+                                rows, cols, depth, channels, layer_type.name.lower(), coarse),
+                        "exec_nodes": exec_nodes,
+                    }
+                else:
+                    raise ValueError(f"dimensionality {self.dimensionality} not supported")
+            case LAYER_TYPE.Convolution:
+
+                # get the max of the parameters
+                filters = max([ node.filters for node in layers_to_combine_hw ])
+                rows = max([ node.rows for node in layers_to_combine_hw ])
+                cols = max([ node.cols for node in layers_to_combine_hw ])
+                if self.dimensionality == 3:
+                    depth = max([ node.depth for node in layers_to_combine_hw ])
+                channels = max([ node.channels for node in layers_to_combine_hw ])
+                fine = min([ node.fine for node in layers_to_combine_hw ])
+                groups = max([ node.groups for node in layers_to_combine_hw ])
+                coarse_in = min([ node.coarse_in for node in layers_to_combine_hw ])
+                coarse_out = min([ node.coarse_out for node in layers_to_combine_hw ])
+                coarse_group = min([ node.coarse_group for node in layers_to_combine_hw ])
+                if self.dimensionality == 2:
+                    kernel_size = [
+                            max([ node.kernel_size[0] for node in layers_to_combine_hw ]),
+                            max([ node.kernel_size[1] for node in layers_to_combine_hw ]),
+                    ]
+                    stride = [
+                            min([ node.stride[0] for node in layers_to_combine_hw ]),
+                            min([ node.stride[1] for node in layers_to_combine_hw ]),
+                    ]
+                    pad = [
+                            max([ node.pad[0] for node in layers_to_combine_hw ]),
+                            max([ node.pad[1] for node in layers_to_combine_hw ]),
+                            max([ node.pad[2] for node in layers_to_combine_hw ]),
+                            max([ node.pad[3] for node in layers_to_combine_hw ]),
+                    ]
+                elif self.dimensionality == 3:
+                    kernel_rows = max([ node.kernel_rows for node in layers_to_combine_hw ])
+                    kernel_cols = max([ node.kernel_cols for node in layers_to_combine_hw ])
+                    kernel_depth = max([ node.kernel_depth for node in layers_to_combine_hw ])
+                    stride_rows = min([ node.stride_rows for node in layers_to_combine_hw ])
+                    stride_cols = min([ node.stride_cols for node in layers_to_combine_hw ])
+                    stride_depth = min([ node.stride_depth for node in layers_to_combine_hw ])
+                    pad_top = max([ node.pad_top for node in layers_to_combine_hw ])
+                    pad_right = max([ node.pad_right for node in layers_to_combine_hw ])
+                    pad_front = max([ node.pad_front for node in layers_to_combine_hw ])
+                    pad_bottom = max([ node.pad_bottom for node in layers_to_combine_hw ])
+                    pad_left = max([ node.pad_left for node in layers_to_combine_hw ])
+                    pad_back = max([ node.pad_back for node in layers_to_combine_hw ])
+                else:
+                    raise ValueError(f"dimensionality {self.dimensionality} not supported")
+
+                # get all the execution nodes from the layers to combine
+                exec_nodes = list(itertools.chain(*[
+                        self.latency_nodes[layer]["exec_nodes"] \
+                                for layer in layers_to_combine ]))
+
+                # create a new layer from these parameters
+                if self.dimensionality == 2:
+                    self.latency_nodes[new_layer_name] = {
+                        "type": layer_type,
+                        "hw": ConvolutionLayer(
+                                filters, rows, cols, channels, coarse_in,
+                                coarse_out, coarse_group, kernel_size,
+                                stride, groups, pad, fine),
+                        "exec_nodes": exec_nodes,
+                    }
+                elif self.dimensionality == 3:
+                    self.latency_nodes[new_layer_name] = {
+                    "type": layer_type,
+                    "hw": ConvolutionLayer3D(
+                            filters, rows, cols, depth, channels, coarse_in,
+                            coarse_out, coarse_group, kernel_rows, kernel_cols,
+                            kernel_depth, stride_rows, stride_cols, stride_depth,
+                            groups, pad_top, pad_right, pad_front, pad_bottom,
+                            pad_left, pad_back, fine),
                     "exec_nodes": exec_nodes,
-                }
+                    }
+                else:
+                    raise ValueError(f"dimensionality {self.dimensionality} not supported")
+            case LAYER_TYPE.EltWise:
+                #TODO: Deal with different types of eltwise layers (add, mul) and with different dimensions of the inputs (broadcasting)
+                # get the max of the parameters
+                rows = max([ node.rows[0] for node in layers_to_combine_hw ])
+                cols = max([ node.cols[0] for node in layers_to_combine_hw ])
+                if self.dimensionality == 3:
+                    depth = max([ node.depth[0] for node in layers_to_combine_hw ])
+                channels = max([ node.channels[0] for node in layers_to_combine_hw ])
+                coarse = min([ node.coarse for node in layers_to_combine_hw ])
+                ports_in = max([ node.ports_in for node in layers_to_combine_hw ])
+
+                # get all the execution nodes from the layers to combine
+                exec_nodes = list(itertools.chain(*[
+                        self.latency_nodes[layer]["exec_nodes"] \
+                                for layer in layers_to_combine ]))
+
+                # create a new layer from these parameters
+                if self.dimensionality == 2:
+                    self.latency_nodes[new_layer_name] = {
+                        "type": layer_type,
+                        "hw": EltWiseLayer(
+                                rows, cols, channels, ports_in, coarse),
+                        "exec_nodes": exec_nodes,
+                    }
+                elif self.dimensionality == 3:
+                    self.latency_nodes[new_layer_name] = {
+                        "type": layer_type,
+                        "hw": EltWiseLayer3D(
+                                rows, cols, depth, channels, ports_in, coarse),
+                        "exec_nodes": exec_nodes,
+                    }
+                else:
+                    raise ValueError(f"dimensionality {self.dimensionality} not supported")
+            case LAYER_TYPE.AveragePooling:
+                # get the max of the parameters
+                rows = max([ node.rows for node in layers_to_combine_hw ])
+                cols = max([ node.cols for node in layers_to_combine_hw ])
+                if self.dimensionality == 3:
+                    depth = max([ node.depth for node in layers_to_combine_hw ])
+                channels = max([ node.channels for node in layers_to_combine_hw ])
+                coarse = min([ node.coarse for node in layers_to_combine_hw ])
+
+                # get all the execution nodes from the layers to combine
+                exec_nodes = list(itertools.chain(*[
+                        self.latency_nodes[layer]["exec_nodes"] \
+                                for layer in layers_to_combine ]))
+
+                # create a new layer from these parameters
+                if self.dimensionality == 2:
+                    self.latency_nodes[new_layer_name] = {
+                        "type": layer_type,
+                        "hw": AveragePoolingLayer(
+                                rows, cols, channels, coarse),
+                        "exec_nodes": exec_nodes,
+                    }
+                elif self.dimensionality == 3:
+                    self.latency_nodes[new_layer_name] = {
+                        "type": layer_type,
+                        "hw": AveragePoolingLayer3D(
+                                rows, cols, depth, channels, coarse),
+                        "exec_nodes": exec_nodes,
+                    }
+                else:
+                    raise ValueError(f"dimensionality {self.dimensionality} not supported")
+            case _:
+                raise NotImplementedError("Combining layers of type {} is not implemented".format(layer_type))
 
         # remove the combined layers
         if len(layers_to_combine) > 1:
@@ -149,10 +285,20 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # iterate over the execution nodes
                     for exec_node in self.latency_nodes[node]["exec_nodes"]:
                         # assertions to check parameters are correct
-                        assert self.net.graph.nodes[exec_node]["hw"].kernel_size[0] <= \
-                                self.latency_nodes[node]["hw"].kernel_size[0]
-                        assert self.net.graph.nodes[exec_node]["hw"].kernel_size[1] <= \
-                                self.latency_nodes[node]["hw"].kernel_size[1]
+                        if self.dimensionality == 2:
+                            assert self.net.graph.nodes[exec_node]["hw"].kernel_size[0] <= \
+                                    self.latency_nodes[node]["hw"].kernel_size[0]
+                            assert self.net.graph.nodes[exec_node]["hw"].kernel_size[1] <= \
+                                    self.latency_nodes[node]["hw"].kernel_size[1]
+                        elif self.dimensionality == 3:
+                            assert self.net.graph.nodes[exec_node]["hw"].kernel_rows <= \
+                                    self.latency_nodes[node]["hw"].kernel_rows
+                            assert self.net.graph.nodes[exec_node]["hw"].kernel_cols <= \
+                                    self.latency_nodes[node]["hw"].kernel_cols
+                            assert self.net.graph.nodes[exec_node]["hw"].kernel_depth <= \
+                                    self.latency_nodes[node]["hw"].kernel_depth
+                        else:
+                            raise ValueError(f"dimensionality {self.dimensionality} not supported")
 
     def get_latency_node(self, exec_node):
         """
@@ -219,7 +365,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
-                case LAYER_TYPE.ReLU:
+                case LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
                     # get repetition
                     repetition = 1
                     repetition *= 1 # TODO row repetition
@@ -229,8 +375,30 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # get the latency for the node
                     # TODO add run time parameters to the latency estimate
                     node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                case LAYER_TYPE.AveragePooling:
+                    # get repetition
+                    repetition = 1
+                    repetition *= 1 # TODO row repetition
+                    repetition *= 1 # TODO col repetition
+                    repetition *= 1 # TODO channel repetition
+                    repetition *= 1 # TODO filter repetition
+                    # get the latency for the node
+                    # TODO add run time parameters to the latency estimate
+                    node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                case LAYER_TYPE.EltWise:
+                    # get repetition
+                    repetition = 1
+                    repetition *= 1 # TODO row repetition
+                    repetition *= 1 # TODO col repetition
+                    repetition *= 1 # TODO channel repetition
+                    repetition *= 1 # TODO filter repetition
+                    # get the latency for the node
+                    # TODO add run time parameters to the latency estimate
+                    node_latency = self.latency_nodes[hw_node]["hw"].latency()
+                case LAYER_TYPE.NOP:
+                    node_latency = 0
                 case _:
-                    raise NotImplementedError(f"layer type not implemented")
+                    raise NotImplementedError(f"Node {node} of layer type {self.net.graph.nodes[node]['type']} not implemented")
 
             # add the node latency to the total latency
             total_latency += repetition*node_latency
@@ -356,6 +524,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     col_repetition = math.ceil(
                         self.net.graph.nodes[exec_node]["hw"].cols_out() / \
                                 self.latency_nodes[hw_node]["hw"].cols_out())
+                    if self.dimensionality == 3:
+                        depth_repetition = math.ceil(
+                        self.net.graph.nodes[exec_node]["hw"].depth_out() / \
+                                self.latency_nodes[hw_node]["hw"].depth_out())
                     # channel_repetition = math.ceil(
                     #     self.net.graph.nodes[exec_node]["hw"].channels_in() / \
                     #             self.latency_nodes[hw_node]["hw"].channels_in())
@@ -364,26 +536,52 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     #             self.latency_nodes[hw_node]["hw"].filters)
                     # TODO: at the moment, assume filters and channels always fit
                     # iterate across each dimension to be repeated
-                    for h in range(row_repetition):
-                        for w in range(col_repetition):
-                            # for c in range(channel_repetition): # TODO
-                            #     for f in range(filter_repetition): #TODO
-                            # get the greatest spatial dimensions for each execution
-                            rows_out = min(self.latency_nodes[hw_node]["hw"].rows_out(),
-                                    base_param["rows_out"]-h*self.latency_nodes[hw_node]["hw"].rows_out())
-                            cols_out = min(self.latency_nodes[hw_node]["hw"].cols_out(),
-                                    base_param["cols_out"]-w*self.latency_nodes[hw_node]["hw"].cols_out())
-                            # convert the output dimensions to input dimensions
-                            rows_in = (rows_out*base_param["stride"][0]) + base_param["kernel_size"][0]-base_param["pad_bottom"]-base_param["pad_top"]-1
-                            cols_in = (cols_out*base_param["stride"][1]) + base_param["kernel_size"][1]-base_param["pad_left"]-base_param["pad_right"]-1
-                            # add the parameters to the schedule
-                            param = copy.deepcopy(base_param)
-                            param["fine"] = fine
-                            param["coarse_in"] = coarse_in
-                            param["coarse_out"] = coarse_out
-                            param["coarse_group"] = coarse_group
-                            # append to the schedule
-                            schedule[exec_node].append(param)
+                    if self.dimensionality == 2:
+                        for h in range(row_repetition):
+                            for w in range(col_repetition):
+                                # for c in range(channel_repetition): # TODO
+                                #     for f in range(filter_repetition): #TODO
+                                # get the greatest spatial dimensions for each execution
+                                rows_out = min(self.latency_nodes[hw_node]["hw"].rows_out(),
+                                        base_param["rows_out"]-h*self.latency_nodes[hw_node]["hw"].rows_out())
+                                cols_out = min(self.latency_nodes[hw_node]["hw"].cols_out(),
+                                        base_param["cols_out"]-w*self.latency_nodes[hw_node]["hw"].cols_out())
+                                # convert the output dimensions to input dimensions
+                                rows_in = (rows_out*base_param["stride"][0]) + base_param["kernel_size"][0]-base_param["pad_bottom"]-base_param["pad_top"]-1
+                                cols_in = (cols_out*base_param["stride"][1]) + base_param["kernel_size"][1]-base_param["pad_left"]-base_param["pad_right"]-1
+                                # add the parameters to the schedule
+                                param = copy.deepcopy(base_param)
+                                param["fine"] = fine
+                                param["coarse_in"] = coarse_in
+                                param["coarse_out"] = coarse_out
+                                param["coarse_group"] = coarse_group
+                                # append to the schedule
+                                schedule[exec_node].append(param)
+                    elif self.dimensionality == 3:
+                        for h in range(row_repetition):
+                            for w in range(col_repetition):
+                                for d in range(depth_repetition):
+                                    # for c in range(channel_repetition): # TODO
+                                    #     for f in range(filter_repetition): #TODO
+                                    # get the greatest spatial dimensions for each execution
+                                    rows_out = min(self.latency_nodes[hw_node]["hw"].rows_out(),
+                                            base_param["rows_out"]-h*self.latency_nodes[hw_node]["hw"].rows_out())
+                                    cols_out = min(self.latency_nodes[hw_node]["hw"].cols_out(),
+                                            base_param["cols_out"]-w*self.latency_nodes[hw_node]["hw"].cols_out())
+                                    depth_out = min(self.latency_nodes[hw_node]["hw"].depth_out(),
+                                            base_param["depth_out"]-d*self.latency_nodes[hw_node]["hw"].depth_out())
+                                    # convert the output dimensions to input dimensions
+                                    rows_in = (rows_out*base_param["stride_rows"]) + base_param["kernel_rows"]-base_param["pad_bottom"]-base_param["pad_top"]-1
+                                    cols_in = (cols_out*base_param["stride_cols"]) + base_param["kernel_cols"]-base_param["pad_left"]-base_param["pad_right"]-1
+                                    depth_in = (depth_out*base_param["stride_depth"]) + base_param["kernel_depth"]-base_param["pad_front"]-base_param["pad_back"]-1
+                                    # add the parameters to the schedule
+                                    param = copy.deepcopy(base_param)
+                                    param["fine"] = fine
+                                    param["coarse_in"] = coarse_in
+                                    param["coarse_out"] = coarse_out
+                                    param["coarse_group"] = coarse_group
+                                    # append to the schedule
+                                    schedule[exec_node].append(param)
                 case _:
                     # in the default case, assume it's just run once with the exec_node's parameters
                     schedule[exec_node].append(base_param)

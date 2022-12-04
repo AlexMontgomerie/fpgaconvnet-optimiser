@@ -7,7 +7,7 @@ import math
 from dataclasses import dataclass
 import wandb
 
-import fpgaconvnet.optimiser.latency.solvers.solver
+from fpgaconvnet.optimiser.latency.solvers.solver import LatencySolver
 
 LATENCY   =0
 THROUGHPUT=1
@@ -15,7 +15,7 @@ THROUGHPUT=1
 START_LOOP=1000
 
 @dataclass
-class LatencySimulatedAnnealing(fpgaconvnet.optimiser.latency.solvers.solver.LatencySolver):
+class LatencySimulatedAnnealing(LatencySolver):
     T: float = 10.0
     k: float = 0.001
     T_min: float = 0.0001
