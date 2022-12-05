@@ -59,7 +59,7 @@ def get_convolution_schedule(self, hw_node, exec_node):
                 base_param["cols_out"]-index[1]*self.building_blocks[hw_node]["hw"].cols_out())
         if self.dimensionality == 3:
             depth_out = min(self.building_blocks[hw_node]["hw"].depth_out(),
-                    base_param["cols_out"]-index[2]*self.building_blocks[hw_node]["hw"].depth_out())
+                    base_param["depth_out"]-index[2]*self.building_blocks[hw_node]["hw"].depth_out())
 
         # convert the output dimensions to input dimensions
         rows_in = (rows_out*base_param["stride_rows"]) + base_param["kernel_rows"] \

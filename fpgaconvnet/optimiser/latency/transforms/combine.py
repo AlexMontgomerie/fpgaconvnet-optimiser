@@ -52,8 +52,7 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
 
             # get all the parameter keys
             max_param_keys = [ "filters", "channels" ]
-            min_param_keys = [ "filters", "rows", "cols", "channels",
-                    "coarse_in", "coarse_out" ]
+            min_param_keys = [ "rows", "cols", "coarse_in", "coarse_out" ]
 
             # add 3D specific parameters
             if self.dimensionality == 3:
