@@ -96,6 +96,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     min_param_keys.append("depth")
 
                 # get the parameters
+                #TODO: There is an issue here with DEPTHWISE_CONVOLUTION. Shoud specifically handle this case and separate out the depthwise convolution
                 parameters = { key: self.get_max_attr_of_hw_nodes(
                     layers_to_combine, key) for key in max_param_keys }
                 parameters.update({ key: self.get_min_attr_of_hw_nodes(

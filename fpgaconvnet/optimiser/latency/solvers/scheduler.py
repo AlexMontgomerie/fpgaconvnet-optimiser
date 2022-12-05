@@ -62,12 +62,12 @@ def get_convolution_schedule(self, hw_node, exec_node):
                     base_param["cols_out"]-index[2]*self.building_blocks[hw_node]["hw"].depth_out())
 
         # convert the output dimensions to input dimensions
-        rows_in = (rows_out*base_param["stride"][0]) + base_param["kernel_size"][0] \
+        rows_in = (rows_out*base_param["stride_rows"]) + base_param["kernel_rows"] \
                 - base_param["pad_bottom"] - base_param["pad_top"] - 1
-        cols_in = (cols_out*base_param["stride"][1]) + base_param["kernel_size"][1] \
+        cols_in = (cols_out*base_param["stride_cols"]) + base_param["kernel_cols"] \
                 - base_param["pad_left"] - base_param["pad_right"] - 1
         if self.dimensionality == 3:
-            depth_in = (depth_out*base_param["stride"][2]) + base_param["kernel_size"][2] \
+            depth_in = (depth_out*base_param["stride_depth"]) + base_param["kernel_depth"] \
                     - base_param["pad_front"] - base_param["pad_back"] - 1
 
         # add the parameters to the schedule
