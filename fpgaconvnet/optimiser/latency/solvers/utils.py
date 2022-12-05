@@ -6,6 +6,7 @@ from fpgaconvnet.models.layers import GlobalPoolingLayer, GlobalPoolingLayer3D
 from fpgaconvnet.models.layers import InnerProductLayer, InnerProductLayer3D
 from fpgaconvnet.models.layers import EltWiseLayer, EltWiseLayer3D
 from fpgaconvnet.models.layers import ReLULayer, ReLULayer3D
+from fpgaconvnet.models.layers import ActivationLayer3D
 
 def get_convolution_from_dict(param, dimensionality):
     if dimensionality == 2:
@@ -162,6 +163,21 @@ def get_relu_from_dict(param, dimensionality):
     else:
         raise NotImplementedError
 
+def get_activation_from_dict(param, dimensionality):
+    if dimensionality == 2:
+        raise NotImplementedError("Activation layer not implemented for 2D")
+    elif dimensionality == 3:
+        return ActivationLayer3D(
+                param["rows"],
+                param["cols"],
+                param["depth"],
+                param["channels"],
+                param["op_type"],
+                coarse=param["coarse"],
+            )
+    else:
+        raise NotImplementedError
+
 def get_hw_from_dict(layer_type, param, dimensionality):
     match layer_type:
         case LAYER_TYPE.Convolution:
@@ -174,6 +190,10 @@ def get_hw_from_dict(layer_type, param, dimensionality):
             return get_eltwise_from_dict(param, dimensionality)
         case LAYER_TYPE.ReLU:
             return get_relu_from_dict(param, dimensionality)
+        case LAYER_TYPE.GlobalPooling:
+            return get_global_pooling_from_dict(param, dimensionality)
+        case LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
+            return get_activation_from_dict(param, dimensionality)
         case _:
             raise NotImplementedError(f"layer type {layer_type} not implemented")
 
