@@ -84,7 +84,7 @@ def main():
     # enable wandb
     if args.enable_wandb:
         # project name
-        wandb_name = f"fpgaconvnet-{args.name}-{args.objective}"
+        wandb_name = f"fpgaconvnet-{args.name}-latency"
         # wandb config
         wandb_config = optimiser_config
         wandb_config |= platform_config
@@ -111,31 +111,24 @@ def main():
 
     # load network
     if args.optimiser == "simulated_annealing":
-        opt = LatencySimulatedAnnealing(net, **optimiser_config["annealing"])
+        opt = LatencySimulatedAnnealing(net) # TODO: include optimiser_config["annealing"]
     else:
         raise NotImplementedError(f"optimiser {args.optimiser} not implmented")
 
-    # specify available transforms
-    opt.transforms = list(optimiser_config["transforms"].keys())
-    opt.transforms = []
-    for transform in optimiser_config["transforms"]:
-        if optimiser_config["transforms"][transform]["apply_transform"]:
-            opt.transforms.append(transform)
+    # # specify available transforms
+    # opt.transforms = list(optimiser_config["transforms"].keys())
+    # opt.transforms = []
+    # for transform in optimiser_config["transforms"]:
+    #     if optimiser_config["transforms"][transform]["apply_transform"]:
+    #         opt.transforms.append(transform)
 
-    ## apply max fine factor to the graph
-    if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
-        for partition in net.partitions:
-            fpgaconvnet.optimiser.transforms.fine.apply_complete_fine(partition)
-
-    # print("size: ", len(pickle.dumps(opt.net)))
-    opt_onnx_model = copy.deepcopy(opt.net.model)
-    opt.net.model = None
+    # ## apply max fine factor to the graph
+    # if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
+    #     for partition in net.partitions:
+    #         fpgaconvnet.optimiser.transforms.fine.apply_complete_fine(partition)
 
     # run optimiser
     opt.run_solver()
-
-    # print("size: ", len(pickle.dumps(opt.net)))
-    opt.net.model = opt_onnx_model
 
     # update all partitions
     opt.net.update_partitions()
