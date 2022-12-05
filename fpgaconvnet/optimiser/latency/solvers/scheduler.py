@@ -19,7 +19,7 @@ def get_convolution_schedule(self, hw_node, exec_node):
     coarse_in = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in,
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
     coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
-            self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
+            self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))[-1]
     coarse_group = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_group,
             self.net.graph.nodes[exec_node]["hw"].get_coarse_group_feasible()))[-1]
 
@@ -50,7 +50,7 @@ def get_convolution_schedule(self, hw_node, exec_node):
         iteration_space = [ row_repetition, col_repetition, depth_repetition ]
 
     # iterate over the tiled dimensions
-    for index in  np.ndindex(*iteration_space):
+    for index in np.ndindex(*iteration_space):
 
          # get the greatest spatial dimensions for each execution
         rows_out = min(self.building_blocks[hw_node]["hw"].rows_out(),
@@ -99,7 +99,7 @@ def get_inner_product_schedule(self, hw_node, exec_node):
     coarse_in = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in,
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
     coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
-            self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
+            self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))[-1]
 
     # add the parameters to the schedule
     param = copy.deepcopy(base_param)
@@ -236,6 +236,11 @@ def get_basic_schedule(self, hw_node, exec_node):
             param["depth_in"] = depth_in
         param["channels_in"] = channels_in
         param["coarse"] = coarse
+        if self.net.graph.nodes[exec_node]["type"].name in ["ReLU", "Sigmoid", "SiLU"]:
+            param["op_type"] = self.net.graph.nodes[exec_node]["type"].name.lower()
+        if self.net.graph.nodes[exec_node]["type"].name == "EltWise":
+            param["op_type"] = self.net.graph.nodes[exec_node]["hw"].op_type
+            param["broadcast"] = self.net.graph.nodes[exec_node]["hw"].broadcast
 
         # append to the schedule
         schedule.append(param)
@@ -267,9 +272,11 @@ def get_schedule(self):
                 schedule[exec_node] = self.get_inner_product_schedule(hw_node, exec_node)
             case LAYER_TYPE.Pooling:
                 schedule[exec_node] = self.get_pooling_schedule(hw_node, exec_node)
-            case LAYER_TYPE.ReLU:
+            case LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
                 schedule[exec_node] = self.get_basic_schedule(hw_node, exec_node)
             case LAYER_TYPE.EltWise:
+                schedule[exec_node] = self.get_basic_schedule(hw_node, exec_node)
+            case LAYER_TYPE.GlobalPooling:
                 schedule[exec_node] = self.get_basic_schedule(hw_node, exec_node)
             case _:
                 raise NotImplementedError(self.net.graph.nodes[exec_node]["type"], "schedule not implemented")

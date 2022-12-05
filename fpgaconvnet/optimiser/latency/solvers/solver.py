@@ -5,15 +5,8 @@ import random
 import numpy as np
 
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
-
 from fpgaconvnet.models.network import Network
-from fpgaconvnet.models.layers import ConvolutionLayer, InnerProductLayer, ReLULayer, \
-                                        EltWiseLayer, PoolingLayer, AveragePoolingLayer, \
-                                        ConvolutionLayer3D, InnerProductLayer3D, ActivationLayer3D, \
-                                        EltWiseLayer3D, PoolingLayer3D, AveragePoolingLayer3D
-
 import fpgaconvnet.optimiser.solvers.solver
-
 from .utils import get_hw_from_dict
 
 class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
@@ -114,7 +107,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 # get all the parameter keys
                 max_param_keys = [ "filters", "channels" ]
                 min_param_keys = [ "filters", "rows", "cols", "channels",
-                        "coarse_in", "coarse_out", "coarse_group" ]
+                        "coarse_in", "coarse_out" ]
 
                 # add 3D specific parameters
                 if self.dimensionality == 3:
@@ -158,9 +151,11 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 parameters = { key: self.get_min_attr_of_hw_nodes(
                     layers_to_combine, key) for key in min_param_keys }
 
+                parameters["op_type"] = layer_type.name.lower()
+
             case LAYER_TYPE.EltWise:
 
-                min_param_keys = [ "rows", "cols", "channels", "coarse" ]
+                min_param_keys = [ "rows", "cols", "channels" ]
                 max_param_keys = [ "ports_in" ]
 
                 # add 3D specific parameters
@@ -170,12 +165,26 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 # get the parameters
                 parameters = { key: self.get_min_attr_of_hw_nodes_multi(
                     layers_to_combine, key) for key in min_param_keys }
-
-                ops = list(set([node.op_type for node in layers_to_combine_hw]))
+                parameters.update({ key: self.get_min_attr_of_hw_nodes(
+                    layers_to_combine, key) for key in ['coarse'] })
+                parameters.update({ key: self.get_max_attr_of_hw_nodes(
+                    layers_to_combine, key) for key in max_param_keys })
 
                 # TODO: decide on op type and broadcast
                 parameters["op_type"] = "mul"
                 parameters["broadcast"] = True
+
+            case LAYER_TYPE.GlobalPooling:
+
+                min_param_keys = [ "rows", "cols", "channels", "coarse" ]
+
+                # add 3D specific parameters
+                if self.dimensionality == 3:
+                    min_param_keys.append("depth")
+
+                # get the parameters
+                parameters = { key: self.get_min_attr_of_hw_nodes(
+                    layers_to_combine, key) for key in min_param_keys }
 
             case _:
                 raise NotImplementedError(layer_type)
