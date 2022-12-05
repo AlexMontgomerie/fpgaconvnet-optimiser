@@ -16,6 +16,8 @@ import fpgaconvnet.optimiser.solvers.solver
 @dataclass
 class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     runtime_parameters: bool = False
+    transforms: list = field(default_factory=lambda:[
+        'coarse','fine','combine', 'seperate'])
 
     def __post_init__(self):
 
@@ -47,6 +49,9 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
     # import seperate transform functions
     from fpgaconvnet.optimiser.latency.transforms.seperate import seperate
+
+    # import fine transform functions
+    from fpgaconvnet.optimiser.latency.transforms.fine import apply_random_fine_node
 
     # import scheduler functions
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_convolution_schedule
@@ -169,8 +174,24 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # get the resources
         resources = self.get_resources()
         # check against board constraints
-        assert resources['FF']   <= self.net.platform.get_ff(), "ERROR: FF usage exceeded"
-        assert resources['LUT']  <= self.platform.get_lut()   , "ERROR: LUT usage exceeded"
-        assert resources['DSP']  <= self.platform.get_dsp()   , "ERROR: DSP usage exceeded"
-        assert resources['BRAM'] <= self.platform.get_bram()  , "ERROR: BRAM usage exceeded"
+        assert resources['FF']   <= self.net.platform.get_ff()  , "ERROR: FF usage exceeded"
+        assert resources['LUT']  <= self.net.platform.get_lut() , "ERROR: LUT usage exceeded"
+        assert resources['DSP']  <= self.net.platform.get_dsp() , "ERROR: DSP usage exceeded"
+        assert resources['BRAM'] <= self.net.platform.get_bram(), "ERROR: BRAM usage exceeded"
+
+    def apply_transform(self, transform, hw_node, exec_node):
+
+        # switch case across transforms
+        match transform:
+            case "fine":
+                self.apply_random_fine_node(hw_node)
+            case "coarse":
+                pass # TODO: implement here
+            case "combine":
+                # get the hardware type of exec node
+                layer_type = self.net.graph.nodes[exec_node]["type"]
+                # combine layers of that type
+                self.combine(layer_type)
+            case "seperate":
+                self.seperate(hw_node)
 

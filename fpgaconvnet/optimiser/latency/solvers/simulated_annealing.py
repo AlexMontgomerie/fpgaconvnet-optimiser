@@ -27,38 +27,18 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
     def run_solver(self, log=True):
 
-        # update all partitions
-        self.net.update_partitions()
+        # get all the layer types in the network
+        layer_types = list(set([ self.net.graph.nodes[node]["type"] \
+                for node in self.net.graph.nodes ]))
 
-        # Setup
-        cost = self.get_cost()
+        # combine all the layer_types
+        for layer_type in layer_types:
+            self.combine(layer_type)
 
-        start = False
-
+        # check the intial design is within constraints
         try:
             self.check_resources()
-            self.check_constraints()
-            start = True
-        except AssertionError as error:
-            print("WARNING: Exceeds resource usage (trying to find valid starting point)")
-
-        # Attempt to find a good starting point
-        if not start:
-            for i in range(START_LOOP):
-                transform = random.choice(self.transforms)
-                self.apply_transform(transform)
-                self.net.update_partitions()
-
-                try:
-                    self.check_resources()
-                    self.check_constraints()
-                    break
-                except AssertionError as error:
-                    pass
-
-        try:
-            self.check_resources()
-            self.check_constraints()
+            self.check_building_blocks()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
             return
@@ -66,58 +46,48 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # Cooling Loop
         while self.T_min < self.T:
 
-            # update partitions
-            self.net.update_partitions()
-
             # get the current cost
             cost = self.get_cost()
 
             # wandb logging and checkpoint
-            self.wandb_log(temperature=self.T)
+            if log:
+                self.wandb_log(temperature=self.T,
+                    num_blocks=len(self.building_blocks),
+                    latency=self.evaluate_latency())
             # self.wandb_checkpoint()
 
-            # Save previous iteration
-            net = copy.deepcopy(self.net)
+            # Save previous building blocks
+            building_blocks = copy.deepcopy(self.building_blocks)
 
             # several iterations per cool down
             for _ in range(self.iterations):
-
-                # update partitions
-                self.net.update_partitions()
-
-                # remove all auxiliary layers
-                for i in range(len(self.net.partitions)):
-                    self.net.partitions[i].remove_squeeze()
 
                 # Apply a transform
                 ## Choose a random transform
                 transform = random.choice(self.transforms)
 
-                ## Choose a random partition
-                partition_index = random.randint(0,len(self.net.partitions)-1)
+                ## Choose a random building block
+                hw_node = random.choice(list(self.building_blocks.keys()))
 
-                ## Choose a random node in partition
-                node = random.choice(list(self.net.partitions[partition_index].graph))
+                ## Choose a random execution node
+                exec_node = random.choice(list(self.net.graph.nodes()))
 
                 ## Apply the transform
-                self.apply_transform(transform, partition_index, node)
-
-                ## Update partitions
-                self.net.update_partitions()
+                self.apply_transform(transform, hw_node, exec_node)
 
             # Check resources
             try:
                 self.check_resources()
-                self.check_constraints()
+                self.check_building_blocks()
             except AssertionError:
                 # revert to previous state
-                self.net = net
+                self.building_blocks = building_blocks
                 continue
 
             # Simulated annealing descision
             if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
                 # revert to previous state
-                self.net = net
+                self.building_blocks = building_blocks
 
             # print solver status
             self.solver_status()
