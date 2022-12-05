@@ -1,20 +1,27 @@
 import itertools
 import secrets
+import random
 
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict
 
-def combine(self, layer_type, discriminate=[], num_layers=-1):
+def combine(self, layer_type, discriminate=[], num_nodes=2):
 
     # get the layers of the given type
-    layers_of_type = self.get_layers_of_type(layer_type)
+    nodes_of_type = self.get_layers_of_type(layer_type)
 
     # further discriminate the layers to combine TODO
-    layers_to_combine = layers_of_type
+    nodes_to_combine = nodes_of_type
 
+    # select a subset of the nodes to combine
+    if len(nodes_to_combine) > num_nodes:
+        nodes_to_combine = random.sample(nodes_to_combine, num_nodes)
+    # combine all
+    elif len(nodes_to_combine) > 1:
+        nodes_to_combine = nodes_to_combine
     # escape if there are no layers to combine
-    if len(layers_to_combine) == 0:
+    else:
         return
 
     # create a new layer name by combining
@@ -44,9 +51,9 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
 
             # get the parameters
             parameters = { key: self.get_max_attr_of_hw_nodes(
-                layers_to_combine, key) for key in max_param_keys }
+                nodes_to_combine, key) for key in max_param_keys }
             parameters.update({ key: self.get_min_attr_of_hw_nodes(
-                layers_to_combine, key) for key in min_param_keys })
+                nodes_to_combine, key) for key in min_param_keys })
 
         case LAYER_TYPE.InnerProduct:
 
@@ -63,9 +70,9 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
             # Shoud specifically handle this case and separate out the
             # depthwise convolution
             parameters = { key: self.get_max_attr_of_hw_nodes(
-                layers_to_combine, key) for key in max_param_keys }
+                nodes_to_combine, key) for key in max_param_keys }
             parameters.update({ key: self.get_min_attr_of_hw_nodes(
-                layers_to_combine, key) for key in min_param_keys })
+                nodes_to_combine, key) for key in min_param_keys })
 
         case LAYER_TYPE.Pooling:
 
@@ -83,9 +90,9 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
 
             # get the parameters
             parameters = { key: self.get_max_attr_of_hw_nodes(
-                layers_to_combine, key) for key in max_param_keys }
+                nodes_to_combine, key) for key in max_param_keys }
             parameters.update({ key: self.get_min_attr_of_hw_nodes(
-                layers_to_combine, key) for key in min_param_keys })
+                nodes_to_combine, key) for key in min_param_keys })
 
         case LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
 
@@ -97,7 +104,7 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
 
             # get the parameters
             parameters = { key: self.get_min_attr_of_hw_nodes(
-                layers_to_combine, key) for key in min_param_keys }
+                nodes_to_combine, key) for key in min_param_keys }
 
             parameters["op_type"] = layer_type.name.lower()
 
@@ -112,11 +119,11 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
 
             # get the parameters
             parameters = { key: self.get_min_attr_of_hw_nodes_multi(
-                layers_to_combine, key) for key in min_param_keys }
+                nodes_to_combine, key) for key in min_param_keys }
             parameters.update({ key: self.get_min_attr_of_hw_nodes(
-                layers_to_combine, key) for key in ['coarse'] })
+                nodes_to_combine, key) for key in ['coarse'] })
             parameters.update({ key: self.get_max_attr_of_hw_nodes(
-                layers_to_combine, key) for key in max_param_keys })
+                nodes_to_combine, key) for key in max_param_keys })
 
             # TODO: decide on op type and broadcast
             parameters["op_type"] = "mul"
@@ -132,7 +139,7 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
 
             # get the parameters
             parameters = { key: self.get_min_attr_of_hw_nodes(
-                layers_to_combine, key) for key in min_param_keys }
+                nodes_to_combine, key) for key in min_param_keys }
 
         case _:
             raise NotImplementedError(layer_type)
@@ -140,7 +147,7 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
     # get all the execution nodes from the layers to combine
     exec_nodes = list(itertools.chain(*[
             self.building_blocks[hw_node]["exec_nodes"] \
-                    for hw_node in layers_to_combine ]))
+                    for hw_node in nodes_to_combine ]))
 
     # create a new layer from these parameters
     self.building_blocks[new_layer_name] = {
@@ -151,8 +158,8 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
     }
 
     # remove the combined layers
-    if len(layers_to_combine) > 1:
-        for layer in layers_to_combine:
+    if len(nodes_to_combine) > 1:
+        for layer in nodes_to_combine:
             del self.building_blocks[layer]
 
     # return the key for the new layer generated
