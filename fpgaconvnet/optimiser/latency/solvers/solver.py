@@ -96,10 +96,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     # iterate over the execution nodes
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"]:
                         # assertions to check parameters are correct
-                        assert self.net.graph.nodes[exec_node]["hw"].kernel_size[0] <= \
-                                self.building_blocks[hw_node]["hw"].kernel_size[0]
-                        assert self.net.graph.nodes[exec_node]["hw"].kernel_size[1] <= \
-                                self.building_blocks[hw_node]["hw"].kernel_size[1]
+                        assert self.net.graph.nodes[exec_node]["hw"].kernel_rows <= \
+                                self.building_blocks[hw_node]["hw"].kernel_rows
+                        assert self.net.graph.nodes[exec_node]["hw"].kernel_cols <= \
+                                self.building_blocks[hw_node]["hw"].kernel_cols
                         if self.dimensionality == 3:
                             assert self.net.graph.nodes[exec_node]["hw"].kernel_depth <= \
                                     self.building_blocks[hw_node]["hw"].kernel_depth
@@ -169,8 +169,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # get the resources
         resources = self.get_resources()
         # check against board constraints
-        assert resources['FF']   <= self.net.platform.get_ff(), "ERROR: FF usage exceeded"
-        assert resources['LUT']  <= self.platform.get_lut()   , "ERROR: LUT usage exceeded"
-        assert resources['DSP']  <= self.platform.get_dsp()   , "ERROR: DSP usage exceeded"
-        assert resources['BRAM'] <= self.platform.get_bram()  , "ERROR: BRAM usage exceeded"
+        assert resources['FF']   <= self.net.platform.get_ff()    , "ERROR: FF usage exceeded"
+        assert resources['LUT']  <= self.net.platform.get_lut()   , "ERROR: LUT usage exceeded"
+        assert resources['DSP']  <= self.net.platform.get_dsp()   , "ERROR: DSP usage exceeded"
+        assert resources['BRAM'] <= self.net.platform.get_bram()  , "ERROR: BRAM usage exceeded"
 

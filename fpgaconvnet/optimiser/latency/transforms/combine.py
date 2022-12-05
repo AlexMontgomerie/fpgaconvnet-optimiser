@@ -9,8 +9,6 @@ def combine(self, layer_type, discriminate=[], num_layers=-1):
 
     # get the layers of the given type
     layers_of_type = self.get_layers_of_type(layer_type)
-    if len(layers_of_type) == 0:
-        return
 
     # further discriminate the layers to combine TODO
     layers_to_combine = layers_of_type
