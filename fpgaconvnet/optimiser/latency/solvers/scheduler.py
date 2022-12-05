@@ -33,7 +33,7 @@ def get_convolution_schedule(self, hw_node, exec_node):
     if self.dimensionality == 3:
         depth_repetition = math.ceil(
             self.net.graph.nodes[exec_node]["hw"].depth_out() / \
-                    self.building_blocks[hw_node]["hw"].depth_())
+                    self.building_blocks[hw_node]["hw"].depth_out())
 
     # channel_repetition = math.ceil(
     #     self.net.graph.nodes[exec_node]["hw"].channels_in() / \
@@ -100,14 +100,11 @@ def get_inner_product_schedule(self, hw_node, exec_node):
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
     coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
-    coarse_group = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_group,
-            self.net.graph.nodes[exec_node]["hw"].get_coarse_group_feasible()))[-1]
 
     # add the parameters to the schedule
     param = copy.deepcopy(base_param)
     param["coarse_in"] = coarse_in
     param["coarse_out"] = coarse_out
-    param["coarse_group"] = coarse_group
 
     # append to the schedule
     schedule.append(param)
@@ -125,7 +122,7 @@ def get_pooling_schedule(self, hw_node, exec_node):
 
     # do the same for the coarse factors TODO: improve the channel, coarse trade-off
     coarse = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse,
-            self.net.graph.nodes[exec_node]["hw"].get_coarse_feasible()))[-1]
+            self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
 
     # get the repetition of each dimension
     row_repetition = math.ceil(
@@ -137,7 +134,7 @@ def get_pooling_schedule(self, hw_node, exec_node):
     if self.dimensionality == 3:
         depth_repetition = math.ceil(
             self.net.graph.nodes[exec_node]["hw"].depth_out() / \
-                    self.building_blocks[hw_node]["hw"].depth_())
+                    self.building_blocks[hw_node]["hw"].depth_out())
     channel_repetition = math.ceil(
         self.net.graph.nodes[exec_node]["hw"].channels_in() / \
                 self.building_blocks[hw_node]["hw"].channels_in())

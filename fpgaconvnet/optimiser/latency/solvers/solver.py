@@ -33,7 +33,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             self.building_blocks[node]["exec_nodes"] = [ node ]
 
         # combine simple layer types
-        self.simple_layer_types = [LAYER_TYPE.ReLU, LAYER_TYPE.EltWise, LAYER_TYPE.Sigmoid, LAYER_TYPE.SiLU, LAYER_TYPE.AveragePooling]
+        self.simple_layer_types = [LAYER_TYPE.ReLU, LAYER_TYPE.EltWise,
+                LAYER_TYPE.Sigmoid, LAYER_TYPE.SiLU, LAYER_TYPE.GlobalPooling ]
         for layer_type in self.simple_layer_types:
             self.combine(layer_type)
 
@@ -90,10 +91,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             case LAYER_TYPE.Convolution:
 
                 # get all the parameter keys
-                max_param_keys = [ "groups",  "kernel_rows", "kernel_cols",
-                        "stride_rows", "stride_cols", "pad_top", "pad_bottom",
-                        "pad_left", "pad_right" ]
-                min_param_keys = [ "filters", "rows", "cols", "channels", "fine",
+                max_param_keys = [ "filters", "channels", "groups", "kernel_rows",
+                        "kernel_cols", "stride_rows", "stride_cols", "pad_top",
+                        "pad_bottom", "pad_left", "pad_right" ]
+                min_param_keys = [ "rows", "cols", "fine",
                         "coarse_in", "coarse_out", "coarse_group" ]
 
                 # add 3D specific parameters
@@ -111,6 +112,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             case LAYER_TYPE.InnerProduct:
 
                 # get all the parameter keys
+                max_param_keys = [ "filters", "channels" ]
                 min_param_keys = [ "filters", "rows", "cols", "channels",
                         "coarse_in", "coarse_out", "coarse_group" ]
 
@@ -119,8 +121,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     min_param_keys.append("depth")
 
                 # get the parameters
-                parameters = { key: self.get_min_attr_of_hw_nodes(
-                    layers_to_combine, key) for key in min_param_keys }
+                parameters = { key: self.get_max_attr_of_hw_nodes(
+                    layers_to_combine, key) for key in max_param_keys }
+                parameters.update({ key: self.get_min_attr_of_hw_nodes(
+                    layers_to_combine, key) for key in min_param_keys })
 
             case LAYER_TYPE.Pooling:
 
@@ -194,6 +198,9 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             for layer in layers_to_combine:
                 del self.building_blocks[layer]
 
+        # return the key for the new layer generated
+        return new_layer_name
+
     def get_max_attr_of_hw_nodes(self, hw_nodes, attr):
         return max([ getattr(self.building_blocks[hw_node]["hw"], attr) \
                 for hw_node in hw_nodes ])
@@ -259,9 +266,22 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                                 self.building_blocks[hw_node]["hw"].kernel_size[1]
                         if self.dimensionality == 3:
                             assert self.net.graph.nodes[exec_node]["hw"].kernel_depth <= \
-                                    self.latency_nodes[node]["hw"].kernel_depth
+                                    self.building_blocks[hw_node]["hw"].kernel_depth
                         else:
                             raise ValueError(f"dimensionality {self.dimensionality} not supported")
+                        # check channels in and out are greater than all exec nodes TODO: handle properly
+                        assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
+                                self.building_blocks[hw_node]["hw"].channels_in()
+                        assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
+                                self.building_blocks[hw_node]["hw"].channels_out()
+                case LAYER_TYPE.InnerProduct:
+                    # iterate over the execution nodes
+                    for exec_node in self.building_blocks[hw_node]["exec_nodes"]:
+                        # check channels in and out are greater than all exec nodes
+                        assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
+                                self.building_blocks[hw_node]["hw"].channels_in()
+                        assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
+                                self.building_blocks[hw_node]["hw"].channels_out()
 
     def get_building_block(self, exec_node):
         """
