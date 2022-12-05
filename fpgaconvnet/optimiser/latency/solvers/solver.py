@@ -69,7 +69,6 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # return layers
         return layers_of_type
 
-
     def get_resources(self):
         """
         returns the sum of the resources of all nodes in the building_blocks
