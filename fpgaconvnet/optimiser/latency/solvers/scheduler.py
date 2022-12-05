@@ -24,7 +24,7 @@ def get_convolution_schedule(self, hw_node, exec_node):
             self.net.graph.nodes[exec_node]["hw"].get_coarse_group_feasible()))[-1]
 
     # get the repetition of each dimension
-    row_repetition = math.ceil(
+    row_repetition = math.ceil( # TODO: remove
         self.net.graph.nodes[exec_node]["hw"].rows_out() / \
                 self.building_blocks[hw_node]["hw"].rows_out())
     col_repetition = math.ceil(

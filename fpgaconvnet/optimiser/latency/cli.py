@@ -92,7 +92,7 @@ def main():
         # initialize wandb
         wandb.init(config=wandb_config,
                 project=wandb_name,
-                entity="alexmontgomerie") # or "fpgaconvnet", and can add "name"
+                entity="fpgaconvnet") # or "fpgaconvnet", and can add "name"
 
     # # turn on debugging
     # net.DEBUG = True

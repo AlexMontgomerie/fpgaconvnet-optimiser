@@ -57,8 +57,8 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+1, next_input_shape[0])
-            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+1, next_input_shape[1])
+            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+10, next_input_shape[0])
+            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+10, next_input_shape[1])
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+1, next_input_shape[1])
             # fix channels to be max TODO: do we want to have runtime channels?
@@ -75,8 +75,8 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]),
             ]
             # make sure rows are greater than the kernel size
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_size[0]+1, next_input_shape[0])
-            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_size[1]+1, next_input_shape[1])
+            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_size[0]+10, next_input_shape[0])
+            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_size[1]+10, next_input_shape[1])
         # TODO: handle the other layer types
         case _:
             self.building_blocks[hw_node]["hw"].rows = max_input_shape[0]

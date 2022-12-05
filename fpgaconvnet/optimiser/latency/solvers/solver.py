@@ -17,7 +17,7 @@ import fpgaconvnet.optimiser.solvers.solver
 class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     runtime_parameters: bool = False
     transforms: list = field(default_factory=lambda:[
-        'coarse','fine','combine', 'seperate'])
+        'shape', 'coarse','fine','combine', 'seperate'])
 
     def __post_init__(self):
 
@@ -194,4 +194,6 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 self.combine(layer_type)
             case "seperate":
                 self.seperate(hw_node)
+            case "shape":
+                self.apply_random_shape(hw_node)
 
