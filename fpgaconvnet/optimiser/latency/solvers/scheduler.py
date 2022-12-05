@@ -155,8 +155,8 @@ def get_pooling_schedule(self, hw_node, exec_node):
         if self.dimensionality == 3:
             depth_out = min(self.building_blocks[hw_node]["hw"].depth_out(),
                     base_param["cols_out"]-index[2]*self.building_blocks[hw_node]["hw"].depth_out())
-        channels_in = min(self.building_blocks[hw_node]["hw"].depth_out(),
-                base_param["channels_in"]-index[3]*self.building_blocks[hw_node]["hw"].channels_in())
+        channels_in = min(self.building_blocks[hw_node]["hw"].channels_in(),
+                base_param["channels_in"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_in())
 
         # convert the output dimensions to input dimensions
         rows_in = (rows_out*base_param["stride"][0]) + base_param["kernel_size"][0] \
@@ -225,8 +225,8 @@ def get_basic_schedule(self, hw_node, exec_node):
         if self.dimensionality == 3:
             depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["cols_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
-        channels_in = min(self.building_blocks[hw_node]["hw"].depth_out(),
-                base_param["channels_in"]-index[3]*self.building_blocks[hw_node]["hw"].channels_in())
+        channels_in = min(self.building_blocks[hw_node]["hw"].channels_in(),
+                base_param["channels_in"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_in())
 
         # add the parameters to the schedule
         param = copy.deepcopy(base_param)
