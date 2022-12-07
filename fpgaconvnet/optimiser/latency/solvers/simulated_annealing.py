@@ -19,8 +19,8 @@ class LatencySimulatedAnnealing(LatencySolver):
     T: float = 10.0
     k: float = 0.001
     T_min: float = 0.0001
-    cool: float = 0.97
-    iterations: int = 5
+    cool: float = 0.975
+    iterations: int = 15
     """
 Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
     """
@@ -33,7 +33,11 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
         # combine all the layer_types
         for layer_type in layer_types:
-            self.combine(layer_type)
+            self.combine(layer_type, num_nodes=-1)
+
+        # apply min shape to all hardware nodes
+        for hw_node in self.building_blocks:
+            self.apply_min_shape(hw_node)
 
         # check the intial design is within constraints
         try:
@@ -54,7 +58,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 self.wandb_log(temperature=self.T,
                     num_blocks=len(self.building_blocks),
                     latency=self.evaluate_latency(),
-                    **self.get_resources())
+                    **self.get_resources_util())
             # self.wandb_checkpoint()
 
             # Save previous building blocks

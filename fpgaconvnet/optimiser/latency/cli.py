@@ -105,6 +105,7 @@ def main():
 
     # update platform information
     net.platform.update(args.platform_path)
+    print(net.platform)
 
     # update the resouce allocation
     net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])

@@ -4,18 +4,19 @@ import itertools
 import random
 import secrets
 from dataclasses import dataclass, field
+from collections import Counter, namedtuple
 
 import numpy as np
 
 from fpgaconvnet.tools.layer_enum import  LAYER_TYPE
 from fpgaconvnet.models.network import Network
 
-from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict
+from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict, get_runtime_latency
 import fpgaconvnet.optimiser.solvers.solver
 
 @dataclass
 class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
-    runtime_parameters: bool = False
+    runtime_parameters: bool = True
     transforms: list = field(default_factory=lambda:[
         'shape', 'coarse','fine','combine', 'seperate'])
 
@@ -38,6 +39,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
     # import shape generation transform functions
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_random_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_inherited_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_min_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import update_building_block_shape
 
     # import combine transform functions
@@ -55,6 +58,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
     # import coarse transform functions
     from fpgaconvnet.optimiser.latency.transforms.coarse import apply_random_coarse_node
+    from fpgaconvnet.optimiser.latency.transforms.coarse import fix_coarse_node
 
     # import scheduler functions
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_convolution_schedule
@@ -92,6 +96,16 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     for _, node in self.building_blocks.items() ]),
         }
 
+    def get_resources_util(self):
+        # get resources
+        resources = self.get_resources()
+        return {
+            "LUT": (resources["LUT"]/self.net.platform.get_lut())*100.0,
+            "FF": (resources["FF"]/self.net.platform.get_ff())*100.0,
+            "DSP": (resources["DSP"]/self.net.platform.get_dsp())*100.0,
+            "BRAM": (resources["BRAM"]/self.net.platform.get_bram())*100.0,
+        }
+
     def check_building_blocks(self):
         """
         check that all `building_blocks` have valid parameters
@@ -115,8 +129,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                         # TODO: handle properly in scheduler, and remove here
                         assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
                                 self.building_blocks[hw_node]["hw"].channels_in()
-                        assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
-                                self.building_blocks[hw_node]["hw"].channels_out()
+                        # assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
+                        #         self.building_blocks[hw_node]["hw"].channels_out()
                 case LAYER_TYPE.InnerProduct:
                     # iterate over the execution nodes
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"]:
@@ -124,8 +138,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                         # TODO: handle properly in scheduler, and remove here
                         assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
                                 self.building_blocks[hw_node]["hw"].channels_in()
-                        assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
-                                self.building_blocks[hw_node]["hw"].channels_out()
+                        # assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
+                        #         self.building_blocks[hw_node]["hw"].channels_out()
 
     def get_building_block(self, exec_node):
         """
@@ -135,6 +149,51 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             if exec_node in self.building_blocks[hw_node]["exec_nodes"]:
                 return hw_node
         raise StopIteration(f"could not find hardware for execution node {exec_node}")
+
+    def evaluate_latency_exec_node(self, schedule, exec_node):
+
+        # find the hardware node
+        hw_node = self.get_building_block(exec_node)
+
+        # get the latency of the node for all scheduled executions
+        if self.runtime_parameters:
+
+            # initialise latency at zero
+            latency = 0
+
+            # remove data types from parameters (HACK)
+            for param in schedule[exec_node]:
+                param.pop("data_t", None)
+                param.pop("input_t", None)
+                param.pop("output_t", None)
+                param.pop("acc_t", None)
+                param.pop("weight_t", None)
+                param.pop("kernel_size", None)
+                param.pop("stride", None)
+                param.pop("pad", None)
+
+            # turn the parameters into something hashable
+            param_type = namedtuple('param', schedule[exec_node][0])
+            param_tuple = [ param_type(**param) for param in schedule[exec_node] ]
+
+            # get a reduced count of the parameters
+            param_cntr = Counter(param_tuple)
+
+            # get the latency for each repeated parameter execution
+            for param, repetition in param_cntr.items():
+                latency += repetition*get_runtime_latency(
+                    self.building_blocks[hw_node]["type"],
+                    self.building_blocks[hw_node]["hw"],
+                    param._asdict(), self.dimensionality)
+
+            # add extra penalty for reconfiguration # TODO: need to tune with real data
+            latency += 1000 * len(schedule[exec_node])
+        else:
+            latency = len(schedule[exec_node]) * \
+                self.building_blocks[hw_node]["hw"].latency()
+
+        # return the latency (in clock cycles)
+        return latency
 
     def evaluate_latency(self):
         """
@@ -151,21 +210,11 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # iterate over nodes in the execution graph
         for exec_node in self.net.graph:
 
-            # find the hardware node
-            hw_node = self.get_building_block(exec_node)
+            # evaluate the latency of the node for the schedule
+            total_latency += self.evaluate_latency_exec_node(schedule, exec_node)
 
-            # get the latency of the node for all scheduled executions
-            if self.runtime_parameters:
-                # add node execution
-                total_latency += sum([ get_hw_from_dict(
-                    self.building_blocks[hw_node]["type"],
-                    param, self.dimensionality).latency() \
-                        for param in schedule[exec_node] ])
-                # add extra penalty for reconfiguration # TODO: need to tune with real data
-                total_latency += 1000 * len(schedule[exec_node])
-            else:
-                total_latency += len(schedule[exec_node]) * \
-                    self.building_blocks[hw_node]["hw"].latency()
+        # latency in ms
+        total_latency = total_latency / (self.net.platform.board_freq*1e3)
 
         # return the overall latency
         return total_latency
@@ -198,5 +247,41 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             case "seperate":
                 self.seperate(hw_node)
             case "shape":
-                self.apply_random_shape(hw_node)
+                # self.apply_random_shape(hw_node)
+                self.apply_inherited_shape(hw_node)
+                self.fix_coarse_node(hw_node)
 
+    def report(self):
+        """
+        generate a report of the time taken to execute each node of the
+        execution graph, and how many repetitions occured.
+        """
+
+        # get the schedule
+        schedule = self.get_schedule()
+
+        # empty dictionary
+        report = { "general": {}, "per_layer": {} }
+
+        # iterate over execution nodes
+        for exec_node in self.net.graph.nodes():
+            # get the latency of the node (in ms)
+            latency = self.evaluate_latency_exec_node(schedule, exec_node)
+            latency = latency / (self.net.platform.board_freq*1e3)
+            # create the report for the node
+            report["per_layer"][exec_node] = {
+                "type" : self.net.graph.nodes[exec_node]["type"],
+                "hw_node" : self.get_building_block(exec_node),
+                "latency" : latency,
+                "repetitions" : len(schedule[exec_node]),
+            }
+
+        # add general information
+        # total_latency_per_bb = {
+        #         sum(filter(lambda x:  }
+
+        # return the report
+        return report
+
+    def config(self):
+        return { node: hw["hw"].layer_info_dict() for node, hw in self.building_blocks.items() }

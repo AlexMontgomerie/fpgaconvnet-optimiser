@@ -15,14 +15,15 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
     nodes_to_combine = nodes_of_type
 
     # select a subset of the nodes to combine
-    if len(nodes_to_combine) > num_nodes:
-        nodes_to_combine = random.sample(nodes_to_combine, num_nodes)
-    # combine all
-    elif len(nodes_to_combine) > 1:
-        nodes_to_combine = nodes_to_combine
-    # escape if there are no layers to combine
-    else:
-        return
+    if num_nodes > 0:
+        if len(nodes_to_combine) > num_nodes:
+            nodes_to_combine = random.sample(nodes_to_combine, num_nodes)
+        # combine all
+        elif len(nodes_to_combine) > 1:
+            nodes_to_combine = nodes_to_combine
+        # escape if there are no layers to combine
+        else:
+            return
 
     # create a new layer name by combining
     new_layer_name = f"{layer_type.name}_{secrets.token_hex(2)}"
@@ -37,10 +38,10 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
         case LAYER_TYPE.Convolution:
 
             # get all the parameter keys
-            max_param_keys = [ "rows", "cols", "filters", "channels", "groups", "kernel_rows",
+            max_param_keys = [ "rows", "cols", "channels", "groups", "kernel_rows",
                     "kernel_cols", "stride_rows", "stride_cols", "pad_top",
                     "pad_bottom", "pad_left", "pad_right" ]
-            min_param_keys = [ "fine", "coarse_in", "coarse_out", "coarse_group" ]
+            min_param_keys = [ "filters", "fine", "coarse_in", "coarse_out", "coarse_group" ]
 
             # add 3D specific parameters
             if self.dimensionality == 3:
@@ -56,8 +57,8 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
         case LAYER_TYPE.InnerProduct:
 
             # get all the parameter keys
-            max_param_keys = [ "rows", "cols", "filters", "channels" ]
-            min_param_keys = [ "coarse_in", "coarse_out" ]
+            max_param_keys = [ "rows", "cols", "channels" ]
+            min_param_keys = [ "filters", "coarse_in", "coarse_out" ]
 
             # add 3D specific parameters
             if self.dimensionality == 3:

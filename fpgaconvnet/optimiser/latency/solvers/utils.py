@@ -197,4 +197,107 @@ def get_hw_from_dict(layer_type, param, dimensionality):
         case _:
             raise NotImplementedError(f"layer type {layer_type} not implemented")
 
+def update_node_param(layer_type, node, param, dimensionality):
+    match layer_type:
+        case LAYER_TYPE.Convolution:
+            node.rows = param["rows"]
+            node.cols = param["cols"]
+            node.channels = param["channels"]
+            node.filters = param["filters"]
+            node.groups = param["groups"]
+            node.fine = param["fine"]
+            node.coarse_in = param["coarse_in"]
+            node.coarse_out = param["coarse_out"]
+            node.coarse_group = param["coarse_group"]
+            node.kernel_cols = param["kernel_cols"]
+            node.kernel_rows = param["kernel_rows"]
+            node.stride_cols = param["stride_cols"]
+            node.stride_rows = param["stride_rows"]
+            node.pad_left = param["pad_left"]
+            node.pad_right = param["pad_right"]
+            node.pad_top = param["pad_top"]
+            node.pad_bottom = param["pad_bottom"]
+            if dimensionality == 3:
+                node.depth = param["depth"]
+                node.kernel_depth = param["kernel_depth"]
+                node.stride_depth = param["stride_depth"]
+                node.pad_front = param["pad_front"]
+                node.pad_back = param["pad_back"]
+        case LAYER_TYPE.InnerProduct:
+            node.rows = param["rows"]
+            node.cols = param["cols"]
+            node.channels = param["channels"]
+            node.filters = param["filters"]
+            node.coarse_in = param["coarse_in"]
+            node.coarse_out = param["coarse_out"]
+            if dimensionality == 3:
+                node.depth = param["depth"]
+        case LAYER_TYPE.Pooling:
+            node.rows = param["rows"]
+            node.cols = param["cols"]
+            node.channels = param["channels"]
+            node.coarse = param["coarse"]
+            node.kernel_cols = param["kernel_cols"]
+            node.kernel_rows = param["kernel_rows"]
+            node.stride_cols = param["stride_cols"]
+            node.stride_rows = param["stride_rows"]
+            node.pad_left = param["pad_left"]
+            node.pad_right = param["pad_right"]
+            node.pad_top = param["pad_top"]
+            node.pad_bottom = param["pad_bottom"]
+            if dimensionality == 3:
+                node.depth = param["depth"]
+                node.kernel_depth = param["kernel_depth"]
+                node.stride_depth = param["stride_depth"]
+                node.pad_front = param["pad_front"]
+                node.pad_back = param["pad_back"]
+        case LAYER_TYPE.EltWise:
+            node.rows = param["rows"]
+            node.cols = param["cols"]
+            node.channels = param["channels"]
+            node.coarse = param["coarse"]
+            if dimensionality == 3:
+                node.depth = param["depth"]
+        case LAYER_TYPE.ReLU:
+            node.rows = param["rows"]
+            node.cols = param["cols"]
+            node.channels = param["channels"]
+            node.coarse = param["coarse"]
+            if dimensionality == 3:
+                node.depth = param["depth"]
+        case LAYER_TYPE.GlobalPooling:
+            node.rows = param["rows"]
+            node.cols = param["cols"]
+            node.channels = param["channels"]
+            node.coarse = param["coarse"]
+            if dimensionality == 3:
+                node.depth = param["depth"]
+        case LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
+            node.rows = param["rows"]
+            node.cols = param["cols"]
+            node.channels = param["channels"]
+            node.coarse = param["coarse"]
+            if dimensionality == 3:
+                node.depth = param["depth"]
+        case _:
+            raise NotImplementedError(f"layer type {layer_type} not implemented")
+    node.update()
+
+def get_runtime_latency(layer_type, node, param, dimensionality):
+
+    # get all the previous parameters from the attributes
+    prev_param = node.__dict__
+    prev_param = { key.lstrip("_") : val for key, val in prev_param.items() }
+
+    # update the node and get the latency
+    update_node_param(layer_type, node, param, dimensionality)
+
+    # get the latency
+    latency = node.latency()
+
+    # give back previous parameters
+    update_node_param(layer_type, node, prev_param, dimensionality)
+
+    # return latency
+    return latency
 

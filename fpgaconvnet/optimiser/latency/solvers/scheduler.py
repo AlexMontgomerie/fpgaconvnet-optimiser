@@ -6,6 +6,10 @@ from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 def get_convolution_schedule(self, hw_node, exec_node):
 
+    # helper function to get factors of a number
+    def get_factors(num):
+        return [n for n in range(1, num + 1) if num % n == 0]
+
     # initialise the schedule
     schedule = []
 
@@ -18,8 +22,8 @@ def get_convolution_schedule(self, hw_node, exec_node):
     # do the same for the coarse factors TODO: improve the channel, coarse trade-off
     coarse_in = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in,
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))[-1]
-    coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
-            self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))[-1]
+    # coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
+    #         self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))[-1]
     coarse_group = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_group,
             self.net.graph.nodes[exec_node]["hw"].get_coarse_group_feasible()))[-1]
 
@@ -38,16 +42,18 @@ def get_convolution_schedule(self, hw_node, exec_node):
     # channel_repetition = math.ceil(
     #     self.net.graph.nodes[exec_node]["hw"].channels_in() / \
     #             self.building_blocks[hw_node]["hw"].channels_in())
-    # filter_repetition = math.ceil(
-    #     self.net.graph.nodes[exec_node]["hw"].filters / \
-    #             self.building_blocks[hw_node]["hw"].filters)
     # TODO: at the moment, assume filters and channels always fit
     # iterate across each dimension to be repeated
 
+    filter_repetition = math.ceil(
+        self.net.graph.nodes[exec_node]["hw"].filters / \
+                self.building_blocks[hw_node]["hw"].filters)
+
     # get the iteration space
-    iteration_space = [ row_repetition, col_repetition ]
+    iteration_space = [ row_repetition, col_repetition, filter_repetition ]
     if self.dimensionality == 3:
-        iteration_space = [ row_repetition, col_repetition, depth_repetition ]
+        iteration_space = [ row_repetition, col_repetition,
+                depth_repetition, filter_repetition ]
 
     # iterate over the tiled dimensions
     for index in np.ndindex(*iteration_space):
@@ -70,13 +76,21 @@ def get_convolution_schedule(self, hw_node, exec_node):
             depth_in = (depth_out*base_param["stride_depth"]) + base_param["kernel_depth"] \
                     - base_param["pad_front"] - base_param["pad_back"] - 1
 
+        # greedy filter dimension
+        filters = min(self.building_blocks[hw_node]["hw"].filters,
+                base_param["filters"]-index[-1]*self.building_blocks[hw_node]["hw"].filters)
+
+        # choose coarse out as a factor of the filter dimension
+        coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out, get_factors(filters)))[-1]
+
         # add the parameters to the schedule
-        param = copy.deepcopy(base_param)
+        param = copy.copy(base_param)
         param["rows_in"] = rows_in
         param["cols_in"] = cols_in
         if self.dimensionality == 3:
             param["depth_in"] = depth_in
         param["fine"] = fine
+        param["filters"] = filters
         param["coarse_in"] = coarse_in
         param["coarse_out"] = coarse_out
         param["coarse_group"] = coarse_group
@@ -88,6 +102,10 @@ def get_convolution_schedule(self, hw_node, exec_node):
     return schedule
 
 def get_inner_product_schedule(self, hw_node, exec_node):
+
+    # helper function to get factors of a number
+    def get_factors(num):
+        return [n for n in range(1, num + 1) if num % n == 0]
 
     # initialise the schedule
     schedule = []
@@ -101,13 +119,32 @@ def get_inner_product_schedule(self, hw_node, exec_node):
     coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
             self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))[-1]
 
-    # add the parameters to the schedule
-    param = copy.deepcopy(base_param)
-    param["coarse_in"] = coarse_in
-    param["coarse_out"] = coarse_out
+    # number of times to repeat filter dimension
+    filter_repetition = math.ceil(
+        self.net.graph.nodes[exec_node]["hw"].filters / \
+                self.building_blocks[hw_node]["hw"].filters)
 
-    # append to the schedule
-    schedule.append(param)
+    # get the iteration space
+    iteration_space = [  filter_repetition ]
+
+    # iterate over the tiled dimensions
+    for index in np.ndindex(*iteration_space):
+
+        # greedy filter dimension
+        filters = min(self.building_blocks[hw_node]["hw"].filters,
+                base_param["filters"]-index[-1]*self.building_blocks[hw_node]["hw"].filters)
+
+        # choose coarse out as a factor of the filter dimension
+        coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out, get_factors(filters)))[-1]
+
+        # add the parameters to the schedule
+        param = copy.copy(base_param)
+        param["filters"] =filters
+        param["coarse_in"] = coarse_in
+        param["coarse_out"] = coarse_out
+
+        # append to the schedule
+        schedule.append(param)
 
     # return the schedule
     return schedule
@@ -168,7 +205,7 @@ def get_pooling_schedule(self, hw_node, exec_node):
                     - base_param["pad_front"] - base_param["pad_back"] - 1
 
         # add the parameters to the schedule
-        param = copy.deepcopy(base_param)
+        param = copy.copy(base_param)
         param["rows_in"] = rows_in
         param["cols_in"] = cols_in
         if self.dimensionality == 3:
@@ -229,7 +266,7 @@ def get_basic_schedule(self, hw_node, exec_node):
                 base_param["channels_in"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_in())
 
         # add the parameters to the schedule
-        param = copy.deepcopy(base_param)
+        param = copy.copy(base_param)
         param["rows_in"] = rows_in
         param["cols_in"] = cols_in
         if self.dimensionality == 3:

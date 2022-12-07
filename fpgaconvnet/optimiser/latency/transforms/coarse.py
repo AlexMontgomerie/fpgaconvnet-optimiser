@@ -53,3 +53,34 @@ def apply_random_coarse_node(self, hw_node):
 
     # update the hardware
     self.building_blocks[hw_node]["hw"].update()
+
+def fix_coarse_node(self, hw_node):
+
+    def get_max_coarse(coarse, factors):
+        return list(filter(lambda f: f <= coarse, factors))[-1]
+
+    match self.building_blocks[hw_node]["type"]:
+        case LAYER_TYPE.Convolution:
+            self.building_blocks[hw_node]["hw"].coarse_in = get_max_coarse(
+                self.building_blocks[hw_node]["hw"].coarse_in,
+                self.building_blocks[hw_node]["hw"].get_coarse_in_feasible())
+            self.building_blocks[hw_node]["hw"].coarse_out = get_max_coarse(
+                self.building_blocks[hw_node]["hw"].coarse_out,
+                self.building_blocks[hw_node]["hw"].get_coarse_out_feasible())
+            self.building_blocks[hw_node]["hw"].coarse_group = get_max_coarse(
+                self.building_blocks[hw_node]["hw"].coarse_group,
+                self.building_blocks[hw_node]["hw"].get_coarse_group_feasible())
+        case LAYER_TYPE.InnerProduct:
+            self.building_blocks[hw_node]["hw"].coarse_in = get_max_coarse(
+                self.building_blocks[hw_node]["hw"].coarse_in,
+                self.building_blocks[hw_node]["hw"].get_coarse_in_feasible())
+            self.building_blocks[hw_node]["hw"].coarse_out = get_max_coarse(
+                self.building_blocks[hw_node]["hw"].coarse_out,
+                self.building_blocks[hw_node]["hw"].get_coarse_out_feasible())
+        case _:
+            self.building_blocks[hw_node]["hw"].coarse = get_max_coarse(
+                self.building_blocks[hw_node]["hw"].coarse,
+                self.building_blocks[hw_node]["hw"].get_coarse_in_feasible())
+
+    # update the hardware
+    self.building_blocks[hw_node]["hw"].update()
