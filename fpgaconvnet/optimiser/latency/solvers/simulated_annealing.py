@@ -20,7 +20,7 @@ class LatencySimulatedAnnealing(LatencySolver):
     k: float = 0.001
     T_min: float = 0.0001
     cool: float = 0.97
-    iterations: int = 10
+    iterations: int = 5
     """
 Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
     """
@@ -53,7 +53,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
             if log:
                 self.wandb_log(temperature=self.T,
                     num_blocks=len(self.building_blocks),
-                    latency=self.evaluate_latency())
+                    latency=self.evaluate_latency(),
+                    **self.get_resources())
             # self.wandb_checkpoint()
 
             # Save previous building blocks

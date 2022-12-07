@@ -24,25 +24,25 @@ def seperate(self, hw_node, num_nodes=1):
         # add hardware of exec_node to the latency nodes
         self.building_blocks[exec_node] = copy.deepcopy(self.net.graph.nodes[exec_node])
         self.building_blocks[exec_node]["exec_nodes"] = [ exec_node ]
-        # copy over performance parameters
-        match self.building_blocks[hw_node]["type"]:
-            case LAYER_TYPE.Convolution:
-                self.building_blocks[exec_node]["hw"].fine = \
-                    self.building_blocks[hw_node]["hw"].fine
-                self.building_blocks[exec_node]["hw"].coarse_in = \
-                    self.building_blocks[hw_node]["hw"].coarse_in
-                self.building_blocks[exec_node]["hw"].coarse_out = \
-                    self.building_blocks[hw_node]["hw"].coarse_out
-                self.building_blocks[exec_node]["hw"].coarse_group = \
-                    self.building_blocks[hw_node]["hw"].coarse_group
-            case LAYER_TYPE.InnerProduct:
-                self.building_blocks[exec_node]["hw"].coarse_in = \
-                    self.building_blocks[hw_node]["hw"].coarse_in
-                self.building_blocks[exec_node]["hw"].coarse_out = \
-                    self.building_blocks[hw_node]["hw"].coarse_out
-            case _:
-                self.building_blocks[exec_node]["hw"].coarse = \
-                    self.building_blocks[hw_node]["hw"].coarse
+        # # copy over performance parameters
+        # match self.building_blocks[hw_node]["type"]:
+        #     case LAYER_TYPE.Convolution:
+        #         self.building_blocks[exec_node]["hw"].fine = \
+        #             self.building_blocks[hw_node]["hw"].fine
+        #         self.building_blocks[exec_node]["hw"].coarse_in = \
+        #             self.building_blocks[hw_node]["hw"].coarse_in
+        #         self.building_blocks[exec_node]["hw"].coarse_out = \
+        #             self.building_blocks[hw_node]["hw"].coarse_out
+        #         self.building_blocks[exec_node]["hw"].coarse_group = \
+        #             self.building_blocks[hw_node]["hw"].coarse_group
+        #     case LAYER_TYPE.InnerProduct:
+        #         self.building_blocks[exec_node]["hw"].coarse_in = \
+        #             self.building_blocks[hw_node]["hw"].coarse_in
+        #         self.building_blocks[exec_node]["hw"].coarse_out = \
+        #             self.building_blocks[hw_node]["hw"].coarse_out
+        #     case _:
+        #         self.building_blocks[exec_node]["hw"].coarse = \
+        #             self.building_blocks[hw_node]["hw"].coarse
 
         # delete the original node if it has no exec nodes
         if self.building_blocks[hw_node]["exec_nodes"] == []:

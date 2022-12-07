@@ -53,6 +53,9 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     # import fine transform functions
     from fpgaconvnet.optimiser.latency.transforms.fine import apply_random_fine_node
 
+    # import coarse transform functions
+    from fpgaconvnet.optimiser.latency.transforms.coarse import apply_random_coarse_node
+
     # import scheduler functions
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_convolution_schedule
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_inner_product_schedule
@@ -186,7 +189,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             case "fine":
                 self.apply_random_fine_node(hw_node)
             case "coarse":
-                pass # TODO: implement here
+                self.apply_random_coarse_node(hw_node)
             case "combine":
                 # get the hardware type of exec node
                 layer_type = self.net.graph.nodes[exec_node]["type"]

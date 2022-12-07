@@ -37,17 +37,15 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
         case LAYER_TYPE.Convolution:
 
             # get all the parameter keys
-            max_param_keys = [ "filters", "channels", "groups", "kernel_rows",
+            max_param_keys = [ "rows", "cols", "filters", "channels", "groups", "kernel_rows",
                     "kernel_cols", "stride_rows", "stride_cols", "pad_top",
                     "pad_bottom", "pad_left", "pad_right" ]
-            min_param_keys = [ "rows", "cols", "fine",
-                    "coarse_in", "coarse_out", "coarse_group" ]
+            min_param_keys = [ "fine", "coarse_in", "coarse_out", "coarse_group" ]
 
             # add 3D specific parameters
             if self.dimensionality == 3:
-                max_param_keys.extend(["kernel_depth",
+                max_param_keys.extend(["kernel_depth", "depth",
                     "stride_depth", "pad_front", "pad_back"])
-                min_param_keys.append("depth")
 
             # get the parameters
             parameters = { key: self.get_max_attr_of_hw_nodes(
@@ -58,12 +56,12 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
         case LAYER_TYPE.InnerProduct:
 
             # get all the parameter keys
-            max_param_keys = [ "filters", "channels" ]
-            min_param_keys = [ "rows", "cols", "coarse_in", "coarse_out" ]
+            max_param_keys = [ "rows", "cols", "filters", "channels" ]
+            min_param_keys = [ "coarse_in", "coarse_out" ]
 
             # add 3D specific parameters
             if self.dimensionality == 3:
-                min_param_keys.append("depth")
+                max_param_keys.append("depth")
 
             # get the parameters
             #TODO: There is an issue here with DEPTHWISE_CONVOLUTION.
@@ -96,15 +94,15 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
 
         case LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
 
-            min_param_keys = [ "rows", "cols", "channels", "coarse" ]
+            max_param_keys = [ "rows", "cols", "channels", "coarse" ]
 
             # add 3D specific parameters
             if self.dimensionality == 3:
-                min_param_keys.append("depth")
+                max_param_keys.append("depth")
 
             # get the parameters
-            parameters = { key: self.get_min_attr_of_hw_nodes(
-                nodes_to_combine, key) for key in min_param_keys }
+            parameters = { key: self.get_max_attr_of_hw_nodes(
+                nodes_to_combine, key) for key in max_param_keys }
 
             parameters["op_type"] = layer_type.name.lower()
 
@@ -131,15 +129,15 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
 
         case LAYER_TYPE.GlobalPooling:
 
-            min_param_keys = [ "rows", "cols", "channels", "coarse" ]
+            max_param_keys = [ "rows", "cols", "channels", "coarse" ]
 
             # add 3D specific parameters
             if self.dimensionality == 3:
-                min_param_keys.append("depth")
+                max_param_keys.append("depth")
 
             # get the parameters
-            parameters = { key: self.get_min_attr_of_hw_nodes(
-                nodes_to_combine, key) for key in min_param_keys }
+            parameters = { key: self.get_max_attr_of_hw_nodes(
+                nodes_to_combine, key) for key in max_param_keys }
 
         case _:
             raise NotImplementedError(layer_type)

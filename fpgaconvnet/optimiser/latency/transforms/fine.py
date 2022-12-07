@@ -18,4 +18,5 @@ def apply_random_fine_node(self, hw_node):
 
         # update modules fine grain folding factor
         self.building_blocks[hw_node]['hw'].fine = fine
+        self.building_blocks[hw_node]['hw'].update()
 
