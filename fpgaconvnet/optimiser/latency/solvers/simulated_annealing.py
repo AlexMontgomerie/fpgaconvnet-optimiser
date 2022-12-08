@@ -6,6 +6,7 @@ import random
 import math
 from dataclasses import dataclass
 import wandb
+import pandas as pd
 
 from fpgaconvnet.optimiser.latency.solvers.solver import LatencySolver
 
@@ -55,9 +56,44 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
             # wandb logging and checkpoint
             if log:
+
+                # get config and report
+                config = self.config()
+                report = self.report()
+
+                # get per layer table
+                per_layer_table = {
+                    "exec_node": [],
+                    "hw_node": [],
+                    "type": [],
+                    "latency": [],
+                    "repetitions": [],
+                    "iteration_space": [],
+                }
+                for exec_node, per_layer_report in report["per_layer"].items():
+                    per_layer_table["exec_node"].append(exec_node)
+                    per_layer_table["hw_node"].append(per_layer_report["hw_node"])
+                    per_layer_table["type"].append(per_layer_report["type"])
+                    per_layer_table["latency"].append(per_layer_report["latency"])
+                    per_layer_table["repetitions"].append(per_layer_report["repetitions"])
+                    per_layer_table["iteration_space"].append(per_layer_report["iteration_space"])
+
+                # save report and config
+                with open("tmp/config.json", "w") as f:
+                    json.dump(config, f, indent=2)
+                with open("tmp/report.json", "w") as f:
+                    json.dump(report, f, indent=2)
+
+                # save them as artifacts
+                artifact = wandb.Artifact('outputs', type='json')
+                artifact.add_file("tmp/config.json") # Adds multiple files to artifact
+                artifact.add_file("tmp/report.json") # Adds multiple files to artifact
+                wandb.log_artifact(artifact) # Creates `animals:v0`
+
                 self.wandb_log(temperature=self.T,
                     num_blocks=len(self.building_blocks),
                     latency=self.evaluate_latency(),
+                    per_layer=wandb.Table(data=pd.DataFrame(per_layer_table)),
                     **self.get_resources_util())
             # self.wandb_checkpoint()
 

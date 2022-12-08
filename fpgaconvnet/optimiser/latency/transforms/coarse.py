@@ -57,7 +57,7 @@ def apply_random_coarse_node(self, hw_node):
 def fix_coarse_node(self, hw_node):
 
     def get_max_coarse(coarse, factors):
-        return list(filter(lambda f: f <= coarse, factors))[-1]
+        return max(filter(lambda f: f <= coarse, factors))
 
     match self.building_blocks[hw_node]["type"]:
         case LAYER_TYPE.Convolution:

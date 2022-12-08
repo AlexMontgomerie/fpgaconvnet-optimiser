@@ -1,14 +1,14 @@
 [device]
-name = "zcu102"
+name = "vus440"
 #family = ""
-part = "xczu9eg-ffvb1156-2-e"
+part = "" # TODO
 board = "" #TODO: add board file
 
 [resources]
-DSP   = 2520
-BRAM  = 1824
-FF    = 548160
-LUT   = 599550
+DSP   = 2880
+BRAM  = 5040
+FF    = 5065000
+LUT   = 2532000
 
 [system]
 board_frequency = 300 # in MHz

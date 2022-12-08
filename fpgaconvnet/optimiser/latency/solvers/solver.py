@@ -32,7 +32,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             self.building_blocks[node]["exec_nodes"] = [ node ]
 
         # combine simple layer types
-        self.simple_layer_types = [ LAYER_TYPE.ReLU, LAYER_TYPE.EltWise,
+        self.simple_layer_types = [ LAYER_TYPE.ReLU, LAYER_TYPE.EltWise, LAYER_TYPE.Pooling,
                 LAYER_TYPE.Sigmoid, LAYER_TYPE.SiLU, LAYER_TYPE.GlobalPooling ]
         for layer_type in self.simple_layer_types:
             self.combine(layer_type)
@@ -186,8 +186,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     self.building_blocks[hw_node]["hw"],
                     param._asdict(), self.dimensionality)
 
-            # add extra penalty for reconfiguration # TODO: need to tune with real data
-            latency += 1000 * len(schedule[exec_node])
+            # # add extra penalty for reconfiguration # TODO: need to tune with real data
+            # latency += 1000 * len(schedule[exec_node])
         else:
             latency = len(schedule[exec_node]) * \
                 self.building_blocks[hw_node]["hw"].latency()
@@ -205,7 +205,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         total_latency = 0
 
         # get the schedule
-        schedule = self.get_schedule()
+        schedule, _ = self.get_schedule()
 
         # iterate over nodes in the execution graph
         for exec_node in self.net.graph:
@@ -258,7 +258,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         """
 
         # get the schedule
-        schedule = self.get_schedule()
+        schedule, iteration_space = self.get_schedule()
 
         # empty dictionary
         report = { "general": {}, "per_layer": {} }
@@ -270,18 +270,59 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             latency = latency / (self.net.platform.board_freq*1e3)
             # create the report for the node
             report["per_layer"][exec_node] = {
-                "type" : self.net.graph.nodes[exec_node]["type"],
+                "type" : str(self.net.graph.nodes[exec_node]["type"]),
                 "hw_node" : self.get_building_block(exec_node),
                 "latency" : latency,
                 "repetitions" : len(schedule[exec_node]),
+                "iteration_space" : iteration_space[exec_node],
             }
 
         # add general information
-        # total_latency_per_bb = {
-        #         sum(filter(lambda x:  }
+        total_latency_per_bb = { hw_node: 0 for hw_node in self.building_blocks }
+        for val in report["per_layer"].values():
+            total_latency_per_bb[val["hw_node"]] += val["latency"]
+        report["general"]["building_block_latency"] = total_latency_per_bb
+
+        # add total number of building blocks
+        report["general"]["total_building_blocks"] = len(self.building_blocks)
 
         # return the report
         return report
+
+    def per_layer_table(self):
+        """
+        generate a report of the time taken to execute each node of the
+        execution graph, and how many repetitions occured.
+        """
+
+        # get the schedule
+        schedule, iteration_space = self.get_schedule()
+
+        table = {
+            "exec_node": [],
+            "hw_node": [],
+            "type": [],
+            "latency": [],
+            "repetitions": [],
+            "iteration_space": [],
+        }
+
+        # iterate over execution nodes
+        for exec_node in self.net.graph.nodes():
+            # get the latency of the node (in ms)
+            latency = self.evaluate_latency_exec_node(schedule, exec_node)
+            latency = latency / (self.net.platform.board_freq*1e3)
+            # update the table
+            table["exec_node"].append(exec_node)
+            table["hw_node"].append(hw_node)
+            table["type"].append(str(self.net.graph.nodes[exec_node]["type"]))
+            table["latency"].append(latency)
+            table["repetitions"].append(len(schedule[exec_node]))
+            table["iteration_space"].append(iteration_space[exec_node])
+
+        # return the report
+        return table
+
 
     def config(self):
         return { node: hw["hw"].layer_info_dict() for node, hw in self.building_blocks.items() }

@@ -133,7 +133,8 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+5, next_input_shape[0])
+            # self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+5, next_input_shape[0])
+            self.building_blocks[hw_node]["hw"].rows = max_input_shape[0]
             self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+5, next_input_shape[1])
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+5, next_input_shape[2])
@@ -142,10 +143,10 @@ def update_building_block_shape(self, hw_node, next_input_shape,
             # set a random filter dimension TODO
             self.building_blocks[hw_node]["hw"].filters = next_output_shape[-1]
         case LAYER_TYPE.InnerProduct:
-            self.building_blocks[hw_node]["hw"].rows = next_input_shape[0]
-            self.building_blocks[hw_node]["hw"].cols = next_input_shape[1]
+            self.building_blocks[hw_node]["hw"].rows = max_input_shape[0]
+            self.building_blocks[hw_node]["hw"].cols = max_input_shape[1]
             if self.dimensionality == 3:
-                self.building_blocks[hw_node]["hw"].depth = next_input_shape[2]
+                self.building_blocks[hw_node]["hw"].depth = max_input_shape[2]
             # fix channels to be max TODO: do we want to have runtime channels?
             self.building_blocks[hw_node]["hw"].channels = max_input_shape[-1]
             # set a random filter dimension TODO
@@ -161,7 +162,8 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+5, next_input_shape[0])
+            # self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+5, next_input_shape[0])
+            self.building_blocks[hw_node]["hw"].rows = max_input_shape[0]
             self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+5, next_input_shape[1])
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+5, next_input_shape[2])
@@ -169,11 +171,11 @@ def update_building_block_shape(self, hw_node, next_input_shape,
             self.building_blocks[hw_node]["hw"].channels = next_input_shape[-1]
         # TODO: handle the other layer types
         case _:
-            self.building_blocks[hw_node]["hw"].rows = next_input_shape[0]
-            self.building_blocks[hw_node]["hw"].cols = next_input_shape[1]
+            self.building_blocks[hw_node]["hw"].rows = max_input_shape[0]
+            self.building_blocks[hw_node]["hw"].cols = max_input_shape[1]
             if self.dimensionality == 3:
-                self.building_blocks[hw_node]["hw"].depth = next_input_shape[2]
-            self.building_blocks[hw_node]["hw"].channels = next_input_shape[-1]
+                self.building_blocks[hw_node]["hw"].depth = max_input_shape[2]
+            self.building_blocks[hw_node]["hw"].channels = max_input_shape[-1]
     # update the hw node
     self.building_blocks[hw_node]["hw"].update()
 

@@ -1,14 +1,14 @@
 [device]
-name = "zcu102"
+name = "vc709"
 #family = ""
-part = "xczu9eg-ffvb1156-2-e"
+part = "xc7vx690t-2ffg1761c"
 board = "" #TODO: add board file
 
 [resources]
-DSP   = 2520
-BRAM  = 1824
-FF    = 548160
-LUT   = 599550
+DSP   = 3600
+BRAM  = 2940
+FF    = 866000
+LUT   = 433000
 
 [system]
 board_frequency = 300 # in MHz
