@@ -152,7 +152,7 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
     print("generated simulated annealing object")
 
     #updating params TODO make batch size an argument
-    net.batch_size = 256#4
+    net.batch_size = 1024#4
     net.update_platform(plat_path)
     # update partitions
     net.update_partitions()
@@ -212,8 +212,8 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
 
     ### FOR LOOP FOR REPEATED OPTIM ###
     #NOTE expose these to the expr top level
-    #rsc_limits = [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    rsc_limits = [0.2,0.3,0.4,0.5]
+    rsc_limits = [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    #rsc_limits = [0.2,0.3,0.4,0.5]
     full_sa_runs = 10
 
     if auto_flag:
@@ -808,6 +808,8 @@ def main():
         else:
             output_network(filepath, True)
     elif args.expr == 'opt_brn':
+        print(filepath)
+        print(platpath)
         optim_expr(args, filepath, True, optpath, platpath)
     elif args.expr == 'opt':
         optim_expr(args, filepath, False, optpath, platpath)

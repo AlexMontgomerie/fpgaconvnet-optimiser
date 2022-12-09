@@ -200,6 +200,7 @@ def get_model_input(model, name, submodels=[]):
         for subnode in sm.g.value_info: #g used in subgraphs for graph
             if subnode.name == name: # exact match
                 return subnode
+    print("WARNING: Missing model input:",name)
 
 def get_model_output(model, name, submodels=[]):
     for node in model.graph.output:

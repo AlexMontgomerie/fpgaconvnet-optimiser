@@ -99,6 +99,7 @@ def build_graph(model):
             # add initializers
             if onnx_helper.get_model_initializer(model, input_node, submodels=submodels) is not None:
                 # get input details
+                print("GETTING INPUT DETAILS")
                 input_details = onnx_helper.get_model_input(model, input_node, submodels=submodels)
                 # convolution inputs
                 if graph.nodes[name]["type"] == LAYER_TYPE.Convolution:
@@ -118,10 +119,12 @@ def build_graph(model):
                         raise Exception("Unexpected dimension")
 
                 if graph.nodes[name]["type"] == LAYER_TYPE.Greater:
-                    if len(input_details.type.tensor_type.shape.dim) == 1:
-                        graph.nodes[name]['inputs']['constant'] = input_node
-                    else:
-                        raise Exception("Unexpected dimension")
+                    print("PROBLEM LAYER FOUND:",name)
+                    print(input_node)
+                    #if len(input_details.type.tensor_type.shape.dim) == 1:
+                    graph.nodes[name]['inputs']['constant'] = input_node
+                    #else:
+                    #    raise Exception("Unexpected dimension")
                 continue
             input_node = onnx_helper._format_name(input_node)
             if input_node != name:
