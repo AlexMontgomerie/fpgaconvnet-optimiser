@@ -146,17 +146,18 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                                     self.building_blocks[hw_node]["hw"].kernel_depth
                         # check channels in and out are greater than all exec nodes
                         # TODO: handle properly in scheduler, and remove here
-                        assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
-                                self.building_blocks[hw_node]["hw"].channels_in()
+                        # assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
+                        #         self.building_blocks[hw_node]["hw"].channels_in()
                         # assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
                         #         self.building_blocks[hw_node]["hw"].channels_out()
                 case LAYER_TYPE.InnerProduct:
                     # iterate over the execution nodes
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"]:
+                        pass
                         # check channels in and out are greater than all exec nodes
                         # TODO: handle properly in scheduler, and remove here
-                        assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
-                                self.building_blocks[hw_node]["hw"].channels_in()
+                        # assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
+                        #         self.building_blocks[hw_node]["hw"].channels_in()
                         # assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
                         #         self.building_blocks[hw_node]["hw"].channels_out()
 

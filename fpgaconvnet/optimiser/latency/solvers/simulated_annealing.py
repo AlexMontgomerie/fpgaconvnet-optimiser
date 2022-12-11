@@ -10,20 +10,21 @@ import pandas as pd
 
 from fpgaconvnet.optimiser.latency.solvers.solver import LatencySolver
 
-LATENCY   =0
-THROUGHPUT=1
+LATENCY     =   0
+THROUGHPUT  =   1
 
-START_LOOP=1000
+START_LOOP  =   1000
 
 @dataclass
 class LatencySimulatedAnnealing(LatencySolver):
     T: float = 10.0
-    k: float = 0.001
+    k: float = 100.0
     T_min: float = 0.0001
     cool: float = 0.975
-    iterations: int = 15
+    transform_iterations: int = 15
     """
-Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
+    Randomly chooses a transform and hardware component to change.
+    The change is accepted based on a probability-based decision function
     """
 
     def run_solver(self, log=True):
@@ -81,8 +82,6 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 # save report and config
                 with open("tmp/config.json", "w") as f:
                     json.dump(config, f, indent=2)
-                with open("tmp/report.json", "w") as f:
-                    json.dump(report, f, indent=2)
 
                 # save them as artifacts
                 artifact = wandb.Artifact('outputs', type='json')
@@ -92,7 +91,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
                 self.wandb_log(temperature=self.T,
                     num_blocks=len(self.building_blocks),
-                    latency=self.evaluate_latency(),
+                    latency=cost,
                     per_layer=wandb.Table(data=pd.DataFrame(per_layer_table)),
                     **self.get_resources_util())
             # self.wandb_checkpoint()
@@ -100,8 +99,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # Save previous building blocks
             building_blocks = copy.deepcopy(self.building_blocks)
 
-            # several iterations per cool down
-            for _ in range(self.iterations):
+            # several transform iterations per cool down
+            for _ in range(self.transform_iterations):
 
                 # Apply a transform
                 ## Choose a random transform
@@ -126,15 +125,26 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 continue
 
             # Simulated annealing descision
-            if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
-                # revert to previous state
-                self.building_blocks = building_blocks
+            curr_cost = self.get_cost()
+            status_cost = curr_cost
+            if curr_cost < cost:
+                # accept new state
+                pass
+            else:
+                if math.exp((cost - curr_cost)/(self.k*self.T)) < random.uniform(0,1):
+                    # revert to previous state
+                    self.building_blocks = building_blocks
+                    status_cost = cost
 
             # print solver status
-            self.solver_status()
+            self.solver_status(self.T, cost=status_cost)
 
             # reduce temperature
             self.T *= self.cool
+
+        print(f"Final cost: {self.get_cost():.4f}")
+        print(f"Final resources: {self.get_resources_util()}")
+        print(f"Final building blocks: {list(self.building_blocks.keys())}")
 
         # # store dataframe of
         # # https://docs.wandb.ai/guides/data-vis/log-tables
