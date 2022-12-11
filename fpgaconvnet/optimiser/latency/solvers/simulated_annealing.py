@@ -1,4 +1,4 @@
-import sys
+import os
 import numpy as np
 import json
 import copy
@@ -20,7 +20,7 @@ class LatencySimulatedAnnealing(LatencySolver):
     T: float = 10.0
     k: float = 100.0
     T_min: float = 0.0001
-    cool: float = 0.975
+    cool: float = 0.98
     transform_iterations: int = 15
     """
     Randomly chooses a transform and hardware component to change.
@@ -80,8 +80,12 @@ class LatencySimulatedAnnealing(LatencySolver):
                     per_layer_table["iteration_space"].append(per_layer_report["iteration_space"])
 
                 # save report and config
+                if not os.path.exists("tmp"):
+                    os.makedirs("tmp")
                 with open("tmp/config.json", "w") as f:
                     json.dump(config, f, indent=2)
+                with open("tmp/report.json", "w") as f:
+                    json.dump(report, f, indent=2)
 
                 # save them as artifacts
                 artifact = wandb.Artifact('outputs', type='json')
