@@ -2,7 +2,7 @@
 logging = false
 checkpoints = false
 starting_point_distillation = false
-resource_allocation = 0.75
+resource_allocation = 0.95
 
 [transforms.fine]
 apply_transform = false
@@ -31,7 +31,7 @@ allowed_partitions = [
 
 [annealing]
 T = 10.0
-T_min = 0.001
-k = 0.1
-cool = 0.90
-iterations = 5
+T_min = 0.0001
+k = 100.0
+cool = 0.98
+transform_iterations = 15
