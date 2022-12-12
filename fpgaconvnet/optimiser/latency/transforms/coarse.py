@@ -43,12 +43,16 @@ def apply_random_coarse_node(self, hw_node):
 
     # apply the coarse factor
     if coarse_type == "coarse":
+        assert coarse_factor in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), f"coarse factor not feasible for node {hw_node}"
         self.building_blocks[hw_node]["hw"].coarse = coarse_factor
     if coarse_type == "coarse_in":
+        assert coarse_factor in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), f"coarse_in factor not feasible for node {hw_node}"
         self.building_blocks[hw_node]["hw"].coarse_in = coarse_factor
     if coarse_type == "coarse_out":
+        assert coarse_factor in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), f"coarse_out factor not feasible for node {hw_node}"
         self.building_blocks[hw_node]["hw"].coarse_out = coarse_factor
     if coarse_type == "coarse_group":
+        assert coarse_factor in self.building_blocks[hw_node]["hw"].get_coarse_group_feasible(), f"coarse_group factor not feasible for node {hw_node}"
         self.building_blocks[hw_node]["hw"].coarse_group = coarse_factor
 
     # update the hardware
@@ -64,19 +68,24 @@ def fix_coarse_node(self, hw_node):
             self.building_blocks[hw_node]["hw"].coarse_in = get_max_coarse(
                 self.building_blocks[hw_node]["hw"].coarse_in,
                 self.building_blocks[hw_node]["hw"].get_coarse_in_feasible())
+            assert self.building_blocks[hw_node]["hw"].channels_in() % self.building_blocks[hw_node]["hw"].coarse_in == 0, f"coarse_in {self.building_blocks[hw_node]['hw'].coarse_in} not feasible for node {hw_node} with channels_in {self.building_blocks[hw_node]['hw'].channels_in()}"
             self.building_blocks[hw_node]["hw"].coarse_out = get_max_coarse(
                 self.building_blocks[hw_node]["hw"].coarse_out,
                 self.building_blocks[hw_node]["hw"].get_coarse_out_feasible())
+            assert self.building_blocks[hw_node]["hw"].channels_out() % self.building_blocks[hw_node]["hw"].coarse_out == 0, f"coarse_out {self.building_blocks[hw_node]['hw'].coarse_out} not feasible for node {hw_node} with channels_out {self.building_blocks[hw_node]['hw'].channels_out()}"
             self.building_blocks[hw_node]["hw"].coarse_group = get_max_coarse(
                 self.building_blocks[hw_node]["hw"].coarse_group,
                 self.building_blocks[hw_node]["hw"].get_coarse_group_feasible())
+            assert self.building_blocks[hw_node]["hw"].groups % self.building_blocks[hw_node]["hw"].coarse_group == 0, f"coarse_group {self.building_blocks[hw_node]['hw'].coarse_group} not feasible for node {hw_node} with groups {self.building_blocks[hw_node]['hw'].groups}"
         case LAYER_TYPE.InnerProduct:
             self.building_blocks[hw_node]["hw"].coarse_in = get_max_coarse(
                 self.building_blocks[hw_node]["hw"].coarse_in,
                 self.building_blocks[hw_node]["hw"].get_coarse_in_feasible())
+            assert self.building_blocks[hw_node]["hw"].channels_in() % self.building_blocks[hw_node]["hw"].coarse_in == 0, f"coarse_in {self.building_blocks[hw_node]['hw'].coarse_in} not feasible for node {hw_node} with channels_in {self.building_blocks[hw_node]['hw'].channels_in()}"
             self.building_blocks[hw_node]["hw"].coarse_out = get_max_coarse(
                 self.building_blocks[hw_node]["hw"].coarse_out,
                 self.building_blocks[hw_node]["hw"].get_coarse_out_feasible())
+            assert self.building_blocks[hw_node]["hw"].channels_out() % self.building_blocks[hw_node]["hw"].coarse_out == 0, f"coarse_out {self.building_blocks[hw_node]['hw'].coarse_out} not feasible for node {hw_node} with channels_out {self.building_blocks[hw_node]['hw'].channels_out()}"
         case _:
             self.building_blocks[hw_node]["hw"].coarse = get_max_coarse(
                 self.building_blocks[hw_node]["hw"].coarse,

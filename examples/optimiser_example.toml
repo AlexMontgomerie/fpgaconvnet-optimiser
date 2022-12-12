@@ -32,6 +32,6 @@ allowed_partitions = [
 [annealing]
 T = 10.0
 T_min = 0.0001
-k = 100.0
+k = 10.0
 cool = 0.98
 transform_iterations = 15
