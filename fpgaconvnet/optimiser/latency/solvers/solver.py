@@ -3,6 +3,7 @@ import math
 import itertools
 import random
 import secrets
+import wandb
 from dataclasses import dataclass, field
 from collections import Counter, namedtuple
 
@@ -81,6 +82,14 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # return layers
         return layers_of_type
 
+    def wandb_log(self, **kwargs):
+        # get common log values
+        wandb_log = {}
+        # add extra log values
+        wandb_log.update(kwargs)
+        # update wandb log
+        wandb.log(wandb_log)
+
     def solver_status(self, temp, cost=None):
         """
         prints out the current status of the solver.
@@ -97,7 +106,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         DSP  = resources['DSP']
         LUT  = resources['LUT']
         FF   = resources['FF']
-        print("TEMP:\t {temperature:.4f}, COST:\t {cost:.4f} ({objective}), RESOURCE:\t {DSP}\t{BRAM}\t{FF}\t{LUT}\t(DSP|BRAM|FF|LUT)".format(
+        print("TEMP:\t {temperature:.5f}, COST:\t {cost:.3f} ({objective}), RESOURCE:\t {DSP}\t{BRAM}\t{FF}\t{LUT}\t(DSP|BRAM|FF|LUT)".format(
             temperature=temp, cost=cost,objective=objective,DSP=int(DSP),BRAM=int(BRAM),FF=int(FF),LUT=int(LUT)))
 
     def get_resources(self):

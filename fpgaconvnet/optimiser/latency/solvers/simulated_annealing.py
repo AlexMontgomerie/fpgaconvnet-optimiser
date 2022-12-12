@@ -103,7 +103,7 @@ class LatencySimulatedAnnealing(LatencySolver):
 
                 self.wandb_log(temperature=self.T,
                     num_blocks=len(self.building_blocks),
-                    latency=cost,
+                    latency=status_cost,
                     **self.get_resources_util())
 
             # reduce temperature
@@ -131,6 +131,8 @@ class LatencySimulatedAnnealing(LatencySolver):
                 per_layer_table["repetitions"].append(per_layer_report["repetitions"])
                 per_layer_table["iteration_space"].append(per_layer_report["iteration_space"])
 
+            self.wandb_log(per_layer=wandb.Table(data=pd.DataFrame(per_layer_table)))
+
             # save report and config
             if not os.path.exists("tmp"):
                 os.makedirs("tmp")
@@ -144,8 +146,6 @@ class LatencySimulatedAnnealing(LatencySolver):
             artifact.add_file("tmp/config.json") # Adds multiple files to artifact
             artifact.add_file("tmp/report.json") # Adds multiple files to artifact
             wandb.log_artifact(artifact)
-
-            self.wandb_log(per_layer=wandb.Table(data=pd.DataFrame(per_layer_table)))
             # self.wandb_checkpoint()
 
         print(f"Final cost: {self.get_cost():.4f}")
