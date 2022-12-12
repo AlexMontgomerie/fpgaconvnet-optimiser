@@ -167,7 +167,7 @@ def update_building_block_shape(self, hw_node, next_input_shape,
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+5, next_input_shape[2])
             # fix channels to be max TODO: do we want to have runtime channels?
-            self.building_blocks[hw_node]["hw"].channels = next_input_shape[-1]
+            self.building_blocks[hw_node]["hw"].channels = max_input_shape[-1]
             # set a random filter dimension TODO
             self.building_blocks[hw_node]["hw"].filters = next_output_shape[-1]
         case LAYER_TYPE.InnerProduct:
@@ -176,7 +176,7 @@ def update_building_block_shape(self, hw_node, next_input_shape,
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = next_input_shape[2]
             # fix channels to be max TODO: do we want to have runtime channels?
-            self.building_blocks[hw_node]["hw"].channels = next_input_shape[-1]
+            self.building_blocks[hw_node]["hw"].channels = max_input_shape[-1]
             # set a random filter dimension TODO
             self.building_blocks[hw_node]["hw"].filters = next_output_shape[-1]
         case LAYER_TYPE.Pooling:
@@ -195,20 +195,20 @@ def update_building_block_shape(self, hw_node, next_input_shape,
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+5, next_input_shape[2])
             # update the channel dimension
-            self.building_blocks[hw_node]["hw"].channels = next_input_shape[-1]
+            self.building_blocks[hw_node]["hw"].channels = next_output_shape[-1]
         # TODO: handle the other layer types
         case LAYER_TYPE.EltWise:
-            self.building_blocks[hw_node]["hw"].rows = [next_input_shape[0]] * self.building_blocks[hw_node]["hw"].ports_in
-            self.building_blocks[hw_node]["hw"].cols = [next_input_shape[1]] * self.building_blocks[hw_node]["hw"].ports_in
+            self.building_blocks[hw_node]["hw"].rows = [max_output_shape[0]] * self.building_blocks[hw_node]["hw"].ports_in
+            self.building_blocks[hw_node]["hw"].cols = [max_output_shape[1]] * self.building_blocks[hw_node]["hw"].ports_in
             if self.dimensionality == 3:
-                self.building_blocks[hw_node]["hw"].depth = [next_input_shape[2]] * self.building_blocks[hw_node]["hw"].ports_in
-            self.building_blocks[hw_node]["hw"].channels = [next_input_shape[-1]] * self.building_blocks[hw_node]["hw"].ports_in
+                self.building_blocks[hw_node]["hw"].depth = [max_output_shape[2]] * self.building_blocks[hw_node]["hw"].ports_in
+            self.building_blocks[hw_node]["hw"].channels = [max_output_shape[-1]] * self.building_blocks[hw_node]["hw"].ports_in
         case _:
-            self.building_blocks[hw_node]["hw"].rows = next_input_shape[0]
-            self.building_blocks[hw_node]["hw"].cols = next_input_shape[1]
+            self.building_blocks[hw_node]["hw"].rows = max_output_shape[0]
+            self.building_blocks[hw_node]["hw"].cols = max_output_shape[1]
             if self.dimensionality == 3:
-                self.building_blocks[hw_node]["hw"].depth = next_input_shape[2]
-            self.building_blocks[hw_node]["hw"].channels = next_input_shape[-1]
+                self.building_blocks[hw_node]["hw"].depth = max_output_shape[2]
+            self.building_blocks[hw_node]["hw"].channels = max_output_shape[-1]
     # update the hw node
     self.building_blocks[hw_node]["hw"].update()
 
