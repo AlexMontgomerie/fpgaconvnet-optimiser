@@ -343,7 +343,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             latency = latency / (self.net.platform.board_freq*1e3)
             # update the table
             table["exec_node"].append(exec_node)
-            table["hw_node"].append(hw_node)
+            table["hw_node"].append(self.get_building_block(exec_node))
             table["type"].append(str(self.net.graph.nodes[exec_node]["type"]))
             table["latency"].append(latency)
             table["repetitions"].append(len(schedule[exec_node]))
