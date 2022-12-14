@@ -50,17 +50,16 @@ class LatencySimulatedAnnealing(LatencySolver):
             # several transform iterations per cool down
             for _ in range(self.transform_iterations):
 
-                # Apply a transform
-                ## Choose a random transform
-                transform = random.choice(self.transforms)
+                # Choose a random transform
+                transform = np.random.choice(self.transforms, p=[self.transforms_probabilities[t] for t in self.transforms])
 
-                ## Choose a random building block
+                # Choose a random building block
                 hw_node = random.choice(list(self.building_blocks.keys()))
 
-                ## Choose a random execution node
+                # Choose a random execution node
                 exec_node = random.choice(list(self.net.graph.nodes()))
 
-                ## Apply the transform
+                # Apply the transform
                 self.apply_transform(transform, hw_node, exec_node)
 
             # Check resources

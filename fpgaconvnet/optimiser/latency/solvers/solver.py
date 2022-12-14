@@ -20,6 +20,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     runtime_parameters: bool = True
     transforms: list = field(default_factory=lambda:[
         'shape', 'coarse', 'fine', 'combine', 'seperate'])
+    transforms_probabilities: dict = field(default_factory=lambda:{
+        'shape': 1/5, 'coarse': 1/5, 'fine': 1/5, 'combine': 1/5, 'seperate': 1/5})
     shape_method: str = "random"
     combine_nodes: int = 2
     seperate_nodes: int = 2

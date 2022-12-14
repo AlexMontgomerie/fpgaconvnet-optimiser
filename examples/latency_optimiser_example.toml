@@ -1,34 +1,34 @@
 [general]
 logging = false
 resource_allocation = 0.95
-runtime_parameters = false
+runtime_parameters = true
 weight_storage = "double_buffer" # [ double_buffer, stream, share ]
 
 [transforms.fine]
 apply_transform = true
-probability = 0.25
+probability = 0.20
 start_complete = true
 
 [transforms.coarse]
 apply_transform = true
-probability = 0.25
+probability = 0.30
 
 [transforms.shape]
 apply_transform = true
-probability = 0.25
+probability = 0.30
 method = "inherit" # [ random, inherit ]
 start_min = true # initialise all building blocks with the smallest shapes
 
 [transforms.combine]
 apply_transform = true
-probability = 0.25
+probability = 0.10
 num_nodes = 2 # (max) number of nodes to combine at a time
 start_combine_all = true # combine all layer types at the start
 # TODO: add some discrimination flags
 
 [transforms.seperate]
 apply_transform = true
-probability = 0.25
+probability = 0.10
 allowed_types = [ "Conv", "Gemm", "MaxPool" ] # types that can be seperated
 num_nodes = 2 # (max) number of nodes to combine at a time
 

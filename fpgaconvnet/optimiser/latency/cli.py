@@ -110,6 +110,8 @@ def main():
     if args.optimiser == "simulated_annealing":
         opt = LatencySimulatedAnnealing(net, objective=0,
                 runtime_parameters=optimiser_config["general"]["runtime_parameters"],
+                transforms_probabilities={p: optimiser_config["transforms"][p]['probability'] \
+                                            for p in optimiser_config["transforms"]},
                 combine_nodes=optimiser_config["transforms"]["combine"]["num_nodes"],
                 seperate_nodes=optimiser_config["transforms"]["seperate"]["num_nodes"],
                 **optimiser_config["annealing"])
