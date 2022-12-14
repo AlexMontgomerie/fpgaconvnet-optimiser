@@ -38,10 +38,10 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
         case LAYER_TYPE.Convolution:
 
             # get all the parameter keys
-            max_param_keys = [ "channels", "groups", "kernel_rows", "fine",
+            max_param_keys = [ "channels", "kernel_rows", "fine",
                     "kernel_cols", "stride_rows", "stride_cols", "pad_top",
                     "pad_bottom", "pad_left", "pad_right" ]
-            min_param_keys = [ "rows", "cols", "filters",
+            min_param_keys = [ "rows", "cols", "filters", "groups",
                     "coarse_in", "coarse_out", "coarse_group" ]
 
             # add 3D specific parameters
