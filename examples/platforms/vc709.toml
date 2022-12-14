@@ -1,7 +1,7 @@
 [device]
 name = "vc709"
 #family = ""
-part = "xc7vx690t-2ffg1761c"
+part = "xc7vx690tffg1761-2"
 board = "" #TODO: add board file
 
 [resources]

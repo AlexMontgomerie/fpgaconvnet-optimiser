@@ -286,6 +286,15 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # add total number of building blocks
         report["general"]["total_building_blocks"] = len(self.building_blocks)
 
+        # add total resources
+        report["general"]["total_resources"] = self.get_resources()
+
+        # add per building block resources
+        report["general"]["resources"] = {}
+        for hw_node in self.building_blocks:
+            report["general"]["resources"][hw_node] = \
+                    self.building_blocks[hw_node]["hw"].resource()
+
         # return the report
         return report
 

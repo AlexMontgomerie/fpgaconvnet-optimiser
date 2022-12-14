@@ -39,8 +39,11 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # apply min shape to all hardware nodes
         for hw_node in self.building_blocks:
             self.apply_min_shape(hw_node)
+            self.building_blocks[hw_node]["hw"].update()
+            print(hw_node, self.building_blocks[hw_node]["hw"].resource())
 
         # check the intial design is within constraints
+        # print(self.get_resources())
         try:
             self.check_resources()
             self.check_building_blocks()
