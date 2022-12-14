@@ -301,3 +301,28 @@ def get_runtime_latency(layer_type, node, param, dimensionality):
     # return latency
     return latency
 
+def apply_mem_bw_limitations(graph, building_blocks, total_mem_bw):
+
+    # split the memory bandwidth equally between the in and out
+    mem_bw_in = total_mem_bw / 2
+    mem_bw_out = total_mem_bw / 2
+
+    # apply memory bandwidth limitations to the graph execution nodes
+    for node in graph.nodes:
+        match graph.nodes[node]["type"]:
+            case LAYER_TYPE.EltWise:
+                graph.nodes[node]["hw"].mem_bw_in = [mem_bw_in/graph.nodes[node]["hw"].ports_in] * graph.nodes[node]["hw"].ports_in
+                graph.nodes[node]["hw"].mem_bw_out = [mem_bw_out/graph.nodes[node]["hw"].ports_out] * graph.nodes[node]["hw"].ports_out
+            case _:
+                graph.nodes[node]["hw"].mem_bw_in = mem_bw_in
+                graph.nodes[node]["hw"].mem_bw_out = mem_bw_out
+
+    # apply memory bandwidth limitations to the hardware building blocks
+    for hw_node in building_blocks:
+        match building_blocks[hw_node]["type"]:
+            case LAYER_TYPE.EltWise:
+                building_blocks[hw_node]["hw"].mem_bw_in = [mem_bw_in/building_blocks[hw_node]["hw"].ports_in] * building_blocks[hw_node]["hw"].ports_in
+                building_blocks[hw_node]["hw"].mem_bw_out = [mem_bw_out/building_blocks[hw_node]["hw"].ports_out] * building_blocks[hw_node]["hw"].ports_out
+            case _:
+                building_blocks[hw_node]["hw"].mem_bw_in = mem_bw_in
+                building_blocks[hw_node]["hw"].mem_bw_out = mem_bw_out

@@ -4,7 +4,7 @@ import random
 
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
-from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict
+from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict, apply_mem_bw_limitations
 
 def combine(self, layer_type, discriminate=[], num_nodes=2):
 
@@ -160,6 +160,8 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
     if len(nodes_to_combine) > 1:
         for layer in nodes_to_combine:
             del self.building_blocks[layer]
+
+    apply_mem_bw_limitations(self.net.graph, self.building_blocks, self.net.platform.mem_bw_wpc)
 
     # return the key for the new layer generated
     return new_layer_name

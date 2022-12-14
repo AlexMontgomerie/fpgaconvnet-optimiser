@@ -12,7 +12,7 @@ import numpy as np
 from fpgaconvnet.tools.layer_enum import  LAYER_TYPE
 from fpgaconvnet.models.network import Network
 
-from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict, get_runtime_latency
+from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict, get_runtime_latency, apply_mem_bw_limitations
 import fpgaconvnet.optimiser.solvers.solver
 
 @dataclass
@@ -37,6 +37,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 LAYER_TYPE.Sigmoid, LAYER_TYPE.SiLU, LAYER_TYPE.GlobalPooling ]
         for layer_type in self.simple_layer_types:
             self.combine(layer_type)
+
+        apply_mem_bw_limitations(self.net.graph, self.building_blocks, self.net.platform.mem_bw_wpc)
 
     # import shape generation transform functions
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_random_shape
