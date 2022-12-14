@@ -252,12 +252,12 @@ def update_node_param(layer_type, node, param, dimensionality):
                 node.pad_front = param["pad_front"]
                 node.pad_back = param["pad_back"]
         case LAYER_TYPE.EltWise:
-            node.rows = param["rows"]
-            node.cols = param["cols"]
-            node.channels = param["channels"]
+            node.rows = [param["rows"]] * param["ports_in"]
+            node.cols = [param["cols"]] * param["ports_in"]
+            node.channels = [param["channels"]] * param["ports_in"]
             node.coarse = param["coarse"]
             if dimensionality == 3:
-                node.depth = param["depth"]
+                node.depth = [param["depth"]] * param["ports_in"]
         case LAYER_TYPE.ReLU:
             node.rows = param["rows"]
             node.cols = param["cols"]
@@ -287,7 +287,7 @@ def get_runtime_latency(layer_type, node, param, dimensionality):
 
     # get all the previous parameters from the attributes
     prev_param = node.__dict__
-    prev_param = { key.lstrip("_") : val for key, val in prev_param.items() }
+    prev_param = { key.lstrip("_") : (val if not isinstance(val, list) else val[0]) for key, val in prev_param.items() }
 
     # update the node and get the latency
     update_node_param(layer_type, node, param, dimensionality)

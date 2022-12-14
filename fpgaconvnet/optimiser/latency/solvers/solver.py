@@ -213,6 +213,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 param.pop("kernel_size", None)
                 param.pop("stride", None)
                 param.pop("pad", None)
+                param.pop("mem_bw_in_array", None)
+                param.pop("mem_bw_out_array", None)
 
             # turn the parameters into something hashable
             param_type = namedtuple('param', schedule[exec_node][0])

@@ -159,9 +159,8 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
     }
 
     # remove the combined layers
-    if len(nodes_to_combine) > 1:
-        for layer in nodes_to_combine:
-            del self.building_blocks[layer]
+    for layer in nodes_to_combine:
+        del self.building_blocks[layer]
 
     # apply memory bandwidth limitations
     apply_mem_bw_limitations(self.net.graph, self.building_blocks, self.net.platform.mem_bw_wpc)
