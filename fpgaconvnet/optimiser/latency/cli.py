@@ -112,7 +112,7 @@ def main():
 
     # load network
     if args.optimiser == "simulated_annealing":
-        opt = LatencySimulatedAnnealing(net) # TODO: include optimiser_config["annealing"]
+        opt = LatencySimulatedAnnealing(net, objective=0) # TODO: include optimiser_config["annealing"]
     else:
         raise NotImplementedError(f"optimiser {args.optimiser} not implmented")
 
@@ -129,7 +129,7 @@ def main():
     #         fpgaconvnet.optimiser.transforms.fine.apply_complete_fine(partition)
 
     # run optimiser
-    opt.run_solver()
+    opt.run_solver(log=args.enable_wandb)
 
     # update all partitions
     opt.net.update_partitions()

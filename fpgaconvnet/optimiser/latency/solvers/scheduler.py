@@ -19,11 +19,11 @@ def get_convolution_schedule(self, hw_node, exec_node):
     # choose the largest factor for fine that's below the hardware's fine
     fine = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].fine,
             self.net.graph.nodes[exec_node]["hw"].get_fine_feasible()))
-    coarse_in = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in,
+    coarse_in = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(),
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))
     # coarse_out = list(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
     #         self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))[-1]
-    coarse_group = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_group,
+    coarse_group = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_group and f in self.building_blocks[hw_node]["hw"].get_coarse_group_feasible(),
             self.net.graph.nodes[exec_node]["hw"].get_coarse_group_feasible()))
 
     # get the repetition of each dimension
@@ -38,21 +38,19 @@ def get_convolution_schedule(self, hw_node, exec_node):
             self.net.graph.nodes[exec_node]["hw"].depth_in() / \
                     self.building_blocks[hw_node]["hw"].depth_in())
 
+    # TODO: at the moment, assume channels always fit
+    # iterate across each dimension to be repeated
     # channel_repetition = math.ceil(
     #     self.net.graph.nodes[exec_node]["hw"].channels_in() / \
     #             self.building_blocks[hw_node]["hw"].channels_in())
-    # TODO: at the moment, assume filters and channels always fit
-    # iterate across each dimension to be repeated
-
     filter_repetition = math.ceil(
-        self.net.graph.nodes[exec_node]["hw"].filters / \
-                self.building_blocks[hw_node]["hw"].filters)
+        self.net.graph.nodes[exec_node]["hw"].channels_out() / \
+                self.building_blocks[hw_node]["hw"].channels_out())
 
     # get the iteration space
     iteration_space = [ row_repetition, col_repetition, filter_repetition ]
     if self.dimensionality == 3:
-        iteration_space = [ row_repetition, col_repetition,
-                depth_repetition, filter_repetition ]
+        iteration_space = [ row_repetition, col_repetition, depth_repetition, filter_repetition ]
 
     # iterate over the tiled dimensions
     for index in np.ndindex(*iteration_space):
@@ -61,7 +59,7 @@ def get_convolution_schedule(self, hw_node, exec_node):
         rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
         cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
-                base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
+                base_param["cols_in"]-index[0]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
             depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["depth_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
@@ -76,21 +74,26 @@ def get_convolution_schedule(self, hw_node, exec_node):
                 depth_in += base_param["kernel_depth"] - 1
 
         # greedy filter dimension
-        filters = min(self.building_blocks[hw_node]["hw"].filters,
-                base_param["filters"]-index[-1]*self.building_blocks[hw_node]["hw"].filters)
+        filters = min(self.building_blocks[hw_node]["hw"].channels_out(),
+                base_param["filters"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_out())
 
         # choose coarse out as a factor of the filter dimension
         coarse_out = max(filter(lambda f: f <= \
-                self.building_blocks[hw_node]["hw"].coarse_out, get_factors(filters)))
+                self.building_blocks[hw_node]["hw"].coarse_out and f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), get_factors(filters)))
 
         # add the parameters to the schedule
         param = copy.copy(base_param)
+        assert param["filters"] == param["channels_out"], f"filters must equal channels out for {exec_node} and {hw_node}"
+        assert param["channels_in"] % coarse_in == 0, f"coarse in must be a factor of channels in for {exec_node} and {hw_node}"
+        assert filters % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
+        assert param["groups"] % coarse_group == 0, f"coarse group must be a factor of groups for {exec_node} and {hw_node}"
         param["rows_in"] = rows_in
         param["cols_in"] = cols_in
         if self.dimensionality == 3:
             param["depth_in"] = depth_in
         param["fine"] = fine
         param["filters"] = filters
+        param["channels_out"] = filters
         param["coarse_in"] = coarse_in
         param["coarse_out"] = coarse_out
         param["coarse_group"] = coarse_group
@@ -98,8 +101,8 @@ def get_convolution_schedule(self, hw_node, exec_node):
         # only add padding parameters at the edge
         param["pad_top"] = param["pad_top"] if index[0] else 0
         param["pad_bottom"] = param["pad_bottom"] if index[0] == (row_repetition-1) else 0
-        param["pad_left"] = param["pad_left"] if index[1] else 0
-        param["pad_right"] = param["pad_right"] if index[1] == (col_repetition-1) else 0
+        param["pad_left"] = param["pad_left"] if index[0] else 0
+        param["pad_right"] = param["pad_right"] if index[0] == (col_repetition-1) else 0
         if self.dimensionality == 3:
             param["pad_front"] = param["pad_front"] if index[2] else 0
             param["pad_back"] = param["pad_back"] if index[2] == (depth_repetition-1) else 0
@@ -123,15 +126,15 @@ def get_inner_product_schedule(self, hw_node, exec_node):
     base_param = self.net.graph.nodes[exec_node]["hw"].layer_info_dict()
 
     # do the same for the coarse factors TODO: improve the channel, coarse trade-off
-    coarse_in = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in,
+    coarse_in = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(),
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))
     # coarse_out = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out,
     #         self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))
 
     # number of times to repeat filter dimension
     filter_repetition = math.ceil(
-        self.net.graph.nodes[exec_node]["hw"].filters / \
-                self.building_blocks[hw_node]["hw"].filters)
+        self.net.graph.nodes[exec_node]["hw"].channels_out() / \
+                self.building_blocks[hw_node]["hw"].channels_out())
 
     # get the iteration space
     iteration_space = [  filter_repetition ]
@@ -140,16 +143,19 @@ def get_inner_product_schedule(self, hw_node, exec_node):
     for index in np.ndindex(*iteration_space):
 
         # greedy filter dimension
-        filters = min(self.building_blocks[hw_node]["hw"].filters,
-                base_param["filters"]-index[-1]*self.building_blocks[hw_node]["hw"].filters)
+        filters = min(self.building_blocks[hw_node]["hw"].channels_out(),
+                base_param["filters"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_out())
 
         # choose coarse out as a factor of the filter dimension
         coarse_out = max(filter(lambda f: f <= \
-                self.building_blocks[hw_node]["hw"].coarse_out, get_factors(filters)))
+                self.building_blocks[hw_node]["hw"].coarse_out and f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), get_factors(filters)))
 
         # add the parameters to the schedule
         param = copy.copy(base_param)
-        param["filters"] =filters
+        assert param["channels_in"] % coarse_in == 0, f"coarse in must be a factor of channels in for {exec_node} and {hw_node}"
+        assert filters % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
+        param["filters"] = filters
+        param["channels_out"] = filters
         param["coarse_in"] = coarse_in
         param["coarse_out"] = coarse_out
 
@@ -168,7 +174,7 @@ def get_pooling_schedule(self, hw_node, exec_node):
     base_param = self.net.graph.nodes[exec_node]["hw"].layer_info_dict()
 
     # do the same for the coarse factors TODO: improve the channel, coarse trade-off
-    coarse = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse,
+    coarse = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse and f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(),
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))
 
     # get the repetition of each dimension
@@ -198,7 +204,7 @@ def get_pooling_schedule(self, hw_node, exec_node):
         rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
         cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
-                base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
+                base_param["cols_in"]-index[0]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
             depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["depth_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
@@ -226,8 +232,8 @@ def get_pooling_schedule(self, hw_node, exec_node):
         # only add padding parameters at the edge
         param["pad_top"] = param["pad_top"] if index[0] else 0
         param["pad_bottom"] = param["pad_bottom"] if index[0] == (row_repetition-1) else 0
-        param["pad_left"] = param["pad_left"] if index[1] else 0
-        param["pad_right"] = param["pad_right"] if index[1] == (col_repetition-1) else 0
+        param["pad_left"] = param["pad_left"] if index[0] else 0
+        param["pad_right"] = param["pad_right"] if index[0] == (col_repetition-1) else 0
         if self.dimensionality == 3:
             param["pad_front"] = param["pad_front"] if index[2] else 0
             param["pad_back"] = param["pad_back"] if index[2] == (depth_repetition-1) else 0
@@ -247,7 +253,7 @@ def get_basic_schedule(self, hw_node, exec_node):
     base_param = self.net.graph.nodes[exec_node]["hw"].layer_info_dict()
 
     # do the same for the coarse factors TODO: improve the channel, coarse trade-off
-    coarse = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse,
+    coarse = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse and f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(),
             self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))
 
     # get the repetition of each dimension
@@ -277,7 +283,7 @@ def get_basic_schedule(self, hw_node, exec_node):
         rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
         cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
-                base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
+                base_param["cols_in"]-index[0]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
             depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["cols_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())

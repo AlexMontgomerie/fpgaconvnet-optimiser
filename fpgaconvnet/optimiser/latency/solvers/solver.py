@@ -3,6 +3,7 @@ import math
 import itertools
 import random
 import secrets
+import wandb
 from dataclasses import dataclass, field
 from collections import Counter, namedtuple
 
@@ -18,7 +19,7 @@ import fpgaconvnet.optimiser.solvers.solver
 class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     runtime_parameters: bool = True
     transforms: list = field(default_factory=lambda:[
-        'shape', 'coarse','fine','combine', 'seperate'])
+        'shape', 'coarse', 'fine', 'combine', 'seperate'])
 
     def __post_init__(self):
 
@@ -81,6 +82,33 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # return layers
         return layers_of_type
 
+    def wandb_log(self, **kwargs):
+        # get common log values
+        wandb_log = {}
+        # add extra log values
+        wandb_log.update(kwargs)
+        # update wandb log
+        wandb.log(wandb_log)
+
+    def solver_status(self, temp, cost=None):
+        """
+        prints out the current status of the solver.
+        """
+        # objective
+        objectives = [ 'latency', 'throughput', 'power']
+        objective  = objectives[self.objective]
+        # cost
+        if cost is None:
+            cost = self.get_cost()
+        # Resources
+        resources = self.get_resources()
+        BRAM = resources['BRAM']
+        DSP  = resources['DSP']
+        LUT  = resources['LUT']
+        FF   = resources['FF']
+        print("TEMP:\t {temperature:.5f}, COST:\t {cost:.3f} ({objective}), RESOURCE:\t {DSP}\t{BRAM}\t{FF}\t{LUT}\t(DSP|BRAM|FF|LUT)".format(
+            temperature=temp, cost=cost,objective=objective,DSP=int(DSP),BRAM=int(BRAM),FF=int(FF),LUT=int(LUT)))
+
     def get_resources(self):
         """
         returns the sum of the resources of all nodes in the building_blocks
@@ -127,17 +155,18 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                                     self.building_blocks[hw_node]["hw"].kernel_depth
                         # check channels in and out are greater than all exec nodes
                         # TODO: handle properly in scheduler, and remove here
-                        assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
-                                self.building_blocks[hw_node]["hw"].channels_in()
+                        # assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
+                        #         self.building_blocks[hw_node]["hw"].channels_in()
                         # assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
                         #         self.building_blocks[hw_node]["hw"].channels_out()
                 case LAYER_TYPE.InnerProduct:
                     # iterate over the execution nodes
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"]:
+                        pass
                         # check channels in and out are greater than all exec nodes
                         # TODO: handle properly in scheduler, and remove here
-                        assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
-                                self.building_blocks[hw_node]["hw"].channels_in()
+                        # assert self.net.graph.nodes[exec_node]["hw"].channels_in() <= \
+                        #         self.building_blocks[hw_node]["hw"].channels_in()
                         # assert self.net.graph.nodes[exec_node]["hw"].channels_out() <= \
                         #         self.building_blocks[hw_node]["hw"].channels_out()
 
@@ -226,10 +255,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # get the resources
         resources = self.get_resources()
         # check against board constraints
-        assert resources['FF']   <= self.net.platform.get_ff()  , "ERROR: FF usage exceeded"
-        assert resources['LUT']  <= self.net.platform.get_lut() , "ERROR: LUT usage exceeded"
-        assert resources['DSP']  <= self.net.platform.get_dsp() , "ERROR: DSP usage exceeded"
-        assert resources['BRAM'] <= self.net.platform.get_bram(), "ERROR: BRAM usage exceeded"
+        assert resources['FF']   <= self.net.rsc_allocation*self.net.platform.get_ff()  , "ERROR: FF usage exceeded"
+        assert resources['LUT']  <= self.net.rsc_allocation*self.net.platform.get_lut() , "ERROR: LUT usage exceeded"
+        assert resources['DSP']  <= self.net.rsc_allocation*self.net.platform.get_dsp() , "ERROR: DSP usage exceeded"
+        assert resources['BRAM'] <= self.net.rsc_allocation*self.net.platform.get_bram(), "ERROR: BRAM usage exceeded"
 
     def apply_transform(self, transform, hw_node, exec_node):
 
