@@ -59,7 +59,7 @@ def get_convolution_schedule(self, hw_node, exec_node):
         rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
         cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
-                base_param["cols_in"]-index[0]*self.building_blocks[hw_node]["hw"].cols_in())
+                base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
             depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["depth_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
@@ -204,7 +204,7 @@ def get_pooling_schedule(self, hw_node, exec_node):
         rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
         cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
-                base_param["cols_in"]-index[0]*self.building_blocks[hw_node]["hw"].cols_in())
+                base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
             depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["depth_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
@@ -283,7 +283,7 @@ def get_basic_schedule(self, hw_node, exec_node):
         rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
         cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
-                base_param["cols_in"]-index[0]*self.building_blocks[hw_node]["hw"].cols_in())
+                base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
             depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["cols_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())

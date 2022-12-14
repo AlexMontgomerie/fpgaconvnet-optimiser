@@ -38,7 +38,7 @@ def main():
     parser.add_argument('--optimiser', choices=['simulated_annealing', 'improve', 'greedy_partition'],
         default='improve', help='Optimiser strategy')
     parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
-        help='Configuration file (.yml) for optimiser')
+        help='Configuration file (.toml) for optimiser')
     parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
         help='Previously optimised partitions saved in JSON')
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
@@ -94,9 +94,6 @@ def main():
                 project=wandb_name,
                 entity="fpgaconvnet") # or "fpgaconvnet", and can add "name"
 
-    # # turn on debugging
-    # net.DEBUG = True
-
     # parse the network
     fpgaconvnet_parser = Parser()
 
@@ -105,38 +102,49 @@ def main():
 
     # update platform information
     net.platform.update(args.platform_path)
-    print(net.platform)
 
     # update the resouce allocation
     net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
 
     # load network
     if args.optimiser == "simulated_annealing":
-        opt = LatencySimulatedAnnealing(net, objective=0) # TODO: include optimiser_config["annealing"]
+        opt = LatencySimulatedAnnealing(net, objective=0,
+                runtime_parameters=optimiser_config["general"]["runtime_parameters"],
+                combine_nodes=optimiser_config["transforms"]["combine"]["num_nodes"],
+                seperate_nodes=optimiser_config["transforms"]["seperate"]["num_nodes"],
+                **optimiser_config["annealing"])
     else:
         raise NotImplementedError(f"optimiser {args.optimiser} not implmented")
 
-    # # specify available transforms
-    # opt.transforms = list(optimiser_config["transforms"].keys())
-    # opt.transforms = []
-    # for transform in optimiser_config["transforms"]:
-    #     if optimiser_config["transforms"][transform]["apply_transform"]:
-    #         opt.transforms.append(transform)
+    # specify available transforms
+    opt.transforms = []
+    for transform in optimiser_config["transforms"]:
+        if optimiser_config["transforms"][transform]["apply_transform"]:
+            opt.transforms.append(transform)
 
-    # ## apply max fine factor to the graph
-    # if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
-    #     for partition in net.partitions:
-    #         fpgaconvnet.optimiser.transforms.fine.apply_complete_fine(partition)
+    # combine all execution nodes
+    if optimiser_config["transforms"]["combine"]["start_combine_all"]:
+
+        # get all the layer types in the network
+        layer_types = list(set([ opt.net.graph.nodes[node]["type"] \
+                for node in opt.net.graph.nodes ]))
+
+        # combine all the layer_types
+        for layer_type in layer_types:
+            opt.combine(layer_type, num_nodes=-1)
+
+    # apply min shape to all building blocks
+    if optimiser_config["transforms"]["shape"]["start_min"]:
+        for hw_node in opt.building_blocks:
+            opt.apply_min_shape(hw_node)
+
+    ## apply max fine factor to the graph
+    if optimiser_config["transforms"]["fine"]["start_complete"]:
+        for hw_node in opt.building_blocks:
+            opt.apply_random_fine_node(hw_node)
 
     # run optimiser
     opt.run_solver(log=args.enable_wandb)
-
-    # update all partitions
-    opt.net.update_partitions()
-
-    # find the best batch_size
-    #if args.objective == "throughput":
-    #    net.get_optimal_batch_size()
 
     # create report
     opt.net.create_report(os.path.join(args.output_path,"report.json"))

@@ -29,22 +29,8 @@ class LatencySimulatedAnnealing(LatencySolver):
 
     def run_solver(self, log=True):
 
-        # get all the layer types in the network
-        layer_types = list(set([ self.net.graph.nodes[node]["type"] \
-                for node in self.net.graph.nodes ]))
-
-        # combine all the layer_types
-        for layer_type in layer_types:
-            self.combine(layer_type, num_nodes=-1)
-
-        # apply min shape to all hardware nodes
-        for hw_node in self.building_blocks:
-            self.apply_min_shape(hw_node)
-            self.building_blocks[hw_node]["hw"].update()
-            print(hw_node, self.building_blocks[hw_node]["hw"].resource())
 
         # check the intial design is within constraints
-        # print(self.get_resources())
         try:
             self.check_resources()
             self.check_building_blocks()
