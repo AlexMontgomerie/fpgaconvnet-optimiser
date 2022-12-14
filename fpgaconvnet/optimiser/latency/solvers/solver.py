@@ -9,7 +9,7 @@ from collections import Counter, namedtuple
 
 import numpy as np
 
-from fpgaconvnet.tools.layer_enum import  LAYER_TYPE
+from fpgaconvnet.tools.layer_enum import  LAYER_TYPE, from_onnx_op_type
 from fpgaconvnet.models.network import Network
 
 from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict, get_runtime_latency, apply_mem_bw_limitations
@@ -20,6 +20,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     runtime_parameters: bool = True
     transforms: list = field(default_factory=lambda:[
         'shape', 'coarse', 'fine', 'combine', 'seperate'])
+    shape_method: str = "random"
+    combine_nodes: int = 2
+    seperate_nodes: int = 2
+    allowed_seperate_types: list = field(default_factory=lambda:[])
 
     def __post_init__(self):
 
@@ -38,7 +42,11 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         for layer_type in self.simple_layer_types:
             self.combine(layer_type)
 
+        # apply memory bandwidth limitations
         apply_mem_bw_limitations(self.net.graph, self.building_blocks, self.net.platform.mem_bw_wpc)
+
+        # convert allowed seperate types (onnx) to fpgaconvet types
+        self.allowed_seperate_types = [ from_onnx_op_type(_) for _ in self.allowed_seperate_types ]
 
     # import shape generation transform functions
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_random_shape
@@ -58,6 +66,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
     # import fine transform functions
     from fpgaconvnet.optimiser.latency.transforms.fine import apply_random_fine_node
+    from fpgaconvnet.optimiser.latency.transforms.fine import apply_max_fine_node
 
     # import coarse transform functions
     from fpgaconvnet.optimiser.latency.transforms.coarse import apply_random_coarse_node
@@ -257,10 +266,14 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # get the resources
         resources = self.get_resources()
         # check against board constraints
-        assert resources['FF']   <= self.net.rsc_allocation*self.net.platform.get_ff()  , "ERROR: FF usage exceeded"
-        assert resources['LUT']  <= self.net.rsc_allocation*self.net.platform.get_lut() , "ERROR: LUT usage exceeded"
-        assert resources['DSP']  <= self.net.rsc_allocation*self.net.platform.get_dsp() , "ERROR: DSP usage exceeded"
-        assert resources['BRAM'] <= self.net.rsc_allocation*self.net.platform.get_bram(), "ERROR: BRAM usage exceeded"
+        assert resources['FF']   <= self.net.rsc_allocation*\
+                self.net.platform.get_ff()  , "ERROR: FF usage exceeded"
+        assert resources['LUT']  <= self.net.rsc_allocation*\
+                self.net.platform.get_lut() , "ERROR: LUT usage exceeded"
+        assert resources['DSP']  <= self.net.rsc_allocation*\
+                self.net.platform.get_dsp() , "ERROR: DSP usage exceeded"
+        assert resources['BRAM'] <= self.net.rsc_allocation*\
+                self.net.platform.get_bram(), "ERROR: BRAM usage exceeded"
 
     def apply_transform(self, transform, hw_node, exec_node):
 
@@ -274,12 +287,22 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 # get the hardware type of exec node
                 layer_type = self.net.graph.nodes[exec_node]["type"]
                 # combine layers of that type
-                self.combine(layer_type)
+                self.combine(layer_type, num_nodes=self.combine_nodes)
             case "seperate":
-                self.seperate(hw_node)
+                # get the hardware type of exec node
+                layer_type = self.net.graph.nodes[exec_node]["type"]
+                if self.allowed_seperate_types != []:
+                    if layer_type not in self.allowed_seperate_types:
+                        return
+                # apply seperate transform
+                self.seperate(hw_node, num_nodes=self.seperate_nodes)
             case "shape":
-                # self.apply_random_shape(hw_node)
-                self.apply_inherited_shape(hw_node)
+                if self.shape_method == "random":
+                    self.apply_random_shape(hw_node)
+                elif self.shape_method == "inherit":
+                    self.apply_inherited_shape(hw_node)
+                else:
+                    raise NotImplementedError
                 self.fix_coarse_node(hw_node)
 
     def report(self):
@@ -316,6 +339,15 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
         # add total number of building blocks
         report["general"]["total_building_blocks"] = len(self.building_blocks)
+
+        # add total resources
+        report["general"]["total_resources"] = self.get_resources()
+
+        # add per building block resources
+        report["general"]["resources"] = {}
+        for hw_node in self.building_blocks:
+            report["general"]["resources"][hw_node] = \
+                    self.building_blocks[hw_node]["hw"].resource()
 
         # return the report
         return report
