@@ -6,16 +6,16 @@ weight_storage = "double_buffer" # [ double_buffer, stream, share ]
 
 [transforms.fine]
 apply_transform = true
-probability = 0.20
+probability = 0.15
 start_complete = true
 
 [transforms.coarse]
 apply_transform = true
-probability = 0.30
+probability = 0.325
 
 [transforms.shape]
 apply_transform = true
-probability = 0.30
+probability = 0.325
 method = "inherit" # [ random, inherit ]
 start_min = true # initialise all building blocks with the smallest shapes
 
@@ -34,7 +34,7 @@ num_nodes = 2 # (max) number of nodes to combine at a time
 
 [annealing]
 T = 10.0
-T_min = 0.0001
+T_min = 0.00001
 k = 10.0
-cool = 0.98
+cool = 0.975
 transform_iterations = 15
