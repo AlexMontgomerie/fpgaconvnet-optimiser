@@ -18,14 +18,13 @@ import fpgaconvnet.optimiser.solvers.solver
 @dataclass
 class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     runtime_parameters: bool = True
-    transforms: list = field(default_factory=lambda:[
-        'shape', 'coarse', 'fine', 'combine', 'seperate'])
-    transforms_probabilities: dict = field(default_factory=lambda:{
+    transforms: list = field(default_factory=lambda: {
         'shape': 1/5, 'coarse': 1/5, 'fine': 1/5, 'combine': 1/5, 'seperate': 1/5})
     shape_method: str = "random"
     combine_nodes: int = 2
     seperate_nodes: int = 2
     allowed_seperate_types: list = field(default_factory=lambda:[])
+    weight_storage: str = "double_buffer"
 
     def __post_init__(self):
 
@@ -43,6 +42,12 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 LAYER_TYPE.Sigmoid, LAYER_TYPE.SiLU, LAYER_TYPE.GlobalPooling ]
         for layer_type in self.simple_layer_types:
             self.combine(layer_type)
+
+        # check the type of weight storage
+        assert self.weight_storage in [ "double_buffer", "stream", "share" ], "Invalid weights storage method"
+
+        # apply the weight_storage to the building_blocks
+        self.apply_weight_storage()
 
         # apply memory bandwidth limitations
         apply_mem_bw_limitations(self.net.graph, self.building_blocks, self.net.platform.mem_bw_wpc)
@@ -81,19 +86,32 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_basic_schedule
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_schedule
 
+    def apply_weight_storage(self):
+        # iterate over building blocks
+        for hw_node in self.building_blocks:
+            if self.building_blocks[hw_node]["type"] in [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]:
+                match self.weight_storage:
+                    case "double_buffer":
+                        self.building_blocks[hw_node]["hw"].double_buffered = True
+                        self.building_blocks[hw_node]["hw"].stream_weights = False
+                    case _:
+                        raise NotImplementedError
+                # update the building blocks
+                self.building_blocks[hw_node]["hw"].update()
+
     def get_layers_of_type(self, layer_type):
         """
         returns a list of the layer keys with the given layer type
         """
         # find all layers of given type
-        layers_of_type = []
-        for layer in self.building_blocks:
+        hw_nodes_of_type = []
+        for hw_node in self.building_blocks:
             # layers of the same type
-            if self.building_blocks[layer]["type"] == layer_type:
-                layers_of_type.append(layer)
+            if self.building_blocks[hw_node]["type"] == layer_type:
+                hw_nodes_of_type.append(hw_node)
 
         # return layers
-        return layers_of_type
+        return hw_nodes_of_type
 
     def wandb_log(self, **kwargs):
         # get common log values
@@ -127,13 +145,13 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         returns the sum of the resources of all nodes in the building_blocks
         """
         return {
-            "LUT": sum([ node["hw"].resource()["LUT"] \
+            "LUT": sum([ math.ceil(node["hw"].resource()["LUT"]) \
                     for _, node in self.building_blocks.items() ]),
-            "FF": sum([ node["hw"].resource()["FF"] \
+            "FF": sum([ math.ceil(node["hw"].resource()["FF"]) \
                     for _, node in self.building_blocks.items() ]),
-            "DSP": sum([ node["hw"].resource()["DSP"] \
+            "DSP": sum([ math.ceil(node["hw"].resource()["DSP"]) \
                     for _, node in self.building_blocks.items() ]),
-            "BRAM": sum([ node["hw"].resource()["BRAM"] \
+            "BRAM": sum([ math.ceil(node["hw"].resource()["BRAM"]) \
                     for _, node in self.building_blocks.items() ]),
         }
 
@@ -292,6 +310,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 layer_type = self.net.graph.nodes[exec_node]["type"]
                 # combine layers of that type
                 self.combine(layer_type, num_nodes=self.combine_nodes)
+                # apply_weight_storage
+                self.apply_weight_storage()
             case "seperate":
                 # get the hardware type of exec node
                 layer_type = self.net.graph.nodes[exec_node]["type"]
@@ -300,6 +320,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                         return
                 # apply seperate transform
                 self.seperate(hw_node, num_nodes=self.seperate_nodes)
+                # apply_weight_storage
+                self.apply_weight_storage()
             case "shape":
                 if self.shape_method == "random":
                     self.apply_random_shape(hw_node)

@@ -84,7 +84,7 @@ def main():
     # enable wandb
     if args.enable_wandb:
         # project name
-        wandb_name = f"fpgaconvnet-{args.name}-latency"
+        wandb_name = f"fpgaconvnet-{args.name}-{platform_config['device']['name']}-latency"
         # wandb config
         wandb_config = optimiser_config
         wandb_config |= platform_config
@@ -110,8 +110,6 @@ def main():
     if args.optimiser == "simulated_annealing":
         opt = LatencySimulatedAnnealing(net, objective=0,
                 runtime_parameters=optimiser_config["general"]["runtime_parameters"],
-                transforms_probabilities={p: optimiser_config["transforms"][p]['probability'] \
-                                            for p in optimiser_config["transforms"]},
                 combine_nodes=optimiser_config["transforms"]["combine"]["num_nodes"],
                 seperate_nodes=optimiser_config["transforms"]["seperate"]["num_nodes"],
                 **optimiser_config["annealing"])
@@ -119,10 +117,10 @@ def main():
         raise NotImplementedError(f"optimiser {args.optimiser} not implmented")
 
     # specify available transforms
-    opt.transforms = []
+    opt.transforms = {}
     for transform in optimiser_config["transforms"]:
         if optimiser_config["transforms"][transform]["apply_transform"]:
-            opt.transforms.append(transform)
+            opt.transforms[transform] = optimiser_config["transforms"][transform]["probability"]
 
     # combine all execution nodes
     if optimiser_config["transforms"]["combine"]["start_combine_all"]:
@@ -144,6 +142,9 @@ def main():
     if optimiser_config["transforms"]["fine"]["start_complete"]:
         for hw_node in opt.building_blocks:
             opt.apply_random_fine_node(hw_node)
+
+    # apply weight storage to building_blocks
+    opt.apply_weight_storage()
 
     # run optimiser
     opt.run_solver(log=args.enable_wandb)

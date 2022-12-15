@@ -136,9 +136,10 @@ def apply_min_shape(self, hw_node):
     match self.building_blocks[hw_node]['type']:
         case LAYER_TYPE.InnerProduct:
             min_output_shape[-1] = 1
+        case LAYER_TYPE.Convolution:
+            min_output_shape[-1] = 1
         case _:
             min_output_shape[-1] = min_input_shape[-1]
-
 
     # update the next shape for specific hardware types
     self.update_building_block_shape(hw_node,
@@ -168,7 +169,6 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+5, next_input_shape[2])
             # fix channels to be max TODO: do we want to have runtime channels?
             self.building_blocks[hw_node]["hw"].channels = max_input_shape[-1]
-            # set a random filter dimension TODO
             self.building_blocks[hw_node]["hw"].filters = next_output_shape[-1]
         case LAYER_TYPE.InnerProduct:
             self.building_blocks[hw_node]["hw"].rows = next_input_shape[0]
@@ -177,7 +177,6 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                 self.building_blocks[hw_node]["hw"].depth = next_input_shape[2]
             # fix channels to be max TODO: do we want to have runtime channels?
             self.building_blocks[hw_node]["hw"].channels = max_input_shape[-1]
-            # set a random filter dimension TODO
             self.building_blocks[hw_node]["hw"].filters = next_output_shape[-1]
         case LAYER_TYPE.Pooling:
             # get the max kernel size

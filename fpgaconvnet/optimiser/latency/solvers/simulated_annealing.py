@@ -29,7 +29,6 @@ class LatencySimulatedAnnealing(LatencySolver):
 
     def run_solver(self, log=True):
 
-
         # check the intial design is within constraints
         try:
             self.check_resources()
@@ -51,7 +50,8 @@ class LatencySimulatedAnnealing(LatencySolver):
             for _ in range(self.transform_iterations):
 
                 # Choose a random transform
-                transform = np.random.choice(self.transforms, p=[self.transforms_probabilities[t] for t in self.transforms])
+                transform = np.random.choice(list(self.transforms.keys()),
+                        p=list(self.transforms.values()))
 
                 # Choose a random building block
                 hw_node = random.choice(list(self.building_blocks.keys()))
@@ -88,7 +88,6 @@ class LatencySimulatedAnnealing(LatencySolver):
 
             # wandb logging and checkpoint
             if log:
-
                 self.wandb_log(temperature=self.T,
                     num_blocks=len(self.building_blocks),
                     latency=status_cost,

@@ -3,6 +3,7 @@ logging = false
 resource_allocation = 0.95
 runtime_parameters = true
 weight_storage = "double_buffer" # [ double_buffer, stream, share ]
+channel_reloading = false # whether or not to allow for channel reloading
 
 [transforms.fine]
 apply_transform = true
