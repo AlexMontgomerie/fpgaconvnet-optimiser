@@ -195,7 +195,8 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
         del self.building_blocks[layer]
 
     # apply memory bandwidth limitations
-    apply_mem_bw_limitations(self.net.graph, self.building_blocks, self.net.platform.mem_bw_wpc)
+    apply_mem_bw_limitations(self.net.graph, self.building_blocks,
+            self.net.platform.mem_bw_wpc, channel_tiling=self.channel_tiling)
 
     # return the key for the new layer generated
     return new_layer_name

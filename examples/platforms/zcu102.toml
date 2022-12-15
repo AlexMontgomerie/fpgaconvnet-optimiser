@@ -14,5 +14,4 @@ LUT   = 599550
 board_frequency = 300 # in MHz
 memory_bandwidth = 135.83 # in Gbps
 reconfiguration_time = 0.08255 # in seconds
-axi_ports = 2
-axi_data_width = 128
+port_width = 512

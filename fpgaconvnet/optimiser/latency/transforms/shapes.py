@@ -35,6 +35,10 @@ def apply_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previ
         next_input_shape = [ random.randint(1, max_dim) for max_dim in max_input_shape ]
         next_output_shape = [ random.randint(1, max_dim) for max_dim in max_output_shape ]
 
+    # make sure the input and output channel dimension are greater than the minimum for the ports
+    next_input_shape[-1] = max(self.min_channels_in, next_input_shape[-1])
+    next_output_shape[-1] = max(self.min_channels_out, next_output_shape[-1])
+
     # update the next shape for specific hardware types
     self.update_building_block_shape(hw_node,
             next_input_shape, max_input_shape,
@@ -74,6 +78,16 @@ def apply_inherited_shape(self, hw_node):
     all_input_shapes = [ list(set(shape)) for shape in all_input_shapes ]
     all_output_shapes = [ list(set(shape)) for shape in all_output_shapes ]
 
+    # filter out the min channels in and out from all the shapes
+    all_input_shapes[-1] = list(filter(lambda s: s >= self.min_channels_in, all_input_shapes[-1]))
+    all_output_shapes[-1] = list(filter(lambda s: s >= self.min_channels_out, all_output_shapes[-1]))
+
+    # needs to at least be the minimum as an option
+    if all_input_shapes[-1] == []:
+        all_input_shapes[-1] = [self.min_channels_in]
+    if all_output_shapes[-1] == []:
+        all_output_shapes[-1] = [self.min_channels_out]
+
     # choose a random shape from these shapes
     next_input_shape = [ random.choice(shape) for shape in all_input_shapes ]
     next_input_shape[1] = next_input_shape[0]
@@ -86,7 +100,7 @@ def apply_inherited_shape(self, hw_node):
             # we assume that the output shape of a convolution will always reduce the spatio-temporal dimensions and increase the channel dimension
             next_output_shape[:-1] = [random.choice(list(filter(lambda f: f <= next_input_shape[i], all_output_shapes[i]))) for i in range(size - 1)]
             next_output_shape[1] = next_output_shape[0]
-            next_output_shape[-1] = random.choice(list(filter(lambda f: f >= next_input_shape[-1], all_output_shapes[-1])))
+            # next_output_shape[-1] = random.choice(list(filter(lambda f: f >= next_input_shape[-1], all_output_shapes[-1]))
         case LAYER_TYPE.Pooling:
             next_output_shape[:-1] = [random.choice(list(filter(lambda f: f <= next_input_shape[i], all_output_shapes[i]))) for i in range(size - 1)]
             next_output_shape[1] = next_output_shape[0]
@@ -167,17 +181,21 @@ def update_building_block_shape(self, hw_node, next_input_shape,
             self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+5, next_input_shape[1])
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+5, next_input_shape[2])
-            # fix channels to be max TODO: do we want to have runtime channels?
-            self.building_blocks[hw_node]["hw"].channels = max_input_shape[-1]
-            self.building_blocks[hw_node]["hw"].filters = next_output_shape[-1]
+            # channel and filter dimensions
+            self.building_blocks[hw_node]["hw"].channels = \
+                    next_input_shape[-1] if self.channel_tiling else max_input_shape[-1]
+            self.building_blocks[hw_node]["hw"].filters = \
+                    next_output_shape[-1] if self.filter_tiling else max_output_shape[-1]
         case LAYER_TYPE.InnerProduct:
             self.building_blocks[hw_node]["hw"].rows = next_input_shape[0]
             self.building_blocks[hw_node]["hw"].cols = next_input_shape[1]
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = next_input_shape[2]
-            # fix channels to be max TODO: do we want to have runtime channels?
-            self.building_blocks[hw_node]["hw"].channels = max_input_shape[-1]
-            self.building_blocks[hw_node]["hw"].filters = next_output_shape[-1]
+            # channel and filter dimensions
+            self.building_blocks[hw_node]["hw"].channels = \
+                    next_input_shape[-1] if self.channel_tiling else max_input_shape[-1]
+            self.building_blocks[hw_node]["hw"].filters = \
+                    next_output_shape[-1] if self.filter_tiling else max_output_shape[-1]
         case LAYER_TYPE.Pooling:
             # get the max kernel size
             max_kernel_rows = max([ self.net.graph.nodes[exec_node]["hw"].kernel_rows \

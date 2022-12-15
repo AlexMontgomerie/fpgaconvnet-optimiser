@@ -301,7 +301,7 @@ def get_runtime_latency(layer_type, node, param, dimensionality):
     # return latency
     return latency
 
-def apply_mem_bw_limitations(graph, building_blocks, total_mem_bw):
+def apply_mem_bw_limitations(graph, building_blocks, total_mem_bw, channel_tiling=False):
 
     # split the memory bandwidth equally between the in and out
     mem_bw_in = total_mem_bw / 2
@@ -313,6 +313,12 @@ def apply_mem_bw_limitations(graph, building_blocks, total_mem_bw):
             case LAYER_TYPE.EltWise:
                 graph.nodes[node]["hw"].mem_bw_in = [mem_bw_in/graph.nodes[node]["hw"].ports_in] * graph.nodes[node]["hw"].ports_in
                 graph.nodes[node]["hw"].mem_bw_out = [mem_bw_out/graph.nodes[node]["hw"].ports_out] * graph.nodes[node]["hw"].ports_out
+            case LAYER_TYPE.Convolution:
+                if channel_tiling:
+                    graph.nodes[node]["hw"].mem_bw_in = mem_bw_in/2
+                else:
+                    graph.nodes[node]["hw"].mem_bw_in = mem_bw_in
+                graph.nodes[node]["hw"].mem_bw_out = mem_bw_out
             case _:
                 graph.nodes[node]["hw"].mem_bw_in = mem_bw_in
                 graph.nodes[node]["hw"].mem_bw_out = mem_bw_out

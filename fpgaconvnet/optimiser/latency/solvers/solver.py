@@ -21,6 +21,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     transforms: list = field(default_factory=lambda: {
         'shape': 1/5, 'coarse': 1/5, 'fine': 1/5, 'combine': 1/5, 'seperate': 1/5})
     weight_storage: str = "double_buffer"
+    channel_tiling: bool = True # whether or not to allow for channel reloading
+    filter_tiling: bool = True # whether or not to allow for channel reloading
 
     def __post_init__(self):
 
@@ -46,7 +48,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         self.apply_weight_storage()
 
         # apply memory bandwidth limitations
-        apply_mem_bw_limitations(self.net.graph, self.building_blocks, self.net.platform.mem_bw_wpc)
+        apply_mem_bw_limitations(self.net.graph, self.building_blocks,
+                self.net.platform.mem_bw_wpc, channel_tiling=self.channel_tiling)
 
         # number of nodes to combine/seperate for each call
         self.combine_nodes = 2
@@ -60,6 +63,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
 
         # method to use for shape generation
         self.shape_method = "random"
+
+        # get the minimum channels in and out
+        self.min_channels_in = self.net.platform.port_width//16
+        self.min_channels_out = self.net.platform.port_width//16
 
     # import shape generation transform functions
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_random_shape

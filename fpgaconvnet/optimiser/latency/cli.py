@@ -102,8 +102,6 @@ def main():
     # update platform information
     net.platform.update(args.platform_path)
 
-    print(optimiser_config)
-
     # load network
     if args.optimiser == "simulated_annealing":
         opt = LatencySimulatedAnnealing(net, objective=0,

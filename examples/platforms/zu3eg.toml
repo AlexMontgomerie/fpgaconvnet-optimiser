@@ -1,14 +1,14 @@
 [device]
-name = "u250"
-part = "xc7z020clg484-1"
-board = "xilinx.com:zc702:part0:1.4"
+name = "zu3eg"
+part = "" # TODO
+board = "" # TODO
 
 [resources]
-DSP   = 11508
-BRAM  = 4000
-FF    = 2760000
-LUT   = 1380000
-URAM  = 1280
+DSP   = 360
+BRAM  = 432
+FF    = 141120
+LUT   = 70560
+URAM  = 0
 
 [system]
 board_frequency = 200 # in MHz
