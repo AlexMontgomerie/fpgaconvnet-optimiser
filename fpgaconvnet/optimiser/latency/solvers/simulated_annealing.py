@@ -20,8 +20,8 @@ class LatencySimulatedAnnealing(LatencySolver):
     T: float = 10.0
     k: float = 10.0
     T_min: float = 0.0001
-    cool: float = 0.975
-    transform_iterations: int = 15
+    cool: float = 0.98
+    transform_iterations: int = 20
     """
     Randomly chooses a transform and hardware component to change.
     The change is accepted based on a probability-based decision function
@@ -34,8 +34,7 @@ class LatencySimulatedAnnealing(LatencySolver):
             self.check_resources()
             self.check_building_blocks()
         except AssertionError as error:
-            print("ERROR: Exceeds resource usage")
-            return
+            raise AssertionError("Initial design exceeded resource usage")
 
         # Cooling Loop
         while self.T_min < self.T:
