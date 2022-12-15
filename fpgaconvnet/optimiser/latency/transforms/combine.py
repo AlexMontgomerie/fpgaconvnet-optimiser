@@ -2,28 +2,60 @@ import itertools
 import secrets
 import random
 
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 
 from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict, apply_mem_bw_limitations
 
 def combine(self, layer_type, discriminate=[], num_nodes=2):
 
     # get the layers of the given type
-    nodes_of_type = self.get_layers_of_type(layer_type)
+    nodes_of_type = self.get_hw_nodes_of_type(layer_type)
+
+    if len(nodes_of_type) < 1:
+        return # nothing to combine
+
+    # choose a random node as the key node for discrimnation
+    key_node = random.choice(nodes_of_type)
+
+    # find the parameters for discrimnation
+    discrimnation_param = {}
+    for d in discriminate:
+        keep_discrimination = True
+        # iterate over parameters
+        for param, val in d.items():
+            if param == "layer_type":
+                if layer_type != from_onnx_op_type(val):
+                    keep_discrimination = False
+                    break
+            # get the key node param
+            else:
+                key_node_param = getattr(self.building_blocks[key_node]["hw"], param)
+                if key_node_param != val:
+                    keep_discrimination = False
+                    break
+        if keep_discrimination:
+            # get the discrimnation_param
+            for param, val in d.items():
+                if param != "layer_type":
+                    discrimnation_param[param] = val
+            # dont add new param
+            break
 
     # further discriminate the layers to combine TODO
     nodes_to_combine = nodes_of_type
+    if discrimnation_param != {}:
+        for param, val in discrimnation_param.items():
+            nodes_to_combine = list(filter(lambda hw_node: \
+                    getattr(self.building_blocks[hw_node]["hw"], param) == val,
+                    nodes_to_combine))
 
     # select a subset of the nodes to combine
     if num_nodes > 0:
         if len(nodes_to_combine) > num_nodes:
             nodes_to_combine = random.sample(nodes_to_combine, num_nodes)
         # combine all
-        elif len(nodes_to_combine) > 1:
-            nodes_to_combine = nodes_to_combine
-        # escape if there are no layers to combine
         else:
-            return
+            nodes_to_combine = nodes_to_combine
 
     # create a new layer name by combining
     new_layer_name = f"{layer_type.name}_{secrets.token_hex(2)}"

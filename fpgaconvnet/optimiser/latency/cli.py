@@ -16,8 +16,7 @@ import sys
 import copy
 
 from fpgaconvnet.parser.Parser import Parser
-from fpgaconvnet.tools.layer_enum import from_onnx_op_type
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 
 from fpgaconvnet.optimiser.latency.solvers import LatencySolver, LatencySimulatedAnnealing
 
@@ -103,15 +102,13 @@ def main():
     # update platform information
     net.platform.update(args.platform_path)
 
-    # update the resouce allocation
-    net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
+    print(optimiser_config)
 
     # load network
     if args.optimiser == "simulated_annealing":
         opt = LatencySimulatedAnnealing(net, objective=0,
                 runtime_parameters=optimiser_config["general"]["runtime_parameters"],
-                combine_nodes=optimiser_config["transforms"]["combine"]["num_nodes"],
-                seperate_nodes=optimiser_config["transforms"]["seperate"]["num_nodes"],
+                weight_storage=optimiser_config["general"]["weight_storage"],
                 **optimiser_config["annealing"])
     else:
         raise NotImplementedError(f"optimiser {args.optimiser} not implmented")
@@ -120,7 +117,21 @@ def main():
     opt.transforms = {}
     for transform in optimiser_config["transforms"]:
         if optimiser_config["transforms"][transform]["apply_transform"]:
-            opt.transforms[transform] = optimiser_config["transforms"][transform]["probability"]
+            opt.transforms[transform] = \
+                    optimiser_config["transforms"][transform]["probability"]
+
+    # transform-specific config
+    if "combine" in optimiser_config["transforms"]:
+        opt.combine_nodes = optimiser_config["transforms"]["combine"]["num_nodes"]
+        opt.combine_discriminate = optimiser_config["transforms"]["combine"]["discriminate"]
+
+    if "seperate" in optimiser_config["transforms"]:
+        opt.seperate_nodes = optimiser_config["transforms"]["seperate"]["num_nodes"]
+        opt.seperate_allowed_types = [ from_onnx_op_type(_) for _ in \
+                optimiser_config["transforms"]["seperate"]["allowed_types"] ]
+
+    if "shape" in optimiser_config["transforms"]:
+        opt.shape_method = optimiser_config["transforms"]["shape"]["method"]
 
     # combine all execution nodes
     if optimiser_config["transforms"]["combine"]["start_combine_all"]:

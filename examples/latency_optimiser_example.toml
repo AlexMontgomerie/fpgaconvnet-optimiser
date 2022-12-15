@@ -25,7 +25,11 @@ apply_transform = true
 probability = 0.10
 num_nodes = 2 # (max) number of nodes to combine at a time
 start_combine_all = true # combine all layer types at the start
-# TODO: add some discrimination flags
+
+# all the different layer discriminations
+[[transforms.combine.discriminate]]
+layer_type = "Conv"
+kernel_size = [ 3, 3, 3 ]
 
 [transforms.seperate]
 apply_transform = true

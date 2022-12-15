@@ -6,7 +6,7 @@ from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 def apply_random_fine_node(self, hw_node):
 
     # feasible nodes
-    feasible_nodes = self.get_layers_of_type(LAYER_TYPE.Convolution)
+    feasible_nodes = self.get_hw_nodes_of_type(LAYER_TYPE.Convolution)
 
     # check node can have fine transform applied
     if hw_node in feasible_nodes:
@@ -26,7 +26,7 @@ def apply_random_fine_node(self, hw_node):
 def apply_max_fine_node(self, hw_node):
 
     # feasible nodes
-    feasible_nodes = self.get_layers_of_type(LAYER_TYPE.Convolution)
+    feasible_nodes = self.get_hw_nodes_of_type(LAYER_TYPE.Convolution)
 
     # check node can have fine transform applied
     if hw_node in feasible_nodes:

@@ -9,7 +9,7 @@ from collections import Counter, namedtuple
 
 import numpy as np
 
-from fpgaconvnet.tools.layer_enum import  LAYER_TYPE, from_onnx_op_type
+from fpgaconvnet.tools.layer_enum import  LAYER_TYPE
 from fpgaconvnet.models.network import Network
 
 from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict, get_runtime_latency, apply_mem_bw_limitations
@@ -20,10 +20,6 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     runtime_parameters: bool = True
     transforms: list = field(default_factory=lambda: {
         'shape': 1/5, 'coarse': 1/5, 'fine': 1/5, 'combine': 1/5, 'seperate': 1/5})
-    shape_method: str = "random"
-    combine_nodes: int = 2
-    seperate_nodes: int = 2
-    allowed_seperate_types: list = field(default_factory=lambda:[])
     weight_storage: str = "double_buffer"
 
     def __post_init__(self):
@@ -52,8 +48,18 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # apply memory bandwidth limitations
         apply_mem_bw_limitations(self.net.graph, self.building_blocks, self.net.platform.mem_bw_wpc)
 
-        # convert allowed seperate types (onnx) to fpgaconvet types
-        self.allowed_seperate_types = [ from_onnx_op_type(_) for _ in self.allowed_seperate_types ]
+        # number of nodes to combine/seperate for each call
+        self.combine_nodes = 2
+        self.seperate_nodes = 2
+
+        # allowed seperate types
+        self.allowed_seperate_types = []
+
+        # filters for discriminating between nodes to combine
+        self.combine_discriminate = []
+
+        # method to use for shape generation
+        self.shape_method = "random"
 
     # import shape generation transform functions
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_random_shape
@@ -99,7 +105,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 # update the building blocks
                 self.building_blocks[hw_node]["hw"].update()
 
-    def get_layers_of_type(self, layer_type):
+    def get_hw_nodes_of_type(self, layer_type):
         """
         returns a list of the layer keys with the given layer type
         """
@@ -309,7 +315,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 # get the hardware type of exec node
                 layer_type = self.net.graph.nodes[exec_node]["type"]
                 # combine layers of that type
-                self.combine(layer_type, num_nodes=self.combine_nodes)
+                self.combine(layer_type, discriminate=self.combine_discriminate,
+                        num_nodes=self.combine_nodes)
                 # apply_weight_storage
                 self.apply_weight_storage()
             case "seperate":
