@@ -313,6 +313,14 @@ def apply_mem_bw_limitations(graph, building_blocks, total_mem_bw, channel_tilin
             case LAYER_TYPE.EltWise:
                 graph.nodes[node]["hw"].mem_bw_in = [mem_bw_in/graph.nodes[node]["hw"].ports_in] * graph.nodes[node]["hw"].ports_in
                 graph.nodes[node]["hw"].mem_bw_out = [mem_bw_out/graph.nodes[node]["hw"].ports_out] * graph.nodes[node]["hw"].ports_out
+
+            # FIXME: hack to get channel tiling working for the moment
+            case LAYER_TYPE.Convolution:
+                if channel_tiling:
+                    graph.nodes[node]["hw"].mem_bw_in = mem_bw_in/2
+                else:
+                    graph.nodes[node]["hw"].mem_bw_in = mem_bw_in
+                graph.nodes[node]["hw"].mem_bw_out = mem_bw_out
             case LAYER_TYPE.Convolution:
                 if channel_tiling:
                     graph.nodes[node]["hw"].mem_bw_in = mem_bw_in/2

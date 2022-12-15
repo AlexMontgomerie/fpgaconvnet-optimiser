@@ -83,7 +83,7 @@ def main():
     # enable wandb
     if args.enable_wandb:
         # project name
-        wandb_name = f"fpgaconvnet-{args.name}-{platform_config['device']['name']}-latency"
+        wandb_name = f"fpgaconvnet-{args.name}-latency"
         # wandb config
         wandb_config = optimiser_config
         wandb_config |= platform_config
@@ -107,6 +107,8 @@ def main():
         opt = LatencySimulatedAnnealing(net, objective=0,
                 runtime_parameters=optimiser_config["general"]["runtime_parameters"],
                 weight_storage=optimiser_config["general"]["weight_storage"],
+                channel_tiling=optimiser_config["general"]["channel_tiling"],
+                filter_tiling=optimiser_config["general"]["filter_tiling"],
                 **optimiser_config["annealing"])
     else:
         raise NotImplementedError(f"optimiser {args.optimiser} not implmented")
@@ -140,7 +142,8 @@ def main():
 
         # combine all the layer_types
         for layer_type in layer_types:
-            opt.combine(layer_type, num_nodes=-1)
+            for _ in range(100): # hack to make sure it chooses all the discrimination groups
+                opt.combine(layer_type, discriminate=opt.combine_discriminate, num_nodes=-1)
 
     # apply min shape to all building blocks
     if optimiser_config["transforms"]["shape"]["start_min"]:

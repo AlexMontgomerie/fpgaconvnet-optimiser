@@ -14,40 +14,39 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
     if len(nodes_of_type) < 1:
         return # nothing to combine
 
-    # choose a random node as the key node for discrimnation
-    key_node = random.choice(nodes_of_type)
-
-    # find the parameters for discrimnation
-    discrimnation_param = {}
+    # split the nodes into different groups
+    discrimination_groups = []
     for d in discriminate:
-        keep_discrimination = True
-        # iterate over parameters
-        for param, val in d.items():
-            if param == "layer_type":
-                if layer_type != from_onnx_op_type(val):
-                    keep_discrimination = False
-                    break
-            # get the key node param
-            else:
-                key_node_param = getattr(self.building_blocks[key_node]["hw"], param)
-                if key_node_param != val:
-                    keep_discrimination = False
-                    break
-        if keep_discrimination:
-            # get the discrimnation_param
+        # find all nodes of this group
+        group = []
+        for hw_node in nodes_of_type:
+            # flag to indicate if hw_node will be added to group
+            add_to_group = True
+            # iterate over discrimnation parameters
             for param, val in d.items():
-                if param != "layer_type":
-                    discrimnation_param[param] = val
-            # dont add new param
-            break
+                # check it has the correct layer type
+                if param == "layer_type":
+                    if layer_type != from_onnx_op_type(val):
+                        add_to_group = False
+                        break
+                else:
+                    # get the hw_node parameters and see if they match
+                    key_node_param = getattr(self.building_blocks[hw_node]["hw"], param)
+                    if key_node_param != val:
+                        add_to_group = False
+            # add the node to the new group
+            if add_to_group:
+                group.append(hw_node)
+        # add the new group and remove from nodes of type
+        if group != []:
+            discrimination_groups.append(group)
+            nodes_of_type = list(filter(lambda v: v not in group, nodes_of_type))
 
-    # further discriminate the layers to combine TODO
-    nodes_to_combine = nodes_of_type
-    if discrimnation_param != {}:
-        for param, val in discrimnation_param.items():
-            nodes_to_combine = list(filter(lambda hw_node: \
-                    getattr(self.building_blocks[hw_node]["hw"], param) == val,
-                    nodes_to_combine))
+    # create a group for the left over nodes
+    discrimination_groups.append(nodes_of_type)
+
+    # choose a random discrimnation group to combine
+    nodes_to_combine = random.choice(discrimination_groups)
 
     # select a subset of the nodes to combine
     if num_nodes > 0:
