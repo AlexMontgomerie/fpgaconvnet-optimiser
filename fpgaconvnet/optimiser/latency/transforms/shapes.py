@@ -137,23 +137,16 @@ def apply_min_shape(self, hw_node):
                 for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
                 i in range(size) ]
 
-    # get the min shape for the input and output
+    # get the min shape for the input and output of the existing nodes
     min_input_shape = [ min([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
                 for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
                 i in range(size) ]
     min_output_shape = [ min([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
                 for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
                 i in range(size) ]
-
-
-    # Fix input and output shapes based on the layer type
-    match self.building_blocks[hw_node]['type']:
-        case LAYER_TYPE.InnerProduct:
-            min_output_shape[-1] = 1
-        case LAYER_TYPE.Convolution:
-            min_output_shape[-1] = 1
-        case _:
-            min_output_shape[-1] = min_input_shape[-1]
+    # set the min shape for both input and output to be 1 for all dimensions
+    min_input_shape = [1, 1, 1, 1]
+    min_output_shape = [ 1, 1, 1, 1]
 
     # update the next shape for specific hardware types
     self.update_building_block_shape(hw_node,
