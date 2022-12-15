@@ -65,8 +65,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         self.shape_method = "random"
 
         # get the minimum channels in and out
-        self.min_channels_in = self.net.platform.port_width//16
-        self.min_channels_out = self.net.platform.port_width//16
+        self.min_channels_in = self.net.partitions[0].port_width//16
+        self.min_channels_out = self.net.partitions[0].port_width//16
 
     # import shape generation transform functions
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_random_shape
