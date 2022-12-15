@@ -34,7 +34,7 @@ num_nodes = 2 # (max) number of nodes to combine at a time
 
 [annealing]
 T = 10.0
-T_min = 0.00001
+T_min = 0.0001
 k = 10.0
 cool = 0.975
 transform_iterations = 15
