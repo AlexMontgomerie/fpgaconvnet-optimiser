@@ -19,7 +19,7 @@ START_LOOP  =   1000
 class LatencySimulatedAnnealing(LatencySolver):
     T: float = 10.0
     k: float = 10.0
-    T_min: float = 0.00001
+    T_min: float = 0.0001
     cool: float = 0.975
     transform_iterations: int = 15
     """
