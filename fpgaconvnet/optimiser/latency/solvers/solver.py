@@ -72,6 +72,9 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_random_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_inherited_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import apply_min_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_max_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_median_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_percentage_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import update_building_block_shape
 
     # import combine transform functions

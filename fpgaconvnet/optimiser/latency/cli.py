@@ -146,9 +146,19 @@ def main():
                 opt.combine(layer_type, discriminate=opt.combine_discriminate, num_nodes=-1)
 
     # apply min shape to all building blocks
-    if optimiser_config["transforms"]["shape"]["start_min"]:
+    if "starting_shape" in optimiser_config["transforms"]["shape"]:
         for hw_node in opt.building_blocks:
-            opt.apply_min_shape(hw_node)
+            match optimiser_config["transforms"]["shape"]:
+                case "min":
+                    opt.apply_min_shape(hw_node)
+                case "max":
+                    opt.apply_max_shape(hw_node)
+                case "median":
+                    opt.apply_median_shape(hw_node)
+                case "percentage":
+                    opt.apply_percentage_shape(hw_node,
+                            percentage=optimiser_config["transforms"]["shape"].get(
+                                "starting_shape_percentage",10))
 
     ## apply max fine factor to the graph
     if optimiser_config["transforms"]["fine"]["start_complete"]:
