@@ -103,8 +103,14 @@ def get_convolution_schedule(self, hw_node, exec_node):
         # add the parameters to the schedule
         param = copy.copy(base_param)
         assert param["filters"] == param["channels_out"], f"filters must equal channels out for {exec_node} and {hw_node}"
-        assert param["channels_in"] % coarse_in == 0, f"coarse in must be a factor of channels in for {exec_node} and {hw_node}"
-        assert filters % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
+        if self.channel_tiling:
+            assert channels % coarse_in == 0, f"coarse in must be a factor of channels in for {exec_node} and {hw_node}"
+        else:
+            assert param["channels_in"] % coarse_in == 0, f"coarse in must be a factor of channels in for {exec_node} and {hw_node}"
+        if self.filter_tiling:
+            assert filters % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
+        else:
+            assert param["channels_out"] % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
         assert param["groups"] % coarse_group == 0, f"coarse group must be a factor of groups for {exec_node} and {hw_node}"
         param["rows_in"] = rows_in
         param["cols_in"] = cols_in
@@ -114,8 +120,8 @@ def get_convolution_schedule(self, hw_node, exec_node):
             param["channels_in"] = channels
         if self.filter_tiling:
             param["filters"] = filters
+            param["channels_out"] = filters
         param["fine"] = fine
-        param["channels_out"] = filters
         param["coarse_in"] = coarse_in
         param["coarse_out"] = coarse_out
         param["coarse_group"] = coarse_group
@@ -181,8 +187,12 @@ def get_inner_product_schedule(self, hw_node, exec_node):
 
         # add the parameters to the schedule
         param = copy.copy(base_param)
+        assert param["filters"] == param["channels_out"], f"filters must equal channels out for {exec_node} and {hw_node}"
         assert param["channels_in"] % coarse_in == 0, f"coarse in must be a factor of channels in for {exec_node} and {hw_node}"
-        assert filters % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
+        if self.filter_tiling:
+            assert filters % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
+        else:
+            assert param["channels_out"] % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
         if self.filter_tiling:
             param["filters"] = filters
             param["channels_out"] = filters
