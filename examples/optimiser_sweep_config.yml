@@ -1,0 +1,147 @@
+name: harflow3d_optimization_sweep
+method: grid # bayes or random or grid
+metric:
+  goal: minimize
+  name: latency
+parameters:
+  # models:
+  #   values: [ 'c3d', 'r2plus1d_18', 'r2plus1d_34', 'slowonly' ] # [ 'c3d', 'r2plus1d_18', 'r2plus1d_34', 'slowonly', 'x3d_m' ]
+  # platforms:
+  #   values: [ 'vc709', 'zcu102' ] # [ 'vus440', 'vc709', 'zcu102', 'zcu104' ]
+  general:
+    parameters:
+      resource_allocation:
+        value: 0.95
+      runtime_parameters:
+        value: True
+      weight_storage:
+        value: double_buffer # [ 'double_buffer', 'stream', 'share' ]
+      channel_tiling:
+        value: True
+      filter_tiling:
+        value: True
+  annealing:
+    parameters:
+      T:
+        value: 10
+      T_min:
+        value: 0.0001
+      k:
+        value: 10
+      cool:
+        value: 0.98
+      transform_iterations:
+        value: 20
+      warm_start:
+        value: True
+  transforms:
+    parameters:
+      fine:
+        parameters:
+          apply_transform:
+            value: True
+          probability:
+            value: 0.10
+          start_complete:
+            value: True
+      coarse:
+        parameters:
+          apply_transform:
+            value: True
+          probability:
+            value: 0.35
+      shape:
+        parameters:
+          apply_transform:
+            value: True
+          probability:
+            value: 0.35
+          method:
+            value: inherit # [ 'inherit', 'random' ]
+          start_min:
+            values: [True, False]
+      combine:
+        parameters:
+          apply_transform:
+            value: True
+          probability:
+            value: 0.10
+          num_nodes:
+            values: [ 2, 5 ]
+          start_combine_all:
+            value: True
+          discriminate:
+            value: [{'layer_type': 'Conv', 'kernel_rows': 7, 'kernel_cols': 7, 'kernel_depth': 1},
+                    {'layer_type': 'Conv', 'kernel_rows': 1, 'kernel_cols': 1, 'kernel_depth': 5}]
+      separate:
+        parameters:
+          apply_transform:
+            value: True
+          probability:
+            value: 0.10
+          num_nodes:
+            values: [ 2, 5 ]
+          allowed_types:
+            value: [ 'Conv',
+                     'Gemm',
+                     'MaxPool' ]
+# method: random # bayes or random or grid
+# metric:
+#   goal: minimize
+#   name: latency
+# parameters:
+#   simulatedAnnealing:
+#     parameters:
+#       t_min:
+#         distribution: constant
+#         value: 1e-6
+#       t_max:
+#         distribution: constant
+#         value: 10
+#       iterationPerTemp:
+#         values: [10, 13]
+#       cooling_rate:
+#         distribution: uniform
+#         min: 0.95
+#         max: 0.99
+#       best_of_iter:
+#         distribution: constant
+#         value: 1
+#   max_dsp_util:
+#     distribution: constant
+#     value: 95
+#   max_bram_util:
+#     distribution: constant
+#     value: 95
+#   alignedfactors:
+#     distribution: constant
+#     value: True
+#   bblock_generation:
+#     distribution: categorical
+#     values: ['pre_while', 'post_while'] # pre_while or post_while
+#   bblock_keep_percentage:
+#     distribution: uniform
+#     min: 0.10
+#     max: 1.0
+#   use_arbitrary_shape:
+#     distribution: categorical
+#     values: [True, False]
+#   use_previous_config:
+#     distribution: categorical
+#     values: [True, False]
+#   chan_dist_thresh:
+#     distribution: int_uniform
+#     min: 10
+#     max: 90
+#   depth_dist_thresh:
+#     distribution: int_uniform
+#     min: 10
+#     max: 50
+#   height_dist_thresh:
+#     distribution: int_uniform
+#     min: 10
+#     max: 90
+# early_terminate:
+#   type: hyperband
+#   max_iter: 300
+#   s: 2
