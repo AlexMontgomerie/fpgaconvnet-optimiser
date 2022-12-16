@@ -17,6 +17,8 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
     # split the nodes into different groups
     discrimination_groups = []
     for d in discriminate:
+        if not d:
+            continue
         # find all nodes of this group
         group = []
         for hw_node in nodes_of_type:
