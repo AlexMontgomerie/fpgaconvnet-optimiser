@@ -32,7 +32,7 @@ class LatencySimulatedAnnealing(LatencySolver):
 
     def warm_start_solution(self):
         start_time = time.time()
-        while not self.check_resources() and start_time - time.time() < self.warm_start_time_limit:
+        while not self.check_resources() and time.time() - start_time < self.warm_start_time_limit:
             # Choose a random transform
             transform = random.choice(list(self.transforms.keys()))
 
@@ -45,7 +45,7 @@ class LatencySimulatedAnnealing(LatencySolver):
             # Apply the transform
             self.apply_transform(transform, hw_node, exec_node)
 
-        if start_time - time.time() >= self.warm_start_time_limit:
+        if time.time() - start_time >= self.warm_start_time_limit:
             raise Exception("Warm start failed to find a solution within the time limit")
 
         # perform a few iterations of the solver to improve the initial solution
@@ -143,7 +143,10 @@ class LatencySimulatedAnnealing(LatencySolver):
                 # accept new state
                 pass
             else:
-                if math.exp((cost - curr_cost)/(self.k*self.T)) < random.uniform(0,1):
+                if math.exp((cost - curr_cost)/(self.k*self.T)) > random.uniform(0,1):
+                    # accept new state
+                    pass
+                else:
                     # revert to previous state
                     self.building_blocks = building_blocks
                     status_cost = cost

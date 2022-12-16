@@ -2,18 +2,15 @@
 A command line interface for running the optimiser for given networks
 """
 
-import pickle
 import logging
 import os
 import toml
-import json
 import argparse
 import shutil
 import random
 import numpy as np
 import wandb
-import sys
-import copy
+import yaml
 
 from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
@@ -24,7 +21,10 @@ import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
 
-def main():
+def parse_args():
+    """
+    Command line argument parser
+    """
     parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
     parser.add_argument('-n','--name', metavar='PATH', required=True,
         help='network name')
@@ -40,12 +40,17 @@ def main():
         help='Configuration file (.toml) for optimiser')
     parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
         help='Previously optimised partitions saved in JSON')
+    parser.add_argument('--sweep_config_path', metavar='PATH', required=False,
+        help='Wandb sweep configuration file (.yml) for optimiser')
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
-    parser.add_argument('--enable-wandb', action="store_true", help='seed for the optimiser run')
+    parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
+    parser.add_argument('--sweep-wandb', action="store_true", help='whether to enable wandb sweep')
 
-    # parse the arguments
-    args = parser.parse_args()
+    return parser.parse_args()
+
+def optimize():
+    args = parse_args()
 
     # setup seed
     random.seed(args.seed)
@@ -82,16 +87,26 @@ def main():
 
     # enable wandb
     if args.enable_wandb:
-        # project name
-        wandb_name = f"fpgaconvnet-{args.name}-latency"
-        # wandb config
-        wandb_config = optimiser_config
-        wandb_config |= platform_config
-        # TODO: remove useless config
-        # initialize wandb
-        wandb.init(config=wandb_config,
-                project=wandb_name,
-                entity="fpgaconvnet") # or "fpgaconvnet", and can add "name"
+        if args.sweep_wandb:
+            wandb.init()
+            optimiser_config = wandb.config
+            optimiser_config.update(platform_config)
+        else:
+            # project name
+            project_name = f"harflow3d-{args.name}-latency"
+            # wandb config
+            wandb_config = optimiser_config
+            wandb_config |= platform_config
+            # remove useless config
+            # wandb_config['general'].pop('logging')
+            # wandb_config['annealing'].pop('warm_start_time_limit')
+            # wandb_config['device'].pop('board')
+            # wandb_config['system'].pop('reconfiguration_time')
+            # initialize wandb
+            wandb.init(config=wandb_config,
+                    project=project_name,
+                    entity="fpgaconvnet") # or "fpgaconvnet", and can add "name"
+            optimiser_config = wandb.config
 
     # parse the network
     fpgaconvnet_parser = Parser()
@@ -130,7 +145,7 @@ def main():
 
     if "seperate" in optimiser_config["transforms"]:
         opt.seperate_nodes = optimiser_config["transforms"]["seperate"]["num_nodes"]
-        opt.seperate_allowed_types = [ from_onnx_op_type(_) for _ in \
+        opt.allowed_seperate_types = [ from_onnx_op_type(_) for _ in \
                 optimiser_config["transforms"]["seperate"]["allowed_types"] ]
 
     if "shape" in optimiser_config["transforms"]:
@@ -189,5 +204,18 @@ def main():
 
     # # visualise network
     # opt.net.visualise(os.path.join(args.output_path, "topology.png"))
+
+def main():
+    args = parse_args()
+
+    if args.sweep_wandb:
+        project_name = f"harflow3d-{args.name}-latency"
+        # load wandb sweep configuration
+        with open(args.sweep_config_path, "r") as f:
+            sweep_config = yaml.load(f, Loader=yaml.FullLoader)
+        sweep_id = wandb.sweep(sweep_config, project=project_name, entity="fpgaconvnet")
+        wandb.agent(sweep_id, function=optimize)
+    else:
+        optimize()
 
 

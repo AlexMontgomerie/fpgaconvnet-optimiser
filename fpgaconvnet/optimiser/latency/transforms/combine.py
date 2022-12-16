@@ -17,19 +17,20 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
     # split the nodes into different groups
     discrimination_groups = []
     for d in discriminate:
+        if not d:
+            continue
         # find all nodes of this group
         group = []
         for hw_node in nodes_of_type:
             # flag to indicate if hw_node will be added to group
             add_to_group = True
             # iterate over discrimnation parameters
+            if layer_type != from_onnx_op_type(d["layer_type"]):
+                add_to_group = False
+                continue
             for param, val in d.items():
                 # check it has the correct layer type
-                if param == "layer_type":
-                    if layer_type != from_onnx_op_type(val):
-                        add_to_group = False
-                        break
-                else:
+                if param != "layer_type":
                     # get the hw_node parameters and see if they match
                     key_node_param = getattr(self.building_blocks[hw_node]["hw"], param)
                     if key_node_param != val:
