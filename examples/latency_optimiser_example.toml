@@ -19,7 +19,8 @@ probability = 0.35
 apply_transform = true
 probability = 0.35
 method = "inherit" # [ random, inherit ]
-start_min = false # initialise all building blocks with the smallest shapes
+starting_shape = "" # shape to start with (if empty, then does nothing) [ min, max, median, percentage ]
+starting_shape_percentage = 30
 
 [transforms.combine]
 apply_transform = true
