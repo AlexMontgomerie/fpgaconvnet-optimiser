@@ -58,8 +58,10 @@ parameters:
             value: 0.35
           method:
             value: inherit # [ 'inherit', 'random' ]
-          start_min:
-            value: False # [True, False]
+          starting_shape:
+            value: '' # [ '', 'min', 'max', 'median', 'percentage' ]
+          starting_shape_percentage:
+            value: 30
       combine:
         parameters:
           apply_transform:
