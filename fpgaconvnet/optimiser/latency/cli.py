@@ -162,6 +162,8 @@ def main():
                     opt.apply_percentage_shape(hw_node,
                             percentage=optimiser_config["transforms"]["shape"].get(
                                 "starting_shape_percentage",10))
+                case "":
+                    pass
                 case _:
                     raise TypeError(optimiser_config["transforms"]["shape"]["starting_shape"])
 

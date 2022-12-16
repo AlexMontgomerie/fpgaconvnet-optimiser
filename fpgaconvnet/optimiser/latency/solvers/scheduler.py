@@ -17,7 +17,8 @@ def get_convolution_schedule(self, hw_node, exec_node):
     base_param = self.net.graph.nodes[exec_node]["hw"].layer_info_dict()
 
     # choose the largest factor for fine that's below the hardware's fine
-    fine = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].fine,
+    fine = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].fine and \
+            f in self.building_blocks[hw_node]["hw"].get_fine_feasible(),
             self.net.graph.nodes[exec_node]["hw"].get_fine_feasible()))
     coarse_group = max(filter(lambda f: f <= \
             self.building_blocks[hw_node]["hw"].coarse_group and \
