@@ -383,8 +383,13 @@ def get_basic_schedule(self, hw_node, exec_node):
     if self.dimensionality == 3:
         depth_in_max = self.building_blocks[hw_node]["hw"].depth_in()
     channels_in_max = self.building_blocks[hw_node]["hw"].channels_in()
-    coarse_max = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
-        f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_max)))
+    match self.building_blocks[hw_node]['type']:
+        case LAYER_TYPE.EltWise:
+            coarse_max = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].streams_in() and \
+                f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_max)))
+        case _:
+            coarse_max = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
+                f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_max)))
 
     # get the edge parameters
     rows_in_edge = base_param["rows_in"]-(row_repetition-1)*\
@@ -396,8 +401,13 @@ def get_basic_schedule(self, hw_node, exec_node):
             self.building_blocks[hw_node]["hw"].depth_in()
     channels_in_edge = base_param["channels_in"]-(channel_repetition-1)*\
             self.building_blocks[hw_node]["hw"].channels_in()
-    coarse_edge = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
-        f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_edge)))
+    match self.building_blocks[hw_node]['type']:
+        case LAYER_TYPE.EltWise:
+            coarse_edge = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].streams_in() and \
+                f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_edge)))
+        case _:
+            coarse_edge = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
+                f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_edge)))
 
     # get the schedule
     schedule_iteration_space = [ min(2,_) for _ in iteration_space ]
