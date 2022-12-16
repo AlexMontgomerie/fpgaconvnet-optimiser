@@ -275,7 +275,7 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                 self.building_blocks[hw_node]["hw"].depth = next_input_shape[2]
             # channel and filter dimensions
             self.building_blocks[hw_node]["hw"].channels = \
-                    next_input_shape[-1] if self.channel_tiling else max_input_shape[-1]
+                    max_input_shape[-1]
             self.building_blocks[hw_node]["hw"].filters = \
                     next_output_shape[-1] if self.filter_tiling else max_output_shape[-1]
         case LAYER_TYPE.Pooling:

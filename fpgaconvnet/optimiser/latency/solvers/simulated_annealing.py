@@ -7,13 +7,14 @@ import math
 from dataclasses import dataclass
 import wandb
 import pandas as pd
+import time
 
 from fpgaconvnet.optimiser.latency.solvers.solver import LatencySolver
 
 LATENCY     =   0
 THROUGHPUT  =   1
 
-START_LOOP  =   1000
+START_LOOP  =   10
 
 @dataclass
 class LatencySimulatedAnnealing(LatencySolver):
@@ -22,16 +23,81 @@ class LatencySimulatedAnnealing(LatencySolver):
     T_min: float = 0.0001
     cool: float = 0.98
     transform_iterations: int = 20
+    warm_start: bool = True
+    warm_start_time_limit: int = 60
     """
     Randomly chooses a transform and hardware component to change.
     The change is accepted based on a probability-based decision function
     """
 
+    def warm_start_solution(self):
+        start_time = time.time()
+        while not self.check_resources() and start_time - time.time() < self.warm_start_time_limit:
+            # Choose a random transform
+            transform = random.choice(list(self.transforms.keys()))
+
+            # Choose a random building block
+            hw_node = random.choice(list(self.building_blocks.keys()))
+
+            # Choose a random execution node
+            exec_node = random.choice(list(self.net.graph.nodes()))
+
+            # Apply the transform
+            self.apply_transform(transform, hw_node, exec_node)
+
+        if start_time - time.time() >= self.warm_start_time_limit:
+            raise Exception("Warm start failed to find a solution within the time limit")
+
+        # perform a few iterations of the solver to improve the initial solution
+        for _ in range(START_LOOP):
+            # get the current cost
+            cost = self.get_cost()
+
+            # Save previous building blocks
+            building_blocks = copy.deepcopy(self.building_blocks)
+
+            # several transform iterations per cool down
+            for _ in range(self.transform_iterations):
+
+                # Choose a random transform
+                transform = random.choice(list(self.transforms.keys()))
+
+                # Choose a random building block
+                hw_node = random.choice(list(self.building_blocks.keys()))
+
+                # Choose a random execution node
+                exec_node = random.choice(list(self.net.graph.nodes()))
+
+                # Apply the transform
+                self.apply_transform(transform, hw_node, exec_node)
+
+            # Check resources
+            try:
+                assert self.check_resources()
+                self.check_building_blocks()
+            except AssertionError:
+                # revert to previous state
+                self.building_blocks = building_blocks
+                continue
+
+            # Simulated annealing descision
+            curr_cost = self.get_cost()
+            if curr_cost < cost:
+                # accept new state
+                pass
+            else:
+                # revert to previous state
+                self.building_blocks = building_blocks
+
     def run_solver(self, log=True):
+
+        if self.warm_start:
+            # warm start the solver
+            self.warm_start_solution()
 
         # check the intial design is within constraints
         try:
-            self.check_resources()
+            assert self.check_resources()
             self.check_building_blocks()
         except AssertionError as error:
             raise AssertionError("Initial design exceeded resource usage")
@@ -63,7 +129,7 @@ class LatencySimulatedAnnealing(LatencySolver):
 
             # Check resources
             try:
-                self.check_resources()
+                assert self.check_resources()
                 self.check_building_blocks()
             except AssertionError:
                 # revert to previous state

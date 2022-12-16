@@ -147,22 +147,16 @@ def get_inner_product_schedule(self, hw_node, exec_node):
     # get the parameters for the exec node
     base_param = self.net.graph.nodes[exec_node]["hw"].layer_info_dict()
 
-    if not self.channel_tiling:
-        coarse_in = max(filter(lambda f: f <= \
+    coarse_in = max(filter(lambda f: f <= \
         self.building_blocks[hw_node]["hw"].coarse_in and \
         f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(),
         self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))
     if not self.filter_tiling:
         coarse_out = max(filter(lambda f: f <= \
-        self.building_blocks[hw_node]["hw"].coarse_out and \
-        f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(),
-        self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))
+            self.building_blocks[hw_node]["hw"].coarse_out and \
+            f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(),
+            self.net.graph.nodes[exec_node]["hw"].get_coarse_out_feasible()))
 
-    if self.channel_tiling:
-        # number of times to repeat channel dimension
-        channel_repetition = math.ceil(
-            self.net.graph.nodes[exec_node]["hw"].channels_in() / \
-                    self.building_blocks[hw_node]["hw"].channels_in())
     if self.filter_tiling:
         # number of times to repeat filter dimension
         filter_repetition = math.ceil(
@@ -171,8 +165,6 @@ def get_inner_product_schedule(self, hw_node, exec_node):
 
     # get the iteration space
     iteration_space = []
-    if self.channel_tiling:
-        iteration_space.append(channel_repetition)
     if self.filter_tiling:
         iteration_space.append(filter_repetition)
 

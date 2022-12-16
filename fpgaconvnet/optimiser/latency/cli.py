@@ -102,6 +102,9 @@ def main():
     # update platform information
     net.platform.update(args.platform_path)
 
+    # update the resouce allocation
+    net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
+
     # load network
     if args.optimiser == "simulated_annealing":
         opt = LatencySimulatedAnnealing(net, objective=0,
