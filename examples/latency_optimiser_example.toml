@@ -19,7 +19,8 @@ probability = 0.35
 apply_transform = true
 probability = 0.35
 method = "inherit" # [ random, inherit ]
-starting_shape = "percentage" # shape to start with (if not here, then does nothing) [ min, max, median, percentage ]
+starting_shape = "min" # shape to start with (if not here, then does nothing) [ min, max, median, percentage ]
+starting_shape_percentage = 30
 
 [transforms.combine]
 apply_transform = true

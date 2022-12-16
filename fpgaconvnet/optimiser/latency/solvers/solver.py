@@ -330,8 +330,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 # get the hardware type of exec node
                 layer_type = self.net.graph.nodes[exec_node]["type"]
                 # combine layers of that type
-                self.combine(layer_type, discriminate=self.combine_discriminate,
+                hw_node = self.combine(layer_type, discriminate=self.combine_discriminate,
                         num_nodes=self.combine_nodes)
+                # fix the coarse factor for the combined node
+                self.fix_coarse_node(hw_node)
                 # apply_weight_storage
                 self.apply_weight_storage()
             case "seperate":
