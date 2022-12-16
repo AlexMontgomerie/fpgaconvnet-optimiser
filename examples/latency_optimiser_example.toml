@@ -3,7 +3,7 @@ logging = false
 resource_allocation = 0.95
 runtime_parameters = true
 weight_storage = "double_buffer" # [ double_buffer, stream, share ]
-channel_tiling = false # whether or not to allow for channel tiling
+channel_tiling = true # whether or not to allow for channel tiling
 filter_tiling = true # whether or not to allow for filter tiling
 
 [transforms.fine]
@@ -19,7 +19,7 @@ probability = 0.35
 apply_transform = true
 probability = 0.35
 method = "inherit" # [ random, inherit ]
-start_min = true # initialise all building blocks with the smallest shapes
+start_min = false # initialise all building blocks with the smallest shapes
 
 [transforms.combine]
 apply_transform = true
@@ -52,3 +52,5 @@ T_min = 0.0001
 k = 10.0
 cool = 0.98
 transform_iterations = 20
+warm_start = true
+warm_start_time_limit = 60

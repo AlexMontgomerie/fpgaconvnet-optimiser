@@ -301,14 +301,19 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # get the resources
         resources = self.get_resources()
         # check against board constraints
-        assert resources['FF']   <= self.net.rsc_allocation*\
-                self.net.platform.get_ff()  , "ERROR: FF usage exceeded"
-        assert resources['LUT']  <= self.net.rsc_allocation*\
-                self.net.platform.get_lut() , "ERROR: LUT usage exceeded"
-        assert resources['DSP']  <= self.net.rsc_allocation*\
-                self.net.platform.get_dsp() , "ERROR: DSP usage exceeded"
-        assert resources['BRAM'] <= self.net.rsc_allocation*\
-                self.net.platform.get_bram(), "ERROR: BRAM usage exceeded"
+        if resources['FF']   > self.net.rsc_allocation * \
+            self.net.platform.get_ff():
+            return False
+        if resources['LUT']  > self.net.rsc_allocation * \
+            self.net.platform.get_lut():
+            return False
+        if resources['DSP']  > self.net.rsc_allocation * \
+            self.net.platform.get_dsp():
+            return False
+        if resources['BRAM'] > self.net.rsc_allocation * \
+            self.net.platform.get_bram():
+            return False
+        return True
 
     def apply_transform(self, transform, hw_node, exec_node):
 
