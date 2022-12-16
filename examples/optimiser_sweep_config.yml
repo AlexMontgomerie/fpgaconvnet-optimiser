@@ -59,7 +59,7 @@ parameters:
           method:
             value: inherit # [ 'inherit', 'random' ]
           start_min:
-            values: [True, False]
+            value: False # [True, False]
       combine:
         parameters:
           apply_transform:
