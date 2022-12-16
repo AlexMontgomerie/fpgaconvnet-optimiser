@@ -63,74 +63,74 @@ def get_convolution_schedule(self, hw_node, exec_node):
     if self.filter_tiling:
         iteration_space.append(filter_repetition)
 
+    # calculate the channel and filter offset
+    if self.channel_tiling and self.filter_tiling:
+        channel_offset = -2
+        filter_offset = -1
+    elif self.channel_tiling:
+        channel_offset = -1
+    elif self.filter_tiling:
+        filter_offset = -1
+
+    # get the parameters to be updated for each execution
+    new_param = copy.copy(base_param)
+    new_param["fine"] = fine
+    new_param["coarse_group"] = coarse_group
+
+    if not self.channel_tiling:
+        new_param["coarse_in"] = coarse_in
+    if not self.filter_tiling:
+        new_param["coarse_out"] = coarse_out
+
     # iterate over the tiled dimensions
     for index in np.ndindex(*iteration_space):
 
         # get the greatest spatial dimensions for each execution
-        rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
+        new_param["rows_in"] = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
-        cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
+        new_param["cols_in"] = min(self.building_blocks[hw_node]["hw"].cols_in(),
                 base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
-            depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
+            new_param["depth_in"] = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["depth_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
 
         # add the required overlap for spatial dimensions
         if row_repetition > 1:
-            rows_in += base_param["kernel_rows"] - 1
+            new_param["rows_in"] += base_param["kernel_rows"] - 1
         if col_repetition > 1:
-            cols_in += base_param["kernel_cols"] - 1
+            new_param["cols_in"] += base_param["kernel_cols"] - 1
         if self.dimensionality == 3:
             if depth_repetition > 1:
-                depth_in += base_param["kernel_depth"] - 1
+                new_param["depth_in"] += base_param["kernel_depth"] - 1
 
         # greedy channel dimension
         if self.channel_tiling:
-            channels = min(self.building_blocks[hw_node]["hw"].channels_in(),
-                    base_param["channels_in"]-index[-2]*self.building_blocks[hw_node]["hw"].channels_in())
+            new_param["channels_in"] = min(self.building_blocks[hw_node]["hw"].channels_in(),
+                    base_param["channels_in"]-index[channel_offset]*self.building_blocks[hw_node]["hw"].channels_in())
             # choose coarse in as a factor of the channels dimension
-            coarse_in = max(filter(lambda f: f <= \
-                    self.building_blocks[hw_node]["hw"].coarse_in and f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels)))
+            new_param["coarse_out"] = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
+                    f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(new_param["channels_in"])))
 
         if self.filter_tiling:
             # greedy filter dimension
-            filters = min(self.building_blocks[hw_node]["hw"].channels_out(),
-                    base_param["filters"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_out())
+            new_param["channels_out"] = min(self.building_blocks[hw_node]["hw"].channels_out(),
+                    base_param["filters"]-index[filter_offset]*self.building_blocks[hw_node]["hw"].channels_out())
             # choose coarse out as a factor of the filters dimension
-            coarse_out = max(filter(lambda f: f <= \
-                    self.building_blocks[hw_node]["hw"].coarse_out and f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), get_factors(filters)))
-
-        # add the parameters to the schedule
-        param = copy.copy(base_param)
-        assert param["filters"] == param["channels_out"], f"filters must equal channels out for {exec_node} and {hw_node}"
-        assert param["channels_in"] % coarse_in == 0, f"coarse in must be a factor of channels in for {exec_node} and {hw_node}"
-        assert filters % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
-        assert param["groups"] % coarse_group == 0, f"coarse group must be a factor of groups for {exec_node} and {hw_node}"
-        param["rows_in"] = rows_in
-        param["cols_in"] = cols_in
-        if self.dimensionality == 3:
-            param["depth_in"] = depth_in
-        if self.channel_tiling:
-            param["channels_in"] = channels
-        if self.filter_tiling:
-            param["filters"] = filters
-        param["fine"] = fine
-        param["channels_out"] = filters
-        param["coarse_in"] = coarse_in
-        param["coarse_out"] = coarse_out
-        param["coarse_group"] = coarse_group
+            new_param["coarse_out"] = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out and \
+                    f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), get_factors(new_param["channels_out"])))
+            new_param["filters"] = new_param["channels_out"]
 
         # only add padding parameters at the edge
-        param["pad_top"] = param["pad_top"] if index[0] else 0
-        param["pad_bottom"] = param["pad_bottom"] if index[0] == (row_repetition-1) else 0
-        param["pad_left"] = param["pad_left"] if index[0] else 0
-        param["pad_right"] = param["pad_right"] if index[0] == (col_repetition-1) else 0
+        new_param["pad_top"]    = base_param["pad_top"]     if index[0] else 0
+        new_param["pad_bottom"] = base_param["pad_bottom"]  if index[0] == (row_repetition-1) else 0
+        new_param["pad_left"]   = base_param["pad_left"]    if index[1] else 0
+        new_param["pad_right"]  = base_param["pad_right"]   if index[1] == (col_repetition-1) else 0
         if self.dimensionality == 3:
-            param["pad_front"] = param["pad_front"] if index[2] else 0
-            param["pad_back"] = param["pad_back"] if index[2] == (depth_repetition-1) else 0
+            new_param["pad_front"]  = base_param["pad_front"]   if index[2] else 0
+            new_param["pad_back"]   = base_param["pad_back"]    if index[2] == (depth_repetition-1) else 0
 
         # append to the schedule
-        schedule.append(param)
+        schedule.append(new_param.copy())
 
     # return the schedule
     return schedule, iteration_space
@@ -176,59 +176,66 @@ def get_inner_product_schedule(self, hw_node, exec_node):
     if self.filter_tiling:
         iteration_space.append(filter_repetition)
 
+    # calculate the channel and filter offset
+    if self.channel_tiling and self.filter_tiling:
+        channel_offset = -2
+        filter_offset = -1
+    elif self.channel_tiling:
+        channel_offset = -1
+    elif self.filter_tiling:
+        filter_offset = -1
+
+    # get the parameters to be updated for each execution
+    new_param = copy.copy(base_param)
+
+    if not self.channel_tiling:
+        new_param["coarse_in"] = coarse_in
+    if not self.filter_tiling:
+        new_param["coarse_out"] = coarse_out
+
     # iterate over the tiled dimensions
     for index in np.ndindex(*iteration_space):
 
+        # greedy channel dimension
         if self.channel_tiling:
-            # greedy channel dimension
-            channels = min(self.building_blocks[hw_node]["hw"].channels_in(),
-                    base_param["channels_in"]-index[-2]*self.building_blocks[hw_node]["hw"].channels_in())
+            new_param["channels_in"] = min(self.building_blocks[hw_node]["hw"].channels_in(),
+                    base_param["channels_in"]-index[channel_offset]*self.building_blocks[hw_node]["hw"].channels_in())
             # choose coarse in as a factor of the channels dimension
-            coarse_in = max(filter(lambda f: f <= \
-                    self.building_blocks[hw_node]["hw"].coarse_in and f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels)))
+            new_param["coarse_out"] = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
+                    f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(new_param["channels_in"])))
 
         if self.filter_tiling:
             # greedy filter dimension
-            filters = min(self.building_blocks[hw_node]["hw"].channels_out(),
-                    base_param["filters"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_out())
-            # choose coarse out as a factor of the filter dimension
-            coarse_out = max(filter(lambda f: f <= \
-                    self.building_blocks[hw_node]["hw"].coarse_out and f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), get_factors(filters)))
-
-        # add the parameters to the schedule
-        param = copy.copy(base_param)
-        assert param["channels_in"] % coarse_in == 0, f"coarse in must be a factor of channels in for {exec_node} and {hw_node}"
-        assert filters % coarse_out == 0, f"coarse out must be a factor of channels out (filters) for {exec_node} and {hw_node}"
-        if self.channel_tiling:
-            param["channels_in"] = channels
-        if self.filter_tiling:
-            param["filters"] = filters
-            param["channels_out"] = filters
-        param["coarse_in"] = coarse_in
-        param["coarse_out"] = coarse_out
+            new_param["channels_out"] = min(self.building_blocks[hw_node]["hw"].channels_out(),
+                    base_param["filters"]-index[filter_offset]*self.building_blocks[hw_node]["hw"].channels_out())
+            # choose coarse out as a factor of the filters dimension
+            new_param["coarse_out"] = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out and \
+                    f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), get_factors(new_param["channels_out"])))
+            new_param["filters"] = new_param["channels_out"]
 
         # append to the schedule
-        schedule.append(param)
+        schedule.append(new_param.copy())
 
     if not iteration_space:
         param = copy.copy(base_param)
         param["coarse_in"] = coarse_in
         param["coarse_out"] = coarse_out
+        schedule.append(param)
 
     # return the schedule
     return schedule, iteration_space
 
 def get_pooling_schedule(self, hw_node, exec_node):
 
+    # helper function to get factors of a number
+    def get_factors(num):
+        return [n for n in range(1, num + 1) if num % n == 0]
+
     # initialise the schedule
     schedule = []
 
     # get the parameters for the exec node
     base_param = self.net.graph.nodes[exec_node]["hw"].layer_info_dict()
-
-    # do the same for the coarse factors TODO: improve the channel, coarse trade-off
-    coarse = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse and f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(),
-            self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))
 
     # get the repetition of each dimension
     row_repetition = math.ceil(
@@ -250,64 +257,62 @@ def get_pooling_schedule(self, hw_node, exec_node):
     if self.dimensionality == 3:
         iteration_space = [ row_repetition, col_repetition, depth_repetition, channel_repetition ]
 
+    # get the parameters to be updated for each execution
+    new_param = copy.copy(base_param)
+
     # iterate over the tiled dimensions
     for index in  np.ndindex(*iteration_space):
 
         # get the greatest spatial dimensions for each execution
-        rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
+        new_param["rows_in"] = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
-        cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
+        new_param["cols_in"] = min(self.building_blocks[hw_node]["hw"].cols_in(),
                 base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
-            depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
+            new_param["depth_in"] = min(self.building_blocks[hw_node]["hw"].depth_in(),
                     base_param["depth_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
-        channels_in = min(self.building_blocks[hw_node]["hw"].channels_in(),
+        new_param["channels_in"] = min(self.building_blocks[hw_node]["hw"].channels_in(),
                 base_param["channels_in"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_in())
+
+        # choose coarse in as a factor of the channels dimension
+        new_param["coarse"] = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
+                f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(new_param["channels_in"])))
 
         # add the required overlap for spatial dimensions
         if row_repetition > 1:
-            rows_in += base_param["kernel_rows"] - 1
+            new_param["rows_in"] += base_param["kernel_rows"] - 1
         if col_repetition > 1:
-            cols_in += base_param["kernel_cols"] - 1
+            new_param["cols_in"] += base_param["kernel_cols"] - 1
         if self.dimensionality == 3:
             if depth_repetition > 1:
-                depth_in += base_param["kernel_depth"] - 1
-
-        # add the parameters to the schedule
-        param = copy.copy(base_param)
-        param["rows_in"] = rows_in
-        param["cols_in"] = cols_in
-        if self.dimensionality == 3:
-            param["depth_in"] = depth_in
-        param["channels_in"] = channels_in
-        param["coarse"] = coarse
+                new_param["depth_in"] += base_param["kernel_depth"] - 1
 
         # only add padding parameters at the edge
-        param["pad_top"] = param["pad_top"] if index[0] else 0
-        param["pad_bottom"] = param["pad_bottom"] if index[0] == (row_repetition-1) else 0
-        param["pad_left"] = param["pad_left"] if index[0] else 0
-        param["pad_right"] = param["pad_right"] if index[0] == (col_repetition-1) else 0
+        new_param["pad_top"]    = base_param["pad_top"]     if index[0] else 0
+        new_param["pad_bottom"] = base_param["pad_bottom"]  if index[0] == (row_repetition-1) else 0
+        new_param["pad_left"]   = base_param["pad_left"]    if index[1] else 0
+        new_param["pad_right"]  = base_param["pad_right"]   if index[1] == (col_repetition-1) else 0
         if self.dimensionality == 3:
-            param["pad_front"] = param["pad_front"] if index[2] else 0
-            param["pad_back"] = param["pad_back"] if index[2] == (depth_repetition-1) else 0
+            new_param["pad_front"]  = base_param["pad_front"]   if index[2] else 0
+            new_param["pad_back"]   = base_param["pad_back"]    if index[2] == (depth_repetition-1) else 0
 
         # append to the schedule
-        schedule.append(param)
+        schedule.append(new_param.copy())
 
     # return the schedule
     return schedule, iteration_space
 
 def get_basic_schedule(self, hw_node, exec_node):
 
+    # helper function to get factors of a number
+    def get_factors(num):
+        return [n for n in range(1, num + 1) if num % n == 0]
+
     # initialise the schedule
     schedule = []
 
     # get the parameters for the exec node
     base_param = self.net.graph.nodes[exec_node]["hw"].layer_info_dict()
-
-    # do the same for the coarse factors TODO: improve the channel, coarse trade-off
-    coarse = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse and f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(),
-            self.net.graph.nodes[exec_node]["hw"].get_coarse_in_feasible()))
 
     # get the repetition of each dimension
     row_repetition = math.ceil(
@@ -329,36 +334,35 @@ def get_basic_schedule(self, hw_node, exec_node):
     if self.dimensionality == 3:
         iteration_space = [ row_repetition, col_repetition, depth_repetition, channel_repetition ]
 
+    # get the parameters to be updated for each execution
+    new_param = copy.copy(base_param)
+
     # iterate over the tiled dimensions
     for index in  np.ndindex(*iteration_space):
 
-         # get the greatest spatial dimensions for each execution
-        rows_in = min(self.building_blocks[hw_node]["hw"].rows_in(),
+        # get the greatest spatial dimensions for each execution
+        new_param["rows_in"] = min(self.building_blocks[hw_node]["hw"].rows_in(),
                 base_param["rows_in"]-index[0]*self.building_blocks[hw_node]["hw"].rows_in())
-        cols_in = min(self.building_blocks[hw_node]["hw"].cols_in(),
+        new_param["cols_in"] = min(self.building_blocks[hw_node]["hw"].cols_in(),
                 base_param["cols_in"]-index[1]*self.building_blocks[hw_node]["hw"].cols_in())
         if self.dimensionality == 3:
-            depth_in = min(self.building_blocks[hw_node]["hw"].depth_in(),
-                    base_param["cols_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
-        channels_in = min(self.building_blocks[hw_node]["hw"].channels_in(),
+            new_param["depth_in"] = min(self.building_blocks[hw_node]["hw"].depth_in(),
+                    base_param["depth_in"]-index[2]*self.building_blocks[hw_node]["hw"].depth_in())
+        new_param["channels_in"] = min(self.building_blocks[hw_node]["hw"].channels_in(),
                 base_param["channels_in"]-index[-1]*self.building_blocks[hw_node]["hw"].channels_in())
 
-        # add the parameters to the schedule
-        param = copy.copy(base_param)
-        param["rows_in"] = rows_in
-        param["cols_in"] = cols_in
-        if self.dimensionality == 3:
-            param["depth_in"] = depth_in
-        param["channels_in"] = channels_in
-        param["coarse"] = coarse
+        # choose coarse in as a factor of the channels dimension
+        new_param["coarse"] = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
+                f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(new_param["channels_in"])))
+
         if self.net.graph.nodes[exec_node]["type"].name in ["ReLU", "Sigmoid", "SiLU"]:
-            param["op_type"] = self.net.graph.nodes[exec_node]["type"].name.lower()
+            new_param["op_type"] = self.net.graph.nodes[exec_node]["type"].name.lower()
         if self.net.graph.nodes[exec_node]["type"].name == "EltWise":
-            param["op_type"] = self.net.graph.nodes[exec_node]["hw"].op_type
-            param["broadcast"] = self.net.graph.nodes[exec_node]["hw"].broadcast
+            new_param["op_type"] = self.net.graph.nodes[exec_node]["hw"].op_type
+            new_param["broadcast"] = self.net.graph.nodes[exec_node]["hw"].broadcast
 
         # append to the schedule
-        schedule.append(param)
+        schedule.append(new_param.copy())
 
     # return the schedule
     return schedule, iteration_space

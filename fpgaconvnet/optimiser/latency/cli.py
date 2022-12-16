@@ -148,7 +148,7 @@ def main():
     # apply min shape to all building blocks
     if "starting_shape" in optimiser_config["transforms"]["shape"]:
         for hw_node in opt.building_blocks:
-            match optimiser_config["transforms"]["shape"]:
+            match optimiser_config["transforms"]["shape"]["starting_shape"]:
                 case "min":
                     opt.apply_min_shape(hw_node)
                 case "max":
@@ -159,6 +159,8 @@ def main():
                     opt.apply_percentage_shape(hw_node,
                             percentage=optimiser_config["transforms"]["shape"].get(
                                 "starting_shape_percentage",10))
+                case _:
+                    raise TypeError(optimiser_config["transforms"]["shape"]["starting_shape"])
 
     ## apply max fine factor to the graph
     if optimiser_config["transforms"]["fine"]["start_complete"]:
