@@ -200,7 +200,9 @@ def apply_median_shape(self, hw_node):
 
     # get the median shape for each dimension
     next_input_shape = [ statistics.median(all_input_shapes[i]) for i in range(size) ]
+    next_input_shape[1] = next_input_shape[0]
     next_output_shape = [ statistics.median(all_output_shapes[i]) for i in range(size) ]
+    next_output_shape[1] = next_output_shape[0]
 
     # update the next shape for specific hardware types
     self.update_building_block_shape(hw_node,
@@ -223,15 +225,11 @@ def apply_percentage_shape(self, hw_node, percentage=10):
                 for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
                 i in range(size) ]
 
-    # get all input and output shapes
-    all_input_shapes = [ [self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
-            for exec_node in self.building_blocks[hw_node]["exec_nodes"] ] for i in range(size) ]
-    all_output_shapes = [ [self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
-            for exec_node in self.building_blocks[hw_node]["exec_nodes"] ] for i in range(size) ]
-
     # get the median shape for each dimension
     next_input_shape = [ max(1, int(max_input_shape[i]*(percentage/100))) for i in range(size) ]
+    next_input_shape[1] = next_input_shape[0]
     next_output_shape = [ max(1, int(max_output_shape[i]*(percentage/100))) for i in range(size) ]
+    next_output_shape[1] = next_output_shape[0]
 
     # make sure the input and output channel dimension are greater than the minimum for the ports
     next_input_shape[-1] = max(self.min_channels_in, next_input_shape[-1])
