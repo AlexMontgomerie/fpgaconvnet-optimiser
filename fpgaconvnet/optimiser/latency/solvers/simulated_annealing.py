@@ -143,7 +143,10 @@ class LatencySimulatedAnnealing(LatencySolver):
                 # accept new state
                 pass
             else:
-                if math.exp((cost - curr_cost)/(self.k*self.T)) < random.uniform(0,1):
+                if math.exp((cost - curr_cost)/(self.k*self.T)) > random.uniform(0,1):
+                    # accept new state
+                    pass
+                else:
                     # revert to previous state
                     self.building_blocks = building_blocks
                     status_cost = cost
