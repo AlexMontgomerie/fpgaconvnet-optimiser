@@ -16,6 +16,8 @@ parameters:
         value: True
       weight_storage:
         value: double_buffer # [ 'double_buffer', 'stream', 'share' ]
+      resource_model:
+        value: linear_regression # [ 'linear_regression', 'xgboost' ]
       channel_tiling:
         value: True
       filter_tiling:

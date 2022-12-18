@@ -109,6 +109,8 @@ def optimize():
             optimiser_config = wandb.config
 
     # parse the network
+    # TODO: Enable this when the fpgaconvnet-model repo fix the issues with the xgboost regression model on run time
+    # fpgaconvnet_parser = Parser(regression_model=optimiser_config["general"]["resource_model"])
     fpgaconvnet_parser = Parser()
 
     # create network
