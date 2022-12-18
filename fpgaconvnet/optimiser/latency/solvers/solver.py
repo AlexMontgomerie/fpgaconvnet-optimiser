@@ -153,8 +153,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         DSP  = resources['DSP']
         LUT  = resources['LUT']
         FF   = resources['FF']
-        print("TEMP:\t {temperature:.5f}, COST:\t {cost:.3f} ({objective}), RESOURCE:\t {DSP}\t{BRAM}\t{FF}\t{LUT}\t(DSP|BRAM|FF|LUT)".format(
-            temperature=temp, cost=cost,objective=objective,DSP=int(DSP),BRAM=int(BRAM),FF=int(FF),LUT=int(LUT)))
+        MEM_BW = resources['MEM_BW']
+        MEM_BW_UTIL = MEM_BW/self.net.platform.get_mem_bw()*100
+        print("TEMP:\t {temperature:.5f}, COST:\t {cost:.3f} ({objective}), RESOURCE:\t {DSP}\t{BRAM}\t{FF}\t{LUT}\t| {MEM_BW:.2f} ({MEM_BW_UTIL:.2f})\t(DSP|BRAM|FF|LUT) | MEM_BW (%)".format(
+            temperature=temp, cost=cost,objective=objective,DSP=int(DSP),BRAM=int(BRAM),FF=int(FF),LUT=int(LUT),MEM_BW=MEM_BW,MEM_BW_UTIL=MEM_BW_UTIL))
 
     def get_resources(self):
         """
@@ -169,6 +171,9 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     for _, node in self.building_blocks.items() ]),
             "BRAM": sum([ math.ceil(node["hw"].resource()["BRAM"]) \
                     for _, node in self.building_blocks.items() ]),
+            "MEM_BW": np.mean([ node["hw"].memory_bandwidth()['in']*self.net.platform.board_freq*16*1e-3 + \
+                    node["hw"].memory_bandwidth()['out']*self.net.platform.board_freq*16*1e-3 \
+                    for _, node in self.building_blocks.items() ])
         }
 
     def get_resources_util(self):
@@ -179,6 +184,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             "FF": (resources["FF"]/self.net.platform.get_ff())*100.0,
             "DSP": (resources["DSP"]/self.net.platform.get_dsp())*100.0,
             "BRAM": (resources["BRAM"]/self.net.platform.get_bram())*100.0,
+            "MEM_BW": (resources["MEM_BW"]/self.net.platform.get_mem_bw())*100.0
         }
 
     def check_building_blocks(self):
@@ -315,6 +321,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             return False
         if resources['BRAM'] > self.net.rsc_allocation * \
             self.net.platform.get_bram():
+            return False
+        if resources['MEM_BW'] > self.net.platform.get_mem_bw():
             return False
         return True
 
