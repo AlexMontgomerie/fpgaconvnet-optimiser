@@ -333,7 +333,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 hw_node = self.combine(layer_type, discriminate=self.combine_discriminate,
                         num_nodes=self.combine_nodes)
                 # fix the coarse factor for the combined node
-                self.fix_coarse_node(hw_node)
+                if hw_node != None:
+                    self.fix_coarse_node(hw_node)
                 # apply_weight_storage
                 self.apply_weight_storage()
             case "seperate":

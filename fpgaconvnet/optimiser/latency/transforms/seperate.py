@@ -48,4 +48,5 @@ def seperate(self, hw_node, num_nodes=1):
         if self.building_blocks[hw_node]["exec_nodes"] == []:
             del self.building_blocks[hw_node]
 
-
+    # return the split exec nodes
+    return split_exec_nodes

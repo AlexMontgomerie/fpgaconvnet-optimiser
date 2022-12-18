@@ -12,7 +12,7 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
     nodes_of_type = self.get_hw_nodes_of_type(layer_type)
 
     if len(nodes_of_type) < 1:
-        return # nothing to combine
+        return None # nothing to combine
 
     # split the nodes into different groups
     discrimination_groups = []
