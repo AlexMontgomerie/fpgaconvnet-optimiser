@@ -402,11 +402,23 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # add total resources
         report["general"]["total_resources"] = self.get_resources()
 
+        # add total resources utilization
+        report["general"]["total_resources_util"] = self.get_resources_util()
+
         # add per building block resources
         report["general"]["resources"] = {}
         for hw_node in self.building_blocks:
             report["general"]["resources"][hw_node] = \
                     self.building_blocks[hw_node]["hw"].resource()
+            mem_bw_in = self.building_blocks[hw_node]["hw"].memory_bandwidth()['in']*self.net.platform.board_freq*16*1e-3
+            mem_bw_out = self.building_blocks[hw_node]["hw"].memory_bandwidth()['out']*self.net.platform.board_freq*16*1e-3
+            mem_bw_report = {'MEM_BW_IN': mem_bw_in,
+                             'MEM_BW_OUT': mem_bw_out,
+                             'MEM_BW': mem_bw_in + mem_bw_out,
+                             'MEM_BW_IN_UTIL': mem_bw_in / self.net.platform.get_mem_bw()*100,
+                             'MEM_BW_OUT_UTIL': mem_bw_out / self.net.platform.get_mem_bw()*100,
+                             'MEM_BW_UTIL': (mem_bw_in + mem_bw_out) / self.net.platform.get_mem_bw()*100}
+            report["general"]["resources"][hw_node] |= mem_bw_report
 
         # return the report
         return report
