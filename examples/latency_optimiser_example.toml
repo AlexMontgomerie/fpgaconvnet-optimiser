@@ -36,11 +36,15 @@ kernel_rows = 7
 kernel_cols = 7
 kernel_depth = 1
 
+# [[transforms.combine.discriminate]]
+# layer_type = "Conv"
+# kernel_rows = 1
+# kernel_cols = 1
+# kernel_depth = 5
+
 [[transforms.combine.discriminate]]
 layer_type = "Conv"
-kernel_rows = 1
-kernel_cols = 1
-kernel_depth = 5
+depthwise = true
 
 [transforms.seperate]
 apply_transform = true

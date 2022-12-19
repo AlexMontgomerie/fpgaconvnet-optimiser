@@ -53,7 +53,8 @@ def get_convolution_schedule(self, hw_node, exec_node):
     # get the parameters to be updated for each execution
     new_param = copy.copy(base_param)
     new_param["fine"] = fine
-    new_param["coarse_group"] = coarse_group
+    if not self.building_blocks[hw_node]["hw"].depthwise:
+        new_param["coarse_group"] = coarse_group
 
     # get the max parameters
     rows_in_max = self.building_blocks[hw_node]["hw"].rows_in()
@@ -62,6 +63,8 @@ def get_convolution_schedule(self, hw_node, exec_node):
         depth_in_max = self.building_blocks[hw_node]["hw"].depth_in()
     channels_in_max = self.building_blocks[hw_node]["hw"].channels_in()
     channels_out_max = self.building_blocks[hw_node]["hw"].channels_out()
+    if self.building_blocks[hw_node]["hw"].depthwise:
+        channels_out_max = channels_in_max
     coarse_in_max = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
         f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_max)))
     coarse_out_max = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out and \
@@ -79,6 +82,8 @@ def get_convolution_schedule(self, hw_node, exec_node):
             self.building_blocks[hw_node]["hw"].channels_in()
     channels_out_edge = base_param["channels_out"]-(filter_repetition-1)*\
             self.building_blocks[hw_node]["hw"].channels_out()
+    if self.building_blocks[hw_node]["hw"].depthwise:
+        channels_out_edge = channels_in_edge
     coarse_in_edge = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_in and \
         f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_edge)))
     coarse_out_edge = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out and \
@@ -109,6 +114,14 @@ def get_convolution_schedule(self, hw_node, exec_node):
 
         new_param["coarse_in"] = coarse_in_max if index[-2] else coarse_in_edge
         new_param["coarse_out"] = coarse_out_max if index[-1] else coarse_out_edge
+
+        if self.building_blocks[hw_node]["hw"].depthwise:
+            new_param["channels_out"] = new_param["channels_in"]
+            new_param["filters"] = new_param["channels_out"]
+            new_param["coarse_out"] = new_param["coarse_in"]
+            assert new_param["channels_in"] == new_param["channels_out"], \
+                    "Depthwise convolution must have the same number of input and output channels"
+            new_param["groups"] = new_param["channels_in"]
 
         # set all the padding to zero
         new_param["pad_top"] = 0

@@ -101,7 +101,9 @@ def apply_inherited_shape(self, hw_node):
             # we assume that the output shape of a convolution will always reduce the spatio-temporal dimensions and increase the channel dimension
             next_output_shape[:-1] = [random.choice(list(filter(lambda f: f <= next_input_shape[i], all_output_shapes[i]))) for i in range(size - 1)]
             next_output_shape[1] = next_output_shape[0]
-            # next_output_shape[-1] = random.choice(list(filter(lambda f: f >= next_input_shape[-1], all_output_shapes[-1]))
+            if self.building_blocks[hw_node]['hw'].depthwise:
+                next_output_shape[-1] = next_input_shape[-1]
+                max_output_shape[-1] = max_input_shape[-1]
         case LAYER_TYPE.Pooling:
             next_output_shape[:-1] = [random.choice(list(filter(lambda f: f <= next_input_shape[i], all_output_shapes[i]))) for i in range(size - 1)]
             next_output_shape[1] = next_output_shape[0]
@@ -266,6 +268,11 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                     next_input_shape[-1] if self.channel_tiling else max_input_shape[-1]
             self.building_blocks[hw_node]["hw"].filters = \
                     next_output_shape[-1] if self.filter_tiling else max_output_shape[-1]
+            if self.building_blocks[hw_node]["hw"].depthwise:
+                assert self.building_blocks[hw_node]["hw"].channels == \
+                        self.building_blocks[hw_node]["hw"].filters
+                self.building_blocks[hw_node]["hw"].groups = \
+                        self.building_blocks[hw_node]["hw"].channels
         case LAYER_TYPE.InnerProduct:
             self.building_blocks[hw_node]["hw"].rows = next_input_shape[0]
             self.building_blocks[hw_node]["hw"].cols = next_input_shape[1]
