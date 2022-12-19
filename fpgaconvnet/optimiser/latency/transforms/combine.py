@@ -75,6 +75,10 @@ def combine(self, layer_type, discriminate=[], num_nodes=2):
                     "pad_bottom", "pad_left", "pad_right" ]
             min_param_keys = [ "rows", "cols", "filters", "groups",
                     "coarse_in", "coarse_out", "coarse_group" ]
+            # Hack to deal with the depthwise convolution case
+            if self.building_blocks[random.choice(nodes_to_combine)]["hw"].depthwise:
+                max_param_keys.remove("channels")
+                min_param_keys.append("channels")
 
             # add 3D specific parameters
             if self.dimensionality == 3:

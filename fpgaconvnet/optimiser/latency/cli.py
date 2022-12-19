@@ -109,9 +109,7 @@ def optimize():
             optimiser_config = wandb.config
 
     # parse the network
-    # TODO: Enable this when the fpgaconvnet-model repo fix the issues with the xgboost regression model on run time
-    # fpgaconvnet_parser = Parser(regression_model=optimiser_config["general"]["resource_model"])
-    fpgaconvnet_parser = Parser()
+    fpgaconvnet_parser = Parser(regression_model=optimiser_config["general"]["resource_model"])
 
     # create network
     net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)
@@ -196,13 +194,13 @@ def optimize():
     opt.run_solver(log=args.enable_wandb)
 
     # create report
-    opt.net.create_report(os.path.join(args.output_path,"report.json"))
+    # opt.net.create_report(os.path.join(args.output_path,"report.json"))
 
     # save all partitions
-    opt.net.save_all_partitions(os.path.join(args.output_path, "config.json"))
+    # opt.net.save_all_partitions(os.path.join(args.output_path, "config.json"))
 
     # create scheduler
-    opt.net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+    # opt.net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
 
     # # visualise network
     # opt.net.visualise(os.path.join(args.output_path, "topology.png"))

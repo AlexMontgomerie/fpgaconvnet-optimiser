@@ -3,7 +3,7 @@ logging = false
 resource_allocation = 0.95
 runtime_parameters = true
 weight_storage = "double_buffer" # [ double_buffer, stream, share ]
-resource_model = "linear_regression" # [ linear_regression, xgboost ]
+resource_model = "xgboost" # [ linear_regression, xgboost ]
 channel_tiling = true # whether or not to allow for channel tiling
 filter_tiling = true # whether or not to allow for filter tiling
 
@@ -36,11 +36,15 @@ kernel_rows = 7
 kernel_cols = 7
 kernel_depth = 1
 
+# [[transforms.combine.discriminate]]
+# layer_type = "Conv"
+# kernel_rows = 1
+# kernel_cols = 1
+# kernel_depth = 5
+
 [[transforms.combine.discriminate]]
 layer_type = "Conv"
-kernel_rows = 1
-kernel_cols = 1
-kernel_depth = 5
+depthwise = true
 
 [transforms.seperate]
 apply_transform = true
