@@ -17,7 +17,7 @@ parameters:
       weight_storage:
         value: double_buffer # [ 'double_buffer', 'stream', 'share' ]
       resource_model:
-        value: linear_regression # [ 'linear_regression', 'xgboost' ]
+        value: xgboost # [ 'linear_regression', 'xgboost' ]
       channel_tiling:
         value: True
       filter_tiling:
@@ -76,7 +76,7 @@ parameters:
             value: True
           discriminate:
             value: [{'layer_type': 'Conv', 'kernel_rows': 7, 'kernel_cols': 7, 'kernel_depth': 1},
-                    {'layer_type': 'Conv', 'kernel_rows': 1, 'kernel_cols': 1, 'kernel_depth': 5}]
+                    {'layer_type': 'Conv', 'depthwise': true}]
       separate:
         parameters:
           apply_transform:
