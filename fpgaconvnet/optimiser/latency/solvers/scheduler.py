@@ -152,25 +152,26 @@ def get_convolution_schedule(self, hw_node, exec_node):
                 new_param["depth_in"] += base_param["kernel_depth"] - 1
 
         # append to the schedule
-        schedule_param = [new_param.copy()]*param_repetition
+        schedule_param = (new_param.copy(), param_repetition)
 
-        # only add padding parameters at the edge
-        if index[0] == 0:
-            schedule_param[0]["pad_top"] = base_param["pad_top"]
-        if index[0] == (schedule_iteration_space[0]-1):
-            schedule_param[-1]["pad_bottom"] = base_param["pad_bottom"]
-        if index[1] == 0:
-            schedule_param[0]["pad_left"] = base_param["pad_left"]
-        if index[1] == (schedule_iteration_space[1]-1):
-            schedule_param[-1]["pad_right"] = base_param["pad_right"]
-        if self.dimensionality == 3:
-            if index[2] == 0:
-                schedule_param[0]["pad_front"] = base_param["pad_front"]
-            if index[2] == (schedule_iteration_space[2]-1):
-                schedule_param[-1]["pad_back"] = base_param["pad_back"]
+        # # only add padding parameters at the edge
+        # if index[0] == 0:
+        #     schedule_param[0]["pad_top"] = base_param["pad_top"]
+        # if index[0] == (schedule_iteration_space[0]-1):
+        #     schedule_param[-1]["pad_bottom"] = base_param["pad_bottom"]
+        # if index[1] == 0:
+        #     schedule_param[0]["pad_left"] = base_param["pad_left"]
+        # if index[1] == (schedule_iteration_space[1]-1):
+        #     schedule_param[-1]["pad_right"] = base_param["pad_right"]
+        # if self.dimensionality == 3:
+        #     if index[2] == 0:
+        #         schedule_param[0]["pad_front"] = base_param["pad_front"]
+        #     if index[2] == (schedule_iteration_space[2]-1):
+        #         schedule_param[-1]["pad_back"] = base_param["pad_back"]
 
         # append scheduled parameters to schedule
-        schedule.extend(schedule_param)
+        schedule.append(schedule_param)
+        # schedule.extend(schedule_param)
 
     # return the schedule
     return schedule, iteration_space
@@ -233,7 +234,8 @@ def get_inner_product_schedule(self, hw_node, exec_node):
         new_param["coarse_out"] = coarse_out_max if index[1] else coarse_out_edge
         new_param["filters"] = new_param["channels_out"]
         # append to the schedule
-        schedule.extend([new_param.copy()]*param_repetition)
+        # schedule.extend([new_param.copy()]*param_repetition)
+        schedule.append((new_param.copy(), param_repetition))
 
     # return the schedule
     return schedule, iteration_space
@@ -335,25 +337,27 @@ def get_pooling_schedule(self, hw_node, exec_node):
                 new_param["depth_in"] += base_param["kernel_depth"] - 1
 
         # append to the schedule
-        schedule_param = [new_param.copy()]*param_repetition
+        # schedule_param = [new_param.copy()]*param_repetition
+        schedule_param = (new_param.copy(), param_repetition)
 
-        # only add padding parameters at the edge
-        if index[0] == 0:
-            schedule_param[0]["pad_top"] = base_param["pad_top"]
-        if index[0] == (schedule_iteration_space[0]-1):
-            schedule_param[-1]["pad_bottom"] = base_param["pad_bottom"]
-        if index[1] == 0:
-            schedule_param[0]["pad_left"] = base_param["pad_left"]
-        if index[1] == (schedule_iteration_space[1]-1):
-            schedule_param[-1]["pad_right"] = base_param["pad_right"]
-        if self.dimensionality == 3:
-            if index[2] == 0:
-                schedule_param[0]["pad_front"] = base_param["pad_front"]
-            if index[2] == (schedule_iteration_space[2]-1):
-                schedule_param[-1]["pad_back"] = base_param["pad_back"]
+        # # only add padding parameters at the edge
+        # if index[0] == 0:
+        #     schedule_param[0]["pad_top"] = base_param["pad_top"]
+        # if index[0] == (schedule_iteration_space[0]-1):
+        #     schedule_param[-1]["pad_bottom"] = base_param["pad_bottom"]
+        # if index[1] == 0:
+        #     schedule_param[0]["pad_left"] = base_param["pad_left"]
+        # if index[1] == (schedule_iteration_space[1]-1):
+        #     schedule_param[-1]["pad_right"] = base_param["pad_right"]
+        # if self.dimensionality == 3:
+        #     if index[2] == 0:
+        #         schedule_param[0]["pad_front"] = base_param["pad_front"]
+        #     if index[2] == (schedule_iteration_space[2]-1):
+        #         schedule_param[-1]["pad_back"] = base_param["pad_back"]
 
         # append scheduled parameters to schedule
-        schedule.extend(schedule_param)
+        # schedule.extend(schedule_param)
+        schedule.append(schedule_param)
 
     # return the schedule
     return schedule, iteration_space
@@ -454,10 +458,12 @@ def get_basic_schedule(self, hw_node, exec_node):
         new_param["coarse"] = coarse_max if index[-1] else coarse_edge
 
         # append to the schedule
-        schedule_param = [new_param.copy()]*param_repetition
+        # schedule_param = [new_param.copy()]*param_repetition
+        schedule_param = (new_param.copy(), param_repetition)
 
         # append scheduled parameters to schedule
-        schedule.extend(schedule_param)
+        # schedule.extend(schedule_param)
+        schedule.append(schedule_param)
 
     # return the schedule
     return schedule, iteration_space
@@ -505,11 +511,11 @@ def get_schedule(self):
 
         # change rows_in, cols_in, depth_in, etc... to rows, cols, depth, ...
         for i in range(len(schedule[exec_node])):
-            schedule[exec_node][i]["rows"] = schedule[exec_node][i]["rows_in"]
-            schedule[exec_node][i]["cols"] = schedule[exec_node][i]["cols_in"]
-            schedule[exec_node][i]["channels"] = schedule[exec_node][i]["channels_in"]
-            if "depth_in" in schedule[exec_node][i]:
-                schedule[exec_node][i]["depth"] = schedule[exec_node][i]["depth_in"]
+            schedule[exec_node][i][0]["rows"] = schedule[exec_node][i][0]["rows_in"]
+            schedule[exec_node][i][0]["cols"] = schedule[exec_node][i][0]["cols_in"]
+            schedule[exec_node][i][0]["channels"] = schedule[exec_node][i][0]["channels_in"]
+            if "depth_in" in schedule[exec_node][i][0]:
+                schedule[exec_node][i][0]["depth"] = schedule[exec_node][i][0]["depth_in"]
 
     # return the schedule
     return schedule, iteration_space
