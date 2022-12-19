@@ -24,13 +24,13 @@ ALL_PLATFORMS=("vus440" "vc709" "zcu102" "zcu104")
 ALL_MODELS=("c3d" "r2plus1d_18" "r2plus1d_34" "slowonly" "x3d_m")
 
 DEFAULT_PLATFORMS=("vc709" "zcu102")
-DEFAULT_MODELS=("c3d" "r2plus1d_18" "r2plus1d_34" "slowonly")
+DEFAULT_MODELS=("c3d" "r2plus1d_18" "r2plus1d_34" "slowonly" "x3d_m")
 
 PLATFORMS="${platforms:-${DEFAULT_PLATFORMS[@]}}"
 MODELS="${models:-${DEFAULT_MODELS[@]}}"
 
 OPTIMIZER="simulated_annealing"
-NUM_RUNS="${runs:-4}"
+NUM_RUNS="${runs:-5}"
 
 for platform_name in ${PLATFORMS[@]}; do
     PLATFORM_PATH="examples/platforms/$platform_name.toml"
@@ -49,7 +49,7 @@ for platform_name in ${PLATFORMS[@]}; do
                 -o $OUTPUT_PATH \
                 --optimiser $OPTIMIZER \
                 --optimiser_config_path examples/latency_optimiser_example.toml \
-                # --enable-wandb \
+                --enable-wandb
         done
     done
 done
