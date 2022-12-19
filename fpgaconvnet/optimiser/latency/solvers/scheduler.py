@@ -20,10 +20,11 @@ def get_convolution_schedule(self, hw_node, exec_node):
     fine = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].fine and \
             f in self.building_blocks[hw_node]["hw"].get_fine_feasible(),
             self.net.graph.nodes[exec_node]["hw"].get_fine_feasible()))
-    coarse_group = max(filter(lambda f: f <= \
-            self.building_blocks[hw_node]["hw"].coarse_group and \
-            f in self.building_blocks[hw_node]["hw"].get_coarse_group_feasible(),
-            self.net.graph.nodes[exec_node]["hw"].get_coarse_group_feasible()))
+    if not self.building_blocks[hw_node]["hw"].depthwise:
+        coarse_group = max(filter(lambda f: f <= \
+                self.building_blocks[hw_node]["hw"].coarse_group and \
+                f in self.building_blocks[hw_node]["hw"].get_coarse_group_feasible(),
+                self.net.graph.nodes[exec_node]["hw"].get_coarse_group_feasible()))
 
     # get the repetition of each dimension
     row_repetition = math.ceil(
@@ -49,6 +50,8 @@ def get_convolution_schedule(self, hw_node, exec_node):
     if self.dimensionality == 3:
         iteration_space = [ row_repetition, col_repetition,
                 depth_repetition, channel_repetition, filter_repetition ]
+    if self.building_blocks[hw_node]["hw"].depthwise:
+        iteration_space[-1] = 1
 
     # get the parameters to be updated for each execution
     new_param = copy.copy(base_param)
@@ -69,6 +72,9 @@ def get_convolution_schedule(self, hw_node, exec_node):
         f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_max)))
     coarse_out_max = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out and \
         f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), get_factors(channels_out_max)))
+    if self.building_blocks[hw_node]["hw"].depthwise:
+        coarse_group_max = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_group and \
+            f in self.building_blocks[hw_node]["hw"].get_coarse_group_feasible(), get_factors(channels_out_max)))
 
     # get the edge parameters
     rows_in_edge = base_param["rows_in"]-(row_repetition-1)*\
@@ -88,6 +94,9 @@ def get_convolution_schedule(self, hw_node, exec_node):
         f in self.building_blocks[hw_node]["hw"].get_coarse_in_feasible(), get_factors(channels_in_edge)))
     coarse_out_edge = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_out and \
         f in self.building_blocks[hw_node]["hw"].get_coarse_out_feasible(), get_factors(channels_out_edge)))
+    if self.building_blocks[hw_node]["hw"].depthwise:
+        coarse_group_edge = max(filter(lambda f: f <= self.building_blocks[hw_node]["hw"].coarse_group and \
+            f in self.building_blocks[hw_node]["hw"].get_coarse_group_feasible(), get_factors(channels_out_edge)))
 
     # get the schedule
     schedule_iteration_space = [ min(2,_) for _ in iteration_space ]
@@ -116,6 +125,7 @@ def get_convolution_schedule(self, hw_node, exec_node):
         new_param["coarse_out"] = coarse_out_max if index[-1] else coarse_out_edge
 
         if self.building_blocks[hw_node]["hw"].depthwise:
+            new_param["coarse_group"] = coarse_group_max if index[-2] else coarse_group_edge
             new_param["channels_out"] = new_param["channels_in"]
             new_param["filters"] = new_param["channels_out"]
             new_param["coarse_out"] = new_param["coarse_in"]
