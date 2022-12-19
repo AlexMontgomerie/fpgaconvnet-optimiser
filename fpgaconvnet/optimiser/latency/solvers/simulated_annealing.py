@@ -165,9 +165,11 @@ class LatencySimulatedAnnealing(LatencySolver):
             self.T *= self.cool
 
         if log:
+
             # get config and report
             config = self.config()
             report = self.report()
+            schedule = self.get_schedule()
 
             # get per layer table
             per_layer_table = {
@@ -195,11 +197,14 @@ class LatencySimulatedAnnealing(LatencySolver):
                 json.dump(config, f, indent=2)
             with open("tmp/report.json", "w") as f:
                 json.dump(report, f, indent=2)
+            with open("tmp/schedule.json", "w") as f:
+                json.dump(schedule, f, indent=2)
 
             # save them as artifacts
             artifact = wandb.Artifact('outputs', type='json')
-            artifact.add_file("tmp/config.json") # Adds multiple files to artifact
-            artifact.add_file("tmp/report.json") # Adds multiple files to artifact
+            artifact.add_file("tmp/config.json")
+            artifact.add_file("tmp/report.json")
+            artifact.add_file("tmp/schedule.json")
             wandb.log_artifact(artifact)
             # self.wandb_checkpoint()
 
