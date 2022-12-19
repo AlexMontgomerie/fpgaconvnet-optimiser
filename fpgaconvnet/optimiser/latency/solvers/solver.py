@@ -244,7 +244,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             latency = 0
 
             # remove data types from parameters (HACK)
-            for param in schedule[exec_node]:
+            for param, _ in schedule[exec_node]:
                 param.pop("data_t", None)
                 param.pop("input_t", None)
                 param.pop("output_t", None)
@@ -256,24 +256,27 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 param.pop("mem_bw_in_array", None)
                 param.pop("mem_bw_out_array", None)
 
-            # turn the parameters into something hashable
-            param_type = namedtuple('param', schedule[exec_node][0])
-            param_tuple = [ param_type(**param) for param in schedule[exec_node] ]
+            # # turn the parameters into something hashable
+            # param_type = namedtuple('param', schedule[exec_node][0])
+            # param_tuple = [ param_type(**param) for param in schedule[exec_node] ]
 
-            # get a reduced count of the parameters
-            param_cntr = Counter(param_tuple)
+            # # get a reduced count of the parameters
+            # param_cntr = Counter(param_tuple)
 
             # get the latency for each repeated parameter execution
-            for param, repetition in param_cntr.items():
+            # for param, repetition in param_cntr.items():
+            for param, repetition in schedule[exec_node]:
                 latency += repetition*get_runtime_latency(
                     self.building_blocks[hw_node]["type"],
                     self.building_blocks[hw_node]["hw"],
-                    param._asdict(), self.dimensionality)
+                    # param._asdict(), self.dimensionality)
+                    param, self.dimensionality)
 
             # # add extra penalty for reconfiguration # TODO: need to tune with real data
             # latency += 1000 * len(schedule[exec_node])
         else:
-            latency = len(schedule[exec_node]) * \
+            # latency = len(schedule[exec_node]) * \
+            latency = sum([rep for _, rep in schedule[exec_node]]) * \
                 self.building_blocks[hw_node]["hw"].latency()
 
         # return the latency (in clock cycles)
