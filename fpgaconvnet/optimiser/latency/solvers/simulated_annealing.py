@@ -24,7 +24,7 @@ class LatencySimulatedAnnealing(LatencySolver):
     cool: float = 0.98
     transform_iterations: int = 20
     warm_start: bool = True
-    warm_start_time_limit: int = 60
+    warm_start_time_limit: int = 90
     """
     Randomly chooses a transform and hardware component to change.
     The change is accepted based on a probability-based decision function
