@@ -28,6 +28,11 @@ def get_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previou
     max_output_shape = self.get_max_output_shape(hw_node)
 
     if use_previous_shape:
+        # constraint shapes to be less than max
+        prev_input_shape = [ min(prev_input_shape[i], max_input_shape[i]) for \
+                i in range(len(prev_input_shape)) ]
+        prev_output_shape = [ min(prev_output_shape[i], max_output_shape[i]) for \
+                i in range(len(prev_output_shape)) ]
         # get a random shape based on the previous (within a range)
         next_input_shape = [ random.randint(
                 max(1, prev_input_shape[i]-rand_shape_range[i]),
@@ -49,7 +54,7 @@ def get_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previou
     # return next shapes
     return next_input_shape, next_output_shape
 
-def get_mixed_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previous_shape = False):
+def get_mixed_shape(self, hw_node, rand_shape_range = [5, 5, 5, 5], use_previous_shape = True):
 
     # get both random and inherited shapes
     random_input_shape, random_output_shape = self.get_random_shape(hw_node, rand_shape_range, use_previous_shape)

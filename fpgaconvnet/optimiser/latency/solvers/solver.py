@@ -367,9 +367,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 seperate_nodes = self.seperate(hw_node, num_nodes=self.seperate_nodes)
                 for hw_node in seperate_nodes:
                     # update the shape
-                    hw_input_shape = self.building_blocks[hw_node]["hw"].shape_in()
-                    hw_output_shape = self.building_blocks[hw_node]["hw"].shape_out()
-                    self.update_building_block_shape(hw_node, hw_input_shape, hw_output_shape)
+                    shape_in, shape_out = self.get_inherited_shape(hw_node)
+                    self.update_building_block_shape(hw_node, shape_in, shape_out)
+                    # apply a random of coarse
+                    self.apply_random_coarse_node(hw_node)
                 # apply_weight_storage
                 self.apply_weight_storage()
             case "shape":
