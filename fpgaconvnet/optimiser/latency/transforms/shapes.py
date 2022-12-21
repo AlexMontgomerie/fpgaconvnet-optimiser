@@ -4,7 +4,17 @@ import numpy as np
 
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
-def apply_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previous_shape = False):
+def get_max_input_shape(self, hw_node):
+    return [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
+            for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
+            i in range(self.dimensionality+1) ]
+
+def get_max_output_shape(self, hw_node):
+    return [ max([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
+            for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
+            i in range(self.dimensionality+1) ]
+
+def get_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previous_shape = False):
     """
     get a random shape for executing the featuremap.
     """
@@ -14,12 +24,8 @@ def apply_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previ
     prev_output_shape = self.building_blocks[hw_node]["hw"].shape_out()
 
     # get the max shape for the input and output
-    max_input_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(len(prev_input_shape)) ]
-    max_output_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(len(prev_output_shape)) ]
+    max_input_shape = self.get_max_input_shape(hw_node)
+    max_output_shape = self.get_max_output_shape(hw_node)
 
     if use_previous_shape:
         # get a random shape based on the previous (within a range)
@@ -40,12 +46,23 @@ def apply_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previ
     next_input_shape[-1] = max(self.min_channels_in, next_input_shape[-1])
     next_output_shape[-1] = max(self.min_channels_out, next_output_shape[-1])
 
-    # update the next shape for specific hardware types
-    self.update_building_block_shape(hw_node,
-            next_input_shape, max_input_shape,
-            next_output_shape, max_output_shape)
+    # return next shapes
+    return next_input_shape, next_output_shape
 
-def apply_inherited_shape(self, hw_node):
+def get_mixed_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previous_shape = False):
+
+    # get both random and inherited shapes
+    random_input_shape, random_output_shape = self.get_random_shape(hw_node, rand_shape_range, use_previous_shape)
+    inherit_input_shape, inherit_output_shape = self.get_random_shape(hw_node)
+
+    # make the spatial shapes random, and the channels inherited
+    next_input_shape = [ *random_input_shape[:-1], inherit_input_shape[-1] ]
+    next_output_shape = [ *random_output_shape[:-1], inherit_output_shape[-1] ]
+
+    # return next shapes
+    return next_input_shape, next_output_shape
+
+def get_inherited_shape(self, hw_node):
     """
     get a shape from the execution nodes, as well as factors of those shapes.
     """
@@ -54,12 +71,8 @@ def apply_inherited_shape(self, hw_node):
     size = self.dimensionality+1
 
     # get the max shape for the input and output
-    max_input_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
-    max_output_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
+    max_input_shape = self.get_max_input_shape(hw_node)
+    max_output_shape = self.get_max_output_shape(hw_node)
 
     # helper function to get factors of a number
     def get_factors(num):
@@ -123,26 +136,16 @@ def apply_inherited_shape(self, hw_node):
     next_input_shape[-1] = max(self.min_channels_in, next_input_shape[-1])
     next_output_shape[-1] = max(self.min_channels_out, next_output_shape[-1])
 
-    # update the next shape for specific hardware types
-    self.update_building_block_shape(hw_node,
-            next_input_shape, max_input_shape,
-            next_output_shape, max_output_shape)
+    # return next shapes
+    return next_input_shape, next_output_shape
 
-def apply_min_shape(self, hw_node):
+def get_min_shape(self, hw_node):
     """
     get the min shape for executing the featuremap.
     """
 
     # get dimensions of shape in and out
     size = self.dimensionality + 1
-
-    # get the max shape for the input and output
-    max_input_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
-    max_output_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
 
     # set the min shape for both input and output to be 1 for all dimensions
     min_input_shape = [ 1 for _ in range(size) ]
@@ -152,12 +155,10 @@ def apply_min_shape(self, hw_node):
     min_input_shape[-1] = max(self.min_channels_in, min_input_shape[-1])
     min_output_shape[-1] = max(self.min_channels_out, min_output_shape[-1])
 
-    # update the next shape for specific hardware types
-    self.update_building_block_shape(hw_node,
-            min_input_shape, max_input_shape,
-            min_output_shape, max_output_shape)
+    # return next shapes
+    return min_input_shape, min_output_shape
 
-def apply_max_shape(self, hw_node):
+def get_max_shape(self, hw_node):
     """
     get the max shape for executing the featuremap.
     """
@@ -166,33 +167,19 @@ def apply_max_shape(self, hw_node):
     size = self.dimensionality + 1
 
     # get the max shape for the input and output
-    max_input_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
-    max_output_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
+    max_input_shape = self.get_max_input_shape(hw_node)
+    max_output_shape = self.get_max_output_shape(hw_node)
 
-    # update the next shape for specific hardware types
-    self.update_building_block_shape(hw_node,
-            max_input_shape, max_input_shape,
-            max_output_shape, max_output_shape)
+    # return next shapes
+    return max_input_shape, max_output_shape
 
-def apply_median_shape(self, hw_node):
+def get_median_shape(self, hw_node):
     """
     get the max shape for executing the featuremap.
     """
 
     # get dimensions of shape in and out
     size = self.dimensionality + 1
-
-    # get the max shape for the input and output
-    max_input_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
-    max_output_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
 
     # get all input and output shapes
     all_input_shapes = [ [self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
@@ -206,12 +193,10 @@ def apply_median_shape(self, hw_node):
     next_output_shape = [ statistics.median(all_output_shapes[i]) for i in range(size) ]
     next_output_shape[1] = next_output_shape[0]
 
-    # update the next shape for specific hardware types
-    self.update_building_block_shape(hw_node,
-            next_input_shape, max_input_shape,
-            next_output_shape, max_output_shape)
+    # return next shapes
+    return next_input_shape, next_output_shape
 
-def apply_percentage_shape(self, hw_node, percentage=10):
+def get_percentage_shape(self, hw_node, percentage=10):
     """
     get the max shape for executing the featuremap.
     """
@@ -220,12 +205,8 @@ def apply_percentage_shape(self, hw_node, percentage=10):
     size = self.dimensionality + 1
 
     # get the max shape for the input and output
-    max_input_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
-    max_output_shape = [ max([ self.net.graph.nodes[exec_node]["hw"].shape_out()[i] \
-                for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
-                i in range(size) ]
+    max_input_shape = self.get_max_input_shape(hw_node)
+    max_output_shape = self.get_max_output_shape(hw_node)
 
     # get the median shape for each dimension
     next_input_shape = [ max(1, int(max_input_shape[i]*(percentage/100))) for i in range(size) ]
@@ -237,14 +218,14 @@ def apply_percentage_shape(self, hw_node, percentage=10):
     next_input_shape[-1] = max(self.min_channels_in, next_input_shape[-1])
     next_output_shape[-1] = max(self.min_channels_out, next_output_shape[-1])
 
-    # update the next shape for specific hardware types
-    self.update_building_block_shape(hw_node,
-            next_input_shape, max_input_shape,
-            next_output_shape, max_output_shape)
+    # return next shapes
+    return next_input_shape, next_output_shape
 
+def update_building_block_shape(self, hw_node, next_input_shape, next_output_shape):
 
-def update_building_block_shape(self, hw_node, next_input_shape,
-        max_input_shape, next_output_shape, max_output_shape):
+    # get the max shape for the input and output
+    max_input_shape = self.get_max_input_shape(hw_node)
+    max_output_shape = self.get_max_output_shape(hw_node)
 
     # update the next shape for specific hardware types
     match self.building_blocks[hw_node]["type"]:
@@ -259,10 +240,10 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+5, next_input_shape[0])
-            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+5, next_input_shape[1])
+            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+2, next_input_shape[0])
+            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+2, next_input_shape[1])
             if self.dimensionality == 3:
-                self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+5, next_input_shape[2])
+                self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+2, next_input_shape[2])
             # channel and filter dimensions
             self.building_blocks[hw_node]["hw"].channels = \
                     next_input_shape[-1] if self.channel_tiling else max_input_shape[-1]
@@ -294,10 +275,10 @@ def update_building_block_shape(self, hw_node, next_input_shape,
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_cols+5, next_input_shape[0])
-            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+5, next_input_shape[1])
+            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_cols+2, next_input_shape[0])
+            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+2, next_input_shape[1])
             if self.dimensionality == 3:
-                self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+5, next_input_shape[2])
+                self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+2, next_input_shape[2])
             # update the channel dimension
             self.building_blocks[hw_node]["hw"].channels = next_output_shape[-1]
         # TODO: handle the other layer types

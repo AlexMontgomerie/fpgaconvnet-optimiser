@@ -168,15 +168,19 @@ def optimize():
         for hw_node in opt.building_blocks:
             match optimiser_config["transforms"]["shape"]["starting_shape"]:
                 case "min":
-                    opt.apply_min_shape(hw_node)
+                    shape_in, shape_out = opt.get_min_shape(hw_node)
+                    opt.update_building_block_shape(hw_node, shape_in, shape_out)
                 case "max":
-                    opt.apply_max_shape(hw_node)
+                    shape_in, shape_out = opt.get_max_shape(hw_node)
+                    opt.update_building_block_shape(hw_node, shape_in, shape_out)
                 case "median":
-                    opt.apply_median_shape(hw_node)
+                    shape_in, shape_out = opt.get_median_shape(hw_node)
+                    opt.update_building_block_shape(hw_node, shape_in, shape_out)
                 case "percentage":
-                    opt.apply_percentage_shape(hw_node,
+                    shape_in, shape_out = opt.get_percentage_shape(hw_node,
                             percentage=optimiser_config["transforms"]["shape"].get(
                                 "starting_shape_percentage",10))
+                    opt.update_building_block_shape(hw_node, shape_in, shape_out)
                 case "":
                     pass
                 case _:

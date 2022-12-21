@@ -69,12 +69,15 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         self.min_channels_out = self.net.partitions[0].port_width//16
 
     # import shape generation transform functions
-    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_random_shape
-    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_inherited_shape
-    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_min_shape
-    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_max_shape
-    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_median_shape
-    from fpgaconvnet.optimiser.latency.transforms.shapes import apply_percentage_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_random_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_mixed_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_inherited_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_min_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_max_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_median_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_percentage_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_max_input_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import get_max_output_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import update_building_block_shape
 
     # import combine transform functions
@@ -101,6 +104,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_pooling_schedule
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_basic_schedule
     from fpgaconvnet.optimiser.latency.solvers.scheduler import get_schedule
+    from fpgaconvnet.optimiser.latency.solvers.scheduler import validate_schedule
 
     def apply_weight_storage(self):
         # iterate over building blocks
@@ -348,6 +352,11 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     self.fix_coarse_node(hw_node)
                 # apply_weight_storage
                 self.apply_weight_storage()
+                # update the shape
+                if hw_node != None:
+                    hw_input_shape = self.building_blocks[hw_node]["hw"].shape_in()
+                    hw_output_shape = self.building_blocks[hw_node]["hw"].shape_out()
+                    self.update_building_block_shape(hw_node, hw_input_shape, hw_output_shape)
             case "seperate":
                 # get the hardware type of exec node
                 layer_type = self.net.graph.nodes[exec_node]["type"]
@@ -355,14 +364,24 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                     if layer_type not in self.allowed_seperate_types:
                         return
                 # apply seperate transform
-                self.seperate(hw_node, num_nodes=self.seperate_nodes)
+                seperate_nodes = self.seperate(hw_node, num_nodes=self.seperate_nodes)
+                for hw_node in seperate_nodes:
+                    # update the shape
+                    hw_input_shape = self.building_blocks[hw_node]["hw"].shape_in()
+                    hw_output_shape = self.building_blocks[hw_node]["hw"].shape_out()
+                    self.update_building_block_shape(hw_node, hw_input_shape, hw_output_shape)
                 # apply_weight_storage
                 self.apply_weight_storage()
             case "shape":
                 if self.shape_method == "random":
-                    self.apply_random_shape(hw_node)
+                    shape_in, shape_out = self.get_random_shape(hw_node)
+                    self.update_building_block_shape(hw_node, shape_in, shape_out)
+                elif self.shape_method == "mixed":
+                    shape_in, shape_out = self.get_mixed_shape(hw_node)
+                    self.update_building_block_shape(hw_node, shape_in, shape_out)
                 elif self.shape_method == "inherit":
-                    self.apply_inherited_shape(hw_node)
+                    shape_in, shape_out = self.get_inherited_shape(hw_node)
+                    self.update_building_block_shape(hw_node, shape_in, shape_out)
                 else:
                     raise NotImplementedError
                 self.fix_coarse_node(hw_node)
