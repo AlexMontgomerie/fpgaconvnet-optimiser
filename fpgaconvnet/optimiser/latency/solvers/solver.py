@@ -79,6 +79,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     from fpgaconvnet.optimiser.latency.transforms.shapes import get_max_input_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import get_max_output_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import update_building_block_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import validate_in_out_shapes
 
     # import combine transform functions
     from fpgaconvnet.optimiser.latency.transforms.combine import get_max_attr_of_hw_nodes
