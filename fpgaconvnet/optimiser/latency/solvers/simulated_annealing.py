@@ -33,17 +33,18 @@ class LatencySimulatedAnnealing(LatencySolver):
     def warm_start_solution(self):
         start_time = time.time()
         while not self.check_resources() and time.time() - start_time < self.warm_start_time_limit:
-            # Choose a random transform
-            transform = random.choice(list(self.transforms.keys()))
+            for _ in range(self.transform_iterations):
+                # Choose a random transform
+                transform = random.choice(list(self.transforms.keys()))
 
-            # Choose a random building block
-            hw_node = random.choice(list(self.building_blocks.keys()))
+                # Choose a random building block
+                hw_node = random.choice(list(self.building_blocks.keys()))
 
-            # Choose a random execution node
-            exec_node = random.choice(list(self.net.graph.nodes()))
+                # Choose a random execution node
+                exec_node = random.choice(list(self.net.graph.nodes()))
 
-            # Apply the transform
-            self.apply_transform(transform, hw_node, exec_node)
+                # Apply the transform
+                self.apply_transform(transform, hw_node, exec_node)
 
         if time.time() - start_time >= self.warm_start_time_limit:
             raise Exception("Warm start failed to find a solution within the time limit")
