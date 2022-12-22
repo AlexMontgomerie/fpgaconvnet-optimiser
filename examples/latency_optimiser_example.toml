@@ -59,4 +59,4 @@ k = 10.0
 cool = 0.98
 transform_iterations = 20
 warm_start = true
-warm_start_time_limit = 60
+warm_start_time_limit = 90
