@@ -39,7 +39,7 @@ def get_max_output_shape(self, hw_node):
             for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
             i in range(self.dimensionality+1) ]
 
-def get_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previous_shape = False):
+def get_random_shape(self, hw_node, rand_shape_range = [5, 5, 5, 5], use_previous_shape = True):
     """
     get a random shape for executing the featuremap.
     """
@@ -125,7 +125,7 @@ def get_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previou
     # make sure the row and column dimensions are equal for the input and output shapes
     next_input_shape[1] = next_input_shape[0]
     next_output_shape[1] = next_output_shape[0]
-    
+
     # validate the produced shapes based on the layer type
     self.validate_in_out_shapes(hw_node, next_input_shape, next_output_shape)
 
@@ -349,7 +349,7 @@ def update_building_block_shape(self, hw_node, next_input_shape, next_output_sha
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+2, next_input_shape[0])
+            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+2, max_input_shape[0])
             self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+2, next_input_shape[1])
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+2, next_input_shape[2])
@@ -384,7 +384,7 @@ def update_building_block_shape(self, hw_node, next_input_shape, next_output_sha
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_cols+2, next_input_shape[0])
+            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_cols+2, max_input_shape[0])
             self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+2, next_input_shape[1])
             if self.dimensionality == 3:
                 self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+2, next_input_shape[2])

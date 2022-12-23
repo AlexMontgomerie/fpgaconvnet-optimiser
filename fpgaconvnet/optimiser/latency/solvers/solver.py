@@ -363,20 +363,24 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                         return
                 # apply seperate transform
                 seperate_nodes = self.seperate(hw_node, num_nodes=self.seperate_nodes)
-                # for hw_node in seperate_nodes:
-                    # # update the shape
-                    # shape_in, shape_out = self.get_inherited_shape(hw_node)
-                    # self.update_building_block_shape(hw_node, shape_in, shape_out)
-                    # # apply a random of coarse
-                    # self.apply_random_coarse_node(hw_node)
+                for hw_node in seperate_nodes:
+                    # update the shape
+                    shape_in, shape_out = self.get_inherited_shape(hw_node)
+                    self.update_building_block_shape(hw_node, shape_in, shape_out)
+                    # apply a random of coarse
+                    self.apply_random_coarse_node(hw_node)
                 # apply_weight_storage
                 self.apply_weight_storage()
             case "shape":
                 if self.shape_method == "random":
-                    shape_in, shape_out = self.get_random_shape(hw_node)
+                    shape_in, shape_out = self.get_random_shape(hw_node,
+                            use_previous_shape=self.use_previous_shape,
+                            rand_shape_range=self.rand_shape_range)
                     self.update_building_block_shape(hw_node, shape_in, shape_out)
                 elif self.shape_method == "mixed":
-                    shape_in, shape_out = self.get_mixed_shape(hw_node)
+                    shape_in, shape_out = self.get_mixed_shape(hw_node,
+                            use_previous_shape=self.use_previous_shape,
+                            rand_shape_range=self.rand_shape_range)
                     self.update_building_block_shape(hw_node, shape_in, shape_out)
                 elif self.shape_method == "inherit":
                     shape_in, shape_out = self.get_inherited_shape(hw_node)

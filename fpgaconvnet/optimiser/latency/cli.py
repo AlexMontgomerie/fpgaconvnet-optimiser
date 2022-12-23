@@ -151,6 +151,11 @@ def optimize():
 
     if "shape" in optimiser_config["transforms"]:
         opt.shape_method = optimiser_config["transforms"]["shape"]["method"]
+        if opt.shape_method in [ "random", "mixed" ]:
+            opt.use_previous_shape = optimiser_config["transforms"]["shape"].get(
+                    "use_previous_shape", True)
+            opt.rand_shape_range = optimiser_config["transforms"]["shape"].get(
+                    "rand_shape_range", [5, 5, 5, 5])
 
     # combine all execution nodes
     if optimiser_config["transforms"]["combine"]["start_combine_all"]:
