@@ -6,6 +6,7 @@ weight_storage = "double_buffer" # [ double_buffer, stream, share ]
 resource_model = "xgboost" # [ linear_regression, xgboost ]
 channel_tiling = true # whether or not to allow for channel tiling
 filter_tiling = true # whether or not to allow for filter tiling
+optimization_passes = [ "fuse_relu_into_previous" ]
 
 [transforms.fine]
 apply_transform = true
@@ -19,9 +20,9 @@ probability = 0.35
 [transforms.shape]
 apply_transform = true
 probability = 0.35
-method = "inherit" # [ random, inherit ]
+method = "random" # [ random, inherit, mixed ]
 starting_shape = "percentage" # shape to start with (if empty, then does nothing) [ min, max, median, percentage ]
-starting_shape_percentage = 20
+starting_shape_percentage = 30
 
 [transforms.combine]
 apply_transform = true

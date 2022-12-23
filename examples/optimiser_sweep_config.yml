@@ -22,6 +22,8 @@ parameters:
         value: True
       filter_tiling:
         value: True
+      optimization_passes:
+        value: [ "fuse_relu_into_previous" ] # [ [ "fuse_relu_into_previous" ], [] ]
   annealing:
     parameters:
       T:
@@ -59,11 +61,11 @@ parameters:
           probability:
             value: 0.35
           method:
-            value: inherit # [ 'inherit', 'random' ]
+            value: inherit # [ 'inherit', 'random', 'mixed' ]
           starting_shape:
-            value: '' # [ '', 'min', 'max', 'median', 'percentage' ]
+            value: percentage # [ '', 'min', 'max', 'median', 'percentage' ]
           starting_shape_percentage:
-            value: 30
+            value: 20
       combine:
         parameters:
           apply_transform:
@@ -71,7 +73,7 @@ parameters:
           probability:
             value: 0.10
           num_nodes:
-            values: [ 2, 5 ]
+            value: 2 # [ 2, 5 ]
           start_combine_all:
             value: True
           discriminate:
@@ -84,7 +86,7 @@ parameters:
           probability:
             value: 0.10
           num_nodes:
-            values: [ 2, 5 ]
+            value: 2 # [ 2, 5 ]
           allowed_types:
             value: [ 'Conv',
                      'Gemm',

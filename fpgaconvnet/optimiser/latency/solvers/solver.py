@@ -79,6 +79,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
     from fpgaconvnet.optimiser.latency.transforms.shapes import get_max_input_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import get_max_output_shape
     from fpgaconvnet.optimiser.latency.transforms.shapes import update_building_block_shape
+    from fpgaconvnet.optimiser.latency.transforms.shapes import validate_in_out_shapes
 
     # import combine transform functions
     from fpgaconvnet.optimiser.latency.transforms.combine import get_max_attr_of_hw_nodes
@@ -166,15 +167,12 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         """
         returns the sum of the resources of all nodes in the building_blocks
         """
+        node_rscs = [ node["hw"].resource() for _, node in self.building_blocks.items() ]
         return {
-            "LUT": sum([ math.ceil(node["hw"].resource()["LUT"]) \
-                    for _, node in self.building_blocks.items() ]),
-            "FF": sum([ math.ceil(node["hw"].resource()["FF"]) \
-                    for _, node in self.building_blocks.items() ]),
-            "DSP": sum([ math.ceil(node["hw"].resource()["DSP"]) \
-                    for _, node in self.building_blocks.items() ]),
-            "BRAM": sum([ math.ceil(node["hw"].resource()["BRAM"]) \
-                    for _, node in self.building_blocks.items() ]),
+            "LUT" : sum([ math.ceil(rsc["LUT"]) for rsc in node_rscs ]),
+            "FF"  : sum([ math.ceil(rsc["FF"]) for rsc in node_rscs ]),
+            "DSP" : sum([ math.ceil(rsc["DSP"]) for rsc in node_rscs ]),
+            "BRAM": sum([ math.ceil(rsc["BRAM"]) for rsc in node_rscs ]),
             "MEM_BW": np.mean([ node["hw"].memory_bandwidth()['in']*self.net.platform.board_freq*16*1e-3 + \
                     node["hw"].memory_bandwidth()['out']*self.net.platform.board_freq*16*1e-3 \
                     for _, node in self.building_blocks.items() ])

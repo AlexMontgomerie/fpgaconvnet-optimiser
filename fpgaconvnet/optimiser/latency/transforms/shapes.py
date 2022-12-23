@@ -4,6 +4,31 @@ import numpy as np
 
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
+def validate_in_out_shapes(self, hw_node, shape_in, shape_out):
+    assert shape_in[0] == shape_in[1], "Row and column dimensions must be equal for input"
+    assert shape_out[0] == shape_out[1], "Row and column dimensions must be equal for output"
+    match self.building_blocks[hw_node]['type']:
+        case LAYER_TYPE.Convolution:
+            # we assume that the output shape of a convolution will always reduce the spatio-temporal dimensions and increase the channel dimension
+            assert shape_in[0] >= shape_out[0], f"(CONV) Input row dimension must be greater than or equal to output row dimension in:{shape_in} out:{shape_out}"
+            # assert shape_in[-1] <= shape_out[-1], f"(CONV) Input channel dimension must be less than or equal to output channel dimension in:{shape_in} out:{shape_out}"
+        case LAYER_TYPE.Pooling:
+            assert shape_in[0] >= shape_out[0], f"(POOL) Input row dimension must be greater than or equal to output row dimension in:{shape_in} out:{shape_out}"
+            assert shape_in[-1] == shape_out[-1], f"(POOL) Input and output channel dimensions must be equal in:{shape_in} out:{shape_out}"
+        case LAYER_TYPE.InnerProduct:
+            # do nothing
+            pass
+        case LAYER_TYPE.GlobalPooling:
+            if self.dimensionality == 2:
+                assert shape_out[0] == 1 and shape_out[1] == 1, f"(GLOBALPOOL) Output shape must be 1x1x1 in:{shape_in} out:{shape_out}"
+            else:
+                assert shape_out[0] == 1 and shape_out[1] == 1 and shape_out[2] == 1, "(GLOBALPOOL) Output shape must be 1x1x1 in:{shape_in} out:{shape_out}"
+            assert shape_in[-1] == shape_out[-1], f"(GLOBALPOOL) Input and output channel dimensions must be equal in:{shape_in} out:{shape_out}"
+        case LAYER_TYPE.EltWise | LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
+            assert shape_in == shape_out, f"(ELTWISE) Input and output shapes must be equal in:{shape_in} out:{shape_out}"
+        case _:
+            raise Exception(f"Unknown layer type {self.building_blocks[hw_node]['type']}")
+
 def get_max_input_shape(self, hw_node):
     return [ max([ self.net.graph.nodes[exec_node]["hw"].shape_in()[i] \
             for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
@@ -42,14 +67,67 @@ def get_random_shape(self, hw_node, rand_shape_range = [10, 10, 10], use_previou
                 max(1, prev_output_shape[i]-rand_shape_range[i]),
                 min(prev_output_shape[i]+rand_shape_range[i], max_output_shape[i])) for \
                         i in range(len(prev_output_shape)) ]
+        match self.building_blocks[hw_node]['type']:
+            case LAYER_TYPE.Convolution:
+                # we assume that the output shape of a convolution will always reduce the spatio-temporal dimensions and increase the channel dimension
+                next_output_shape[:-1] = [ random.randint(
+                    max(1, prev_output_shape[i]-rand_shape_range[i]),
+                    min(prev_output_shape[i]+rand_shape_range[i], next_input_shape[i])) for \
+                            i in range(len(prev_output_shape)-1) ]
+                if self.building_blocks[hw_node]['hw'].depthwise:
+                    next_output_shape[-1] = next_input_shape[-1]
+                    max_output_shape[-1] = max_input_shape[-1]
+            case LAYER_TYPE.Pooling:
+                next_output_shape[:-1] = [ random.randint(
+                    max(1, prev_output_shape[i]-rand_shape_range[i]),
+                    min(prev_output_shape[i]+rand_shape_range[i], next_input_shape[i])) for \
+                            i in range(len(prev_output_shape)-1) ]
+                next_output_shape[-1] = next_input_shape[-1]
+            case LAYER_TYPE.InnerProduct:
+                # do nothing
+                pass
+            case LAYER_TYPE.GlobalPooling:
+                next_output_shape[0], next_output_shape[1], next_output_shape[2] = 1, 1, 1
+                next_output_shape[-1] = next_input_shape[-1]
+            case LAYER_TYPE.EltWise | LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
+                next_output_shape = next_input_shape
+            case _:
+                raise Exception(f"Unknown layer type {self.building_blocks[hw_node]['type']}")
     else:
         # get a random shape
         next_input_shape = [ random.randint(1, max_dim) for max_dim in max_input_shape ]
         next_output_shape = [ random.randint(1, max_dim) for max_dim in max_output_shape ]
+        match self.building_blocks[hw_node]['type']:
+            case LAYER_TYPE.Convolution:
+                # we assume that the output shape of a convolution will always reduce the spatio-temporal dimensions and increase the channel dimension
+                next_output_shape[:-1] = [ random.randint(1, max_dim) for max_dim in next_input_shape[:-1] ]
+                if self.building_blocks[hw_node]['hw'].depthwise:
+                    next_output_shape[-1] = next_input_shape[-1]
+                    max_output_shape[-1] = max_input_shape[-1]
+            case LAYER_TYPE.Pooling:
+                next_output_shape[:-1] = [ random.randint(1, max_dim) for max_dim in next_input_shape[:-1] ]
+                next_output_shape[-1] = next_input_shape[-1]
+            case LAYER_TYPE.InnerProduct:
+                # do nothing
+                pass
+            case LAYER_TYPE.GlobalPooling:
+                next_output_shape[0], next_output_shape[1], next_output_shape[2] = 1, 1, 1
+                next_output_shape[-1] = next_input_shape[-1]
+            case LAYER_TYPE.EltWise | LAYER_TYPE.ReLU | LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
+                next_output_shape = next_input_shape
+            case _:
+                raise Exception(f"Unknown layer type {self.building_blocks[hw_node]['type']}")
 
     # make sure the input and output channel dimension are greater than the minimum for the ports
     next_input_shape[-1] = max(self.min_channels_in, next_input_shape[-1])
     next_output_shape[-1] = max(self.min_channels_out, next_output_shape[-1])
+
+    # make sure the row and column dimensions are equal for the input and output shapes
+    next_input_shape[1] = next_input_shape[0]
+    next_output_shape[1] = next_output_shape[0]
+    
+    # validate the produced shapes based on the layer type
+    self.validate_in_out_shapes(hw_node, next_input_shape, next_output_shape)
 
     # return next shapes
     return next_input_shape, next_output_shape
@@ -58,11 +136,14 @@ def get_mixed_shape(self, hw_node, rand_shape_range = [5, 5, 5, 5], use_previous
 
     # get both random and inherited shapes
     random_input_shape, random_output_shape = self.get_random_shape(hw_node, rand_shape_range, use_previous_shape)
-    inherit_input_shape, inherit_output_shape = self.get_random_shape(hw_node)
+    inherit_input_shape, inherit_output_shape = self.get_inherited_shape(hw_node)
 
     # make the spatial shapes random, and the channels inherited
     next_input_shape = [ *random_input_shape[:-1], inherit_input_shape[-1] ]
     next_output_shape = [ *random_output_shape[:-1], inherit_output_shape[-1] ]
+
+    # validate the produced shapes based on the layer type
+    self.validate_in_out_shapes(hw_node, next_input_shape, next_output_shape)
 
     # return next shapes
     return next_input_shape, next_output_shape
@@ -109,22 +190,18 @@ def get_inherited_shape(self, hw_node):
 
     # choose a random shape from these shapes
     next_input_shape = [ random.choice(shape) for shape in all_input_shapes ]
-    next_input_shape[1] = next_input_shape[0]
     next_output_shape = [ random.choice(shape) for shape in all_output_shapes ]
-    next_output_shape[1] = next_output_shape[0]
 
     # Fix input and output shapes based on the layer type
     match self.building_blocks[hw_node]['type']:
         case LAYER_TYPE.Convolution:
             # we assume that the output shape of a convolution will always reduce the spatio-temporal dimensions and increase the channel dimension
             next_output_shape[:-1] = [random.choice(list(filter(lambda f: f <= next_input_shape[i], all_output_shapes[i]))) for i in range(size - 1)]
-            next_output_shape[1] = next_output_shape[0]
             if self.building_blocks[hw_node]['hw'].depthwise:
                 next_output_shape[-1] = next_input_shape[-1]
                 max_output_shape[-1] = max_input_shape[-1]
         case LAYER_TYPE.Pooling:
             next_output_shape[:-1] = [random.choice(list(filter(lambda f: f <= next_input_shape[i], all_output_shapes[i]))) for i in range(size - 1)]
-            next_output_shape[1] = next_output_shape[0]
             next_output_shape[-1] = next_input_shape[-1]
         case LAYER_TYPE.InnerProduct:
             # do nothing
@@ -140,6 +217,13 @@ def get_inherited_shape(self, hw_node):
     # make sure the input and output channel dimension are greater than the minimum for the ports
     next_input_shape[-1] = max(self.min_channels_in, next_input_shape[-1])
     next_output_shape[-1] = max(self.min_channels_out, next_output_shape[-1])
+
+    # make sure the row and column dimensions are equal for the input and output shapes
+    next_input_shape[1] = next_input_shape[0]
+    next_output_shape[1] = next_output_shape[0]
+
+    # validate the produced shapes based on the layer type
+    self.validate_in_out_shapes(hw_node, next_input_shape, next_output_shape)
 
     # return next shapes
     return next_input_shape, next_output_shape
@@ -160,6 +244,9 @@ def get_min_shape(self, hw_node):
     min_input_shape[-1] = max(self.min_channels_in, min_input_shape[-1])
     min_output_shape[-1] = max(self.min_channels_out, min_output_shape[-1])
 
+    # validate the produced shapes based on the layer type
+    self.validate_in_out_shapes(hw_node, min_input_shape, min_output_shape)
+
     # return next shapes
     return min_input_shape, min_output_shape
 
@@ -174,6 +261,13 @@ def get_max_shape(self, hw_node):
     # get the max shape for the input and output
     max_input_shape = self.get_max_input_shape(hw_node)
     max_output_shape = self.get_max_output_shape(hw_node)
+
+    # make sure the row and column dimensions are equal for the input and output shapes
+    max_input_shape[1] = max_input_shape[0]
+    max_output_shape[1] = max_output_shape[0]
+
+    # validate the produced shapes based on the layer type
+    self.validate_in_out_shapes(hw_node, max_input_shape, max_output_shape)
 
     # return next shapes
     return max_input_shape, max_output_shape
@@ -194,9 +288,14 @@ def get_median_shape(self, hw_node):
 
     # get the median shape for each dimension
     next_input_shape = [ statistics.median(all_input_shapes[i]) for i in range(size) ]
-    next_input_shape[1] = next_input_shape[0]
     next_output_shape = [ statistics.median(all_output_shapes[i]) for i in range(size) ]
+
+    # make sure the row and column dimensions are equal for the input and output shapes
+    next_input_shape[1] = next_input_shape[0]
     next_output_shape[1] = next_output_shape[0]
+
+    # validate the produced shapes based on the layer type
+    self.validate_in_out_shapes(hw_node, next_input_shape, next_output_shape)
 
     # return next shapes
     return next_input_shape, next_output_shape
@@ -215,13 +314,18 @@ def get_percentage_shape(self, hw_node, percentage=10):
 
     # get the median shape for each dimension
     next_input_shape = [ max(1, int(max_input_shape[i]*(percentage/100))) for i in range(size) ]
-    next_input_shape[1] = next_input_shape[0]
     next_output_shape = [ max(1, int(max_output_shape[i]*(percentage/100))) for i in range(size) ]
-    next_output_shape[1] = next_output_shape[0]
 
     # make sure the input and output channel dimension are greater than the minimum for the ports
     next_input_shape[-1] = max(self.min_channels_in, next_input_shape[-1])
     next_output_shape[-1] = max(self.min_channels_out, next_output_shape[-1])
+
+    # make sure the row and column dimensions are equal for the input and output shapes
+    next_input_shape[1] = next_input_shape[0]
+    next_output_shape[1] = next_output_shape[0]
+
+    # validate the produced shapes based on the layer type
+    self.validate_in_out_shapes(hw_node, next_input_shape, next_output_shape)
 
     # return next shapes
     return next_input_shape, next_output_shape

@@ -110,6 +110,7 @@ def optimize():
 
     # parse the network
     fpgaconvnet_parser = Parser(regression_model=optimiser_config["general"]["resource_model"])
+    fpgaconvnet_parser.add_onnx_optimization_passes(optimiser_config["general"]["optimization_passes"])
 
     # create network
     net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)

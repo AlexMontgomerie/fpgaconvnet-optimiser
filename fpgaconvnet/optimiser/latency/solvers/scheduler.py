@@ -587,6 +587,7 @@ def validate_schedule(self, schedule, iteration_space):
 
         # get the hw_node and check the schedule parameters fit within the hw node
         hw_node = self.get_building_block(exec_node)
+        hw_node_type = self.building_blocks[hw_node]["type"]
         hw_node = self.building_blocks[hw_node]["hw"]
 
         for conf in schedule[exec_node]:
@@ -605,9 +606,23 @@ def validate_schedule(self, schedule, iteration_space):
                         assert val <= hw_node.depth_in(), assertion_message
                     case "channels_in":
                         assert val <= hw_node.channels_in(), assertion_message
+                    case "coarse_in":
+                        if hw_node_type == LAYER_TYPE.EltWise:
+                            assert val <= hw_node.streams_in(), assertion_message
+                        else:
+                            assert val <= hw_node.coarse_in, assertion_message
+                    case "coarse_out":
+                        if hw_node_type == LAYER_TYPE.EltWise:
+                            assert val <= hw_node.streams_out(), assertion_message
+                        else:
+                            assert val <= hw_node.coarse_out, assertion_message
+                    case "rows" | "cols" | "depth" | "channels":
+                        pass
                     case "rows_out" | "cols_out" | "depth_out" | "channels_out":
                         pass
                     case "data_t" | "weight_t" | "acc_t" | "input_t" | "output_t":
+                        pass
+                    case "mem_bw_in_array" | "mem_bw_out_array":
                         pass
                     case "has_bias":
                         pass
