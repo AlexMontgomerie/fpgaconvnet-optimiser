@@ -25,7 +25,7 @@ starting_shape_percentage = 20
 
 [transforms.combine]
 apply_transform = true
-probability = 0.10
+probability = 0.15
 num_nodes = 2 # (max) number of nodes to combine at a time
 start_combine_all = true # combine all layer types at the start
 
@@ -48,7 +48,7 @@ depthwise = true
 
 [transforms.seperate]
 apply_transform = true
-probability = 0.10
+probability = 0.05
 allowed_types = [ "Conv", "Gemm", "MaxPool" ] # types that can be seperated
 num_nodes = 2 # (max) number of nodes to combine at a time
 
