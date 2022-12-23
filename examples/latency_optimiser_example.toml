@@ -20,15 +20,15 @@ probability = 0.35
 [transforms.shape]
 apply_transform = true
 probability = 0.35
-method = "inherit" # [ random, inherit, mixed ]
+method = "mixed" # [ random, inherit, mixed ]
 starting_shape = "percentage" # shape to start with (if empty, then does nothing) [ min, max, median, percentage ]
 starting_shape_percentage = 20
-rand_shape_range = [5, 5, 5, 5]
+rand_shape_range = [15, 15, 5, 20]
 use_previous_shape = true
 
 [transforms.combine]
 apply_transform = true
-probability = 0.15
+probability = 0.10
 num_nodes = 2 # (max) number of nodes to combine at a time
 start_combine_all = true # combine all layer types at the start
 
@@ -39,19 +39,19 @@ kernel_rows = 7
 kernel_cols = 7
 kernel_depth = 1
 
+[[transforms.combine.discriminate]]
+layer_type = "Conv"
+depthwise = true
+
 # [[transforms.combine.discriminate]]
 # layer_type = "Conv"
 # kernel_rows = 1
 # kernel_cols = 1
 # kernel_depth = 5
 
-[[transforms.combine.discriminate]]
-layer_type = "Conv"
-depthwise = true
-
 [transforms.seperate]
 apply_transform = true
-probability = 0.05
+probability = 0.10
 allowed_types = [ "Conv", "Gemm", "MaxPool" ] # types that can be seperated
 num_nodes = 2 # (max) number of nodes to combine at a time
 

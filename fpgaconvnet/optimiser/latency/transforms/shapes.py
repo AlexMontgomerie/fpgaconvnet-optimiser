@@ -39,7 +39,7 @@ def get_max_output_shape(self, hw_node):
             for exec_node in self.building_blocks[hw_node]["exec_nodes"] ]) for \
             i in range(self.dimensionality+1) ]
 
-def get_random_shape(self, hw_node, rand_shape_range = [5, 5, 5, 5], use_previous_shape = True):
+def get_random_shape(self, hw_node, rand_shape_range = [15, 15, 5, 20], use_previous_shape = True):
     """
     get a random shape for executing the featuremap.
     """
@@ -132,7 +132,7 @@ def get_random_shape(self, hw_node, rand_shape_range = [5, 5, 5, 5], use_previou
     # return next shapes
     return next_input_shape, next_output_shape
 
-def get_mixed_shape(self, hw_node, rand_shape_range = [5, 5, 5, 5], use_previous_shape = True):
+def get_mixed_shape(self, hw_node, rand_shape_range = [15, 15, 5, 20], use_previous_shape = True):
 
     # get both random and inherited shapes
     random_input_shape, random_output_shape = self.get_random_shape(hw_node, rand_shape_range, use_previous_shape)
