@@ -331,7 +331,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             return False
         return True
 
-    def apply_transform(self, transform, hw_node, exec_node):
+    def apply_transform(self, transform, hw_node, exec_node, warm_start=False):
 
         # switch case across transforms
         match transform:
@@ -372,21 +372,25 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
                 # apply_weight_storage
                 self.apply_weight_storage()
             case "shape":
-                if self.shape_method == "random":
-                    shape_in, shape_out = self.get_random_shape(hw_node,
-                            use_previous_shape=self.use_previous_shape,
-                            rand_shape_range=self.rand_shape_range)
-                    self.update_building_block_shape(hw_node, shape_in, shape_out)
-                elif self.shape_method == "mixed":
-                    shape_in, shape_out = self.get_mixed_shape(hw_node,
-                            use_previous_shape=self.use_previous_shape,
-                            rand_shape_range=self.rand_shape_range)
-                    self.update_building_block_shape(hw_node, shape_in, shape_out)
-                elif self.shape_method == "inherit":
+                if warm_start:
                     shape_in, shape_out = self.get_inherited_shape(hw_node)
                     self.update_building_block_shape(hw_node, shape_in, shape_out)
                 else:
-                    raise NotImplementedError
+                    if self.shape_method == "random":
+                        shape_in, shape_out = self.get_random_shape(hw_node,
+                                use_previous_shape=self.use_previous_shape,
+                                rand_shape_range=self.rand_shape_range)
+                        self.update_building_block_shape(hw_node, shape_in, shape_out)
+                    elif self.shape_method == "mixed":
+                        shape_in, shape_out = self.get_mixed_shape(hw_node,
+                                use_previous_shape=self.use_previous_shape,
+                                rand_shape_range=self.rand_shape_range)
+                        self.update_building_block_shape(hw_node, shape_in, shape_out)
+                    elif self.shape_method == "inherit":
+                        shape_in, shape_out = self.get_inherited_shape(hw_node)
+                        self.update_building_block_shape(hw_node, shape_in, shape_out)
+                    else:
+                        raise NotImplementedError
                 self.fix_coarse_node(hw_node)
 
     def report(self):
