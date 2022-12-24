@@ -38,6 +38,8 @@ parameters:
         value: 20
       warm_start:
         value: True
+      warm_start_time_limit:
+        value: 90
   transforms:
     parameters:
       fine:
@@ -61,11 +63,15 @@ parameters:
           probability:
             value: 0.35
           method:
-            value: inherit # [ 'inherit', 'random', 'mixed' ]
+            values: [inherit, mixed] # [ 'inherit', 'random', 'mixed' ]
           starting_shape:
-            value: percentage # [ '', 'min', 'max', 'median', 'percentage' ]
+            values: [min, max, percentage] # [ '', 'min', 'max', 'median', 'percentage' ]
           starting_shape_percentage:
             value: 20
+          rand_shape_range:
+            values: [[15, 15, 5, 20], [5, 5, 5, 5], [30, 30, 10, 20]]
+          use_previous_shape:
+            values: [True, False]
       combine:
         parameters:
           apply_transform:
