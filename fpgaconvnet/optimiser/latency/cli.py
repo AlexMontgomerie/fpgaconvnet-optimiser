@@ -154,8 +154,14 @@ def optimize():
         if opt.shape_method in [ "random", "mixed" ]:
             opt.use_previous_shape = optimiser_config["transforms"]["shape"].get(
                     "use_previous_shape", True)
-            opt.rand_shape_range = optimiser_config["transforms"]["shape"].get(
-                    "rand_shape_range", [5, 5, 5, 5])
+            if args.sweep_wandb:
+                opt.rand_shape_range = [ int(optimiser_config["transforms"]["shape"]["rand_shape_range"]["rows"]),
+                                         int(optimiser_config["transforms"]["shape"]["rand_shape_range"]["cols"]),
+                                         int(optimiser_config["transforms"]["shape"]["rand_shape_range"]["depth"]),
+                                         int(optimiser_config["transforms"]["shape"]["rand_shape_range"]["channels"]) ]
+            else:
+                opt.rand_shape_range = optimiser_config["transforms"]["shape"].get(
+                        "rand_shape_range", [5, 5, 5, 5])
 
     # combine all execution nodes
     if optimiser_config["transforms"]["combine"]["start_combine_all"]:

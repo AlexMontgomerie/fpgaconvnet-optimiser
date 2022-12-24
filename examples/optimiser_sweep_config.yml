@@ -1,158 +1,252 @@
-name: harflow3d_optimization_sweep
-method: grid # bayes or random or grid
+# name: harflow3d_optimization_sweep
+# method: grid # bayes or random or grid
+# metric:
+#   goal: minimize
+#   name: latency
+# parameters:
+#   # models:
+#   #   values: [ 'c3d', 'r2plus1d_18', 'r2plus1d_34', 'slowonly' ] # [ 'c3d', 'r2plus1d_18', 'r2plus1d_34', 'slowonly', 'x3d_m' ]
+#   # platforms:
+#   #   values: [ 'vc709', 'zcu102' ] # [ 'vus440', 'vc709', 'zcu102', 'zcu104' ]
+#   general:
+#     parameters:
+#       resource_allocation:
+#         value: 0.95
+#       runtime_parameters:
+#         value: True
+#       weight_storage:
+#         value: double_buffer # [ 'double_buffer', 'stream', 'share' ]
+#       resource_model:
+#         value: xgboost # [ 'linear_regression', 'xgboost' ]
+#       channel_tiling:
+#         value: True
+#       filter_tiling:
+#         value: True
+#       optimization_passes:
+#         value: [ "fuse_relu_into_previous" ] # [ [ "fuse_relu_into_previous" ], [] ]
+#   annealing:
+#     parameters:
+#       T:
+#         value: 10
+#       T_min:
+#         value: 0.0001
+#       k:
+#         value: 10
+#       cool:
+#         value: 0.98
+#       transform_iterations:
+#         value: 20
+#       warm_start:
+#         value: True
+#       warm_start_time_limit:
+#         value: 90
+#   transforms:
+#     parameters:
+#       fine:
+#         parameters:
+#           apply_transform:
+#             value: True
+#           probability:
+#             value: 0.10
+#           start_complete:
+#             value: True
+#       coarse:
+#         parameters:
+#           apply_transform:
+#             value: True
+#           probability:
+#             value: 0.35
+#       shape:
+#         parameters:
+#           apply_transform:
+#             value: True
+#           probability:
+#             value: 0.35
+#           method:
+#             value: [inherit, mixed, random] # [ 'inherit', 'random', 'mixed' ]
+#           starting_shape:
+#             value: min # [ '', 'min', 'max', 'median', 'percentage' ]
+#           starting_shape_percentage:
+#             value: 20
+#           rand_shape_range:
+#             values: [[15, 15, 5, 20], [5, 5, 5, 5], [30, 30, 10, 20]]
+#           use_previous_shape:
+#             value: True
+#       combine:
+#         parameters:
+#           apply_transform:
+#             value: True
+#           probability:
+#             value: 0.10
+#           num_nodes:
+#             value: 2 # [ 2, 5 ]
+#           start_combine_all:
+#             value: True
+#           discriminate:
+#             value: [{'layer_type': 'Conv', 'kernel_rows': 7, 'kernel_cols': 7, 'kernel_depth': 1},
+#                     {'layer_type': 'Conv', 'depthwise': true}]
+#       separate:
+#         parameters:
+#           apply_transform:
+#             value: True
+#           probability:
+#             value: 0.10
+#           num_nodes:
+#             value: 2 # [ 2, 5 ]
+#           allowed_types:
+#             value: [ 'Conv',
+#                      'Gemm',
+#                      'MaxPool' ]
+method: bayes # bayes or random or grid
 metric:
   goal: minimize
   name: latency
 parameters:
   # models:
-  #   values: [ 'c3d', 'r2plus1d_18', 'r2plus1d_34', 'slowonly' ] # [ 'c3d', 'r2plus1d_18', 'r2plus1d_34', 'slowonly', 'x3d_m' ]
+  #   distribution: constant
+#     values: [ 'c3d', 'r2plus1d_18', 'r2plus1d_34', 'slowonly' ] # [ 'c3d', 'r2plus1d_18', 'r2plus1d_34', 'slowonly', 'x3d_m' ]
   # platforms:
-  #   values: [ 'vc709', 'zcu102' ] # [ 'vus440', 'vc709', 'zcu102', 'zcu104' ]
+  #   distribution: constant
+#     values: [ 'vc709', 'zcu102' ] # [ 'vus440', 'vc709', 'zcu102', 'zcu104' ]
   general:
     parameters:
       resource_allocation:
+        distribution: constant
         value: 0.95
       runtime_parameters:
+        distribution: constant
         value: True
       weight_storage:
+        distribution: constant
         value: double_buffer # [ 'double_buffer', 'stream', 'share' ]
       resource_model:
+        distribution: constant
         value: xgboost # [ 'linear_regression', 'xgboost' ]
       channel_tiling:
+        distribution: constant
         value: True
       filter_tiling:
+        distribution: constant
         value: True
       optimization_passes:
+        distribution: constant
         value: [ "fuse_relu_into_previous" ] # [ [ "fuse_relu_into_previous" ], [] ]
   annealing:
     parameters:
       T:
+        distribution: constant
         value: 10
       T_min:
+        distribution: constant
         value: 0.0001
       k:
+        distribution: constant
         value: 10
       cool:
+        distribution: constant
         value: 0.98
       transform_iterations:
+        distribution: constant
         value: 20
       warm_start:
+        distribution: constant
         value: True
       warm_start_time_limit:
+        distribution: constant
         value: 90
   transforms:
     parameters:
       fine:
         parameters:
           apply_transform:
+            distribution: constant
             value: True
           probability:
+            distribution: constant
             value: 0.10
           start_complete:
+            distribution: constant
             value: True
       coarse:
         parameters:
           apply_transform:
+            distribution: constant
             value: True
           probability:
+            distribution: constant
             value: 0.35
       shape:
         parameters:
           apply_transform:
+            distribution: constant
             value: True
           probability:
+            distribution: constant
             value: 0.35
           method:
-            values: [inherit, mixed] # [ 'inherit', 'random', 'mixed' ]
+            distribution: categorical
+            values: [ 'inherit', 'random', 'mixed' ]
           starting_shape:
-            values: [min, max, percentage] # [ '', 'min', 'max', 'median', 'percentage' ]
+            distribution: categorical
+            values: [ '', 'min', 'max', 'median', 'percentage' ]
           starting_shape_percentage:
+            distribution: constant
             value: 20
           rand_shape_range:
-            values: [[15, 15, 5, 20], [5, 5, 5, 5], [30, 30, 10, 20]]
+            parameters:
+              rows:
+                distribution: int_uniform
+                min: 5
+                max: 50
+              cols:
+                distribution: int_uniform
+                min: 5
+                max: 50
+              depth:
+                distribution: int_uniform
+                min: 5
+                max: 50
+              channels:
+                distribution: int_uniform
+                min: 3
+                max: 50
           use_previous_shape:
-            values: [True, False]
+            distribution: constant
+            value: True
       combine:
         parameters:
           apply_transform:
+            distribution: constant
             value: True
           probability:
+            distribution: constant
             value: 0.10
           num_nodes:
+            distribution: constant
             value: 2 # [ 2, 5 ]
           start_combine_all:
+            distribution: constant
             value: True
           discriminate:
+            distribution: constant
             value: [{'layer_type': 'Conv', 'kernel_rows': 7, 'kernel_cols': 7, 'kernel_depth': 1},
                     {'layer_type': 'Conv', 'depthwise': true}]
       separate:
         parameters:
           apply_transform:
+            distribution: constant
             value: True
           probability:
+            distribution: constant
             value: 0.10
           num_nodes:
+            distribution: constant
             value: 2 # [ 2, 5 ]
           allowed_types:
+            distribution: constant
             value: [ 'Conv',
                      'Gemm',
                      'MaxPool' ]
-# method: random # bayes or random or grid
-# metric:
-#   goal: minimize
-#   name: latency
-# parameters:
-#   simulatedAnnealing:
-#     parameters:
-#       t_min:
-#         distribution: constant
-#         value: 1e-6
-#       t_max:
-#         distribution: constant
-#         value: 10
-#       iterationPerTemp:
-#         values: [10, 13]
-#       cooling_rate:
-#         distribution: uniform
-#         min: 0.95
-#         max: 0.99
-#       best_of_iter:
-#         distribution: constant
-#         value: 1
-#   max_dsp_util:
-#     distribution: constant
-#     value: 95
-#   max_bram_util:
-#     distribution: constant
-#     value: 95
-#   alignedfactors:
-#     distribution: constant
-#     value: True
-#   bblock_generation:
-#     distribution: categorical
-#     values: ['pre_while', 'post_while'] # pre_while or post_while
-#   bblock_keep_percentage:
-#     distribution: uniform
-#     min: 0.10
-#     max: 1.0
-#   use_arbitrary_shape:
-#     distribution: categorical
-#     values: [True, False]
-#   use_previous_config:
-#     distribution: categorical
-#     values: [True, False]
-#   chan_dist_thresh:
-#     distribution: int_uniform
-#     min: 10
-#     max: 90
-#   depth_dist_thresh:
-#     distribution: int_uniform
-#     min: 10
-#     max: 50
-#   height_dist_thresh:
-#     distribution: int_uniform
-#     min: 10
-#     max: 90
 # early_terminate:
 #   type: hyperband
 #   max_iter: 300
