@@ -23,7 +23,7 @@ probability = 0.30
 method = "mixed" # [ random, inherit, mixed ]
 starting_shape = "" # shape to start with (if empty, then does nothing) [ min, max, median, percentage ]
 starting_shape_percentage = 20
-rand_shape_range = [40, 40, 40, 40]
+rand_shape_range = [45, 45, 45, 45]
 use_previous_shape = true
 
 [transforms.combine]
