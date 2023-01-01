@@ -203,6 +203,12 @@ def optimize():
         for hw_node in opt.building_blocks:
             opt.apply_random_fine_node(hw_node)
 
+    ## set the shapes for hw nodes
+    for hw_node in opt.building_blocks:
+        shape_in = opt.building_blocks[hw_node]["hw"].shape_in()
+        shape_out = opt.building_blocks[hw_node]["hw"].shape_out()
+        opt.update_building_block_shape(hw_node, shape_in, shape_out)
+
     # apply weight storage to building_blocks
     opt.apply_weight_storage()
 
