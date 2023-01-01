@@ -22,7 +22,7 @@ class LatencySimulatedAnnealing(LatencySolver):
     k: float = 10.0
     T_min: float = 0.0001
     cool: float = 0.98
-    transform_iterations: int = 20
+    transform_iterations: int = 15
     warm_start: bool = True
     warm_start_time_limit: int = 90
     """
