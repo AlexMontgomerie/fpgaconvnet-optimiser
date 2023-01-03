@@ -109,7 +109,8 @@ def optimize():
             optimiser_config = wandb.config
 
     # parse the network
-    fpgaconvnet_parser = Parser(regression_model=optimiser_config["general"]["resource_model"])
+    fpgaconvnet_parser = Parser(regression_model=optimiser_config["general"]["resource_model"],
+            convert_gemm_to_conv=optimiser_config["general"]["convert_gemm_to_conv"])
     fpgaconvnet_parser.add_onnx_optimization_passes(optimiser_config["general"]["optimization_passes"])
 
     # create network

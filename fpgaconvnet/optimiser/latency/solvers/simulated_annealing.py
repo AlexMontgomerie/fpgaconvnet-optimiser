@@ -112,7 +112,9 @@ class LatencySimulatedAnnealing(LatencySolver):
             building_blocks = copy.deepcopy(self.building_blocks)
 
             # several transform iterations per cool down
+            # transform_iterations = random.randint(1, self.transform_iterations)
             for _ in range(self.transform_iterations):
+            # for _ in range(transform_iterations):
 
                 # Choose a random transform
                 transform = np.random.choice(list(self.transforms.keys()),

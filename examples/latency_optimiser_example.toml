@@ -7,6 +7,7 @@ resource_model = "linear_regression" # [ linear_regression, xgboost xgboost-kern
 channel_tiling = true # whether or not to allow for channel tiling
 filter_tiling = true # whether or not to allow for filter tiling
 optimization_passes = [ "fuse_relu_into_previous" ]
+convert_gemm_to_conv = false
 
 [transforms.fine]
 apply_transform = true
@@ -53,13 +54,13 @@ depthwise = true
 apply_transform = true
 probability = 0.10
 allowed_types = [ "Conv", "Gemm", "MaxPool" ] # types that can be seperated
-num_nodes = 2 # (max) number of nodes to combine at a time
+num_nodes = 0 # (max) number of nodes to combine at a time
 
 [annealing]
 T = 10.0
-T_min = 0.0001
+T_min = 0.00001
 k = 10.0
-cool = 0.98
+cool = 0.985
 transform_iterations = 20
 warm_start = true
 warm_start_time_limit = 90
