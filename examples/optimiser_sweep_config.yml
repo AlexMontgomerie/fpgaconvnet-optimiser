@@ -121,7 +121,7 @@ parameters:
         value: double_buffer # [ 'double_buffer', 'stream', 'share' ]
       resource_model:
         distribution: constant
-        value: xgboost # [ 'linear_regression', 'xgboost' ]
+        value: linear_regression # [ 'linear_regression', 'xgboost' ]
       channel_tiling:
         distribution: constant
         value: True
@@ -144,10 +144,11 @@ parameters:
         value: 10
       cool:
         distribution: constant
-        value: 0.98
+        value: 0.985
       transform_iterations:
-        distribution: constant
-        value: 20
+        distribution: int_uniform
+        min: 10
+        max: 30
       warm_start:
         distribution: constant
         value: True
@@ -174,7 +175,7 @@ parameters:
             value: True
           probability:
             distribution: constant
-            value: 0.35
+            value: 0.30
       shape:
         parameters:
           apply_transform:
@@ -182,13 +183,13 @@ parameters:
             value: True
           probability:
             distribution: constant
-            value: 0.35
+            value: 0.30
           method:
-            distribution: categorical
-            values: [ 'inherit', 'random', 'mixed' ]
+            distribution: constant
+            value: mixed
           starting_shape:
-            distribution: categorical
-            values: [ '', 'min', 'max', 'median', 'percentage' ]
+            distribution: constant
+            value: ""
           starting_shape_percentage:
             distribution: constant
             value: 20
@@ -220,7 +221,7 @@ parameters:
             value: True
           probability:
             distribution: constant
-            value: 0.10
+            value: 0.15
           num_nodes:
             distribution: constant
             value: 2 # [ 2, 5 ]
@@ -238,7 +239,7 @@ parameters:
             value: True
           probability:
             distribution: constant
-            value: 0.10
+            value: 0.15
           num_nodes:
             distribution: constant
             value: 2 # [ 2, 5 ]
