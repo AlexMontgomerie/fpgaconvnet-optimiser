@@ -20,8 +20,8 @@ START_LOOP  =   10
 class LatencySimulatedAnnealing(LatencySolver):
     T: float = 10.0
     k: float = 10.0
-    T_min: float = 0.0001
-    cool: float = 0.98
+    T_min: float = 0.00001
+    cool: float = 0.99
     transform_iterations: int = 15
     warm_start: bool = True
     warm_start_time_limit: int = 90
