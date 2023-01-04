@@ -16,11 +16,11 @@ start_complete = true
 
 [transforms.coarse]
 apply_transform = true
-probability = 0.30
+probability = 0.35
 
 [transforms.shape]
 apply_transform = true
-probability = 0.30
+probability = 0.35
 method = "mixed" # [ random, inherit, mixed ]
 starting_shape = "" # shape to start with (if empty, then does nothing) [ min, max, median, percentage ]
 starting_shape_percentage = 20
@@ -29,7 +29,7 @@ use_previous_shape = true
 
 [transforms.combine]
 apply_transform = true
-probability = 0.15
+probability = 0.10
 num_nodes = 2 # (max) number of nodes to combine at a time
 start_combine_all = true # combine all layer types at the start
 
@@ -52,7 +52,7 @@ depthwise = true
 
 [transforms.seperate]
 apply_transform = true
-probability = 0.15
+probability = 0.10
 allowed_types = [ "Conv", "Gemm", "MaxPool" ] # types that can be seperated
 num_nodes = 2 # (max) number of nodes to combine at a time
 
