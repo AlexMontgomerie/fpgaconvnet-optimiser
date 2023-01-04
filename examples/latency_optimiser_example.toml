@@ -1,6 +1,6 @@
 [general]
 logging = false
-resource_allocation = 0.95
+resource_allocation = 0.98
 runtime_parameters = true
 weight_storage = "double_buffer" # [ double_buffer, stream, share ]
 resource_model = "linear_regression" # [ linear_regression, xgboost xgboost-kernel ]
