@@ -131,6 +131,9 @@ parameters:
       optimization_passes:
         distribution: constant
         value: [ "fuse_relu_into_previous" ] # [ [ "fuse_relu_into_previous" ], [] ]
+      convert_gemm_to_conv:
+        distribution: constant
+        value: True
   annealing:
     parameters:
       T:
@@ -138,17 +141,16 @@ parameters:
         value: 10
       T_min:
         distribution: constant
-        value: 0.0001
+        value: 0.00001
       k:
         distribution: constant
         value: 10
       cool:
         distribution: constant
-        value: 0.985
+        value: 0.99
       transform_iterations:
-        distribution: int_uniform
-        min: 10
-        max: 30
+        distribution: constant
+        value: 15
       warm_start:
         distribution: constant
         value: True
@@ -157,6 +159,17 @@ parameters:
         value: 90
   transforms:
     parameters:
+      probabilities:
+        distribution: categorical
+        values:
+        - [0.20, 0.20, 0.20, 0.20, 0.20]
+        - [0.10, 0.30, 0.30, 0.15, 0.15]
+        - [0.10, 0.40, 0.40, 0.05, 0.05]
+        - [0.10, 0.25, 0.25, 0.20, 0.20]
+        - [0.20, 0.25, 0.25, 0.20, 0.10]
+        - [0.10, 0.30, 0.30, 0.20, 0.10]
+        - [0.20, 0.40, 0.40, 0.00, 0.00]
+        - [0.10, 0.45, 0.45, 0.00, 0.00]
       fine:
         parameters:
           apply_transform:
@@ -196,21 +209,29 @@ parameters:
           rand_shape_range:
             parameters:
               rows:
-                distribution: int_uniform
-                min: 5
-                max: 50
+                distribution: constant
+                value: 45
+                # distribution: int_uniform
+                # min: 5
+                # max: 50
               cols:
-                distribution: int_uniform
-                min: 5
-                max: 50
+                distribution: constant
+                value: 45
+                # distribution: int_uniform
+                # min: 5
+                # max: 50
               depth:
-                distribution: int_uniform
-                min: 5
-                max: 50
+                distribution: constant
+                value: 45
+                # distribution: int_uniform
+                # min: 5
+                # max: 50
               channels:
-                distribution: int_uniform
-                min: 3
-                max: 50
+                distribution: constant
+                value: 45
+                # distribution: int_uniform
+                # min: 3
+                # max: 50
           use_previous_shape:
             distribution: constant
             value: True
