@@ -641,6 +641,8 @@ def validate_schedule(self, schedule, iteration_space):
                             assert val <= hw_node.streams_out(), assertion_message
                         else:
                             assert val <= hw_node.coarse_out, assertion_message
+                    case "mem_bw_in" | "mem_bw_out":
+                        assert val <= getattr(hw_node, param) + 1e-4, assertion_message
                     case "rows" | "cols" | "depth" | "channels":
                         pass
                     case "rows_out" | "cols_out" | "depth_out" | "channels_out":
