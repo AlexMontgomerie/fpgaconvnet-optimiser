@@ -107,6 +107,7 @@ class LatencySimulatedAnnealing(LatencySolver):
 
             # get the current cost
             cost = self.get_cost()
+            resources = self.get_resources()
 
             # Save previous building blocks
             building_blocks = copy.deepcopy(self.building_blocks)
@@ -144,6 +145,11 @@ class LatencySimulatedAnnealing(LatencySolver):
             if curr_cost < cost:
                 # accept new state
                 pass
+            elif curr_cost == cost:
+                print("here!")
+                curr_resources = self.get_resources()
+                if sum(curr_resources.values()) < sum(resources.values()):
+                    pass
             else:
                 if math.exp((cost - curr_cost)/(self.k*self.T)) > random.uniform(0,1):
                     # accept new state

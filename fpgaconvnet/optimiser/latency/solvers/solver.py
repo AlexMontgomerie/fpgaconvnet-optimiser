@@ -266,13 +266,12 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             # param_cntr = Counter(param_tuple)
 
             # get the latency for each repeated parameter execution
-            # for param, repetition in param_cntr.items():
             for param, repetition in schedule[exec_node]:
-                latency += repetition*get_runtime_latency(
+                exec_latency = get_runtime_latency(
                     self.building_blocks[hw_node]["type"],
                     self.building_blocks[hw_node]["hw"],
-                    # param._asdict(), self.dimensionality)
                     param, self.dimensionality)
+                latency += repetition*exec_latency
 
             # # add extra penalty for reconfiguration # TODO: need to tune with real data
             # latency += 1000 * len(schedule[exec_node])
