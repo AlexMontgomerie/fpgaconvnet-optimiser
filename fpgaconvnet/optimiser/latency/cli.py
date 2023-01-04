@@ -135,10 +135,14 @@ def optimize():
 
     # specify available transforms
     opt.transforms = {}
-    for transform in optimiser_config["transforms"]:
+    for i, transform in enumerate(optimiser_config["transforms"]):
         if optimiser_config["transforms"][transform]["apply_transform"]:
-            opt.transforms[transform] = \
-                    optimiser_config["transforms"][transform]["probability"]
+            if args.sweep_wandb:
+                probabilities = optimiser_config["transforms_probabilities"]
+                opt.transforms[transform] = probabilities[i]
+            else:
+                opt.transforms[transform] = \
+                        optimiser_config["transforms"][transform]["probability"]
 
     # transform-specific config
     if "combine" in optimiser_config["transforms"]:
