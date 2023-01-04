@@ -146,9 +146,9 @@ class LatencySimulatedAnnealing(LatencySolver):
                 # accept new state
                 pass
             elif curr_cost == cost:
-                print("here!")
                 curr_resources = self.get_resources()
                 if sum(curr_resources.values()) < sum(resources.values()):
+                    # accept new state
                     pass
             else:
                 if math.exp((cost - curr_cost)/(self.k*self.T)) > random.uniform(0,1):
