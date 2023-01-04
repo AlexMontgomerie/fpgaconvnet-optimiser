@@ -293,7 +293,10 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         total_latency = 0
 
         # get the schedule
-        schedule, _ = self.get_schedule()
+        schedule, iteration_space = self.get_schedule()
+        for exec_node in iteration_space:
+            # print(sum([ i for _, i in schedule[exec_node] ]))
+            assert sum([ i for _, i in schedule[exec_node] ]) == np.prod(iteration_space[exec_node]), "iteration space must match"
 
         # iterate over nodes in the execution graph
         for exec_node in self.net.graph:

@@ -121,14 +121,22 @@ def get_convolution_schedule(self, hw_node, exec_node):
     schedule_iteration_space = [ min(3,_) for _ in iteration_space ]
     for index in np.ndindex(*schedule_iteration_space):
 
+        # get the offsets for repetition
+        row_rep_offset = schedule_iteration_space[0]-1
+        col_rep_offset = schedule_iteration_space[1]-1
+        if self.dimensionality == 3:
+            depth_rep_offset  = schedule_iteration_space[2]-1
+        channel_rep_offset = schedule_iteration_space[-2]-1
+        filter_rep_offset = schedule_iteration_space[-1]-1
+
         # get the parameter repetition
         param_repetition = \
-                ( (row_repetition-1) if index[0] == 1 else 1 ) *\
-                ( (col_repetition-1) if index[1] == 1 else 1 ) *\
-                ( (channel_repetition-1) if index[-2] == 1 else 1 ) *\
-                ( (filter_repetition-1)  if index[-1] == 1 else 1 )
+                ( (row_repetition-row_rep_offset) if index[0] == 1 else 1 ) *\
+                ( (col_repetition-col_rep_offset) if index[1] == 1 else 1 ) *\
+                ( (channel_repetition-channel_rep_offset) if index[-2] == 1 else 1 ) *\
+                ( (filter_repetition-filter_rep_offset) if index[-1] == 1 else 1 )
         if self.dimensionality == 3:
-            param_repetition *= ( (depth_repetition-1) if index[2] == 1 else 1 )
+            param_repetition *= ( (depth_repetition-depth_rep_offset) if index[2] == 1 else 1 )
 
         # get the new parameters
         new_param["rows_in"] = rows_in_max if index[0] > 0 else rows_in_edge
@@ -247,10 +255,13 @@ def get_inner_product_schedule(self, hw_node, exec_node):
     # get the schedule
     schedule_iteration_space = [ min(2,_) for _ in iteration_space ]
     for index in np.ndindex(*schedule_iteration_space):
+        # get the offsets for repetition
+        channel_rep_offset = schedule_iteration_space[0]-1
+        filter_rep_offset = schedule_iteration_space[1]-1
         # get the parameter repetition
         param_repetition = \
-                ( (channel_repetition-1) if index[0] else 1 ) *\
-                ( (filter_repetition-1) if index[1] else 1 )
+                ( (channel_repetition-channel_rep_offset) if index[0] else 1 ) *\
+                ( (filter_repetition-filter_rep_offset) if index[1] else 1 )
         # get the new parameters
         new_param["channels_in"] = channels_in_max if index[0] else channels_in_edge
         new_param["channels_out"] = channels_out_max if index[1] else channels_out_edge
@@ -347,13 +358,20 @@ def get_pooling_schedule(self, hw_node, exec_node):
     schedule_iteration_space = [ min(3,_) for _ in iteration_space ]
     for index in np.ndindex(*schedule_iteration_space):
 
+        # get the offsets for repetition
+        row_rep_offset = schedule_iteration_space[0]-1
+        col_rep_offset = schedule_iteration_space[1]-1
+        if self.dimensionality == 3:
+            depth_rep_offset  = schedule_iteration_space[2]-1
+        channel_rep_offset = schedule_iteration_space[-1]-1
+
         # get the parameter repetition
         param_repetition = \
-                ( (row_repetition-1) if index[0] == 1 else 1 ) *\
-                ( (col_repetition-1) if index[1] == 1 else 1 ) *\
-                ( (channel_repetition-1) if index[-1] == 1 else 1 )
+                ( (row_repetition-row_rep_offset) if index[0] == 1 else 1 ) *\
+                ( (col_repetition-col_rep_offset) if index[1] == 1 else 1 ) *\
+                ( (channel_repetition-channel_rep_offset) if index[-1] == 1 else 1 )
         if self.dimensionality == 3:
-            param_repetition *= ( (depth_repetition-1) if index[2] == 1 else 1 )
+            param_repetition *= ( (depth_repetition-depth_rep_offset) if index[2] == 1 else 1 )
 
         # get the new parameters
         new_param["rows_in"] = rows_in_max if index[0] > 0 else rows_in_edge
@@ -491,13 +509,20 @@ def get_basic_schedule(self, hw_node, exec_node):
     schedule_iteration_space = [ min(2,_) for _ in iteration_space ]
     for index in np.ndindex(*schedule_iteration_space):
 
+        # get the offsets for repetition
+        row_rep_offset = schedule_iteration_space[0]-1
+        col_rep_offset = schedule_iteration_space[1]-1
+        if self.dimensionality == 3:
+            depth_rep_offset  = schedule_iteration_space[2]-1
+        channel_rep_offset = schedule_iteration_space[-1]-1
+
         # get the parameter repetition
         param_repetition = \
-                ( (row_repetition-1) if index[0] else 1 ) *\
-                ( (col_repetition-1) if index[1] else 1 ) *\
-                ( (channel_repetition-1) if index[-1] else 1 )
+                ( (row_repetition-row_rep_offset) if index[0] else 1 ) *\
+                ( (col_repetition-col_rep_offset) if index[1] else 1 ) *\
+                ( (channel_repetition-channel_rep_offset) if index[-1] else 1 )
         if self.dimensionality == 3:
-            param_repetition *= ( (depth_repetition-1) if index[2] else 1 )
+            param_repetition *= ( (depth_repetition-depth_rep_offset) if index[2] else 1 )
 
         # get the new parameters
         new_param["rows_in"] = rows_in_max if index[0] else rows_in_edge
