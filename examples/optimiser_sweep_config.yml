@@ -208,29 +208,29 @@ parameters:
           rand_shape_range:
             parameters:
               rows:
-                distribution: constant
-                value: 45
-                # distribution: int_uniform
-                # min: 5
-                # max: 50
+                # distribution: constant
+                # value: 45
+                distribution: int_uniform
+                min: 5
+                max: 70
               cols:
-                distribution: constant
-                value: 45
-                # distribution: int_uniform
-                # min: 5
-                # max: 50
+                # distribution: constant
+                # value: 45
+                distribution: int_uniform
+                min: 5
+                max: 70
               depth:
-                distribution: constant
-                value: 45
-                # distribution: int_uniform
-                # min: 5
-                # max: 50
+                # distribution: constant
+                # value: 45
+                distribution: int_uniform
+                min: 2
+                max: 70
               channels:
-                distribution: constant
-                value: 45
-                # distribution: int_uniform
-                # min: 3
-                # max: 50
+                # distribution: constant
+                # value: 45
+                distribution: int_uniform
+                min: 3
+                max: 70
           use_previous_shape:
             distribution: constant
             value: True
