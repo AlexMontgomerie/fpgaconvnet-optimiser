@@ -141,13 +141,13 @@ parameters:
         value: 10.0
       T_min:
         distribution: constant
-        value: 0.00001
+        value: 0.0001
       k:
         distribution: constant
         value: 10.0
       cool:
         distribution: constant
-        value: 0.99
+        value: 0.98
       transform_iterations:
         distribution: constant
         value: 15
