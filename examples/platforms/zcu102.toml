@@ -8,7 +8,7 @@ board = "" #TODO: add board file
 DSP   = 2520
 BRAM  = 1824
 FF    = 548160
-LUT   = 599550
+LUT   = 274080
 
 [system]
 board_frequency = 200 # in MHz
