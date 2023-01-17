@@ -6,6 +6,7 @@ Defines the parallelism for the kernel x kernel dot product of the `fpgaconvnet_
 """
 
 import random
+import numpy as np
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
@@ -31,3 +32,19 @@ def apply_complete_fine(partition):
             fine = partition.graph.nodes[node]['hw'].get_fine_feasible()[-1]
             partition.graph.nodes[node]['hw'].fine = fine
 
+def apply_more_fine(partition):
+    # feasible layers
+    feasible_layers = get_all_layers(partition.graph, LAYER_TYPE.Convolution)
+
+    if len(feasible_layers) > 0:
+        node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
+            for layer in feasible_layers])
+
+        node_index = np.argsort(node_latencys)[-1]
+        layer = feasible_layers[node_index]
+        if partition.graph.nodes[layer]['hw'].fine < partition.graph.nodes[layer]['hw'].get_fine_feasible()[-1]:
+            fine_index = partition.graph.nodes[layer]['hw'].get_fine_feasible().index(partition.graph.nodes[layer]['hw'].fine) + 1
+            partition.graph.nodes[layer]['hw'].fine = partition.graph.nodes[layer]['hw'].get_fine_feasible()[fine_index]
+            return True
+    
+    return False

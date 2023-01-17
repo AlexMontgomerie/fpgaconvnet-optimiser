@@ -15,7 +15,7 @@ import wandb
 import sys
 import copy
 
-from fpgaconvnet.parser import Parser
+from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.tools.layer_enum import from_onnx_op_type
 
 from fpgaconvnet.optimiser.solvers import Improve
@@ -81,12 +81,6 @@ def main():
     if not os.path.exists(os.path.join(args.output_path,"checkpoint")):
         os.makedirs(os.path.join(args.output_path,"checkpoint"))
 
-    # format the partition transform allowed partitions
-    allowed_partitions = []
-    for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
-        allowed_partitions.append((from_onnx_op_type(allowed_partition[0]), from_onnx_op_type(allowed_partition[1])))
-    optimiser_config["transforms"]["partition"]["allowed_partitions"] = allowed_partitions
-
     # load platform configuration
     with open(args.platform_path, "r") as f:
         platform_config = toml.load(f)
@@ -136,7 +130,7 @@ def main():
         opt.objective  = 0
 
     # specify batch size
-    opt.batch_size = args.batch_size
+    opt.net.batch_size = args.batch_size
 
     # specify available transforms
     opt.transforms = list(optimiser_config["transforms"].keys())
@@ -149,7 +143,13 @@ def main():
     # initialize graph
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
-        fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net)
+        # format the partition transform allowed partitions
+        allowed_partitions = []
+        for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
+            allowed_partitions.append((from_onnx_op_type(allowed_partition[0]), from_onnx_op_type(allowed_partition[1])))        
+        if len(allowed_partitions) == 0:
+            allowed_partitions = None
+        fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions)
 
     ## apply max fine factor to the graph
     if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
@@ -160,7 +160,7 @@ def main():
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
         for partition_index in range(len(opt.net.partitions)):
             fpgaconvnet.optimiser.transforms.weights_reloading.apply_max_weights_reloading(
-                    opt.net, partition_index)
+                    opt.net.partitions[partition_index])
 
     if bool(optimiser_config["general"]["starting_point_distillation"]) and args.teacher_partition_path != None:
         net.update_partitions()
@@ -181,8 +181,8 @@ def main():
     opt.net.update_partitions()
 
     if args.optimiser == "greedy_partition":
-        net.merge_memory_bound_partitions()
-        net.update_partitions()
+        opt.merge_memory_bound_partitions()
+        opt.net.update_partitions()
 
     # find the best batch_size
     #if args.objective == "throughput":
@@ -198,6 +198,7 @@ def main():
     opt.net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
 
     # visualise network
-    opt.net.visualise(os.path.join(args.output_path, "topology.png"))
+    #opt.net.visualise(os.path.join(args.output_path, "topology.png"))
 
-
+if __name__ == "__main__":
+    main()

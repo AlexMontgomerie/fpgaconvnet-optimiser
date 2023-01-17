@@ -10,10 +10,7 @@ from fpgaconvnet.optimiser.solvers import Solver
 import fpgaconvnet.tools.graphs as graphs
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
-import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
-import fpgaconvnet.optimiser.transforms.partition as partition
-import fpgaconvnet.optimiser.transforms.coarse as coarse
-import fpgaconvnet.optimiser.transforms.fine as fine
+import fpgaconvnet.optimiser.transforms as transforms
 
 LATENCY   =0
 THROUGHPUT=1
@@ -23,6 +20,19 @@ START_LOOP=1
 @dataclass
 class GreedyPartition(Solver):
     coarse_in_first: list = field(default_factory=list)
+
+    def reset_partition(self, partition_index):
+        partition = self.net.partitions[partition_index]
+        partition.remove_squeeze()
+        transforms.remove_weights_reloading_transform(partition)
+        partition.need_optimise = True
+
+        for node in partition.graph.nodes():
+            partition.graph.nodes[node]["hw"].coarse_in = 1
+            partition.graph.nodes[node]["hw"].coarse_out = 1
+            if partition.graph.nodes[node]["type"] == LAYER_TYPE.Convolution:
+                partition.graph.nodes[node]["hw"].coarse_group = 1
+                partition.graph.nodes[node]["hw"].fine = 1
 
     def merge_memory_bound_partitions(self):
         print("resolving memory bound partitions")
@@ -45,7 +55,7 @@ class GreedyPartition(Solver):
             for partition_index, partition in enumerate(self.net.partitions):
                 for i in range(len(self.net.partitions)):
                     self.net.partitions[i].remove_squeeze()
-                horizontal_merges = partition.get_all_horizontal_merges(self.net, partition_index)
+                horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
                 self.net.update_partitions()
 
                 if horizontal_merges[1]:
@@ -74,21 +84,22 @@ class GreedyPartition(Solver):
                 self.net.platform.board_freq) for partition_index in memory_bound ]
             partition_index = memory_bound[partition_latencys.index(max(partition_latencys))]
 
-            horizontal_merges = self.get_all_horizontal_merges(partition_index)
+            horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
 
             if horizontal_merges[0] and partition_index in output_memory_bound:
-                self.net.partitions[horizontal_merges[0][0]].reset()
-                self.net.partitions[horizontal_merges[0][1]].reset()
-                weights_reloading.apply_max_weights_reloading(self.net, horizontal_merges[0][0])
-                partition.merge_horizontal(self.net, *horizontal_merges[0])
+                self.reset_partition(horizontal_merges[0][0])
+                self.reset_partition(horizontal_merges[0][1])
+                transforms.apply_max_weights_reloading(self.net.partitions[horizontal_merges[0][0]])
+                transforms.merge_horizontal(self.net, *horizontal_merges[0])
                 current_merge = horizontal_merges[0]
 
             elif horizontal_merges[1] and partition_index in input_memory_bound:
-                self.net.partitions[horizontal_merges[1][0]].reset()
-                self.net.partitions[horizontal_merges[1][1]].reset()
-                weights_reloading.apply_max_weights_reloading(self.net, horizontal_merges[1][0])
-                partition.merge_horizontal(self.net, *horizontal_merges[1])
+                self.reset_partition(horizontal_merges[1][0])
+                self.reset_partition(horizontal_merges[1][1])
+                transforms.apply_max_weights_reloading(self.net.partitions[horizontal_merges[1][0]])
+                transforms.merge_horizontal(self.net, *horizontal_merges[1])
                 current_merge = horizontal_merges[1]
+                
             print(current_merge)
             self.net.update_partitions()
             status = self.run_solver()
@@ -103,11 +114,9 @@ class GreedyPartition(Solver):
                         reject_list[i] = (merge[0]-1,merge[1]-1)
                 print("accept")
 
-    def empirical_solver(self, partition_index, phase_name):
-        optimiser_phase = getattr(self.net.partitions[partition_index], phase_name)
-
+    def empirical_solver(self, partition, optimiser_phase):
         net = copy.deepcopy(self.net)
-        while optimiser_phase():
+        while optimiser_phase(partition):
             self.net.update_partitions()
 
             try:
@@ -116,16 +125,16 @@ class GreedyPartition(Solver):
 
                 net = copy.deepcopy(self.net)
             except AssertionError as error:
-                if phase_name not in ["apply_more_coarse_favour_coarse_in", "apply_more_coarse_favour_coarse_out"]:
+                if optimiser_phase not in ["apply_more_coarse_favour_coarse_in", "apply_more_coarse_favour_coarse_out"]:
                     break
 
         self.net = net
         self.net.update_partitions()
         #print(partition_index,"ultilised DSP:", self.partitions[partition_index].get_resource_usage()['DSP'])
 
-    def get_max_dsp_combination(self, partition_index):
-        partition = copy.deepcopy(self.net.partitions[partition_index])
-        weights_reloading.remove_weights_reloading_transform(self.net, partition_index)
+    def get_max_dsp_combination(self, partition):
+        partition = copy.deepcopy(partition)
+        transforms.remove_weights_reloading_transform(partition)
 
         partition_dsp_product = []
 
@@ -175,19 +184,19 @@ class GreedyPartition(Solver):
                 partition_dsp_combination = list(set(partition_dsp_combination))
                 partition_dsp_combination = sorted(partition_dsp_combination)
 
-            all_dsp_combination = list(filter(lambda x: x < (self.rsc_allocation*self.net.platform.get_dsp()), partition_dsp_combination))
+            all_dsp_combination = list(filter(lambda x: x < (self.net.rsc_allocation*self.net.platform.get_dsp()), partition_dsp_combination))
 
             max_dsp_combination = max(all_dsp_combination)
         else:
             print("Might lead to program hanging. Abort getting max dsp combination")
-            max_dsp_combination = int(self.rsc_allocation*self.net.platform.get_dsp())
+            max_dsp_combination = int(self.net.rsc_allocation*self.net.platform.get_dsp())
 
         return max_dsp_combination
 
-    def get_all_wr_feasible(self, partition_index):
-        partition = copy.deepcopy(self.net.partitions[partition_index])
+    def get_all_wr_feasible(self, partition):
+        partition = copy.deepcopy(partition)
 
-        partition.remove_weights_reloading_transform()
+        transforms.remove_weights_reloading_transform(partition)
         partition.graph.nodes[partition.wr_layer]['hw'].coarse_out = 1
         all_wr_feasible = partition.graph.nodes[partition.wr_layer]['hw'].get_weights_reloading_feasible()
 
@@ -219,49 +228,22 @@ class GreedyPartition(Solver):
             self.check_constraints()
             start = True
         except AssertionError as error:
-            print("ERROR: Exceeds resource usage (trying to find valid starting point)")
-            bad_partitions = self.get_resources_bad_partitions()
-
-        # Attempt to find a good starting point
-        if not start:
-            transforms_config = self.transforms_config
-            self.transforms_config = self.fix_starting_point_config
-            self.get_transforms()
-
-            for i in range(START_LOOP):
-                transform = random.choice(self.transforms)
-                partition_index = list(bad_partitions.keys())[-1]
-                self.apply_transform(transform,partition_index)
-                self.net.update_partitions()
-
-                try:
-                    self.check_resources()
-                    self.check_constraints()
-                    break
-                except AssertionError as error:
-                    bad_partitions = self.get_resources_bad_partitions()
-
-            self.transforms_config = transforms_config
-            self.get_transforms()
-        try:
-            self.check_resources()
-            self.check_constraints()
-        except AssertionError as error:
             print("ERROR: Exceeds resource usage")
             return False
 
         assert "partition" not in self.transforms
 
         for partition_index in range(len(self.net.partitions)):
+            # don't use enumerate, copy.deepcopy creates the new partition object 
             if not self.net.partitions[partition_index].need_optimise:
                 continue
 
-            max_dsp = self.get_max_dsp_combination(partition_index)
+            max_dsp = self.get_max_dsp_combination(self.net.partitions[partition_index])
 
-            for phase in ["apply_more_fine", "apply_less_weight_reloading"]:
-                self.empirical_optimiser(partition_index, phase)
+            for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
+                self.empirical_solver(self.net.partitions[partition_index], phase)
 
-            all_wr_feasible = self.get_all_wr_feasible(partition_index) # TODO
+            all_wr_feasible = self.get_all_wr_feasible(self.net.partitions[partition_index]) # TODO
             sorted_wr_feasible = np.sort(all_wr_feasible)
             sorted_wr_feasible = list(filter(lambda x: x>=self.net.partitions[partition_index].wr_factor, sorted_wr_feasible))
 
@@ -270,20 +252,20 @@ class GreedyPartition(Solver):
                 # get the current cost
                 cost = self.get_cost([partition_index])
 
-                weights_reloading.remove_weights_reloading_transform(self.net, partition_index)
+                transforms.remove_weights_reloading_transform(self.net.partitions[partition_index])
                 self.net.partitions[partition_index].wr_factor = int(wr_factor)
-                weights_reloading.apply_weights_reloading_transform(self.net, partition_index)
+                transforms.apply_weights_reloading_transform(self.net.partitions[partition_index])
                 self.net.update_partitions()
 
                 if partition_index in self.coarse_in_first:
-                    coarse_phases = ["apply_more_coarse_favour_coarse_in",
-                                     "apply_more_coarse_fix_coarse_in"]
+                    coarse_phases = [transforms.apply_more_coarse_favour_coarse_in,
+                                     transforms.apply_more_coarse_fix_coarse_in]
                 else:
-                    coarse_phases = ["apply_more_coarse_favour_coarse_out",
-                                     "apply_more_coarse_fix_coarse_out"]
+                    coarse_phases = [transforms.apply_more_coarse_favour_coarse_out,
+                                     transforms.apply_more_coarse_fix_coarse_out]
 
                 for phase in coarse_phases:
-                    self.empirical_optimiser(partition_index,phase)
+                    self.empirical_solver(self.net.partitions[partition_index],phase)
                     if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
                         break
 
@@ -298,7 +280,7 @@ class GreedyPartition(Solver):
                     break
 
             print(partition_index,"single partition cost:",self.get_cost([partition_index]))
-            print("ultilised DSP:", self.partitions[partition_index].get_resource_usage()['DSP'],
+            print("ultilised DSP:", self.net.partitions[partition_index].get_resource_usage()['DSP'],
                   "max DSP:", max_dsp)
             self.solver_status()
 

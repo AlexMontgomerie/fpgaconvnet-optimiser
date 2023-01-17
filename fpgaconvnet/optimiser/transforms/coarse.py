@@ -10,7 +10,8 @@ Input and output channel dimension parallelism of Layers. For a convolution node
 """
 
 import random
-
+import numpy as np
+import fpgaconvnet.tools.graphs as graphs
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 transformable_nodes = [ LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct ]
@@ -59,6 +60,10 @@ def apply_max_coarse_node(partition, node):
     # update both coarse in and out
     partition.graph.nodes[node]['hw'].coarse_in  = coarse_in
     partition.graph.nodes[node]['hw'].coarse_out = coarse_out
+    # update coarse group
+    if partition.graph.nodes[node]['type'] == LAYER_TYPE.Convolution:
+        coarse_group = partition.graph.nodes[node]['hw'].get_coarse_group_feasible()[-1]
+        partition.graph.nodes[node]['hw'].coarse_group = coarse_group
 
 def fix_coarse(partition):
     # iterate over nodes
@@ -73,4 +78,98 @@ def fix_coarse(partition):
         coarse_out_max = partition.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
         if coarse_out > coarse_out_max:
             partition.graph.nodes[node]['hw'].coarse_out = coarse_out_max
+        # check if coarse group is greater than max feasible coarse group
+        if partition.graph.nodes[node]['type'] == LAYER_TYPE.Convolution:
+            coarse_group = partition.graph.nodes[node]['hw'].coarse_group
+            coarse_group_max = partition.graph.nodes[node]['hw'].get_coarse_group_feasible()[-1]
+            if coarse_group > coarse_group_max:
+                partition.graph.nodes[node]['hw'].coarse_group = coarse_group_max
 
+def apply_more_coarse(partition, coarse_in_first, fix_coarse):
+    partition.remove_squeeze()
+
+    node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
+    for layer in graphs.ordered_node_list(partition.graph) ])
+
+    node_index = np.argsort(node_latencys)[-1]
+    layer = graphs.ordered_node_list(partition.graph)[node_index]
+
+    current_coarse_in = partition.graph.nodes[layer]['hw'].coarse_in 
+    current_coarse_out = partition.graph.nodes[layer]['hw'].coarse_out
+    if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
+        current_coarse_group = partition.graph.nodes[layer]['hw'].coarse_group
+    else:
+        current_coarse_group = 1
+
+    current_coarse_product = current_coarse_in * current_coarse_out * current_coarse_group
+
+    coarse_in_feasible = partition.graph.nodes[layer]['hw'].get_coarse_in_feasible()
+    coarse_out_feasible = partition.graph.nodes[layer]['hw'].get_coarse_out_feasible()                 
+    if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution and partition.graph.nodes[layer]["hw"].groups != 1:
+        coarse_group_feasible = partition.graph.nodes[layer]['hw'].get_coarse_group_feasible()
+    else:
+        coarse_group_feasible = [1]
+
+
+    all_coarse_combination = []
+    if partition.graph.nodes[layer]['type'] in transformable_nodes:
+        for coarse_group in coarse_group_feasible:
+            for coarse_in in coarse_in_feasible:
+                for coarse_out in coarse_out_feasible:
+                    if fix_coarse:
+                        if coarse_in_first:
+                            if coarse_group*coarse_in*coarse_out > current_coarse_product \
+                            and coarse_group >= current_coarse_group \
+                            and coarse_in >= current_coarse_in \
+                            and coarse_out == current_coarse_out:
+                                all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
+                        else:
+                            if coarse_group*coarse_in*coarse_out > current_coarse_product \
+                            and coarse_group >= current_coarse_group \
+                            and coarse_in == current_coarse_in \
+                            and coarse_out >= current_coarse_out:
+                                all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
+                    else:
+                        if coarse_group*coarse_in*coarse_out > current_coarse_product:
+                            all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
+    
+    else:
+        for coarse_group in coarse_group_feasible:
+            for coarse_in in coarse_in_feasible:
+                coarse_out = coarse_in
+                if coarse_group*coarse_in*coarse_out > current_coarse_product \
+                   and coarse_group >= current_coarse_group \
+                   and coarse_in >= current_coarse_in:
+                    all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
+
+    
+    if len(all_coarse_combination) > 0:
+        all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[3]))
+        next_coarse_product = all_coarse_combination[0][3]
+        all_coarse_combination = list(filter(lambda x: x[3]==next_coarse_product, all_coarse_combination))
+        if coarse_in_first:
+            all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[2],x[1],x[0]))
+        else:
+            all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[1],x[2],x[0]))
+        selected_coarse_combination = all_coarse_combination[0]
+        
+        if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
+            partition.graph.nodes[layer]['hw'].coarse_group = int(selected_coarse_combination[0])
+        partition.graph.nodes[layer]['hw'].coarse_in = int(selected_coarse_combination[1])
+        partition.graph.nodes[layer]['hw'].coarse_out = int(selected_coarse_combination[2])
+
+        return True
+    else:
+        return False
+
+def apply_more_coarse_favour_coarse_in(partition):
+    return apply_more_coarse(partition, True, False)
+
+def apply_more_coarse_favour_coarse_out(partition):
+    return apply_more_coarse(partition, False, False)
+
+def apply_more_coarse_fix_coarse_out(partition):
+    return apply_more_coarse(partition, True, True)
+
+def apply_more_coarse_fix_coarse_in(partition):
+    return apply_more_coarse(partition, False, True)

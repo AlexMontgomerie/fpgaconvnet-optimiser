@@ -9,7 +9,7 @@ import math
 
 import fpgaconvnet.tools.graphs as graphs
 import fpgaconvnet.tools.matrix as matrix
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
 
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
@@ -31,7 +31,16 @@ def check_parallel_block(net, partition_index):
     # is a standalone parallel block
     return True
 
-def get_all_horizontal_splits(net, partition_index):
+def check_config_allowed_partitions(allowed_partitions, node0_type, node1_type):
+    if allowed_partitions is not None:
+        for allowed_split in allowed_partitions:
+            if (allowed_split[0] == node0_type and allowed_split[1] == node1_type):
+                return True
+        return False
+    else:
+        return True
+
+def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
     # function to iterate over graph
     def _iterate_graph(edge_list,input_node,in_parallel_block):
         # check if end
@@ -48,6 +57,11 @@ def get_all_horizontal_splits(net, partition_index):
         # skip node - concat partition
         if net.partitions[partition_index].graph.in_degree(next_node) > 1:
             return _iterate_graph(edge_list,next_node,in_parallel_block)
+        # skip node - split position not valid
+        if not check_config_allowed_partitions(allowed_partitions, 
+            net.partitions[partition_index].graph.nodes[input_node]["type"],
+            net.partitions[partition_index].graph.nodes[next_node]["type"]):
+            return _iterate_graph(edge_list,next_node,in_parallel_block) 
         # append to partition list
         if not in_parallel_block:
             edge_list.append((input_node,next_node))
@@ -130,7 +144,7 @@ def get_all_vertical_merges(net, partition_index):
 
 def split_horizontal(net, partition_index, edge):
     # remove weights reloading transform
-    weights_reloading.remove_weights_reloading_transform(net, partition_index)
+    weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index])
     # create a new partition
     net.partitions.insert(partition_index,copy.deepcopy(net.partitions[partition_index]))
     # split graph
@@ -138,12 +152,12 @@ def split_horizontal(net, partition_index, edge):
     net.partitions[partition_index].graph   = partition_graphs[0]
     net.partitions[partition_index+1].graph = partition_graphs[1]
     # apply max weights reloading to both
-    weights_reloading.apply_max_weights_reloading(net, partition_index)
-    weights_reloading.apply_max_weights_reloading(net, partition_index+1)
+    weights_reloading.apply_max_weights_reloading(net.partitions[partition_index])
+    weights_reloading.apply_max_weights_reloading(net.partitions[partition_index+1])
 
 def split_vertical(net, partition_index, nodes):
     # remove weights reloading transform
-    weights_reloading.remove_weights_reloading_transform(net, partition_index)
+    weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index])
      # create a new partition
     net.partitions.insert(partition_index,copy.deepcopy(net.partitions[partition_index]))
     # split the graph
@@ -151,47 +165,47 @@ def split_vertical(net, partition_index, nodes):
     net.partitions[partition_index].graph   = partition_graphs[0]
     net.partitions[partition_index+1].graph = partition_graphs[1]
     # apply max weights reloading to both
-    weights_reloading.apply_max_weights_reloading(net, partition_index)
-    weights_reloading.apply_max_weights_reloading(net, partition_index+1)
+    weights_reloading.apply_max_weights_reloading(net.partitions[partition_index])
+    weights_reloading.apply_max_weights_reloading(net.partitions[partition_index+1])
 
 def merge_horizontal(net, partition_index_a, partition_index_b):
     # remove weights reloading transform
-    weights_reloading.remove_weights_reloading_transform(net, partition_index_a)
-    weights_reloading.remove_weights_reloading_transform(net, partition_index_b)
+    weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_a])
+    weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_b])
     # merge graphs
     graph = graphs.merge_graphs_horizontal(
             net.partitions[partition_index_a].graph,net.partitions[partition_index_b].graph)
     net.partitions[partition_index_a].graph = graph
     # apply max weights reloading
-    weights_reloading.apply_max_weights_reloading(net, partition_index_a)
+    weights_reloading.apply_max_weights_reloading(net.partitions[partition_index_a])
     # remove last partition
     del net.partitions[partition_index_b]
 
 def merge_vertical(net, partition_index_a, partition_index_b):
     # remove weights reloading transform
-    weights_reloading.remove_weights_reloading_transform(net, partition_index_a)
-    weights_reloading.remove_weights_reloading_transform(net, partition_index_b)
+    weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_a])
+    weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_b])
     # merge graphs
     graph = graphs.merge_graphs_vertical(net.partitions[partition_index_a].graph,net.partitions[partition_index_b].graph)
     # update graphs
     net.partitions[partition_index_a].graph = graph
     # remove weights reloading
-    weights_reloading.apply_max_weights_reloading(net, partition_index_a)
+    weights_reloading.apply_max_weights_reloading(net.partitions[partition_index_a])
     # remove last partition
     del net.partitions[partition_index_b]
 
-def split_horizontal_complete(net):
+def split_horizontal_complete(net, allowed_partitions):
     # function to find a horizontal split
     def _find_horizontal_split_partition():
         for i in range(len(net.partitions)):
-            if get_all_horizontal_splits(net, i):
+            if get_all_horizontal_splits(net, i, allowed_partitions):
                 return i
         return None
     partition_index = _find_horizontal_split_partition()
     # keep iterating until all horizontal splits done
     while partition_index != None:
         # apply first possible split
-        horizontal_splits = get_all_horizontal_splits(net, partition_index)
+        horizontal_splits = get_all_horizontal_splits(net, partition_index, allowed_partitions)
         split_horizontal(net, partition_index, horizontal_splits[0])
         # find next partition
         partition_index = _find_horizontal_split_partition()
@@ -211,10 +225,10 @@ def split_vertical_complete(net):
         # find next partition
         partition_index = _find_vertical_split_partition()
 
-def split_complete(net):
-    split_horizontal_complete(net)
+def split_complete(net, allowed_partitions):
+    split_horizontal_complete(net, allowed_partitions)
     split_vertical_complete(net)
-    split_horizontal_complete(net)
+    split_horizontal_complete(net, allowed_partitions)
 
 def merge_horizontal_complete(net):
     def _find_horizontal_merge_partition():

@@ -75,10 +75,10 @@ class Solver:
             partition_list = list(range(len(self.net.partitions)))
         # Latency objective
         if   self.objective == LATENCY:
-            return self.net.get_latency()
+            return self.net.get_latency(partition_list)
         # Throughput objective
         elif self.objective == THROUGHPUT:
-            return -self.net.get_throughput()
+            return -self.net.get_throughput(partition_list)
 
     def check_resources(self):
         self.net.check_resources()
@@ -171,7 +171,7 @@ class Solver:
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
         print("COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-            cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\r')
+            cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\n')
 
     def save_design_checkpoint(self, output_path):
         # pickle the current optimiser state
