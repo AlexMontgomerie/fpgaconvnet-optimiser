@@ -344,15 +344,21 @@ def update_building_block_shape(self, hw_node, next_input_shape, next_output_sha
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             max_kernel_cols = max([ self.net.graph.nodes[exec_node]["hw"].kernel_cols \
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
+            max_stride_rows = max([ self.net.graph.nodes[exec_node]["hw"].stride_rows \
+                    for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
+            max_stride_cols = max([ self.net.graph.nodes[exec_node]["hw"].stride_cols \
+                    for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             if self.dimensionality == 3:
                 max_kernel_depth = max([ self.net.graph.nodes[exec_node]["hw"].kernel_depth \
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
+                max_stride_depth = max([ self.net.graph.nodes[exec_node]["hw"].stride_depth \
+                        for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+2, max_input_shape[0])
-            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+2, next_input_shape[1])
+            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+max_stride_rows+1, max_input_shape[0])
+            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+max_stride_cols+1, next_input_shape[1])
             if self.dimensionality == 3:
-                self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+2, next_input_shape[2])
+                self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+max_stride_depth+1, next_input_shape[2])
             # channel and filter dimensions
             self.building_blocks[hw_node]["hw"].channels = \
                     next_input_shape[-1] if self.channel_tiling else max_input_shape[-1]
@@ -379,15 +385,21 @@ def update_building_block_shape(self, hw_node, next_input_shape, next_output_sha
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             max_kernel_cols = max([ self.net.graph.nodes[exec_node]["hw"].kernel_cols \
                     for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
+            max_stride_rows = max([ self.net.graph.nodes[exec_node]["hw"].stride_rows \
+                    for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
+            max_stride_cols = max([ self.net.graph.nodes[exec_node]["hw"].stride_cols \
+                    for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             if self.dimensionality == 3:
                 max_kernel_depth = max([ self.net.graph.nodes[exec_node]["hw"].kernel_depth \
                         for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
+                max_stride_depth = max([ self.net.graph.nodes[exec_node]["hw"].stride_depth \
+                        for exec_node in self.building_blocks[hw_node]["exec_nodes"] ])
             # make sure rows are greater than the kernel size
             # TODO: get the actual min shape
-            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_cols+2, max_input_shape[0])
-            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+2, next_input_shape[1])
+            self.building_blocks[hw_node]["hw"].rows = max(max_kernel_rows+max_stride_rows+1, max_input_shape[0])
+            self.building_blocks[hw_node]["hw"].cols = max(max_kernel_cols+max_stride_cols+1, next_input_shape[1])
             if self.dimensionality == 3:
-                self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+2, next_input_shape[2])
+                self.building_blocks[hw_node]["hw"].depth = max(max_kernel_depth+max_stride_depth+1, next_input_shape[2])
             # update the channel dimension
             self.building_blocks[hw_node]["hw"].channels = next_output_shape[-1]
         # TODO: handle the other layer types

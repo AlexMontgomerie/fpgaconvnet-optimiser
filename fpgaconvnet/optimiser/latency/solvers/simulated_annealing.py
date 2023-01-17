@@ -20,9 +20,9 @@ START_LOOP  =   10
 class LatencySimulatedAnnealing(LatencySolver):
     T: float = 10.0
     k: float = 10.0
-    T_min: float = 0.0001
-    cool: float = 0.98
-    transform_iterations: int = 20
+    T_min: float = 0.00001
+    cool: float = 0.99
+    transform_iterations: int = 15
     warm_start: bool = True
     warm_start_time_limit: int = 90
     """
@@ -107,12 +107,15 @@ class LatencySimulatedAnnealing(LatencySolver):
 
             # get the current cost
             cost = self.get_cost()
+            resources = self.get_resources()
 
             # Save previous building blocks
             building_blocks = copy.deepcopy(self.building_blocks)
 
             # several transform iterations per cool down
+            # transform_iterations = random.randint(1, self.transform_iterations)
             for _ in range(self.transform_iterations):
+            # for _ in range(transform_iterations):
 
                 # Choose a random transform
                 transform = np.random.choice(list(self.transforms.keys()),
@@ -142,6 +145,11 @@ class LatencySimulatedAnnealing(LatencySolver):
             if curr_cost < cost:
                 # accept new state
                 pass
+            elif curr_cost == cost:
+                curr_resources = self.get_resources()
+                if sum(curr_resources.values()) < sum(resources.values()):
+                    # accept new state
+                    pass
             else:
                 if math.exp((cost - curr_cost)/(self.k*self.T)) > random.uniform(0,1):
                     # accept new state

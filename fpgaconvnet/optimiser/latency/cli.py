@@ -109,7 +109,8 @@ def optimize():
             optimiser_config = wandb.config
 
     # parse the network
-    fpgaconvnet_parser = Parser(regression_model=optimiser_config["general"]["resource_model"])
+    fpgaconvnet_parser = Parser(regression_model=optimiser_config["general"]["resource_model"],
+            convert_gemm_to_conv=optimiser_config["general"]["convert_gemm_to_conv"])
     fpgaconvnet_parser.add_onnx_optimization_passes(optimiser_config["general"]["optimization_passes"])
 
     # create network
@@ -134,10 +135,14 @@ def optimize():
 
     # specify available transforms
     opt.transforms = {}
-    for transform in optimiser_config["transforms"]:
+    for i, transform in enumerate(optimiser_config["transforms"]):
         if optimiser_config["transforms"][transform]["apply_transform"]:
-            opt.transforms[transform] = \
-                    optimiser_config["transforms"][transform]["probability"]
+            if args.sweep_wandb:
+                probabilities = optimiser_config["transforms_probabilities"]
+                opt.transforms[transform] = probabilities[i]
+            else:
+                opt.transforms[transform] = \
+                        optimiser_config["transforms"][transform]["probability"]
 
     # transform-specific config
     if "combine" in optimiser_config["transforms"]:
@@ -202,6 +207,12 @@ def optimize():
     if optimiser_config["transforms"]["fine"]["start_complete"]:
         for hw_node in opt.building_blocks:
             opt.apply_random_fine_node(hw_node)
+
+    ## set the shapes for hw nodes
+    for hw_node in opt.building_blocks:
+        shape_in = opt.building_blocks[hw_node]["hw"].shape_in()
+        shape_out = opt.building_blocks[hw_node]["hw"].shape_out()
+        opt.update_building_block_shape(hw_node, shape_in, shape_out)
 
     # apply weight storage to building_blocks
     opt.apply_weight_storage()

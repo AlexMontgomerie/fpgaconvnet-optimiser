@@ -32,12 +32,12 @@ MODELS="${models:-${DEFAULT_MODELS[@]}}"
 OPTIMIZER="simulated_annealing"
 NUM_RUNS="${runs:-5}"
 
-for platform_name in ${PLATFORMS[@]}; do
-    PLATFORM_PATH="examples/platforms/$platform_name.toml"
-    for model_name in ${MODELS[@]}; do
+for model_name in ${MODELS[@]}; do
+    MODEL_PATH="examples/models/$model_name.onnx"
+    for platform_name in ${PLATFORMS[@]}; do
         echo "Running $model_name on $platform_name for $NUM_RUNS times"
 
-        MODEL_PATH="examples/models/$model_name.onnx"
+        PLATFORM_PATH="examples/platforms/$platform_name.toml"
         OUTPUT_PATH="outputs/$model_name/$platform_name"
 
         mkdir -p $OUTPUT_PATH

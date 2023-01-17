@@ -112,16 +112,16 @@ parameters:
     parameters:
       resource_allocation:
         distribution: constant
-        value: 0.95
+        value: 0.98
       runtime_parameters:
         distribution: constant
         value: True
       weight_storage:
         distribution: constant
-        value: double_buffer # [ 'double_buffer', 'stream', 'share' ]
+        value: "double_buffer" # [ 'double_buffer', 'stream', 'share' ]
       resource_model:
         distribution: constant
-        value: xgboost # [ 'linear_regression', 'xgboost' ]
+        value: "linear_regression" # [ 'linear_regression', 'xgboost' ]
       channel_tiling:
         distribution: constant
         value: True
@@ -131,29 +131,42 @@ parameters:
       optimization_passes:
         distribution: constant
         value: [ "fuse_relu_into_previous" ] # [ [ "fuse_relu_into_previous" ], [] ]
+      convert_gemm_to_conv:
+        distribution: constant
+        value: True
   annealing:
     parameters:
       T:
         distribution: constant
-        value: 10
+        value: 10.0
       T_min:
         distribution: constant
         value: 0.0001
       k:
         distribution: constant
-        value: 10
+        value: 10.0
       cool:
         distribution: constant
         value: 0.98
       transform_iterations:
         distribution: constant
-        value: 20
+        value: 15
       warm_start:
         distribution: constant
         value: True
       warm_start_time_limit:
         distribution: constant
         value: 90
+  transforms_probabilities:
+    distribution: categorical
+    values: [ [0.20, 0.20, 0.20, 0.20, 0.20],
+              [0.10, 0.30, 0.30, 0.15, 0.15],
+              [0.10, 0.40, 0.40, 0.05, 0.05],
+              [0.10, 0.25, 0.25, 0.20, 0.20],
+              [0.20, 0.25, 0.25, 0.20, 0.10],
+              [0.10, 0.30, 0.30, 0.20, 0.10],
+              [0.20, 0.40, 0.40, 0.00, 0.00],
+              [0.10, 0.45, 0.45, 0.00, 0.00] ]
   transforms:
     parameters:
       fine:
@@ -174,7 +187,7 @@ parameters:
             value: True
           probability:
             distribution: constant
-            value: 0.35
+            value: 0.30
       shape:
         parameters:
           apply_transform:
@@ -182,34 +195,42 @@ parameters:
             value: True
           probability:
             distribution: constant
-            value: 0.35
+            value: 0.30
           method:
-            distribution: categorical
-            values: [ 'inherit', 'random', 'mixed' ]
+            distribution: constant
+            value: "mixed"
           starting_shape:
-            distribution: categorical
-            values: [ '', 'min', 'max', 'median', 'percentage' ]
+            distribution: constant
+            value: ""
           starting_shape_percentage:
             distribution: constant
             value: 20
           rand_shape_range:
             parameters:
               rows:
+                # distribution: constant
+                # value: 45
                 distribution: int_uniform
                 min: 5
-                max: 50
+                max: 70
               cols:
+                # distribution: constant
+                # value: 45
                 distribution: int_uniform
                 min: 5
-                max: 50
+                max: 70
               depth:
+                # distribution: constant
+                # value: 45
                 distribution: int_uniform
-                min: 5
-                max: 50
+                min: 2
+                max: 70
               channels:
+                # distribution: constant
+                # value: 45
                 distribution: int_uniform
                 min: 3
-                max: 50
+                max: 70
           use_previous_shape:
             distribution: constant
             value: True
@@ -220,7 +241,7 @@ parameters:
             value: True
           probability:
             distribution: constant
-            value: 0.10
+            value: 0.15
           num_nodes:
             distribution: constant
             value: 2 # [ 2, 5 ]
@@ -238,7 +259,7 @@ parameters:
             value: True
           probability:
             distribution: constant
-            value: 0.10
+            value: 0.15
           num_nodes:
             distribution: constant
             value: 2 # [ 2, 5 ]

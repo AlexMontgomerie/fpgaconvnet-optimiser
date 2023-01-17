@@ -1,14 +1,14 @@
 [device]
-name = "vc709"
+name = "vc707"
 #family = ""
-part = "xc7vx690tffg1761-2"
+part = "xc7vx485tffg1761c"
 board = "" #TODO: add board file
 
 [resources]
-DSP   = 3600
-BRAM  = 2940
-FF    = 866000
-LUT   = 433000
+DSP   = 2800
+BRAM  = 1030
+FF    = 607200
+LUT   = 303600
 
 [system]
 board_frequency = 150 # in MHz

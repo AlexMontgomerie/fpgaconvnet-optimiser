@@ -6,7 +6,7 @@ board = "xilinx.com:zc706:part0:1.4"
 
 [resources]
 DSP   = 900
-BRAM  = 1090
+BRAM  = 545
 FF    = 437200
 LUT   = 218600
 
