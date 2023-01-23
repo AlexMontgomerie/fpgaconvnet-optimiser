@@ -228,3 +228,9 @@ class Solver:
         template for running the solver.
         """
         raise RuntimeError("solver not implemented!")
+
+    def set_double_buffer_weights(self):
+        for partition in self.net.partitions:
+            for node in partition.graph.nodes():
+                if partition.graph.nodes[node]['type'] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
+                    partition.graph.nodes[node]['hw'].double_buffered = True
