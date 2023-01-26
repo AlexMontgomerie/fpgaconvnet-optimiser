@@ -163,7 +163,7 @@ class Optimiser(Network):
         avoid_layers = [LAYER_TYPE.If, #exit merge
                         LAYER_TYPE.Squeeze,
                         LAYER_TYPE.Greater, #softmax cmp
-                        LAYER_TYPE.Buffer, #softmax cmp
+                        #LAYER_TYPE.Buffer,
                         ] # buffer and split can be
 
         ## Coarse transform (node_info transform)

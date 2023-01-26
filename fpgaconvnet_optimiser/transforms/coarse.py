@@ -43,6 +43,9 @@ def apply_random_coarse_layer(self, layer):
     #FIXME allow multiple input/output ports(streams,coarse)
     if layer in self.input_nodes:
         coarse_types.append('coarse_out')
+        ### FIXME - temporary for eef throughput limited networks
+        coarse_types.append('coarse_in')
+        ### FIXME
     elif layer in self.output_nodes:
         coarse_types.append('coarse_in')
     else:
