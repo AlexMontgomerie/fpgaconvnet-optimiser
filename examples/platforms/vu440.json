@@ -1,0 +1,13 @@
+{
+  "name" : "vu440",
+  "DSP"  : 2880,
+  "BRAM" : 5040,
+  "FF"   : 5065920,
+  "LUT"  : 2532960,
+  "freq"          : 150000000,
+  "reconf_time"   : 0.08255,
+  "mem_bandwidth" : 135,
+  "mem_capacity"  : 1024000000,
+  "ports"         : 2,
+  "port_width"    : 512
+}

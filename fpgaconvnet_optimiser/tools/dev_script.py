@@ -212,8 +212,8 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
 
     ### FOR LOOP FOR REPEATED OPTIM ###
     #NOTE expose these to the expr top level
-    rsc_limits = [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    #rsc_limits = [0.2,0.3,0.4,0.5]
+    #rsc_limits = [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    rsc_limits = [0.2,0.3,0.4,0.5,0.6]
     full_sa_runs = 10
 
     if auto_flag:
@@ -236,27 +236,33 @@ def optim_expr(args,filepath,is_branchy,opt_path,plat_path):
 
                     for split in nets:
                         split.rsc_allocation = rsc
-                        print("\nRunning split: {}".format(split.name))
-                        pass_flag = split.run_optimiser() #true = pass
-                        if pass_flag:
-                            # update all partitions
-                            split.update_partitions()
-                            #create folder to store results - percentage/iteration
-                            post_optim_path = os.path.join(args.output_path,
-                                    "post_optim-rsc{}p".format(int(rsc*100)))
-                            if not os.path.exists(post_optim_path):
-                                os.makedirs(post_optim_path)
+                        #print("\nRunning split: {}".format(split.name))
 
-                            # save all partitions
-                            split.save_all_partitions(post_optim_path)
-                            print("Partitions saved")
-                            # visualise network
-                            #split.visualise(os.path.join(post_optim_path,"topology.png"))
-                            # create report
-                            split.create_report(os.path.join(post_optim_path,
-                                "report_{}.json".format(split.name)))
-                            # create scheduler
-                            #split.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+                        # NOTE implements eef only
+                        if "eef" in split.name:
+                            print("WARNING: EEF ONLY")
+                            print("\nRunning split: {}".format(split.name))
+
+                            pass_flag = split.run_optimiser() #true = pass
+                            if pass_flag:
+                                # update all partitions
+                                split.update_partitions()
+                                #create folder to store results - percentage/iteration
+                                post_optim_path = os.path.join(args.output_path,
+                                        "post_optim-rsc{}p".format(int(rsc*100)))
+                                if not os.path.exists(post_optim_path):
+                                    os.makedirs(post_optim_path)
+
+                                # save all partitions
+                                split.save_all_partitions(post_optim_path)
+                                print("Partitions saved")
+                                # visualise network
+                                #split.visualise(os.path.join(post_optim_path,"topology.png"))
+                                # create report
+                                split.create_report(os.path.join(post_optim_path,
+                                    "report_{}.json".format(split.name)))
+                                # create scheduler
+                                #split.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
         else:
             # not branchy optimisation loop
             for rsc in rsc_limits:
@@ -543,7 +549,7 @@ def gen_graph(args):
                 f.write("report name:"+rn+"\n")
                 f.write("xy:"+str(rsc_thr)+"\n")
         #generate separate plots for EEF fraction
-        eef_exit_fraction_l = [0.25,0.5]
+        eef_exit_fraction_l = [0.25,0.34, 0.37,0.5]
         subop_fraction = [-0.05,0.05] #lines representing suboptimal EEF %
         for eef_frac in eef_exit_fraction_l:
             if ee_flag:
@@ -667,7 +673,7 @@ def gen_graph(args):
                     )
             ax.grid()
             ax.set_xlim(right=1.0)
-            ax.set_ylim(top=85000)
+            #ax.set_ylim(top=85000)
             #get figure position
             box = ax.get_position()
             #adjust figure width to fit legend
@@ -788,12 +794,24 @@ def main():
     # se lenet (backbone only version of brn se, the new one)
     #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/backbone_se_new.onnx"
     # branchy se lenet (the new version, 3 conv + FC in bb and 1xtra conv+FC in ee)
-    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se20220902.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/brn_se20220902.onnx"
+
+    # branchy alex net - cifar 10
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/b-alexnet_221214.onnx"
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/b-alexnet_ppr-ver_230109.onnx"
+    # triplewins small cnn
+    #filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/TW_SmallCNN_230103.onnx"
+    # optimized training... c-alexnet-svhn
+    filepath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/models/c-alexnet_svhn_230109.onnx"
+
+
 
     #optimiser path - taken from opt example
     optpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/optimiser_example.yml"
     #platform path
-    platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json"
+    #platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zc706.json"
+    #platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/zcu102.json"
+    platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/vu440.json"
     #platpath = "/home/localadmin/phd/fpgaconvnet-optimiser/examples/platforms/xcvu440-flga2892-3-e.json"
 
     if args.expr == 'parser':
