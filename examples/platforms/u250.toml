@@ -4,10 +4,10 @@ part = "xc7z020clg484-1"
 board = "xilinx.com:zc702:part0:1.4"
 
 [resources]
-DSP   = 11508
-BRAM  = 4000
-FF    = 2760000
-LUT   = 1380000
+DSP   = 12288
+BRAM  = 5376
+FF    = 3456000
+LUT   = 1728000
 URAM  = 1280
 
 [system]
