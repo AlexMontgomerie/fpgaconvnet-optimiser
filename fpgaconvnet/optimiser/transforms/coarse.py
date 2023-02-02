@@ -11,6 +11,7 @@ Input and output channel dimension parallelism of Layers. For a convolution node
 
 import random
 import numpy as np
+from collections.abc import Iterable
 import fpgaconvnet.tools.graphs as graphs
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
@@ -70,11 +71,17 @@ def fix_coarse(partition):
     for node in partition.graph.nodes():
         # check if coarse in is greater than max feasible coarse in
         coarse_in = partition.graph.nodes[node]['hw'].coarse_in
+        # todo: fix multi ports
+        if isinstance(coarse_in, Iterable):
+            coarse_in = coarse_in[0]
         coarse_in_max = partition.graph.nodes[node]['hw'].get_coarse_in_feasible()[-1]
         if coarse_in > coarse_in_max:
             partition.graph.nodes[node]['hw'].coarse_in = coarse_in_max
         # check if coarse out is greater than max feasible coarse out
         coarse_out = partition.graph.nodes[node]['hw'].coarse_out
+        # todo: fix multi ports
+        if isinstance(coarse_out, Iterable):
+            coarse_out = coarse_out[0]
         coarse_out_max = partition.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
         if coarse_out > coarse_out_max:
             partition.graph.nodes[node]['hw'].coarse_out = coarse_out_max
@@ -95,7 +102,13 @@ def apply_more_coarse(partition, coarse_in_first, fix_coarse):
     layer = graphs.ordered_node_list(partition.graph)[node_index]
 
     current_coarse_in = partition.graph.nodes[layer]['hw'].coarse_in 
+    # todo: fix multi ports
+    if isinstance(current_coarse_in, Iterable):
+        current_coarse_in = current_coarse_in[0]
     current_coarse_out = partition.graph.nodes[layer]['hw'].coarse_out
+    # todo: fix multi ports
+    if isinstance(current_coarse_out, Iterable):
+            current_coarse_out = current_coarse_out[0]
     if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
         current_coarse_group = partition.graph.nodes[layer]['hw'].coarse_group
     else:
