@@ -34,7 +34,8 @@ def check_parallel_block(net, partition_index):
 def check_config_allowed_partitions(allowed_partitions, node0_type, node1_type):
     if allowed_partitions is not None:
         for allowed_split in allowed_partitions:
-            if (allowed_split[0] == node0_type and allowed_split[1] == node1_type):
+            if (allowed_split[0] == "*" or allowed_split[0] == node0_type) and \
+               (allowed_split[1] == "*" or allowed_split[1] == node1_type):
                 return True
         return False
     else:

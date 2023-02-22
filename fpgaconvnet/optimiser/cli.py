@@ -16,7 +16,7 @@ import sys
 import copy
 
 from fpgaconvnet.parser.Parser import Parser
-from fpgaconvnet.tools.layer_enum import from_onnx_op_type
+from fpgaconvnet.tools.layer_enum import from_cfg_type
 
 from fpgaconvnet.optimiser.solvers import Improve
 from fpgaconvnet.optimiser.solvers import SimulatedAnnealing
@@ -147,7 +147,7 @@ def main():
         # format the partition transform allowed partitions
         allowed_partitions = []
         for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
-            allowed_partitions.append((from_onnx_op_type(allowed_partition[0]), from_onnx_op_type(allowed_partition[1])))        
+            allowed_partitions.append((from_cfg_type(allowed_partition[0]), from_cfg_type(allowed_partition[1])))        
         if len(allowed_partitions) == 0:
             allowed_partitions = None
         fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions)

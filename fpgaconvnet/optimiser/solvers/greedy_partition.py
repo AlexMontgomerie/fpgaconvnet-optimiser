@@ -243,7 +243,7 @@ class GreedyPartition(Solver):
             for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
                 self.empirical_solver(self.net.partitions[partition_index], phase)
 
-            if "weights_reloading" in self.transforms:
+            if "weights_reloading" in self.transforms and self.net.partitions[partition_index].wr_layer:
                 all_wr_feasible = self.get_all_wr_feasible(self.net.partitions[partition_index]) # TODO
                 sorted_wr_feasible = np.sort(all_wr_feasible)
                 sorted_wr_feasible = list(filter(lambda x: x>=self.net.partitions[partition_index].wr_factor, sorted_wr_feasible))

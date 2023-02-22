@@ -24,7 +24,7 @@ probability = 0.25
 start_complete = true
 allowed_type = ["merge"]
 allowed_partitions = [
-    ["*", "Conv"],
+    ["*", "Split"],
     ["*", "Gemm"]
 ]
 
