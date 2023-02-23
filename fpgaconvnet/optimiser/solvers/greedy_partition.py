@@ -202,6 +202,17 @@ class GreedyPartition(Solver):
 
         return all_wr_feasible
 
+    def allocate_uram(self):
+        for partition in reversed(self.net.partitions):
+            for layer in reversed(graphs.ordered_node_list(partition.graph)):
+                if partition.graph.nodes[layer]['type'] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
+                    partition_resource_usage = partition.get_resource_usage()
+                    # balance between bram and uram
+                    if partition_resource_usage['BRAM'] >= self.net.platform.get_bram() * self.net.rsc_allocation:
+                        partition.graph.nodes[layer]["hw"].use_uram = True
+                    else:
+                        break
+
     def run_solver(self, log=True):
         # update all partitions
         self.net.update_partitions()
@@ -211,18 +222,6 @@ class GreedyPartition(Solver):
 
         start = False
 
-        # # use uram to store weight #TODO
-        # count =0
-        # for partition in reversed(self.net.partitions):
-        #     for layer in reversed(graphs.ordered_node_list(partition.graph)):
-        #         if partition.graph.nodes[layer]['type'] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
-        #             partition_resource_usage = partition.get_resource_usage()
-        #             if "URAM" in self.net.platform.resources:
-        #                 if partition_resource_usage['BRAM'] / self.platform['constraints']['BRAM'] > partition_resource_usage['URAM'] / self.platform['constraints']['URAM']:
-        #                     partition.graph.nodes[layer]["hw"].modules['conv'].uram_weight = True
-        #                     count +=1
-        #             else:
-        #                 break
         try:
             self.check_resources()
             self.check_constraints()

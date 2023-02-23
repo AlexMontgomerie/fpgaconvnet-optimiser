@@ -170,8 +170,13 @@ class Solver:
         DSP  = max([ resource['DSP']  for resource in resources ])
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
-        print("COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-            cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\n')
+        if self.net.platform.get_uram() > 0:
+            URAM = max([ resource['URAM'] for resource in resources ])
+            print("COST:\t {cost} ({objective}), RESOURCE:\t {URAM}\t{BRAM}\t{DSP}\t{LUT}\t{FF}\t(URAM|BRAM|DSP|LUT|FF)".format(
+                cost=cost,objective=objective,URAM=int(URAM),BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\n')
+        else:
+            print("COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
+                cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\n')
 
     def save_design_checkpoint(self, output_path):
         # pickle the current optimiser state
