@@ -171,9 +171,6 @@ def main():
     # print("size: ", len(pickle.dumps(opt.net)))
     opt_onnx_model = copy.deepcopy(opt.net.model)
     opt.net.model = None
-
-    if args.optimiser == "greedy_partition":
-        opt.allocate_uram()
         
     # run optimiser
     opt.run_solver()

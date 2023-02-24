@@ -118,6 +118,7 @@ class GreedyPartition(Solver):
         net = copy.deepcopy(self.net)
         while optimiser_phase(partition):
             self.net.update_partitions()
+            self.allocate_uram()
 
             try:
                 self.check_resources()
@@ -203,11 +204,17 @@ class GreedyPartition(Solver):
         return all_wr_feasible
 
     def allocate_uram(self):
+        # reset all uram flags
+        for partition in self.net.partitions:
+            for layer in graphs.ordered_node_list(partition.graph):
+                if partition.graph.nodes[layer]['type'] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
+                    partition.graph.nodes[layer]["hw"].use_uram = False
+
+        # balance between bram and uram
         for partition in reversed(self.net.partitions):
             for layer in reversed(graphs.ordered_node_list(partition.graph)):
                 if partition.graph.nodes[layer]['type'] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                     partition_resource_usage = partition.get_resource_usage()
-                    # balance between bram and uram
                     if partition_resource_usage['BRAM'] >= self.net.platform.get_bram() * self.net.rsc_allocation:
                         partition.graph.nodes[layer]["hw"].use_uram = True
                     else:
@@ -216,6 +223,7 @@ class GreedyPartition(Solver):
     def run_solver(self, log=True):
         # update all partitions
         self.net.update_partitions()
+        self.allocate_uram()
 
         # Setup
         cost = self.get_cost()
