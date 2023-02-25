@@ -128,7 +128,7 @@ def main():
         opt.objective  = 1
     if args.objective == "latency":
         opt.objective  = 0
-        opt.set_double_buffer_weights()
+        #opt.set_double_buffer_weights()
 
     # specify batch size
     opt.net.batch_size = args.batch_size

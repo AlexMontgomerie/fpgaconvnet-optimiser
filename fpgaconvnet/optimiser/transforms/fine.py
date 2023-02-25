@@ -40,11 +40,11 @@ def apply_more_fine(partition):
         node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
             for layer in feasible_layers])
 
-        node_index = np.argsort(node_latencys)[-1]
-        layer = feasible_layers[node_index]
-        if partition.graph.nodes[layer]['hw'].fine < partition.graph.nodes[layer]['hw'].get_fine_feasible()[-1]:
-            fine_index = partition.graph.nodes[layer]['hw'].get_fine_feasible().index(partition.graph.nodes[layer]['hw'].fine) + 1
-            partition.graph.nodes[layer]['hw'].fine = partition.graph.nodes[layer]['hw'].get_fine_feasible()[fine_index]
-            return True
+        for node_index in reversed(np.argsort(node_latencys)):
+            layer = feasible_layers[node_index]
+            if partition.graph.nodes[layer]['hw'].fine < partition.graph.nodes[layer]['hw'].get_fine_feasible()[-1]:
+                fine_index = partition.graph.nodes[layer]['hw'].get_fine_feasible().index(partition.graph.nodes[layer]['hw'].fine) + 1
+                partition.graph.nodes[layer]['hw'].fine = partition.graph.nodes[layer]['hw'].get_fine_feasible()[fine_index]
+                return True
     
     return False
