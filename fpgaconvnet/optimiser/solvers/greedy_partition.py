@@ -114,9 +114,14 @@ class GreedyPartition(Solver):
                         reject_list[i] = (merge[0]-1,merge[1]-1)
                 print("accept")
 
-    def empirical_solver(self, partition, optimiser_phase):
+    def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True):
         net = copy.deepcopy(self.net)
-        while optimiser_phase(partition):
+        reject_list = []
+        while True:
+            partition = self.net.partitions[partition_index]
+            status, node = optimiser_phase(partition, reject_list)
+            if not status:
+                break
             self.net.update_partitions()
             self.allocate_uram()
 
@@ -126,8 +131,11 @@ class GreedyPartition(Solver):
 
                 net = copy.deepcopy(self.net)
             except AssertionError as error:
-                if optimiser_phase not in ["apply_more_coarse_favour_coarse_in", "apply_more_coarse_favour_coarse_out"]:
+                if fast_mode:
                     break
+                else:
+                    reject_list.append(node)
+                    self.net = copy.deepcopy(net)
 
         self.net = net
         self.net.update_partitions()
@@ -248,7 +256,7 @@ class GreedyPartition(Solver):
             max_dsp = self.get_max_dsp_combination(self.net.partitions[partition_index])
 
             for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
-                self.empirical_solver(self.net.partitions[partition_index], phase)
+                self.empirical_solver(partition_index, phase)
 
             if "weights_reloading" in self.transforms and self.net.partitions[partition_index].wr_layer:
                 all_wr_feasible = self.get_all_wr_feasible(self.net.partitions[partition_index]) # TODO
@@ -275,7 +283,7 @@ class GreedyPartition(Solver):
                                      transforms.apply_more_coarse_fix_coarse_out]
 
                 for phase in coarse_phases:
-                    self.empirical_solver(self.net.partitions[partition_index],phase)
+                    self.empirical_solver(partition_index,phase)
                     if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
                         break
 

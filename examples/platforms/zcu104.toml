@@ -9,6 +9,7 @@ DSP   = 1728
 BRAM  = 624
 FF    = 460800
 LUT   = 230400
+URAM  = 96
 
 [system]
 board_frequency = 200 # in MHz

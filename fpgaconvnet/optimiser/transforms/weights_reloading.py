@@ -78,7 +78,7 @@ def apply_weights_reloading_transform(partition):
     # fix the coarse factors
     fix_coarse(partition)
 
-def apply_less_weight_reloading(partition):
+def apply_less_weight_reloading(partition, reject_list=[]):
     # get the weights reloading layer in partition
     partition.wr_layer = partition.get_wr_layer()
     wr_factor = partition.wr_factor
@@ -90,5 +90,5 @@ def apply_less_weight_reloading(partition):
         partition.wr_factor = int(sorted_wr_feasible[wr_factor_index])
         # apply the weights reloading transform
         apply_weights_reloading_transform(partition)
-        return True
-    return False
+        return True, partition.wr_layer
+    return False, None

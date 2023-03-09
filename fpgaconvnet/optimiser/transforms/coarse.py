@@ -92,7 +92,7 @@ def fix_coarse(partition):
             if coarse_group > coarse_group_max:
                 partition.graph.nodes[node]['hw'].coarse_group = coarse_group_max
 
-def apply_more_coarse(partition, coarse_in_first, fix_coarse):
+def apply_more_coarse(partition, reject_list, coarse_in_first, fix_coarse):
     partition.remove_squeeze()
 
     node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
@@ -100,6 +100,9 @@ def apply_more_coarse(partition, coarse_in_first, fix_coarse):
 
     for node_index in reversed(np.argsort(node_latencys)):
         layer = graphs.ordered_node_list(partition.graph)[node_index]
+        
+        if layer in reject_list:
+            continue
 
         current_coarse_in = partition.graph.nodes[layer]['hw'].coarse_in 
         # todo: fix multi ports
@@ -170,18 +173,17 @@ def apply_more_coarse(partition, coarse_in_first, fix_coarse):
                 partition.graph.nodes[layer]['hw'].coarse_group = int(selected_coarse_combination[0])
             partition.graph.nodes[layer]['hw'].coarse_in = int(selected_coarse_combination[1])
             partition.graph.nodes[layer]['hw'].coarse_out = int(selected_coarse_combination[2])
+            return True, layer
+    return False, None
 
-            return True
-    return False
+def apply_more_coarse_favour_coarse_in(partition, reject_list=[]):
+    return apply_more_coarse(partition, reject_list, True, False)
 
-def apply_more_coarse_favour_coarse_in(partition):
-    return apply_more_coarse(partition, True, False)
+def apply_more_coarse_favour_coarse_out(partition, reject_list=[]):
+    return apply_more_coarse(partition, reject_list, False, False)
 
-def apply_more_coarse_favour_coarse_out(partition):
-    return apply_more_coarse(partition, False, False)
+def apply_more_coarse_fix_coarse_out(partition, reject_list=[]):
+    return apply_more_coarse(partition, reject_list, True, True)
 
-def apply_more_coarse_fix_coarse_out(partition):
-    return apply_more_coarse(partition, True, True)
-
-def apply_more_coarse_fix_coarse_in(partition):
-    return apply_more_coarse(partition, False, True)
+def apply_more_coarse_fix_coarse_in(partition, reject_list=[]):
+    return apply_more_coarse(partition, reject_list, False, True)
