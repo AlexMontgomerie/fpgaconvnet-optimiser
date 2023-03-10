@@ -173,7 +173,15 @@ def apply_more_coarse(partition, reject_list, coarse_in_first, fix_coarse):
                 partition.graph.nodes[layer]['hw'].coarse_group = int(selected_coarse_combination[0])
             partition.graph.nodes[layer]['hw'].coarse_in = int(selected_coarse_combination[1])
             partition.graph.nodes[layer]['hw'].coarse_out = int(selected_coarse_combination[2])
-            return True, layer
+            partition.graph.nodes[layer]['hw'].update()
+            if partition.graph.nodes[layer]['hw'].latency() < node_latencys[node_index]:
+                return True, layer
+            else:
+                partition.graph.nodes[layer]['hw'].coarse_in = current_coarse_in
+                partition.graph.nodes[layer]['hw'].coarse_out = current_coarse_out
+                if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
+                    partition.graph.nodes[layer]['hw'].coarse_group = current_coarse_group
+                partition.graph.nodes[layer]['hw'].update()
     return False, None
 
 def apply_more_coarse_favour_coarse_in(partition, reject_list=[]):
