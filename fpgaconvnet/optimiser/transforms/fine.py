@@ -32,7 +32,7 @@ def apply_complete_fine(partition):
             fine = partition.graph.nodes[node]['hw'].get_fine_feasible()[-1]
             partition.graph.nodes[node]['hw'].fine = fine
 
-def apply_more_fine(partition, reject_list=[]):
+def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False):
     # feasible layers
     feasible_layers = get_all_layers(partition.graph, LAYER_TYPE.Convolution)
     feasible_layers = [ layer for layer in feasible_layers if layer not in reject_list ]
@@ -54,5 +54,7 @@ def apply_more_fine(partition, reject_list=[]):
                 else:
                     partition.graph.nodes[layer]['hw'].fine = current_fine
                     partition.graph.nodes[layer]['hw'].update()
+            if skip_second_slowest_node:
+                break
 
     return False, None

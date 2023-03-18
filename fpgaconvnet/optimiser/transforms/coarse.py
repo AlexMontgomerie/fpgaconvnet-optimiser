@@ -92,7 +92,7 @@ def fix_coarse(partition):
             if coarse_group > coarse_group_max:
                 partition.graph.nodes[node]['hw'].coarse_group = coarse_group_max
 
-def apply_more_coarse(partition, reject_list, coarse_in_first, fix_coarse):
+def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_in_first, fix_coarse):
     partition.remove_squeeze()
 
     node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
@@ -182,16 +182,19 @@ def apply_more_coarse(partition, reject_list, coarse_in_first, fix_coarse):
                 if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
                     partition.graph.nodes[layer]['hw'].coarse_group = current_coarse_group
                 partition.graph.nodes[layer]['hw'].update()
+        if skip_second_slowest_node:
+            break
+
     return False, None
 
-def apply_more_coarse_favour_coarse_in(partition, reject_list=[]):
-    return apply_more_coarse(partition, reject_list, True, False)
+def apply_more_coarse_favour_coarse_in(partition, reject_list=[], skip_second_slowest_node=False):
+    return apply_more_coarse(partition, reject_list, skip_second_slowest_node, True, False)
 
-def apply_more_coarse_favour_coarse_out(partition, reject_list=[]):
-    return apply_more_coarse(partition, reject_list, False, False)
+def apply_more_coarse_favour_coarse_out(partition, reject_list=[], skip_second_slowest_node=False):
+    return apply_more_coarse(partition, reject_list, skip_second_slowest_node, False, False)
 
-def apply_more_coarse_fix_coarse_out(partition, reject_list=[]):
-    return apply_more_coarse(partition, reject_list, True, True)
+def apply_more_coarse_fix_coarse_out(partition, reject_list=[], skip_second_slowest_node=False):
+    return apply_more_coarse(partition, reject_list, skip_second_slowest_node, True, True)
 
-def apply_more_coarse_fix_coarse_in(partition, reject_list=[]):
-    return apply_more_coarse(partition, reject_list, False, True)
+def apply_more_coarse_fix_coarse_in(partition, reject_list=[], skip_second_slowest_node=False):
+    return apply_more_coarse(partition, reject_list, skip_second_slowest_node,False, True)

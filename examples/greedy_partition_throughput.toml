@@ -2,7 +2,7 @@
 logging = false
 checkpoints = false
 starting_point_distillation = false
-resource_allocation = 0.75
+resource_allocation = 0.90
 
 [transforms.fine]
 apply_transform = true

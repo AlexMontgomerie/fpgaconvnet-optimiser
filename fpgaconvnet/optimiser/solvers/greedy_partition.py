@@ -20,6 +20,7 @@ START_LOOP=1
 @dataclass
 class GreedyPartition(Solver):
     coarse_in_first: list = field(default_factory=list)
+    merge_ongoing: bool = False
 
     def reset_partition(self, partition_index):
         partition = self.net.partitions[partition_index]
@@ -37,6 +38,7 @@ class GreedyPartition(Solver):
     def merge_memory_bound_partitions(self):
         print("resolving memory bound partitions")
         reject_list = []
+        self.merge_ongoing = True
 
         while True:
 
@@ -119,7 +121,9 @@ class GreedyPartition(Solver):
         reject_list = []
         while True:
             partition = self.net.partitions[partition_index]
-            status, node = optimiser_phase(partition, reject_list)
+            skip_second_slowest_node = self.merge_ongoing and optimiser_phase in [transforms.apply_more_coarse_favour_coarse_in, transforms.apply_more_coarse_favour_coarse_out]
+            # skipping avoids some cases of local minima
+            status, node = optimiser_phase(partition, reject_list, skip_second_slowest_node)
             if not status:
                 break
             self.net.update_partitions()
@@ -131,7 +135,7 @@ class GreedyPartition(Solver):
 
                 net = copy.deepcopy(self.net)
             except AssertionError as error:
-                if fast_mode:
+                if fast_mode: # break to save optimisation time
                     break
                 else:
                     reject_list.append(node)
