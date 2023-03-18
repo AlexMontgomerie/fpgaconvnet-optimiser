@@ -216,6 +216,8 @@ class GreedyPartition(Solver):
         return all_wr_feasible
 
     def allocate_uram(self):
+        if self.net.platform.get_uram() == 0:
+            return
         # reset all uram flags
         for partition in self.net.partitions:
             for layer in graphs.ordered_node_list(partition.graph):

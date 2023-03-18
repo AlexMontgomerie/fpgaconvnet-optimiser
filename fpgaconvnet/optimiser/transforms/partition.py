@@ -20,11 +20,12 @@ def check_parallel_block(net, partition_index):
     output_node = graphs.get_output_nodes(net.partitions[partition_index].graph)[0]
     # check if not a parallel block
     if not ((net.partitions[partition_index].graph.nodes[input_node]['type'] == LAYER_TYPE.Split) and \
-            (net.partitions[partition_index].graph.nodes[output_node]['type'] == LAYER_TYPE.Concat)):
+            (net.partitions[partition_index].graph.nodes[output_node]['type'] in [LAYER_TYPE.Concat, LAYER_TYPE.EltWise])):
         return False
     # check the number of split and concat nodes
     n_split  = len(get_all_layers(net.partitions[partition_index].graph,LAYER_TYPE.Split))
     n_concat = len(get_all_layers(net.partitions[partition_index].graph,LAYER_TYPE.Concat))
+    n_concat += len(get_all_layers(net.partitions[partition_index].graph,LAYER_TYPE.EltWise))
     # break if there's too many parallel blocks
     if (n_split > 1) or (n_concat > 1):
         return False
@@ -54,7 +55,9 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
             in_parallel_block = False
         # check if entering parallel block
         if net.partitions[partition_index].graph.out_degree(input_node) > 1:
-            return _iterate_graph(edge_list,next_node,True)
+            output_node = graphs.get_output_nodes(net.partitions[partition_index].graph)[0]
+            if graphs.get_next_nodes(net.partitions[partition_index].graph,input_node)[1] != output_node:
+                return _iterate_graph(edge_list,next_node,True)
         # skip node - concat partition
         if net.partitions[partition_index].graph.in_degree(next_node) > 1:
             return _iterate_graph(edge_list,next_node,in_parallel_block)
@@ -95,12 +98,12 @@ def get_all_horizontal_merges(net, partition_index):
             for i in range(len(net.partitions)):
                 if next_node in graphs.get_input_nodes(net.partitions[i].graph):
                     # check that this is a complete block if it's a split
-                    if net.partitions[i].graph.out_degree(next_node) == net.graph.out_degree(next_node):
+                    if partition_index + 1 == i:#net.partitions[i].graph.out_degree(next_node) == net.graph.out_degree(next_node):
                         partition_pairs[0] = (partition_index,i)
 
     # check that if it's a concat layer, it's complete
     if net.graph.in_degree(output_node) > 1:
-        if net.partitions[partition_index].graph.in_degree(output_node) == net.graph.in_degree(output_node):
+        if 1:#net.partitions[partition_index].graph.in_degree(output_node) == net.graph.in_degree(output_node):
             _find_next_partition()
     else:
         _find_next_partition()
@@ -114,12 +117,12 @@ def get_all_horizontal_merges(net, partition_index):
             for i in range(len(net.partitions)):
                 if prev_node in graphs.get_output_nodes(net.partitions[i].graph):
                     # check that this is a complete block
-                    if net.partitions[i].graph.in_degree(prev_node) == net.graph.in_degree(prev_node):
+                    if i + 1 == partition_index:#net.partitions[i].graph.in_degree(prev_node) == net.graph.in_degree(prev_node):
                         partition_pairs[1] = (i,partition_index)
 
     # check that if it's a split layer, it's complete
     if net.graph.out_degree(input_node) > 1:
-        if net.partitions[partition_index].graph.out_degree(input_node) == net.graph.out_degree(input_node):
+        if 1:#net.partitions[partition_index].graph.out_degree(input_node) == net.graph.out_degree(input_node):
             _find_prev_partition()
     else:
         _find_prev_partition()
