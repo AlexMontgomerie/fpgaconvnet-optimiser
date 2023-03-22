@@ -116,18 +116,34 @@ class GreedyPartition(Solver):
                         reject_list[i] = (merge[0]-1,merge[1]-1)
                 print("accept")
 
+    def adjust_squeeze(self, partition_index, force = False):
+        try:
+            self.check_resources()
+            assert not force
+        except AssertionError as error:
+            net = copy.deepcopy(self.net)
+            partition = self.net.partitions[partition_index]
+            prev_rsc = partition.get_resource_usage()
+            prev_cycle = partition.get_cycle()
+            partition.reduce_squeeze_fanout()
+            partition.update()
+            current_cycle = partition.get_cycle()
+            current_rsc = partition.get_resource_usage()
+            if current_rsc["LUT"] >= prev_rsc["LUT"] or current_cycle > prev_cycle:
+                self.net = net           
+    
     def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True):
         net = copy.deepcopy(self.net)
         reject_list = []
         while True:
-            partition = self.net.partitions[partition_index]
-            skip_second_slowest_node = self.merge_ongoing and optimiser_phase in [transforms.apply_more_coarse_favour_coarse_in, transforms.apply_more_coarse_favour_coarse_out]
+            skip_second_slowest_node = True#self.merge_ongoing and optimiser_phase in [transforms.apply_more_coarse_favour_coarse_in, transforms.apply_more_coarse_favour_coarse_out]
             # skipping avoids some cases of local minima
-            status, node = optimiser_phase(partition, reject_list, skip_second_slowest_node)
+            status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
             if not status:
                 break
             self.net.update_partitions()
             self.allocate_uram()
+            self.adjust_squeeze(partition_index)
 
             try:
                 self.check_resources()
@@ -302,6 +318,8 @@ class GreedyPartition(Solver):
 
                 if self.objective != 1:
                     break
+            
+            self.adjust_squeeze(partition_index, force=True)
 
             print(partition_index,"single partition cost:",self.get_cost([partition_index]))
             print("ultilised DSP:", self.net.partitions[partition_index].get_resource_usage()['DSP'],

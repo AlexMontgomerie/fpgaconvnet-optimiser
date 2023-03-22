@@ -105,10 +105,7 @@ def main():
     fpgaconvnet_parser = Parser()
 
     # create network
-    net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)
-
-    # update platform information
-    net.platform.update(args.platform_path)
+    net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path, args.platform_path)
 
     # update the resouce allocation
     net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
