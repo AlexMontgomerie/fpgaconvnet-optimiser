@@ -1,0 +1,66 @@
+[general]
+logging = false
+resource_allocation = 0.98
+runtime_parameters = true
+weight_storage = "double_buffer" # [ double_buffer, stream, share ]
+resource_model = "linear_regression" # [ linear_regression, xgboost xgboost-kernel ]
+channel_tiling = true # whether or not to allow for channel tiling
+filter_tiling = true # whether or not to allow for filter tiling
+optimization_passes = [ "fuse_relu_into_previous" ]
+convert_gemm_to_conv = false
+
+[transforms.fine]
+apply_transform = true
+probability = 0.10
+start_complete = true
+
+[transforms.coarse]
+apply_transform = true
+probability = 0.30
+
+[transforms.shape]
+apply_transform = true
+probability = 0.30
+method = "mixed" # [ random, inherit, mixed ]
+starting_shape = "" # shape to start with (if empty, then does nothing) [ min, max, median, percentage ]
+starting_shape_percentage = 20
+rand_shape_range = [50, 50, 50, 50]
+use_previous_shape = true
+
+[transforms.combine]
+apply_transform = true
+probability = 0.20
+num_nodes = 2 # (max) number of nodes to combine at a time
+start_combine_all = true # combine all layer types at the start
+
+# all the different layer discriminations
+[[transforms.combine.discriminate]]
+layer_type = "Conv"
+kernel_rows = 7
+kernel_cols = 7
+kernel_depth = 1
+
+[[transforms.combine.discriminate]]
+layer_type = "Conv"
+depthwise = true
+
+# [[transforms.combine.discriminate]]
+# layer_type = "Conv"
+# kernel_rows = 1
+# kernel_cols = 1
+# kernel_depth = 5
+
+[transforms.seperate]
+apply_transform = true
+probability = 0.10
+allowed_types = [ "Conv", "Gemm", "MaxPool" ] # types that can be seperated
+num_nodes = 2 # (max) number of nodes to combine at a time
+
+[annealing]
+T = 10.0
+T_min = 0.00001
+k = 10.0
+cool = 0.99
+transform_iterations = 15
+warm_start = true
+warm_start_time_limit = 90

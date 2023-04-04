@@ -1,3 +1,5 @@
+.vscode/
+
 *.log
 **/*.log
 **/*.init.h
@@ -13,9 +15,12 @@ data/
 rpt/
 
 outputs/
+tmp/
+wandb/
 onnx/
 
 .eggs/
+*.egg-info/
 
 docs/fpgaconvnet_optimiser/
 

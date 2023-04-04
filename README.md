@@ -51,6 +51,18 @@ This will generate the following files:
 
 These files in the output directory can be used with [fpgaConvNet HLS](https://github.com/AlexMontgomerie/fpgaconvnet-hls) to generate the actual hardware and run on the board.
 
+### Latency Optimizer Framework
+Following the pradigm of the `Optimizer Framework` one can run the `Latency Optimizer` as follows:
+```
+python -m fpgaconvnet.optimiser.latency --name c3d \
+    --model_path examples/models/c3d.onnx \
+    --platform_path examples/platforms/zcu104.toml \
+    --output_path outputs/c3d \
+    --optimiser simulated_annealing \
+    --optimiser_config_path examples/optimiser_example.toml
+```
+The same files are generated as before in this case.
+
 ### Modelling
 
 In order to do the CNN to hardware mapping, a model of the hardware is needed. There are four levels of abstraction for the final hardware: modules, layers, partitions and network. At each level of abstraction, there is an associated performance and resource estimate so that the constraints for the optimiser can be obtained.

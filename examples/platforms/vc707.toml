@@ -1,0 +1,18 @@
+[device]
+name = "vc707"
+#family = ""
+part = "xc7vx485tffg1761c"
+board = "" #TODO: add board file
+
+[resources]
+DSP   = 2800
+BRAM  = 1030
+FF    = 607200
+LUT   = 303600
+
+[system]
+board_frequency = 150 # in MHz
+memory_bandwidth = 135.83 # in Gbps
+reconfiguration_time = 0.08255 # in seconds
+axi_ports = 2
+axi_data_width = 128
