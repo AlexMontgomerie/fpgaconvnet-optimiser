@@ -23,6 +23,15 @@ START_LOOP=1
 class GreedyPartition(Solver):
     coarse_in_first: list = field(default_factory=list)
     merge_ongoing: bool = False
+    targets: dict = field(default_factory=lambda: {
+    'latency'    :  0.0, 'throughput' : float("inf")})
+
+    def check_targets_met(self):
+        # stop the optimiser if targets are already met
+        if self.objective == LATENCY:
+            return self.net.get_latency() <= self.targets['latency']
+        elif self.objective == THROUGHPUT:
+            return self.net.get_throughput() >= self.targets['throughput']
 
     def reset_partition(self, partition_index):
         partition = self.net.partitions[partition_index]
@@ -43,6 +52,8 @@ class GreedyPartition(Solver):
         self.merge_ongoing = True
 
         while True:
+            if self.check_targets_met():
+                return
 
             # cache the network
             net= copy.deepcopy(self.net)
@@ -173,8 +184,10 @@ class GreedyPartition(Solver):
         net = copy.deepcopy(self.net)
         reject_list = []
         while True:
-            skip_second_slowest_node = True#self.merge_ongoing and optimiser_phase in [transforms.apply_more_coarse_favour_coarse_in, transforms.apply_more_coarse_favour_coarse_out]
-            # skipping avoids some cases of local minima
+            if self.check_targets_met():
+                return
+
+            skip_second_slowest_node = (self.net.batch_size > 1)
             status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
             if not status:
                 break
