@@ -16,3 +16,6 @@ memory_bandwidth = 100.0 # in Gbps
 reconfiguration_time = 0.08255 # in seconds
 port_width = 512
 
+[ethernet]
+bandwidth = 100.0 # in Gbps
+latency = 0.000005 # in seconds

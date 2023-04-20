@@ -76,13 +76,15 @@ class GreedyPartition(Solver):
                 if horizontal_merges[1]:
                     if horizontal_merges[1] not in reject_list:
                         if partition.is_input_memory_bound() and self.net.partitions[horizontal_merges[1][0]].wr_factor == 1 \
-                                or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time:
+                                or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time \
+                                or self.net.multi_fpga:
                             input_memory_bound.append(partition_index)
 
                 if horizontal_merges[0]:
                     if horizontal_merges[0] not in reject_list:
                         if partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
-                                or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time:
+                                or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time \
+                                or self.net.multi_fpga:
                             output_memory_bound.append(partition_index)
 
             memory_bound = input_memory_bound + output_memory_bound
@@ -184,6 +186,10 @@ class GreedyPartition(Solver):
         net = copy.deepcopy(self.net)
         reject_list = []
         while True:
+            if self.net.multi_fpga and partition_index > 0:
+                if self.net.partitions[partition_index].get_interval() \
+                    <= self.net.get_interval(list(range(partition_index))):
+                    return
             if self.check_targets_met():
                 return
 

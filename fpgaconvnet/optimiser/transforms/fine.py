@@ -35,6 +35,7 @@ def apply_complete_fine(partition):
 def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False):
     # feasible layers
     feasible_layers = get_all_layers(partition.graph, LAYER_TYPE.Convolution)
+    feasible_layers = [ layer for layer in feasible_layers if len(partition.graph.nodes[layer]['hw'].get_fine_feasible())>1]
     feasible_layers = [ layer for layer in feasible_layers if layer not in reject_list ]
 
     if len(feasible_layers) > 0:
