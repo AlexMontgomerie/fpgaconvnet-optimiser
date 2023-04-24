@@ -11,7 +11,7 @@ LUT   = 1728000
 URAM  = 1280
 
 [system]
-board_frequency = 200 # in MHz
+board_frequency = 250 # in MHz
 memory_bandwidth = 100.0 # in Gbps
 reconfiguration_time = 0.08255 # in seconds
 port_width = 512

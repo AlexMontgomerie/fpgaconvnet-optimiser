@@ -231,7 +231,7 @@ def split_vertical_complete(net):
 
 def split_complete(net, allowed_partitions):
     split_horizontal_complete(net, allowed_partitions)
-    split_vertical_complete(net)
+    #split_vertical_complete(net)
     split_horizontal_complete(net, allowed_partitions)
 
 def merge_horizontal_complete(net):

@@ -55,7 +55,7 @@ def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False):
                 else:
                     partition.graph.nodes[layer]['hw'].fine = current_fine
                     partition.graph.nodes[layer]['hw'].update()
-            if skip_second_slowest_node:
-                break
+            #if skip_second_slowest_node:
+            #    break
 
     return False, None
