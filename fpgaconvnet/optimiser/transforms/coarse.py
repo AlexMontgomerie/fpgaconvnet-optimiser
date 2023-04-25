@@ -98,7 +98,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
     node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
     for layer in graphs.ordered_node_list(partition.graph) ])
 
-    for node_index in reversed(np.argsort(node_latencys)):
+    for node_index in reversed(np.argsort(node_latencys, kind='mergesort')):
         layer = graphs.ordered_node_list(partition.graph)[node_index]
         
         if layer in reject_list:

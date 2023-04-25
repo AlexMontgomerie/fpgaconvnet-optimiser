@@ -52,8 +52,8 @@ class GreedyPartition(Solver):
         self.merge_ongoing = True
 
         while True:
-            if self.check_targets_met():
-                return
+            #if self.check_targets_met(): # slow to run for networks with many nodes
+            #    return
 
             # cache the network
             net= copy.deepcopy(self.net)
@@ -138,7 +138,7 @@ class GreedyPartition(Solver):
         if run_pass is None:
             try:
                 self.check_resources()
-                self.check_constraints()
+                #self.check_constraints() # slow to run for networks with many nodes
                 run_pass = False
             except AssertionError as error:
                 run_pass = True
@@ -185,7 +185,7 @@ class GreedyPartition(Solver):
         if run_pass is None:
             try:
                 self.check_resources()
-                self.check_constraints()
+                #self.check_constraints() # slow to run for networks with many nodes
                 run_pass = False
             except AssertionError as error:
                 run_pass = True
@@ -215,6 +215,8 @@ class GreedyPartition(Solver):
             partition = self.net.partitions[partition_index]
             feasible_layers = get_all_layers(partition.graph, LAYER_TYPE.Convolution)
             feasible_layers += get_all_layers(partition.graph, LAYER_TYPE.InnerProduct)
+            if len(feasible_layers) == 0:
+                break
             node_coarse_diff = [ abs(partition.graph.nodes[layer]['hw'].coarse_in - partition.graph.nodes[layer]['hw'].coarse_out)  
                 for layer in feasible_layers ]
             node_index = list(reversed(np.argsort(node_coarse_diff)))[0]
@@ -259,7 +261,7 @@ class GreedyPartition(Solver):
             if constrain_resource:
                 try:
                     self.check_resources()
-                    self.check_constraints()
+                    #self.check_constraints() # slow to run for networks with many nodes
                 except AssertionError as error:
                     self.net = net
                     break
@@ -267,13 +269,14 @@ class GreedyPartition(Solver):
     def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True):
         net = copy.deepcopy(self.net)
         reject_list = []
+        changed = False
         while True:
             if self.net.multi_fpga and partition_index > 0:
                 if self.net.partitions[partition_index].get_interval() \
                     <= self.net.get_interval(list(range(partition_index))):
                     return
-            if self.check_targets_met():
-                return
+            #if self.check_targets_met(): # slow to run for networks with many nodes
+            #    return
 
             skip_second_slowest_node = (self.net.batch_size > 1)
             status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
@@ -281,14 +284,15 @@ class GreedyPartition(Solver):
                 break
             self.net.update_partitions()
             self.allocate_uram()
-            self.adjust_squeeze(partition_index)
+            #self.adjust_squeeze(partition_index)
             self.adjust_coarse(partition_index)
 
             try:
                 self.check_resources()
-                self.check_constraints()
+                #self.check_constraints() # slow to run for networks with many nodes
 
                 net = copy.deepcopy(self.net)
+                changed = True
             except AssertionError as error:
                 if fast_mode: # break to save optimisation time
                     break
@@ -299,6 +303,7 @@ class GreedyPartition(Solver):
         self.net = net
         self.net.update_partitions()
         #print(partition_index,"ultilised DSP:", self.partitions[partition_index].get_resource_usage()['DSP'])
+        return changed
 
     def get_max_dsp_combination(self, partition):
         partition = copy.deepcopy(partition)
@@ -401,7 +406,7 @@ class GreedyPartition(Solver):
 
         try:
             self.check_resources()
-            self.check_constraints()
+            #self.check_constraints() # slow to run for networks with many nodes
             start = True
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
@@ -438,22 +443,30 @@ class GreedyPartition(Solver):
 
                 if partition_index in self.coarse_in_first:
                     coarse_phases = [transforms.apply_more_coarse_favour_coarse_in,
-                                     transforms.apply_more_coarse_fix_coarse_in]
+                                     transforms.apply_more_coarse_fix_coarse_in,
+                                     transforms.apply_more_coarse_fix_coarse_out,
+                                     transforms.apply_more_coarse_favour_coarse_in]
                 else:
                     coarse_phases = [transforms.apply_more_coarse_favour_coarse_out,
-                                     transforms.apply_more_coarse_fix_coarse_out]
+                                     transforms.apply_more_coarse_fix_coarse_out,
+                                     transforms.apply_more_coarse_fix_coarse_in,
+                                     transforms.apply_more_coarse_favour_coarse_in]
 
-                for phase in coarse_phases:
-                    self.empirical_solver(partition_index,phase)
-                    if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
+                while True:
+                    changed = False
+                    for phase in coarse_phases:
+                        changed = changed or self.empirical_solver(partition_index,phase)
+                    if not changed:
                         break
+                    #if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
+                    #    break
 
 
                 if self.get_cost([partition_index]) >= cost:
                     self.net = net
 
-                if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
-                    break
+                #if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
+                #    break
 
                 if self.objective != 1:
                     break
