@@ -25,6 +25,7 @@ from fpgaconvnet.optimiser.solvers import GreedyPartition
 import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
+import fpgaconvnet.optimiser.transforms.skipping_windows
 
 def main():
     parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
@@ -149,10 +150,15 @@ def main():
             allowed_partitions = None
         fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions)
 
-    ## apply max fine factor to the graph
+
     if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
         for partition in net.partitions:
             fpgaconvnet.optimiser.transforms.fine.apply_complete_fine(partition)
+
+    ## apply max fine factor to the graph
+    if bool(optimiser_config["transforms"]["skipping_windows"]["apply_transform"]):
+        for partition in net.partitions:
+            fpgaconvnet.optimiser.transforms.skipping_windows.apply_complete_skipping_windows(partition)
 
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
@@ -168,7 +174,7 @@ def main():
     # print("size: ", len(pickle.dumps(opt.net)))
     opt_onnx_model = copy.deepcopy(opt.net.model)
     opt.net.model = None
-        
+
     # run optimiser
     opt.run_solver()
 

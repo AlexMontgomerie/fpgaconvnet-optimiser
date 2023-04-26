@@ -5,7 +5,7 @@ starting_point_distillation = false
 resource_allocation = 0.95
 
 [transforms.fine]
-apply_transform = false
+apply_transform = true
 probability = 0.25
 start_complete = true
 
@@ -14,14 +14,14 @@ apply_transform = true
 probability = 0.25
 
 [transforms.weights_reloading]
-apply_transform = false
+apply_transform = true
 probability = 0.25
-start_max = false
+start_max = true
 
 [transforms.partition]
-apply_transform = false
+apply_transform = true
 probability = 0.25
-start_complete = false
+start_complete = true
 allowed_partitions = [
     ["Relu", "Conv"],
     ["MaxPool", "Conv"],
@@ -34,4 +34,4 @@ T = 10.0
 T_min = 0.0001
 k = 10.0
 cool = 0.98
-transform_iterations = 15
+iterations = 15
