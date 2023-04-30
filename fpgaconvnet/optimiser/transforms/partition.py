@@ -32,7 +32,15 @@ def check_parallel_block(net, partition_index):
     # is a standalone parallel block
     return True
 
-def check_config_allowed_partitions(allowed_partitions, node0_type, node1_type):
+def check_config_allowed_partitions(allowed_partitions, node0, node1):
+    # get the node types
+    node0_type = node0['type']
+    node1_type = node1['type']
+    if node0_type == LAYER_TYPE.EltWise:
+        node0_type = node0['hw']._op_type
+    if node1_type == LAYER_TYPE.EltWise:
+        node1_type = node1['hw']._op_type
+    # check if allowed
     if allowed_partitions is not None:
         for allowed_split in allowed_partitions:
             if (allowed_split[0] == "*" or allowed_split[0] == node0_type) and \
@@ -63,8 +71,8 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
             return _iterate_graph(edge_list,next_node,in_parallel_block)
         # skip node - split position not valid
         if not check_config_allowed_partitions(allowed_partitions, 
-            net.partitions[partition_index].graph.nodes[input_node]["type"],
-            net.partitions[partition_index].graph.nodes[next_node]["type"]):
+            net.partitions[partition_index].graph.nodes[input_node],
+            net.partitions[partition_index].graph.nodes[next_node]):
             return _iterate_graph(edge_list,next_node,in_parallel_block) 
         # append to partition list
         if not in_parallel_block:
@@ -231,7 +239,7 @@ def split_vertical_complete(net):
 
 def split_complete(net, allowed_partitions):
     split_horizontal_complete(net, allowed_partitions)
-    split_vertical_complete(net)
+    #split_vertical_complete(net)
     split_horizontal_complete(net, allowed_partitions)
 
 def merge_horizontal_complete(net):

@@ -49,7 +49,7 @@ def main():
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
     parser.add_argument('--enable-wandb', action="store_true", help='seed for the optimiser run')
-
+    parser.add_argument('--enable-multi-fpga', action="store_true", help='pipeline partitions across multiple FPGAs')
     # parse the arguments
     args = parser.parse_args()
 
@@ -105,7 +105,7 @@ def main():
     fpgaconvnet_parser = Parser()
 
     # create network
-    net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path, args.platform_path)
+    net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path, args.platform_path, args.enable_multi_fpga)
 
     # update the resouce allocation
     net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
@@ -137,6 +137,9 @@ def main():
         if optimiser_config["transforms"][transform]["apply_transform"]:
             opt.transforms.append(transform)
 
+    if "weights_reloading" not in opt.transforms:
+        for partition in opt.net.partitions:
+            partition.enable_wr = False
 
     # initialize graph
     ## completely partition graph
