@@ -75,16 +75,17 @@ class GreedyPartition(Solver):
 
                 if horizontal_merges[1]:
                     if horizontal_merges[1] not in reject_list:
-                        if partition.is_input_memory_bound() and self.net.partitions[horizontal_merges[1][0]].wr_factor == 1 \
-                                or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time \
-                                or self.net.multi_fpga:
+                        if self.net.multi_fpga \
+                            or partition.is_input_memory_bound() and self.net.partitions[horizontal_merges[1][0]].wr_factor == 1 \
+                            or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time:
                             input_memory_bound.append(partition_index)
 
                 if horizontal_merges[0]:
                     if horizontal_merges[0] not in reject_list:
-                        if partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
-                                or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time \
-                                or self.net.multi_fpga:
+                        if self.net.multi_fpga \
+                            or partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
+                            or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time:
+                                
                             output_memory_bound.append(partition_index)
 
             memory_bound = input_memory_bound + output_memory_bound
