@@ -24,11 +24,8 @@ probability = 0.25
 start_complete = true
 allowed_type = ["merge"]
 allowed_partitions = [
-    ["*", "Conv"],
-    ["*", "Gemm"],
     ["*", "Split"],
-    ["*", "EltWise"],
-    ["EltWise", "*"]
+    ["*", "Gemm"]
 ]
 
 [transforms.skipping_windows]

@@ -49,7 +49,12 @@ def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False):
                 fine_index = fine_feasible.index(current_fine) + 1
                 partition.graph.nodes[layer]['hw'].fine = fine_feasible[fine_index]
                 partition.graph.nodes[layer]['hw'].update()
-                if partition.graph.nodes[layer]['hw'].latency() < node_latencys[node_index]:
+                new_latency = partition.graph.nodes[layer]['hw'].latency()
+                if len(partition.graph.nodes[layer]['hw'].sparsity) == 0:
+                    gain = 1
+                else:
+                    gain = 1.2
+                if node_latencys[node_index] / new_latency > gain:
                     return True, layer
                 else:
                     partition.graph.nodes[layer]['hw'].fine = current_fine
