@@ -1,4 +1,5 @@
 import sys
+import os
 import numpy as np
 import json
 import copy
@@ -124,6 +125,24 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
             # reduce temperature
             self.T *= self.cool
+
+        # get config and report
+        config = self.config()
+        report = self.report()
+
+        # save report and config
+        if not os.path.exists("tmp"):
+            os.makedirs("tmp")
+        with open("tmp/config.json", "w") as f:
+            json.dump(config, f, indent=2)
+        with open("tmp/report.json", "w") as f:
+            json.dump(report, f, indent=2)
+
+        # store the design point
+        artifact = wandb.Artifact('outputs', type='json')
+        artifact.add_file("tmp/config.json")
+        artifact.add_file("tmp/report.json")
+        wandb.log_artifact(artifact)
 
         # # store dataframe of
         # # https://docs.wandb.ai/guides/data-vis/log-tables
