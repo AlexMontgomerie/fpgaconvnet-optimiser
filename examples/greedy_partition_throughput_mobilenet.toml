@@ -28,6 +28,7 @@ allowed_partitions = [
     ["Add", "*"],
     ["*", "Gemm"]
 ]
+vertical = false
 
 [annealing]
 T = 10.0

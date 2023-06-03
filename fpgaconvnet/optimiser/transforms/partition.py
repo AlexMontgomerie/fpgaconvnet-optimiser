@@ -15,22 +15,8 @@ from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
 
 def check_parallel_block(net, partition_index):
-    # check the input and output nodes
-    input_node  = graphs.get_input_nodes(net.partitions[partition_index].graph)[0]
-    output_node = graphs.get_output_nodes(net.partitions[partition_index].graph)[0]
-    # check if not a parallel block
-    if not ((net.partitions[partition_index].graph.nodes[input_node]['type'] == LAYER_TYPE.Split) and \
-            (net.partitions[partition_index].graph.nodes[output_node]['type'] in [LAYER_TYPE.Concat, LAYER_TYPE.EltWise])):
-        return False
-    # check the number of split and concat nodes
-    n_split  = len(get_all_layers(net.partitions[partition_index].graph,LAYER_TYPE.Split))
-    n_concat = len(get_all_layers(net.partitions[partition_index].graph,LAYER_TYPE.Concat))
-    n_concat += len(get_all_layers(net.partitions[partition_index].graph,LAYER_TYPE.EltWise))
-    # break if there's too many parallel blocks
-    if (n_split > 1) or (n_concat > 1):
-        return False
-    # is a standalone parallel block
-    return True
+    input_node = graphs.get_input_nodes(net.partitions[partition_index].graph)[0]
+    return net.partitions[partition_index].graph.nodes[input_node]['type'] == LAYER_TYPE.Split
 
 def check_config_allowed_partitions(allowed_partitions, node0, node1):
     # get the node types
@@ -63,9 +49,10 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
             in_parallel_block = False
         # check if entering parallel block
         if net.partitions[partition_index].graph.out_degree(input_node) > 1:
+            in_parallel_block = True
             output_node = graphs.get_output_nodes(net.partitions[partition_index].graph)[0]
             if graphs.get_next_nodes(net.partitions[partition_index].graph,input_node)[1] != output_node:
-                return _iterate_graph(edge_list,next_node,True)
+                return _iterate_graph(edge_list,next_node,in_parallel_block)
         # skip node - concat partition
         if net.partitions[partition_index].graph.in_degree(next_node) > 1:
             return _iterate_graph(edge_list,next_node,in_parallel_block)
@@ -79,8 +66,15 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
             edge_list.append((input_node,next_node))
         return _iterate_graph(edge_list,next_node,in_parallel_block)
     # iterate over graph from start node
-    input_node = graphs.get_input_nodes(net.partitions[partition_index].graph)[0]
-    return _iterate_graph([],input_node,False) # TODO: assuming only one input
+    input_node = graphs.get_input_nodes(net.partitions[partition_index].graph)[0] # TODO: assuming only one input
+    edge_list = _iterate_graph([],input_node,False)
+    if len(graphs.get_output_nodes(net.partitions[partition_index].graph)) > 1:
+        # handle the case of multiple outputs
+        for node in net.partitions[partition_index].graph.nodes:
+            if net.partitions[partition_index].graph.in_degree(node) > 1:
+                edge_list += _iterate_graph([],node,False)
+                edge_list = list(sorted(set(edge_list))) 
+    return edge_list
 
 def get_all_vertical_splits(net, partition_index): # TODO: improve to get all possible combinations
     # check if parallel block
@@ -237,10 +231,15 @@ def split_vertical_complete(net):
         # find next partition
         partition_index = _find_vertical_split_partition()
 
-def split_complete(net, allowed_partitions):
-    split_horizontal_complete(net, allowed_partitions)
-    #split_vertical_complete(net)
-    split_horizontal_complete(net, allowed_partitions)
+def split_complete(net, allowed_partitions, vertical=False):
+    partition_num = len(net.partitions)
+    while True:
+        split_horizontal_complete(net, allowed_partitions)
+        if vertical:
+            split_vertical_complete(net)
+        if len(net.partitions) == partition_num:
+            break
+        partition_num = len(net.partitions)
 
 def merge_horizontal_complete(net):
     def _find_horizontal_merge_partition():

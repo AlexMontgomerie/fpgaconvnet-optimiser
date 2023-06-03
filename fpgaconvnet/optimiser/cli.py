@@ -150,7 +150,8 @@ def main():
             allowed_partitions.append((from_cfg_type(allowed_partition[0]), from_cfg_type(allowed_partition[1])))        
         if len(allowed_partitions) == 0:
             allowed_partitions = None
-        fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions)
+        vertical = optimiser_config["transforms"]["partition"]["vertical"]
+        fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions, vertical)
 
     ## apply max fine factor to the graph
     if bool(optimiser_config["transforms"]["fine"]["start_complete"]):

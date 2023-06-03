@@ -390,7 +390,7 @@ class GreedyPartition(Solver):
             for layer in reversed(graphs.ordered_node_list(partition.graph)):
                 if partition.graph.nodes[layer]['type'] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                     partition_resource_usage = partition.get_resource_usage()
-                    if partition_resource_usage['BRAM'] >= self.net.platform.get_bram() * self.net.rsc_allocation:
+                    if partition_resource_usage['BRAM'] > self.net.platform.get_bram() * self.net.rsc_allocation:
                         partition.graph.nodes[layer]["hw"].use_uram = True
                     else:
                         break
@@ -459,15 +459,9 @@ class GreedyPartition(Solver):
                         changed = changed or self.empirical_solver(partition_index,phase)
                     if not changed:
                         break
-                    #if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
-                    #    break
-
 
                 if self.get_cost([partition_index]) >= cost:
                     self.net = net
-
-                #if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
-                #    break
 
                 if self.objective != 1:
                     break
