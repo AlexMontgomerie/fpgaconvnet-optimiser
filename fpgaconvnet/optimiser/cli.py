@@ -102,7 +102,7 @@ def main():
     # net.DEBUG = True
 
     # parse the network
-    fpgaconvnet_parser = Parser()
+    fpgaconvnet_parser = Parser(custom_onnx=True)
 
     # create network
     net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path, args.platform_path, args.enable_multi_fpga)
