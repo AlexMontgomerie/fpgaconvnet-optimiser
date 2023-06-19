@@ -393,36 +393,54 @@ class GreedyPartition(Solver):
         if self.net.platform.get_uram() == 0:
             return False
         partition_resource_usage = partition.get_resource_usage()
-        sorted_layers = sorted(layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_bram_usage , reverse=True)
+        sorted_layers = sorted(layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_ram_usage , reverse=True)
         for layer in sorted_layers:
             node = partition.graph.nodes[layer]["hw"]
-            if node.weights_bram_usage == 0:
+            if node.weights_ram_usage == 0:
                 continue
-            if partition_resource_usage['BRAM'] > self.net.rsc_allocation * self.net.platform.get_bram():
-                node.use_uram = True
-                partition_resource_usage = partition.get_resource_usage()
-                if partition_resource_usage['URAM'] > self.net.rsc_allocation * self.net.platform.get_uram():
-                    node.use_uram = False
-                    break
-            else:
+            curr_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
+            curr_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
+            node.use_uram = True
+            partition_resource_usage = partition.get_resource_usage()
+            new_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
+            new_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
+            if new_bram_util < new_uram_util and curr_bram_util > curr_uram_util:
+                node.use_uram = False
                 break
 
         # move weights from bram off-chip memory
         # if self.net.platform.get_weight_port_width() == 0:
         #    return
-        max_bw = int(1.5 * 512 * 2) # U250, 300MHz, 512bits, 2ports
+        # U250, 300MHz, 512bits, 3 ports for weights, the remaining 1 port is reserved for input & output 
+        max_bw = int(1.5 * 512 * 3) 
         partition_resource_usage = partition.get_resource_usage()
-        while partition_resource_usage['BRAM'] > self.net.rsc_allocation * self.net.platform.get_bram():
+        curr_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
+        curr_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
+        while curr_bram_util > self.net.rsc_allocation or curr_uram_util > self.net.rsc_allocation:
             partition_copy = copy.deepcopy(partition)
-            sorted_layers = sorted(layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_bram_usage , reverse=True)
+            def _validate(layer):
+                node = partition_copy.graph.nodes[layer]["hw"]
+                return node.weights_ram_usage > node.stream_unit() * node.stream_step(0.1)
+            def _compare(layer):
+                node = copy.deepcopy(partition.graph.nodes[layer]["hw"])
+                node.stream_weights += node.stream_unit() * node.stream_step(0.1)   
+                return node.stream_cycles()
+            filtered_layers = list(filter(_validate, layers))
+            if len(filtered_layers) == 0: #nothing left to move, double buffer?
+                break
+            if curr_bram_util <= self.net.rsc_allocation:
+                filtered_layers = list(filter(lambda layer: partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
+            elif curr_uram_util <= self.net.rsc_allocation:
+                filtered_layers = list(filter(lambda layer: not partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
+        
+            sorted_layers = sorted(filtered_layers, key=_compare, reverse=True)
             layer = sorted_layers[0]
             node = partition.graph.nodes[layer]["hw"] 
-            assert node.weights_bram_usage + node.stream_weights == math.ceil(node.weight_array_depth/node.weight_array_unit_depth) * node.weight_array_num * math.ceil(node.weight_array_width/node.weight_array_num/node.weight_array_unit_width)
-            step = math.ceil(0.1 * math.ceil(node.weight_array_depth/node.weight_array_unit_depth))
-            if node.weights_bram_usage <= node.stream_unit() * step:
-                break # nothing left to move, double buffer?
-            node.stream_weights += node.stream_unit() * step    
+            assert node.weights_ram_usage + node.stream_weights == math.ceil(node.weight_array_depth/node.weight_array_unit_depth) * node.weight_array_num * math.ceil(node.weight_array_width/node.weight_array_num/node.weight_array_unit_width)
+            node.stream_weights += node.stream_unit() * node.stream_step(0.1)    
             partition_resource_usage = partition.get_resource_usage()
+            curr_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
+            curr_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
             total_bw = np.array([partition.graph.nodes[layer]["hw"].stream_bw() for layer in layers]).sum()
             if total_bw > max_bw:    
                 partition = partition_copy
