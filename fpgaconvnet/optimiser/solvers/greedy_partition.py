@@ -441,7 +441,11 @@ class GreedyPartition(Solver):
             partition_resource_usage = partition.get_resource_usage()
             curr_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
             curr_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
-            total_bw = np.array([partition.graph.nodes[layer]["hw"].stream_bw() for layer in layers]).sum()
+            bw = np.array([partition.graph.nodes[layer]["hw"].stream_bw() for layer in layers])
+            latency = np.array([ partition.graph.nodes[layer]['hw'].latency() for layer in layers], dtype=np.float64)
+            latency /= latency.max()
+            bw *= latency
+            total_bw = bw.sum()
             if total_bw > max_bw:    
                 partition = partition_copy
                 self.net.partitions[partition_index] = partition
