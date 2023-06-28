@@ -12,7 +12,7 @@ URAM  = 1280
 
 [system]
 board_frequency = 250 # in MHz
-memory_bandwidth = 614.4 # in Gbps, 4*512b ports @ 300 MHz
+memory_bandwidth = 614.4 # in Gbps
 reconfiguration_time = 0.08255 # in seconds
 port_width = 512
 
