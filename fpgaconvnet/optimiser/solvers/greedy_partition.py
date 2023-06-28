@@ -29,9 +29,9 @@ class GreedyPartition(Solver):
     def check_targets_met(self):
         # stop the optimiser if targets are already met
         if self.objective == LATENCY:
-            return self.net.get_latency() <= self.targets['latency']
+            return self.net.get_latency(self.platform.board_freq, self.inter_delay()) <= self.targets['latency']
         elif self.objective == THROUGHPUT:
-            return self.net.get_throughput() >= self.targets['throughput']
+            return self.net.get_throughput(self.platform.board_freq, self.inter_delay()) >= self.targets['throughput']
 
     def reset_partition(self, partition_index):
         partition = self.net.partitions[partition_index]
@@ -58,7 +58,7 @@ class GreedyPartition(Solver):
             # cache the network
             net= copy.deepcopy(self.net)
 
-            self.net.update_partitions()
+            self.update_partitions()
             cost = self.get_cost()
 
             for i in range(len(self.net.partitions)):
@@ -71,20 +71,20 @@ class GreedyPartition(Solver):
                 for i in range(len(self.net.partitions)):
                     self.net.partitions[i].remove_squeeze()
                 horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
-                self.net.update_partitions()
+                self.update_partitions()
 
                 if horizontal_merges[1]:
                     if horizontal_merges[1] not in reject_list:
-                        if self.net.multi_fpga \
+                        if self.multi_fpga \
                             or partition.is_input_memory_bound() and self.net.partitions[horizontal_merges[1][0]].wr_factor == 1 \
-                            or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time:
+                            or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
                             input_memory_bound.append(partition_index)
 
                 if horizontal_merges[0]:
                     if horizontal_merges[0] not in reject_list:
-                        if self.net.multi_fpga \
+                        if self.multi_fpga \
                             or partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
-                            or partition.get_latency(self.net.platform.board_freq) < self.net.platform.reconf_time:
+                            or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
                                 
                             output_memory_bound.append(partition_index)
 
@@ -99,7 +99,7 @@ class GreedyPartition(Solver):
 
             ## Choose slowest partition
             partition_latencys = [ self.net.partitions[partition_index].get_latency(
-                self.net.platform.board_freq) for partition_index in memory_bound ]
+                self.platform.board_freq) for partition_index in memory_bound ]
             partition_index = memory_bound[partition_latencys.index(max(partition_latencys))]
 
             horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
@@ -119,7 +119,7 @@ class GreedyPartition(Solver):
                 current_merge = horizontal_merges[1]
                 
             print(current_merge)
-            self.net.update_partitions()
+            self.update_partitions()
             status = self.run_solver()
 
             if not status or self.get_cost() >= cost:
@@ -139,7 +139,7 @@ class GreedyPartition(Solver):
         if not force_run:
             partition = self.net.partitions[partition_index]
             partition_resource_usage = partition.get_resource_usage()
-            if partition_resource_usage["LUT"] <= self.net.rsc_allocation * self.net.platform.get_lut():
+            if partition_resource_usage["LUT"] <= self.rsc_allocation * self.platform.get_lut():
                 return False
 
         node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
@@ -211,7 +211,7 @@ class GreedyPartition(Solver):
         if not force_run:
             partition = self.net.partitions[partition_index]
             partition_resource_usage = partition.get_resource_usage()
-            if partition_resource_usage["LUT"] <= self.net.rsc_allocation * self.net.platform.get_lut():
+            if partition_resource_usage["LUT"] <= self.rsc_allocation * self.platform.get_lut():
                 return False
 
         net = copy.deepcopy(self.net)
@@ -271,7 +271,7 @@ class GreedyPartition(Solver):
         reject_list = []
         changed = False
         while True:
-            if self.net.multi_fpga and partition_index > 0:
+            if self.multi_fpga and partition_index > 0:
                 if self.net.partitions[partition_index].get_interval() \
                     <= self.net.get_interval(list(range(partition_index))):
                     return
@@ -282,7 +282,7 @@ class GreedyPartition(Solver):
             status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
             if not status:
                 break
-            self.net.update_partitions()
+            self.update_partitions()
             pass_status = self.adjust_coarse(partition_index, force_run=False)
             pass_status = self.balance_coarse(partition_index, force_run=False)
             if not pass_status:
@@ -302,7 +302,7 @@ class GreedyPartition(Solver):
                     self.net = copy.deepcopy(net)
 
         self.net = net
-        self.net.update_partitions()
+        self.update_partitions()
         #print(partition_index,"ultilised DSP:", self.partitions[partition_index].get_resource_usage()['DSP'])
         return changed
 
@@ -358,12 +358,12 @@ class GreedyPartition(Solver):
                 partition_dsp_combination = list(set(partition_dsp_combination))
                 partition_dsp_combination = sorted(partition_dsp_combination)
 
-            all_dsp_combination = list(filter(lambda x: x < (self.net.rsc_allocation*self.net.platform.get_dsp()), partition_dsp_combination))
+            all_dsp_combination = list(filter(lambda x: x < (self.rsc_allocation*self.platform.get_dsp()), partition_dsp_combination))
 
             max_dsp_combination = max(all_dsp_combination)
         else:
             print("Might lead to program hanging. Abort getting max dsp combination")
-            max_dsp_combination = int(self.net.rsc_allocation*self.net.platform.get_dsp())
+            max_dsp_combination = int(self.rsc_allocation*self.platform.get_dsp())
 
         return max_dsp_combination
 
@@ -376,7 +376,7 @@ class GreedyPartition(Solver):
 
         return all_wr_feasible
 
-    def allocate_memory(self, partition_index):
+    def allocate_memory(self, partition_index, enable_weights_streaming=True):
         types = [LAYER_TYPE.Convolution]
         partition = self.net.partitions[partition_index]
         layers = []
@@ -390,7 +390,7 @@ class GreedyPartition(Solver):
             return False
 
         # balance between bram and uram
-        if self.net.platform.get_uram() == 0:
+        if self.platform.get_uram() == 0:
             return False
         partition_resource_usage = partition.get_resource_usage()
         sorted_layers = sorted(layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_ram_usage , reverse=True)
@@ -398,25 +398,22 @@ class GreedyPartition(Solver):
             node = partition.graph.nodes[layer]["hw"]
             if node.weights_ram_usage == 0:
                 continue
-            curr_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
-            curr_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
+            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
+            curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
             node.use_uram = True
             partition_resource_usage = partition.get_resource_usage()
-            new_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
-            new_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
+            new_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
+            new_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
             if new_bram_util < new_uram_util and curr_bram_util > curr_uram_util:
                 node.use_uram = False
                 break
 
-        # move weights from bram off-chip memory
-        # if self.net.platform.get_weight_port_width() == 0:
-        #    return
-        # U250, 300MHz, 512bits, 3 ports for weights, the remaining 1 port is reserved for input & output 
-        max_bw = int(1.5 * 512 * 3) 
+        if not enable_weights_streaming:
+            return 
         partition_resource_usage = partition.get_resource_usage()
-        curr_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
-        curr_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
-        while curr_bram_util > self.net.rsc_allocation or curr_uram_util > self.net.rsc_allocation:
+        curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
+        curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+        while curr_bram_util > self.rsc_allocation or curr_uram_util > self.rsc_allocation:
             partition_copy = copy.deepcopy(partition)
             def _validate(layer):
                 node = partition_copy.graph.nodes[layer]["hw"]
@@ -428,9 +425,9 @@ class GreedyPartition(Solver):
             filtered_layers = list(filter(_validate, layers))
             if len(filtered_layers) == 0: #nothing left to move, double buffer?
                 break
-            if curr_bram_util <= self.net.rsc_allocation:
+            if curr_bram_util <= self.rsc_allocation:
                 filtered_layers = list(filter(lambda layer: partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
-            elif curr_uram_util <= self.net.rsc_allocation:
+            elif curr_uram_util <= self.rsc_allocation:
                 filtered_layers = list(filter(lambda layer: not partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
         
             sorted_layers = sorted(filtered_layers, key=_compare, reverse=True)
@@ -439,14 +436,12 @@ class GreedyPartition(Solver):
             assert node.weights_ram_usage + node.stream_weights == math.ceil(node.weight_array_depth/node.weight_array_unit_depth) * node.weight_array_num * math.ceil(node.weight_array_width/node.weight_array_num/node.weight_array_unit_width)
             node.stream_weights += node.stream_unit() * node.stream_step(0.1)    
             partition_resource_usage = partition.get_resource_usage()
-            curr_bram_util = partition_resource_usage['BRAM'] / self.net.platform.get_bram()
-            curr_uram_util = partition_resource_usage['URAM'] / self.net.platform.get_uram()
-            bw = np.array([partition.graph.nodes[layer]["hw"].stream_bw() for layer in layers])
-            latency = np.array([ partition.graph.nodes[layer]['hw'].latency() for layer in layers], dtype=np.float64)
-            latency /= latency.max()
-            bw *= latency
-            total_bw = bw.sum()
-            if total_bw > max_bw:    
+            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
+            curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+
+            try:
+                self.check_memory_bandwidth()
+            except AssertionError as error:  
                 partition = partition_copy
                 self.net.partitions[partition_index] = partition
                 break 
@@ -455,7 +450,7 @@ class GreedyPartition(Solver):
  
     def run_solver(self, log=True):
         # update all partitions
-        self.net.update_partitions()
+        self.update_partitions()
         for partition_index in range(len(self.net.partitions)):
             self.allocate_memory(partition_index)
             
@@ -466,6 +461,7 @@ class GreedyPartition(Solver):
 
         try:
             self.check_resources()
+            self.check_memory_bandwidth()
             #self.check_constraints() # slow to run for networks with many nodes
             start = True
         except AssertionError as error:
@@ -499,7 +495,7 @@ class GreedyPartition(Solver):
                 transforms.remove_weights_reloading_transform(self.net.partitions[partition_index])
                 self.net.partitions[partition_index].wr_factor = int(wr_factor)
                 transforms.apply_weights_reloading_transform(self.net.partitions[partition_index])
-                self.net.update_partitions()
+                self.update_partitions()
 
                 if partition_index in self.coarse_in_first:
                     coarse_phases = [transforms.apply_more_coarse_favour_coarse_in,

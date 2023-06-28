@@ -13,21 +13,27 @@ LATENCY   =0
 THROUGHPUT=1
 
 from fpgaconvnet.models.network import Network
+from fpgaconvnet.platform.Platform import Platform
 
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
 import fpgaconvnet.optimiser.transforms.partition as partition
 import fpgaconvnet.optimiser.transforms.coarse as coarse
 import fpgaconvnet.optimiser.transforms.fine as fine
+import fpgaconvnet.tools.graphs as graphs
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 @dataclass
 class Solver:
     net: Network
+    platform: Platform
     objective: int = THROUGHPUT
     constraints: dict = field(default_factory=lambda: {
         'latency'    : float("inf"), 'throughput' : 0.0})
     transforms: list = field(default_factory=lambda:[
         'coarse','fine','partition', 'weights_reloading'])
+    rsc_allocation: float = 1.0
+    multi_fpga: bool = False
+    constrain_port_width: bool = True
 
     """
     Base class for all optimisation strategies. This inherits the `Network` class.
@@ -43,14 +49,6 @@ class Solver:
         are `['coarse','fine','partition','weights_reloading']`
     """
 
-        # self.transforms_config = transforms_config
-        # if len(fix_starting_point_config) == 0:
-        #     self.fix_starting_point_config = transforms_config
-        # else:
-        #     self.fix_starting_point_config = fix_starting_point_config
-
-    # import optimiser utilities
-    from fpgaconvnet.optimiser.solvers.utils import starting_point_distillation
 
     def get_transforms(self):
         self.transforms = []
@@ -76,13 +74,44 @@ class Solver:
             partition_list = list(range(len(self.net.partitions)))
         # Latency objective
         if   self.objective == LATENCY:
-            return self.net.get_latency(partition_list)
+            return self.net.get_latency(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
         # Throughput objective
         elif self.objective == THROUGHPUT:
-            return -self.net.get_throughput(partition_list)
+            return -self.net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
+        
+    def get_inter_delay(self):
+        """
+        Calculates the interconnect delay between partitions.
+        """
+        if self.multi_fpga:
+            return self.platform.eth_delay
+        else:
+            return self.platform.reconf_time
 
     def check_resources(self):
-        self.net.check_resources()
+        # iterate over partitions
+        for partition_index, partition in enumerate(self.net.partitions):
+            # get the resource usage for the platform
+            partition_resource_usage = partition.get_resource_usage()
+            assert partition_resource_usage['FF']   <= \
+                    (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}" 
+            assert partition_resource_usage['LUT']  <= \
+                    (self.rsc_allocation*self.platform.get_lut()), "ERROR: LUT usage exceeded, partition: {partition_index}" 
+            assert partition_resource_usage['DSP']  <= \
+                    (self.rsc_allocation*self.platform.get_dsp()) , "ERROR: DSP usage exceeded, partition: {partition_index}" 
+            assert partition_resource_usage['BRAM'] <= \
+                    (self.rsc_allocation*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}" 
+            assert partition_resource_usage['URAM'] <= \
+                    (self.rsc_allocation*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
+            
+        self.check_memory_bandwidth()
+
+    def check_memory_bandwidth(self):
+        # iterate over partitions
+        for partition_index, partition in enumerate(self.net.partitions):
+            # get the resource usage for the platform
+            bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
+            assert bandwidth_total <= self.rsc_allocation*self.platform.get_mem_bw(), "ERROR: Memory bandwidth exceeded, partition: {partition_index}"
 
     def check_constraints(self):
         """
@@ -94,9 +123,9 @@ class Solver:
         AssertionError
             If not within performance constraints
         """
-        assert self.net.get_latency() <= self.constraints['latency'], \
+        assert self.net.get_latency(self.platform.board_freq, self.multi_fpga, self.get_inter_delay()) <= self.constraints['latency'], \
                 "ERROR : (constraint violation) Latency constraint exceeded"
-        assert self.net.get_throughput() >= self.constraints['throughput'], \
+        assert self.net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay()) >= self.constraints['throughput'], \
                 "ERROR : (constraint violation) Throughput constraint exceeded"
 
     def apply_transform(self, transform, partition_index=None, node=None,
@@ -171,13 +200,14 @@ class Solver:
         DSP  = max([ resource['DSP']  for resource in resources ])
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
-        if self.net.platform.get_uram() > 0:
+        BW   = max([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
+        if self.platform.get_uram() > 0:
             URAM = max([ resource['URAM'] for resource in resources ])
-            print("COST:\t {cost} ({objective}), RESOURCE:\t {URAM}\t{BRAM}\t{DSP}\t{LUT}\t{FF}\t(URAM|BRAM|DSP|LUT|FF)".format(
-                cost=cost,objective=objective,URAM=int(URAM),BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\n')
+            print("COST:\t {cost} ({objective}), RESOURCE:\t {URAM}\t{BRAM}\t{DSP}\t{LUT}\t{FF}\t<>\t{BW:.2f}\t(URAM|BRAM|DSP|LUT|FF<>Bandwidth)".format(
+                cost=cost,objective=objective,URAM=int(URAM),BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF),BW=BW), end='\n')
         else:
-            print("COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
-                cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)), end='\n')
+            print("COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t<>\t{BW:.2f}\t(BRAM|DSP|LUT|FF<>Bandwidth)".format(
+                cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF),BW=BW), end='\n')
 
     def save_design_checkpoint(self, output_path):
         # pickle the current optimiser state
@@ -204,8 +234,8 @@ class Solver:
     def wandb_log(self, **kwargs):
         # get common log values
         wandb_log = {
-            "latency": self.net.get_latency(),
-            "throughput": self.net.get_throughput(),
+            "latency": self.net.get_latency(self.platform.board_freq, self.multi_fpga, self.get_inter_delay()),
+            "throughput": self.net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay()),
             "num_partitions": len(self.net.partitions),
         }
         # add extra log values
@@ -226,7 +256,7 @@ class Solver:
         # calculate the maximum memory usage at batch 1
         max_mem = self.net.get_memory_usage_estimate()
         # update batch size to max
-        self.net.batch_size = max(1,math.floor(self.net.platform['mem_capacity']/max_mem))
+        self.net.batch_size = max(1,math.floor(self.platform['mem_capacity']/max_mem))
         self.net.update_batch_size()
 
     def run_solver(self, log=True):
@@ -240,3 +270,48 @@ class Solver:
             for node in partition.graph.nodes():
                 if partition.graph.nodes[node]['type'] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                     partition.graph.nodes[node]['hw'].double_buffered = True
+
+    def update_io_port_width(self):
+        if not self.constrain_port_width:
+            return
+
+        port_width = self.platform.eth_port_width if self.multi_fpga else self.platform.port_width
+        for partition in self.net.partitions:
+            ## remove auxiliary layers
+            partition.remove_squeeze()
+
+            max_streams_in = partition.ports_in*int(port_width/partition.data_width)
+            max_streams_out = partition.ports_out*int(port_width/partition.data_width)
+
+            ## update streams in
+            partition.streams_in = []
+            inputs = graphs.get_input_nodes(partition.graph)
+            for i, input_node in enumerate(inputs):
+                ## get valid streams in
+                streams_in_valid = partition.graph.nodes[input_node]["hw"].get_coarse_in_feasible()
+                # get the max stream values in
+                streams_in_max = min(max_streams_in//len(inputs), partition.graph.nodes[input_node]["hw"].streams_in())
+                # choose the max of all the valid stream values, below the max
+                partition.streams_in.append(max([ s for s in streams_in_valid if s <= streams_in_max ]))
+                
+            ## update streams out
+            partition.streams_out = []
+            outputs = graphs.get_output_nodes(partition.graph)
+            for i, output_node in enumerate(outputs):
+                ## get valid streams out
+                streams_out_valid = partition.graph.nodes[output_node]["hw"].get_coarse_out_feasible()
+                # get the max stream values out
+                streams_out_max = min(max_streams_out//len(outputs), partition.graph.nodes[output_node]["hw"].streams_out())
+                # choose the max of all the valid stream values, below the max
+                partition.streams_out.append(max([ s for s in streams_out_valid if s <= streams_out_max ]))    
+
+            ## add auxiliary layers
+            partition.add_squeeze()
+
+
+    def update_partitions(self):
+        self.update_io_port_width()
+        self.net.update_partitions()
+
+
+    from fpgaconvnet.optimiser.solvers.report import create_report

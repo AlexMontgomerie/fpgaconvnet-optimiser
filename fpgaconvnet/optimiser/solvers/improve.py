@@ -45,7 +45,7 @@ class Improve(Solver):
     def run_solver(self, log=True):
 
         # update all partitions
-        self.net.update_partitions()
+        self.update_partitions()
 
         # Setup
         cost = self.get_cost()
@@ -63,7 +63,6 @@ class Improve(Solver):
         # Attempt to find a good starting point
         if not start:
             transforms_config = self.transforms_config
-            self.transforms_config = self.fix_starting_point_config
             self.get_transforms()
 
             for i in range(START_LOOP):
@@ -92,7 +91,7 @@ class Improve(Solver):
         while self.T_min < self.T:
 
             # update partitions
-            self.net.update_partitions()
+            self.update_partitions()
 
             # get the current cost
             cost = self.get_cost()
@@ -104,7 +103,7 @@ class Improve(Solver):
             for _ in range(self.iterations):
 
                 # update partitions
-                self.net.update_partitions()
+                self.update_partitions()
 
                 # remove all auxiliary layers
                 for partition in self.net.partitions:
@@ -115,7 +114,7 @@ class Improve(Solver):
                 transform = random.choice(self.transforms)
 
                 ## Choose slowest partition
-                partition_latencys = [ partition.get_latency(self.net.platform.board_freq) for partition in self.net.partitions ]
+                partition_latencys = [ partition.get_latency(self.platform.board_freq) for partition in self.net.partitions ]
                 partition_index    = np.random.choice(np.arange(len(self.net.partitions)), 1, p=(partition_latencys/sum(partition_latencys)))[0]
 
                 ## Choose slowest node in partition
@@ -127,7 +126,7 @@ class Improve(Solver):
                 self.apply_transform(transform, partition_index, node)
 
                 ## Update partitions
-                self.net.update_partitions()
+                self.update_partitions()
 
             # Check resources
             try:
