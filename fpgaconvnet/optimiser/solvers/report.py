@@ -61,6 +61,7 @@ def create_report(self, output_path):
             "num_layers" : len(self.net.partitions[i].graph.nodes()),
             "latency" : latency,
             "cycles" : self.net.partitions[i].get_cycle(),
+            "slowdown": self.net.partitions[i].slow_down_factor,
             "weights_reloading_factor" : self.net.partitions[i].wr_factor,
             "weights_reloading_layer" : self.net.partitions[i].wr_layer,
             "resource_usage" : {

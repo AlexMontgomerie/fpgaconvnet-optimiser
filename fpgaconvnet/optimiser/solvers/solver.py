@@ -93,6 +93,7 @@ class Solver:
         for partition_index, partition in enumerate(self.net.partitions):
             # get the resource usage for the platform
             partition_resource_usage = partition.get_resource_usage()
+            ram_utilization = self.rsc_allocation
             assert partition_resource_usage['FF']   <= \
                     (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}" 
             assert partition_resource_usage['LUT']  <= \
@@ -100,9 +101,9 @@ class Solver:
             assert partition_resource_usage['DSP']  <= \
                     (self.rsc_allocation*self.platform.get_dsp()) , "ERROR: DSP usage exceeded, partition: {partition_index}" 
             assert partition_resource_usage['BRAM'] <= \
-                    (self.rsc_allocation*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}" 
+                    (ram_utilization*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}" 
             assert partition_resource_usage['URAM'] <= \
-                    (self.rsc_allocation*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
+                    (ram_utilization*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
             
         self.check_memory_bandwidth()
 

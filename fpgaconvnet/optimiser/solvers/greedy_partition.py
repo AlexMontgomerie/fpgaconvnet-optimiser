@@ -23,6 +23,7 @@ START_LOOP=1
 class GreedyPartition(Solver):
     coarse_in_first: list = field(default_factory=list)
     merge_ongoing: bool = False
+    enable_weights_streaming: bool = True
     targets: dict = field(default_factory=lambda: {
     'latency'    :  0.0, 'throughput' : float("inf")})
 
@@ -195,13 +196,14 @@ class GreedyPartition(Solver):
                 current_latency = partition.get_cycle()
                 partition.reduce_squeeze_fanout()
                 partition.update()
+                self.allocate_memory(partition_index)
                 new_latency = partition.get_cycle()
                 new_rsc = partition.get_resource_usage()
                 if constrain_resource and new_rsc["LUT"] >= current_rsc["LUT"] \
                     or constrain_latency and new_latency > current_latency:
                     self.net = net
                 else:
-                    return 
+                    return True
 
     def balance_coarse(self, partition_index, force_run=True, constrain_resource=True, constrain_latency=True):
         # balance coarse_in and coarse_out to avoid large squeeze layers which affect frquency
@@ -252,8 +254,8 @@ class GreedyPartition(Solver):
         partition.graph.nodes[node]['hw'].coarse_in = new_coarse_in
         partition.graph.nodes[node]['hw'].coarse_out = new_coarse_out
         partition.update()
-        new_latency = partition.get_cycle()
         self.allocate_memory(partition_index)
+        new_latency = partition.get_cycle()
         try:
             self.check_resources()
             resource_valid = True
@@ -284,9 +286,17 @@ class GreedyPartition(Solver):
                 break
             self.update_partitions()
             pass_status = self.adjust_coarse(partition_index, force_run=False)
-            pass_status = self.balance_coarse(partition_index, force_run=False)
+            pass_status |= self.balance_coarse(partition_index, force_run=False)
             if not pass_status:
-                self.allocate_memory(partition_index)
+                pass_status |= self.allocate_memory(partition_index)
+        
+            if self.enable_weights_streaming:
+                # due to off-chip bandwidth limitation, the fastest node may be slowed down
+                current_latency = net.partitions[partition_index].get_interval() * net.partitions[partition_index].slow_down_factor
+                new_latency = self.net.partitions[partition_index].get_interval() * self.net.partitions[partition_index].slow_down_factor
+                if new_latency > current_latency:
+                    self.net = copy.deepcopy(net)
+                    break
 
             try:
                 self.check_resources()
@@ -376,7 +386,24 @@ class GreedyPartition(Solver):
 
         return all_wr_feasible
 
-    def allocate_memory(self, partition_index, enable_weights_streaming=True):
+    def resolve_offchip_bandwidth_constraint(self, partition_index):
+        partition = self.net.partitions[partition_index]
+
+        bw_in = partition.get_bandwidth_in(self.platform.board_freq)
+        bw_out = partition.get_bandwidth_out(self.platform.board_freq)
+        bw_data_total = sum(bw_in) + sum(bw_out)
+        bw_max = self.rsc_allocation*self.platform.get_mem_bw()
+        if bw_data_total > bw_max:
+            return False
+
+        partition.slow_down_factor = 1.0
+        bw_weight = sum(partition.get_bandwidth_weight(self.platform.board_freq))
+        partition.slow_down_factor = bw_weight / (bw_max - bw_data_total) + 1e-2 # avoid precision error
+        bw_weight = sum(partition.get_bandwidth_weight(self.platform.board_freq))
+        assert bw_weight <= bw_max - bw_data_total
+        return True
+
+    def allocate_memory(self, partition_index):
         types = [LAYER_TYPE.Convolution]
         partition = self.net.partitions[partition_index]
         layers = []
@@ -408,12 +435,13 @@ class GreedyPartition(Solver):
                 node.use_uram = False
                 break
 
-        if not enable_weights_streaming:
-            return 
+        if not self.enable_weights_streaming:
+            return False
         partition_resource_usage = partition.get_resource_usage()
         curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
         curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
-        while curr_bram_util > self.rsc_allocation or curr_uram_util > self.rsc_allocation:
+        ram_utilization = self.rsc_allocation
+        while curr_bram_util > ram_utilization or curr_uram_util > ram_utilization:
             partition_copy = copy.deepcopy(partition)
             def _validate(layer):
                 node = partition_copy.graph.nodes[layer]["hw"]
@@ -425,9 +453,9 @@ class GreedyPartition(Solver):
             filtered_layers = list(filter(_validate, layers))
             if len(filtered_layers) == 0: #nothing left to move, double buffer?
                 break
-            if curr_bram_util <= self.rsc_allocation:
+            if curr_bram_util <= ram_utilization:
                 filtered_layers = list(filter(lambda layer: partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
-            elif curr_uram_util <= self.rsc_allocation:
+            elif curr_uram_util <= ram_utilization:
                 filtered_layers = list(filter(lambda layer: not partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
         
             sorted_layers = sorted(filtered_layers, key=_compare, reverse=True)
@@ -441,11 +469,11 @@ class GreedyPartition(Solver):
 
             try:
                 self.check_memory_bandwidth()
-            except AssertionError as error:  
-                partition = partition_copy
-                self.net.partitions[partition_index] = partition
-                break 
-        
+            except AssertionError as error: 
+                pass_status = self.resolve_offchip_bandwidth_constraint(partition_index)
+                if not pass_status:
+                    self.net.partitions[partition_index] = partition_copy
+                    break
         return True
  
     def run_solver(self, log=True):
@@ -531,5 +559,6 @@ class GreedyPartition(Solver):
             print("ultilised DSP:", self.net.partitions[partition_index].get_resource_usage()['DSP'],
                   "max DSP:", max_dsp)
             self.solver_status()
+            print("slowdown:", self.net.partitions[0].slow_down_factor)
 
         return True
