@@ -313,69 +313,7 @@ class GreedyPartition(Solver):
 
         self.net = net
         self.update_partitions()
-        #print(partition_index,"ultilised DSP:", self.partitions[partition_index].get_resource_usage()['DSP'])
         return changed
-
-    def get_max_dsp_combination(self, partition):
-        partition = copy.deepcopy(partition)
-        transforms.remove_weights_reloading_transform(partition)
-
-        partition_dsp_product = []
-
-        for layer in graphs.ordered_node_list(partition.graph):
-            layer_dsp_product = []
-            node_hw = copy.deepcopy(partition.graph.nodes[layer]['hw'])
-            if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
-                coarse_in_feasible = node_hw.get_coarse_in_feasible()
-                coarse_out_feasible = node_hw.get_coarse_out_feasible()
-                coarse_group_feasible = node_hw.get_coarse_group_feasible()
-                fine_feasible = node_hw.get_fine_feasible()
-
-                for coarse_group in coarse_group_feasible:
-                    for coarse_in in coarse_in_feasible:
-                        for coarse_out in coarse_out_feasible:
-                            for fine in fine_feasible:
-                                node_hw.coarse_group = coarse_group
-                                node_hw.coarse_in = coarse_in
-                                node_hw.coarse_out = coarse_out
-                                node_hw.fine = fine
-                                node_hw.update()
-                                layer_dsp_product.append(node_hw.resource()['DSP'])
-
-            elif partition.graph.nodes[layer]['type'] == LAYER_TYPE.InnerProduct:
-                coarse_in_feasible = node_hw.get_coarse_in_feasible()
-                coarse_out_feasible = node_hw.get_coarse_out_feasible()
-
-                for coarse_in in coarse_in_feasible:
-                    for coarse_out in coarse_out_feasible:
-                        node_hw.coarse_in = coarse_in
-                        node_hw.coarse_out = coarse_out
-                        node_hw.update()
-                        layer_dsp_product.append(node_hw.resource()['DSP'])
-
-            if len(layer_dsp_product) > 0:
-                layer_dsp_product = list(set(layer_dsp_product))
-                partition_dsp_product.append(layer_dsp_product)
-
-        if len(partition_dsp_product) < 5:
-            partition_dsp_combination = [0]
-            for layer_dsp_product in partition_dsp_product:
-                existing_dsp_combination = partition_dsp_combination
-                partition_dsp_combination = []
-                for dsp_combination in existing_dsp_combination:
-                    for dsp in layer_dsp_product:
-                        partition_dsp_combination.append(dsp_combination+dsp)
-                partition_dsp_combination = list(set(partition_dsp_combination))
-                partition_dsp_combination = sorted(partition_dsp_combination)
-
-            all_dsp_combination = list(filter(lambda x: x < (self.rsc_allocation*self.platform.get_dsp()), partition_dsp_combination))
-
-            max_dsp_combination = max(all_dsp_combination)
-        else:
-            print("Might lead to program hanging. Abort getting max dsp combination")
-            max_dsp_combination = int(self.rsc_allocation*self.platform.get_dsp())
-
-        return max_dsp_combination
 
     def get_all_wr_feasible(self, partition):
         partition = copy.deepcopy(partition)
@@ -445,10 +383,10 @@ class GreedyPartition(Solver):
             partition_copy = copy.deepcopy(partition)
             def _validate(layer):
                 node = partition_copy.graph.nodes[layer]["hw"]
-                return node.weights_ram_usage > node.stream_unit() * node.stream_step(0.1)
+                return node.weights_ram_usage > 0 #node.stream_unit() * node.stream_step(0.1)
             def _compare(layer):
                 node = copy.deepcopy(partition.graph.nodes[layer]["hw"])
-                node.stream_weights += node.stream_unit() * node.stream_step(0.1)   
+                node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.1))   
                 return node.stream_cycles()
             filtered_layers = list(filter(_validate, layers))
             if len(filtered_layers) == 0: #nothing left to move, double buffer?
@@ -459,10 +397,12 @@ class GreedyPartition(Solver):
                 filtered_layers = list(filter(lambda layer: not partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
         
             sorted_layers = sorted(filtered_layers, key=_compare, reverse=True)
+            if len(sorted_layers) == 0:
+                return False # is there anything left to move?
             layer = sorted_layers[0]
             node = partition.graph.nodes[layer]["hw"] 
             assert node.weights_ram_usage + node.stream_weights == math.ceil(node.weight_array_depth/node.weight_array_unit_depth) * node.weight_array_num * math.ceil(node.weight_array_width/node.weight_array_num/node.weight_array_unit_width)
-            node.stream_weights += node.stream_unit() * node.stream_step(0.1)    
+            node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.1))    
             partition_resource_usage = partition.get_resource_usage()
             curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
             curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
@@ -503,8 +443,6 @@ class GreedyPartition(Solver):
             if not self.net.partitions[partition_index].need_optimise:
                 continue
 
-            max_dsp = self.get_max_dsp_combination(self.net.partitions[partition_index])
-
             for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
                 self.empirical_solver(partition_index, phase)
 
@@ -542,22 +480,14 @@ class GreedyPartition(Solver):
                         changed = changed or self.empirical_solver(partition_index,phase)
                     if not changed:
                         break
-                    #if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
-                    #    break
-
 
                 if self.get_cost([partition_index]) >= cost:
                     self.net = net
-
-                #if self.net.partitions[partition_index].get_resource_usage()['DSP'] == max_dsp:
-                #    break
 
                 if self.objective != 1:
                     break
             self.balance_coarse(partition_index)
             print(partition_index,"single partition cost:",self.get_cost([partition_index]))
-            print("ultilised DSP:", self.net.partitions[partition_index].get_resource_usage()['DSP'],
-                  "max DSP:", max_dsp)
             self.solver_status()
             print("slowdown:", self.net.partitions[0].slow_down_factor)
 
