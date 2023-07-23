@@ -51,6 +51,7 @@ def main():
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
     parser.add_argument('--enable-wandb', action="store_true", help='seed for the optimiser run')
+    parser.add_argument('--ram_usage', default=0.9, type=float, help='ram usage in bytes')
     # parse the arguments
     args = parser.parse_args()
 
@@ -116,6 +117,7 @@ def main():
         opt = SimulatedAnnealing(net, platform, **optimiser_config["annealing"])
     elif args.optimiser == "greedy_partition":
         opt = GreedyPartition(net, platform)
+        opt.ram_usage = args.ram_usage
         #opt.multi_fpga = True
         #opt.constrain_port_width = False
     else:

@@ -93,7 +93,7 @@ class Solver:
         for partition_index, partition in enumerate(self.net.partitions):
             # get the resource usage for the platform
             partition_resource_usage = partition.get_resource_usage()
-            ram_utilization = self.rsc_allocation
+            ram_utilization = self.ram_usage#self.rsc_allocation
             assert partition_resource_usage['FF']   <= \
                     (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}" 
             assert partition_resource_usage['LUT']  <= \

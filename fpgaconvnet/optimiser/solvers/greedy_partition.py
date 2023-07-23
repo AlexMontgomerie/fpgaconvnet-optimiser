@@ -440,7 +440,7 @@ class GreedyPartition(Solver):
         partition_resource_usage = partition.get_resource_usage()
         curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
         curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
-        ram_utilization = self.rsc_allocation
+        ram_utilization = self.ram_usage #self.rsc_allocation
         while curr_bram_util > ram_utilization or curr_uram_util > ram_utilization:
             partition_copy = copy.deepcopy(partition)
             def _validate(layer):
