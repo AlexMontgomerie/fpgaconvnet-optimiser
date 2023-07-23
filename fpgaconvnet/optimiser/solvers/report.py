@@ -98,7 +98,7 @@ def create_report(self, output_path):
             }
             if "URAM" in resource_usage.keys():
                 report["partitions"][i]["layers"][node]["resource_usage"]["URAM"] = resource_usage["URAM"]
-            if self.net.partitions[i].graph.nodes[node]["type"] == LAYER_TYPE.Convolution:
+            if self.net.partitions[i].graph.nodes[node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                 bits_per_cycle = hw.stream_bw()
                 bw_weight = bits_per_cycle * self.platform.board_freq / 1000
                 bw_weight = bw_weight * hw.latency() / max_latency

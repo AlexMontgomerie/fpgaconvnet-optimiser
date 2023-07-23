@@ -342,7 +342,7 @@ class GreedyPartition(Solver):
         return True
 
     def allocate_memory(self, partition_index):
-        types = [LAYER_TYPE.Convolution]
+        types = [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]
         partition = self.net.partitions[partition_index]
         layers = []
         # reset all flags
