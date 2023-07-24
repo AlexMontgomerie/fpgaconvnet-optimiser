@@ -370,7 +370,7 @@ class GreedyPartition(Solver):
             new_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
             new_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
             if new_bram_util < new_uram_util and curr_bram_util > curr_uram_util:
-                node.use_uram = False
+                node.use_uram = abs(new_bram_util-new_uram_util) < abs(curr_bram_util-curr_uram_util)
                 break
 
         if not self.enable_weights_streaming:
