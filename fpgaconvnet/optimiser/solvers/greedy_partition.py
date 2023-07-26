@@ -393,7 +393,7 @@ class GreedyPartition(Solver):
                     [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct], partition.graph.nodes)
 
             # get the layers ordered by size of weights
-            layers = sorted(layers, key=lambda n: partition.graph.nodes[n]["hw"].get_parameters_size()["weights"])
+            layers = reversed(sorted(layers, key=lambda n: partition.graph.nodes[n]["hw"].get_parameters_size()["weights"]))
 
             # filter layers which are not the wide
             layers = filter(lambda n: np.prod(partition.graph.nodes[n]["hw"].kernel_size)* \
