@@ -389,18 +389,30 @@ class GreedyPartition(Solver):
         for partition in reversed(self.net.partitions):
 
             # get all convolution or inner product layers
-            layers = filter(lambda n: partition.graph.nodes[n]["type"] in \
+            all_layers = filter(lambda n: partition.graph.nodes[n]["type"] in \
                     [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct], partition.graph.nodes)
 
             # get the layers ordered by size of weights
-            layers = reversed(sorted(layers, key=lambda n: partition.graph.nodes[n]["hw"].get_parameters_size()["weights"]))
+            all_layers = sorted(all_layers, key=lambda n: partition.graph.nodes[n]["hw"].get_parameters_size()["weights"])
 
             # filter layers which are not the wide
-            layers = filter(lambda n: np.prod(partition.graph.nodes[n]["hw"].kernel_size)* \
-                    partition.graph.nodes[n]["hw"].weight_t.width > 64, layers)
+            wide_layers = filter(lambda n: np.prod(partition.graph.nodes[n]["hw"].kernel_size)* \
+                    partition.graph.nodes[n]["hw"].weight_t.width > 64, all_layers)
 
-            # iterate over layers and re-assign weights to uram
-            for layer in layers:
+            # assign all wide layers to URAM
+            for layer in wide_layers:
+                partition.graph.nodes[layer]["hw"].use_uram = True
+
+            # iterate over layers and re-assign weights to bram
+            for layer in wide_layers:
+                partition_resource_usage = partition.get_resource_usage()
+                if partition_resource_usage['URAM'] > self.net.platform.get_uram() * self.net.rsc_allocation:
+                    partition.graph.nodes[layer]["hw"].use_uram = False
+                else:
+                    break
+
+            # if too many bram, iterate over layers and re-assign weights to bram (all layers)
+            for layer in reversed(list(all_layers)):
                 partition_resource_usage = partition.get_resource_usage()
                 if partition_resource_usage['BRAM'] > self.net.platform.get_bram() * self.net.rsc_allocation:
                     partition.graph.nodes[layer]["hw"].use_uram = True
