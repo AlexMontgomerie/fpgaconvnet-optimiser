@@ -32,7 +32,7 @@ allowed_partitions = [
 ]
 
 [transforms.skipping_windows]
-apply_transform = false
+apply_transform = true
 
 [annealing]
 T = 10.0

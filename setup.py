@@ -23,6 +23,7 @@ setuptools.setup(
     ],
     python_requires='>=3.7',
     install_requires=[
-        "toml>=0.10.2"
+        "toml>=0.10.2",
+        "wandb>=0.15.0"
     ]
 )

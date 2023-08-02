@@ -28,9 +28,8 @@ allowed_partitions = [
     ["*", "Gemm"]
 ]
 
-
 [transforms.skipping_windows]
-apply_transform = true
+apply_transform = false
 
 [annealing]
 T = 10.0

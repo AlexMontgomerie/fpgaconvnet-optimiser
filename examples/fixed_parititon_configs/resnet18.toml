@@ -22,14 +22,19 @@ start_max = true
 apply_transform = false
 probability = 0.25
 start_complete = true
+start_fixed = true
 allowed_type = ["merge"]
 allowed_partitions = [
+    ["*", "Gemm"],
     ["*", "Split"],
-    ["*", "Gemm"]
+]
+fixed_partitions = [
+    ["_maxpool_MaxPool", "_maxpool_MaxPool_split"],
+    ["_layer3_layer3.1_relu2_Relu", "_layer3_layer3.1_relu2_Relu_split"]
 ]
 
 [transforms.skipping_windows]
-apply_transform = true
+apply_transform = false
 
 [annealing]
 T = 10.0

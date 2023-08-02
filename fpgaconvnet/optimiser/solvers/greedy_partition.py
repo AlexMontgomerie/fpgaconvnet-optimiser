@@ -103,7 +103,7 @@ class GreedyPartition(Solver):
                 transforms.apply_max_weights_reloading(self.net.partitions[horizontal_merges[1][0]])
                 transforms.merge_horizontal(self.net, *horizontal_merges[1])
                 current_merge = horizontal_merges[1]
-                
+
             print(current_merge)
             self.net.update_partitions()
             status = self.run_solver()
@@ -118,70 +118,156 @@ class GreedyPartition(Solver):
                         reject_list[i] = (merge[0]-1,merge[1]-1)
                 print("accept")
 
-    def balance_coarse(self, partition_index):
-        net = copy.deepcopy(self.net)
-        try:
-            self.check_resources()
-            self.check_constraints()
-        except AssertionError as error:
-            partition = self.net.partitions[partition_index] 
-            feasible_layers = get_all_layers(partition.graph, LAYER_TYPE.Convolution)
-            if len(feasible_layers) == 1:
-                node = feasible_layers[0]
+    def adjust_coarse(self, partition_index, run_pass=None, constrain_resource=True, constrain_latency=True):
+        # enumerate all possible coarse combinations
+        # Warning: This function can be very slow
+
+        if run_pass is None:
+            try:
+                self.check_resources()
+                self.check_constraints()
+                run_pass = False
+            except AssertionError as error:
+                run_pass = True
+
+        if run_pass:
+            partition = self.net.partitions[partition_index]
+            node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
+                for layer in graphs.ordered_node_list(partition.graph) ])
+            node_index = list(reversed(np.argsort(node_latencys)))[0]
+            node = graphs.ordered_node_list(partition.graph)[node_index]
+
+            if partition.graph.nodes[node]['type'] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                 current_coarse_in = partition.graph.nodes[node]['hw'].coarse_in
                 current_coarse_out = partition.graph.nodes[node]['hw'].coarse_out
                 coarse_in_feasible = partition.graph.nodes[node]['hw'].get_coarse_in_feasible()
-                coarse_out_feasible = partition.graph.nodes[node]['hw'].get_coarse_out_feasible()   
+                coarse_out_feasible = partition.graph.nodes[node]['hw'].get_coarse_out_feasible()
 
                 all_coarse_combination = list(itertools.product(coarse_in_feasible, coarse_out_feasible))
                 all_coarse_combination = list(filter(lambda x: x[0] * x[1] == current_coarse_in*current_coarse_out, all_coarse_combination))
                 all_coarse_combination.remove((current_coarse_in, current_coarse_out))
 
-                prev_latency = partition.graph.nodes[node]['hw'].latency()
-                prev_rsc = partition.get_resource_usage()
+                current_latency = partition.graph.nodes[node]['hw'].latency()
+                current_rsc = partition.get_resource_usage()
 
                 for comb in all_coarse_combination:
+                    net = copy.deepcopy(self.net)
                     partition = self.net.partitions[partition_index]
                     partition.graph.nodes[node]['hw'].coarse_in = comb[0]
                     partition.graph.nodes[node]['hw'].coarse_out = comb[1]
                     partition.update()
-                    current_latency = partition.graph.nodes[node]['hw'].latency()
-                    current_rsc = partition.get_resource_usage()
+                    new_latency = partition.graph.nodes[node]['hw'].latency()
+                    new_rsc = partition.get_resource_usage()
 
-                    if current_rsc["LUT"] >= prev_rsc["LUT"] or current_latency > prev_latency:
+                    if constrain_resource and new_rsc["LUT"] >= current_rsc["LUT"] \
+                        or constrain_latency and new_latency > current_latency:
                         self.net = net
                     else:
-                        break
+                        return
 
-    def adjust_squeeze(self, partition_index):
-        net = copy.deepcopy(self.net)
-        try:
-            self.check_resources()
-            self.check_constraints()
-        except AssertionError as error:
+    def adjust_squeeze(self, partition_index, run_pass=None, constrain_resource=True, constrain_latency=True):
+        # eliminate squeeze layers when possible to save resources
+        # Warning: This function can hurt the performance
+
+        if run_pass is None:
+            try:
+                self.check_resources()
+                self.check_constraints()
+                run_pass = False
+            except AssertionError as error:
+                run_pass = True
+
+            if run_pass:
+                net = copy.deepcopy(self.net)
+                partition = self.net.partitions[partition_index]
+                current_rsc = partition.get_resource_usage()
+                current_latency = partition.get_cycle()
+                partition.reduce_squeeze_fanout()
+                partition.update()
+                new_latency = partition.get_cycle()
+                new_rsc = partition.get_resource_usage()
+                if constrain_resource and new_rsc["LUT"] >= current_rsc["LUT"] \
+                    or constrain_latency and new_latency > current_latency:
+                    self.net = net
+                else:
+                    return
+
+    def balance_coarse(self, partition_index, run_pass=True, constrain_resource=True, constrain_latency=True):
+        # balance coarse_in and coarse_out to avoid large squeeze layers which affect frquency
+        # this function is similar to adjust_squeeze but it is less aggressive
+        # Warning: This function can be very slow
+
+        while True:
+            net = copy.deepcopy(self.net)
             partition = self.net.partitions[partition_index]
-            prev_rsc = partition.get_resource_usage()
-            prev_cycle = partition.get_cycle()
-            partition.reduce_squeeze_fanout()
+            feasible_layers = get_all_layers(partition.graph, LAYER_TYPE.Convolution)
+            feasible_layers += get_all_layers(partition.graph, LAYER_TYPE.InnerProduct)
+            node_coarse_diff = [ abs(partition.graph.nodes[layer]['hw'].coarse_in - partition.graph.nodes[layer]['hw'].coarse_out)  
+                for layer in feasible_layers ]
+            node_index = list(reversed(np.argsort(node_coarse_diff)))[0]
+            node = feasible_layers[node_index]
+            current_coarse_in = partition.graph.nodes[node]['hw'].coarse_in
+            current_coarse_out = partition.graph.nodes[node]['hw'].coarse_out
+            current_latency = partition.get_cycle()
+            coarse_in_feasible = partition.graph.nodes[node]['hw'].get_coarse_in_feasible()
+            coarse_out_feasible = partition.graph.nodes[node]['hw'].get_coarse_out_feasible() 
+            if current_coarse_in == current_coarse_out:
+                break
+            elif current_coarse_in > current_coarse_out:
+                coarse_in_feasible = list(filter(lambda x: x < current_coarse_in, coarse_in_feasible))
+                coarse_out_feasible = list(filter(lambda x: x > current_coarse_out, coarse_out_feasible))
+                if len(coarse_in_feasible) == 0 or len(coarse_out_feasible) == 0:
+                    break
+                new_coarse_in = list(sorted(coarse_in_feasible))[-1]
+                new_coarse_out = list(sorted(coarse_out_feasible))[0]
+                if new_coarse_in < new_coarse_out:
+                    # reject cross-over
+                    break
+            else:
+                coarse_in_feasible = list(filter(lambda x: x > current_coarse_in, coarse_in_feasible))
+                coarse_out_feasible = list(filter(lambda x: x < current_coarse_out, coarse_out_feasible))
+                if len(coarse_in_feasible) == 0 or len(coarse_out_feasible) == 0:
+                    break
+                new_coarse_in = list(sorted(coarse_in_feasible))[0]
+                new_coarse_out = list(sorted(coarse_out_feasible))[-1]
+                if new_coarse_in > new_coarse_out:
+                    # reject cross-over
+                    break
+            partition.graph.nodes[node]['hw'].coarse_in = new_coarse_in
+            partition.graph.nodes[node]['hw'].coarse_out = new_coarse_out
             partition.update()
-            current_cycle = partition.get_cycle()
-            current_rsc = partition.get_resource_usage()
-            if current_rsc["LUT"] >= prev_rsc["LUT"] or current_cycle > prev_cycle:
-                self.net = net         
-    
+            # check latency
+            if constrain_latency:
+                new_latency = partition.get_cycle()
+                if new_latency > current_latency:
+                    self.net = net
+                    break
+            # check resource
+            if constrain_resource:
+                try:
+                    self.check_resources()
+                    self.check_constraints()
+                except AssertionError as error:
+                    self.net = net
+                    break
+
     def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True):
         net = copy.deepcopy(self.net)
         reject_list = []
         while True:
-            skip_second_slowest_node = True#self.merge_ongoing and optimiser_phase in [transforms.apply_more_coarse_favour_coarse_in, transforms.apply_more_coarse_favour_coarse_out]
-            # skipping avoids some cases of local minima
+            # if partition_index > 0:
+            #     if self.net.partitions[partition_index].get_interval() \
+            #         <= self.net.get_interval(list(range(partition_index))):
+            #         return
+
+            skip_second_slowest_node = (self.net.batch_size > 1)
             status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
             if not status:
                 break
             self.net.update_partitions()
             self.allocate_uram()
             self.adjust_squeeze(partition_index)
-            self.balance_coarse(partition_index)
+            self.adjust_coarse(partition_index)
 
             try:
                 self.check_resources()
@@ -288,7 +374,7 @@ class GreedyPartition(Solver):
                     else:
                         break
 
-    def run_solver(self, log=True):
+    def run_solver(self, log=True, aggressive_fine = False):
         # update all partitions
         self.net.update_partitions()
         self.allocate_uram()
@@ -315,7 +401,12 @@ class GreedyPartition(Solver):
 
             max_dsp = self.get_max_dsp_combination(self.net.partitions[partition_index])
 
-            for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
+            if aggressive_fine:
+                fine_phase = transforms.apply_more_fine_aggressive
+            else:
+                fine_phase = transforms.apply_more_fine
+
+            for phase in [fine_phase, transforms.apply_less_weight_reloading]:
                 self.empirical_solver(partition_index, phase)
 
             if "weights_reloading" in self.transforms and self.net.partitions[partition_index].wr_layer:
@@ -356,7 +447,7 @@ class GreedyPartition(Solver):
 
                 if self.objective != 1:
                     break
-
+            self.balance_coarse(partition_index)
             print(partition_index,"single partition cost:",self.get_cost([partition_index]))
             print("ultilised DSP:", self.net.partitions[partition_index].get_resource_usage()['DSP'],
                   "max DSP:", max_dsp)

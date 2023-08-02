@@ -14,6 +14,7 @@ import numpy as np
 import wandb
 import sys
 import copy
+import yaml
 
 from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.tools.layer_enum import from_cfg_type
@@ -27,10 +28,13 @@ import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
 import fpgaconvnet.optimiser.transforms.skipping_windows
 
-def main():
+def parse_args():
+    """
+    Command line argument parser
+    """
     parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
     parser.add_argument('-n','--name', metavar='PATH', required=True,
-        help='network name')
+    help='network name')
     parser.add_argument('-m','--model_path', metavar='PATH', required=True,
         help='Path to ONNX model')
     parser.add_argument('-p','--platform_path', metavar='PATH', required=True,
@@ -44,16 +48,22 @@ def main():
     parser.add_argument('--optimiser', choices=['simulated_annealing', 'improve', 'greedy_partition'],
         default='improve', help='Optimiser strategy')
     parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
-        help='Configuration file (.yml) for optimiser')
+        help='Configuration file (.toml) for optimiser')
     parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
         help='Previously optimised partitions saved in JSON')
+    parser.add_argument('--sweep_config_path', metavar='PATH', required=False,
+        help='Wandb sweep configuration file (.yml) for optimiser')
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
-    parser.add_argument('--enable-wandb', action="store_true", help='seed for the optimiser run')
+    parser.add_argument('--rerun-optim', action="store_true", help='whether to run solver again at end of program')
+    parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
+    parser.add_argument('--sweep-wandb', action="store_true", help='whether to enable wandb sweep')
 
-    # parse the arguments
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main():
+    args = parse_args()
     # setup seed
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -88,22 +98,30 @@ def main():
 
     # enable wandb
     if args.enable_wandb:
-        # project name
-        wandb_name = f"fpgaconvnet-{args.name}-{args.objective}"
-        # wandb config
-        wandb_config = optimiser_config
-        wandb_config |= platform_config
-        # TODO: remove useless config
-        # initialize wandb
-        wandb.init(config=wandb_config,
-                project=wandb_name,
-                entity="alexmontgomerie") # or "fpgaconvnet", and can add "name"
+        if args.sweep_wandb:
+            wandb.init()
+            optimiser_config = wandb.config
+            optimiser_config.update(platform_config)
+        else:
+            # project name
+            wandb_name = f"fpgaconvnet-{args.name}-{args.objective}"
+            # wandb config
+            wandb_config = optimiser_config
+            wandb_config |= platform_config
+            # TODO: remove useless config
+            # initialize wandb
+            wandb.login()
+            wandb.init(config=wandb_config,
+                    project=wandb_name,
+                    entity="krish-agrawal") # or "fpgaconvnet", and can add "name"
+            optimiser_config = wandb.config
+
 
     # # turn on debugging
     # net.DEBUG = True
 
     # parse the network
-    fpgaconvnet_parser = Parser()
+    fpgaconvnet_parser = Parser(custom_onnx=True)
 
     # create network
     net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path, args.platform_path)
@@ -133,22 +151,39 @@ def main():
 
     # specify available transforms
     opt.transforms = list(optimiser_config["transforms"].keys())
-    opt.transforms = []
-    for transform in optimiser_config["transforms"]:
+
+    if args.sweep_wandb:
+        opt.transforms = {}
+    else:
+        opt.transforms = []
+
+    for i, transform in enumerate(optimiser_config["transforms"]):
         if optimiser_config["transforms"][transform]["apply_transform"]:
-            opt.transforms.append(transform)
+            if args.sweep_wandb:
+                probabilities = optimiser_config["transforms_probabilities"]
+                opt.transforms[transform] = probabilities[i]
+            else:
+                opt.transforms.append(transform)
 
 
     # initialize graph
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
         # format the partition transform allowed partitions
-        allowed_partitions = []
-        for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
-            allowed_partitions.append((from_cfg_type(allowed_partition[0]), from_cfg_type(allowed_partition[1])))        
-        if len(allowed_partitions) == 0:
-            allowed_partitions = None
-        fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions)
+        if bool(optimiser_config["transforms"]["partition"]["start_fixed"]):
+            allowed_partitions = []
+            for allowed_partition in optimiser_config["transforms"]["partition"]["fixed_partitions"]:
+                allowed_partitions.append((allowed_partition[0], allowed_partition[1]))
+            if len(allowed_partitions) == 0:
+                allowed_partitions = None
+            fpgaconvnet.optimiser.transforms.partition.split_fixed(opt.net, allowed_partitions)
+        else:
+            allowed_partitions = []
+            for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
+                allowed_partitions.append((from_cfg_type(allowed_partition[0]), from_cfg_type(allowed_partition[1])))        
+            if len(allowed_partitions) == 0:
+                allowed_partitions = None
+            fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions)
 
 
     if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
@@ -156,9 +191,11 @@ def main():
             fpgaconvnet.optimiser.transforms.fine.apply_complete_fine(partition)
 
     ## apply max fine factor to the graph
-    if bool(optimiser_config["transforms"]["skipping_windows"]["apply_transform"]):
-        for partition in net.partitions:
-            fpgaconvnet.optimiser.transforms.skipping_windows.apply_complete_skipping_windows(partition)
+    if "skipping_windows" in opt.transforms:
+        if bool(optimiser_config["transforms"]["skipping_windows"]["apply_transform"]):
+            for partition in net.partitions:
+                fpgaconvnet.optimiser.transforms.skipping_windows.apply_complete_skipping_windows(partition)
+            net.update_partitions()        
 
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
@@ -188,6 +225,16 @@ def main():
         opt.merge_memory_bound_partitions()
         opt.net.update_partitions()
 
+    #If renrun, run solver again
+    if args.rerun_optim:
+        print("\nRerunning optimiser...")
+        opt.run_solver(aggressive_fine = True)
+        opt.net.update_partitions()
+
+        if args.optimiser == "greedy_partition":
+            opt.merge_memory_bound_partitions()
+            opt.net.update_partitions()
+
     # find the best batch_size
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
@@ -205,4 +252,14 @@ def main():
     #opt.net.visualise(os.path.join(args.output_path, "topology.png"))
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+
+    if args.sweep_wandb:
+        project_name = f"fpgaconvnet-{args.name}-{args.objective}"
+        # load wandb sweep configuration
+        with open(args.sweep_config_path, "r") as f:
+            sweep_config = yaml.load(f, Loader=yaml.FullLoader)
+        sweep_id = wandb.sweep(sweep_config, project=project_name, entity="krish-agrawal")
+        wandb.agent(sweep_id, function=main)
+    else:
+        main()

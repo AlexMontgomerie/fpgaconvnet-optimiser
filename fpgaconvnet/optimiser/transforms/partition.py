@@ -42,7 +42,16 @@ def check_config_allowed_partitions(allowed_partitions, node0_type, node1_type):
     else:
         return True
 
-def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
+def check_config_fixed_partitions(allowed_partitions, node0_type, node1_type):
+    if allowed_partitions is not None:
+        for allowed_split in allowed_partitions:
+            if allowed_split[0] == node0_type and allowed_split[1] == node1_type:
+                return True
+        return False
+    else:
+        return True
+
+def get_all_horizontal_splits(net, partition_index, allowed_partitions=None, fixed_partitions = False):
     # function to iterate over graph
     def _iterate_graph(edge_list,input_node,in_parallel_block):
         # check if end
@@ -62,10 +71,16 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
         if net.partitions[partition_index].graph.in_degree(next_node) > 1:
             return _iterate_graph(edge_list,next_node,in_parallel_block)
         # skip node - split position not valid
-        if not check_config_allowed_partitions(allowed_partitions, 
-            net.partitions[partition_index].graph.nodes[input_node]["type"],
-            net.partitions[partition_index].graph.nodes[next_node]["type"]):
-            return _iterate_graph(edge_list,next_node,in_parallel_block) 
+        if fixed_partitions:
+            if not check_config_fixed_partitions(allowed_partitions, 
+                input_node, 
+                next_node):
+                return _iterate_graph(edge_list,next_node,in_parallel_block) 
+        else:
+            if not check_config_allowed_partitions(allowed_partitions, 
+                net.partitions[partition_index].graph.nodes[input_node]["type"],
+                net.partitions[partition_index].graph.nodes[next_node]["type"]):
+                return _iterate_graph(edge_list,next_node,in_parallel_block) 
         # append to partition list
         if not in_parallel_block:
             edge_list.append((input_node,next_node))
@@ -198,18 +213,18 @@ def merge_vertical(net, partition_index_a, partition_index_b):
     # remove last partition
     del net.partitions[partition_index_b]
 
-def split_horizontal_complete(net, allowed_partitions):
+def split_horizontal_complete(net, allowed_partitions, fixed_partitions = False):
     # function to find a horizontal split
     def _find_horizontal_split_partition():
         for i in range(len(net.partitions)):
-            if get_all_horizontal_splits(net, i, allowed_partitions):
+            if get_all_horizontal_splits(net, i, allowed_partitions, fixed_partitions=fixed_partitions):
                 return i
         return None
     partition_index = _find_horizontal_split_partition()
     # keep iterating until all horizontal splits done
     while partition_index != None:
         # apply first possible split
-        horizontal_splits = get_all_horizontal_splits(net, partition_index, allowed_partitions)
+        horizontal_splits = get_all_horizontal_splits(net, partition_index, allowed_partitions, fixed_partitions=fixed_partitions)
         split_horizontal(net, partition_index, horizontal_splits[0])
         # find next partition
         partition_index = _find_horizontal_split_partition()
@@ -233,6 +248,11 @@ def split_complete(net, allowed_partitions):
     split_horizontal_complete(net, allowed_partitions)
     split_vertical_complete(net)
     split_horizontal_complete(net, allowed_partitions)
+
+def split_fixed(net, allowed_partitions):
+    split_horizontal_complete(net, allowed_partitions, fixed_partitions=True)
+    split_vertical_complete(net)
+    split_horizontal_complete(net, allowed_partitions, fixed_partitions=True)
 
 def merge_horizontal_complete(net):
     def _find_horizontal_merge_partition():
