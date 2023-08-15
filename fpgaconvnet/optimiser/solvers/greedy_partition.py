@@ -23,7 +23,7 @@ START_LOOP=1
 class GreedyPartition(Solver):
     coarse_in_first: list = field(default_factory=list)
     merge_ongoing: bool = False
-    enable_weights_streaming: bool = True
+    enable_weights_streaming: bool = False
     targets: dict = field(default_factory=lambda: {
     'latency'    :  0.0, 'throughput' : float("inf")})
 
