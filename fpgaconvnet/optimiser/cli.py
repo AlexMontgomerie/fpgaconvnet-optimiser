@@ -26,6 +26,8 @@ import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
 
+from fpgaconvnet.platform.Platform import Platform
+
 def main():
     parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
     parser.add_argument('-n','--name', metavar='PATH', required=True,
@@ -49,7 +51,7 @@ def main():
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
     parser.add_argument('--enable-wandb', action="store_true", help='seed for the optimiser run')
-    parser.add_argument('--enable-multi-fpga', action="store_true", help='pipeline partitions across multiple FPGAs')
+    parser.add_argument('--ram_usage', default=0.9, type=float, help='ram usage in bytes')
     # parse the arguments
     args = parser.parse_args()
 
@@ -102,23 +104,27 @@ def main():
     # net.DEBUG = True
 
     # parse the network
-    fpgaconvnet_parser = Parser()
+    fpgaconvnet_parser = Parser(custom_onnx=True)
+    net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)
 
-    # create network
-    net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path, args.platform_path, args.enable_multi_fpga)
-
-    # update the resouce allocation
-    net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
-
-    # load network
+    # load platform
+    platform = Platform()
+    platform.update(args.platform_path)
+    
     if args.optimiser == "improve":
-        opt = Improve(net, **optimiser_config["annealing"])
+        opt = Improve(net, platform, **optimiser_config["annealing"])
     elif args.optimiser == "simulated_annealing":
-        opt = SimulatedAnnealing(net, **optimiser_config["annealing"])
+        opt = SimulatedAnnealing(net, platform, **optimiser_config["annealing"])
     elif args.optimiser == "greedy_partition":
-        opt = GreedyPartition(net)
+        opt = GreedyPartition(net, platform)
+        opt.ram_usage = args.ram_usage
+        #opt.multi_fpga = True
+        #opt.constrain_port_width = False
     else:
         raise RuntimeError(f"optimiser {args.optimiser} not implmented")
+
+    # specify resource allocation
+    opt.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
 
     # specify optimiser objective
     if args.objective == "throughput":
@@ -164,11 +170,6 @@ def main():
             fpgaconvnet.optimiser.transforms.weights_reloading.apply_max_weights_reloading(
                     opt.net.partitions[partition_index])
 
-    if bool(optimiser_config["general"]["starting_point_distillation"]) and args.teacher_partition_path != None:
-        net.update_partitions()
-        net.starting_point_distillation(args.teacher_partition_path, not run_optimiser)
-        net.update_partitions()
-
     # print("size: ", len(pickle.dumps(opt.net)))
     opt_onnx_model = copy.deepcopy(opt.net.model)
     opt.net.model = None
@@ -180,18 +181,18 @@ def main():
     opt.net.model = opt_onnx_model
 
     # update all partitions
-    opt.net.update_partitions()
+    opt.update_partitions()
 
     if args.optimiser == "greedy_partition":
         opt.merge_memory_bound_partitions()
-        opt.net.update_partitions()
+        opt.update_partitions()
 
     # find the best batch_size
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
 
     # create report
-    opt.net.create_report(os.path.join(args.output_path,"report.json"))
+    opt.create_report(os.path.join(args.output_path,"report.json"))
 
     # save all partitions
     opt.net.save_all_partitions(os.path.join(args.output_path, "config.json"))

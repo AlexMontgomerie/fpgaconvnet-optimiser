@@ -29,7 +29,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
     def run_solver(self, log=True):
 
         # update all partitions
-        self.net.update_partitions()
+        self.update_partitions()
 
         # Setup
         cost = self.get_cost()
@@ -48,7 +48,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             for i in range(START_LOOP):
                 transform = random.choice(self.transforms)
                 self.apply_transform(transform)
-                self.net.update_partitions()
+                self.update_partitions()
 
                 try:
                     self.check_resources()
@@ -68,7 +68,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
         while self.T_min < self.T:
 
             # update partitions
-            self.net.update_partitions()
+            self.update_partitions()
 
             # get the current cost
             cost = self.get_cost()
@@ -84,7 +84,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             for _ in range(self.iterations):
 
                 # update partitions
-                self.net.update_partitions()
+                self.update_partitions()
 
                 # remove all auxiliary layers
                 for i in range(len(self.net.partitions)):
@@ -104,7 +104,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 self.apply_transform(transform, partition_index, node)
 
                 ## Update partitions
-                self.net.update_partitions()
+                self.update_partitions()
 
             # Check resources
             try:

@@ -58,7 +58,9 @@ def remove_weights_reloading_transform(partition):
         for layer in layers_after:
             ## get channels and reduce by wr factor
             channels = partition.graph.nodes[layer]['hw'].channels_in()
-            partition.graph.nodes[layer]['hw'].channels = channels*partition.wr_factor
+            if channels == filters:
+                partition.graph.nodes[layer]['hw'].channels = channels*partition.wr_factor
+            # otherwise, there could be a flatten layer
     # set wr_factor to 1
     partition.wr_factor = 1
     # fix the coarse factors
@@ -74,7 +76,9 @@ def apply_weights_reloading_transform(partition):
         layers_after = graphs.get_next_nodes_all(partition.graph, partition.wr_layer)
         for layer in layers_after:
             ## get channels and reduce by wr factor
-            partition.graph.nodes[layer]['hw'].channels = filters//partition.wr_factor
+            channels = partition.graph.nodes[layer]['hw'].channels_in()
+            if channels == filters:
+                partition.graph.nodes[layer]['hw'].channels = filters//partition.wr_factor
     # fix the coarse factors
     fix_coarse(partition)
 

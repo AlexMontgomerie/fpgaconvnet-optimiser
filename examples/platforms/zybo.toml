@@ -1,0 +1,17 @@
+[device]
+name = "zybo"
+#family = ""
+part = "xc7z010clg400-1"
+board = "digilentinc.com:zybo-z7-10:part0:2.0"
+
+[resources]
+DSP   = 80
+BRAM  = 120
+FF    = 35200
+LUT   = 17600
+
+[system]
+board_frequency = 200 # in MHz
+memory_bandwidth = 33.6 # in Gbps
+reconfiguration_time = 0.08255 # in seconds
+port_width = 128

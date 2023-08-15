@@ -21,6 +21,8 @@ import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
 
+from fpgaconvnet.platform.Platform import Platform
+
 def parse_args():
     """
     Command line argument parser
@@ -117,14 +119,12 @@ def optimize():
     net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)
 
     # update platform information
-    net.platform.update(args.platform_path)
-
-    # update the resouce allocation
-    net.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
+    platform = Platform()
+    platform.update(args.platform_path)
 
     # load network
     if args.optimiser == "simulated_annealing":
-        opt = LatencySimulatedAnnealing(net, objective=0,
+        opt = LatencySimulatedAnnealing(net, platform, objective=0,
                 runtime_parameters=optimiser_config["general"]["runtime_parameters"],
                 weight_storage=optimiser_config["general"]["weight_storage"],
                 channel_tiling=optimiser_config["general"]["channel_tiling"],
@@ -132,6 +132,9 @@ def optimize():
                 **optimiser_config["annealing"])
     else:
         raise NotImplementedError(f"optimiser {args.optimiser} not implmented")
+
+    # specify resource allocation
+    opt.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
 
     # specify available transforms
     opt.transforms = {}
@@ -221,7 +224,7 @@ def optimize():
     opt.run_solver(log=args.enable_wandb)
 
     # create report
-    # opt.net.create_report(os.path.join(args.output_path,"report.json"))
+    # opt.create_report(os.path.join(args.output_path,"report.json"))
 
     # save all partitions
     # opt.net.save_all_partitions(os.path.join(args.output_path, "config.json"))
