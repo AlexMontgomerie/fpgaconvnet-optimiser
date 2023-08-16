@@ -32,7 +32,7 @@ def apply_complete_fine(partition):
             fine = partition.graph.nodes[node]['hw'].get_fine_feasible()[-1]
             partition.graph.nodes[node]['hw'].fine = fine
 
-def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False):
+def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False, conservative_gain = 1.2):
     # feasible layers
     feasible_layers = get_all_layers(partition.graph, LAYER_TYPE.Convolution)
     feasible_layers = [ layer for layer in feasible_layers if layer not in reject_list ]
@@ -53,7 +53,7 @@ def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False):
                 if len(partition.graph.nodes[layer]['hw'].sparsity) == 0:
                     gain = 1
                 else:
-                    gain = 1.2
+                    gain = conservative_gain
                 if node_latencys[node_index] / new_latency > gain:
                     return True, layer
                 else:

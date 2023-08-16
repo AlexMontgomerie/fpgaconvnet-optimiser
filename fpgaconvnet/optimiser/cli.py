@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
     parser.add_argument('--rerun-optim', action="store_true", help='whether to run solver again at end of program')
+    parser.add_argument('--gain', default=1.2, type = float, help='conservative fine gain')
     parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
     parser.add_argument('--sweep-wandb', action="store_true", help='whether to enable wandb sweep')
 
@@ -170,7 +171,7 @@ def main():
     ## completely partition graph
     if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
         # format the partition transform allowed partitions
-        if bool(optimiser_config["transforms"]["partition"]["start_fixed"]):
+        if "start_fixed" in optimiser_config["transforms"]["partition"] and bool(optimiser_config["transforms"]["partition"]["start_fixed"]):
             allowed_partitions = []
             for allowed_partition in optimiser_config["transforms"]["partition"]["fixed_partitions"]:
                 allowed_partitions.append((allowed_partition[0], allowed_partition[1]))
@@ -213,7 +214,7 @@ def main():
     opt.net.model = None
 
     # run optimiser
-    opt.run_solver()
+    opt.run_solver(conservative_gain=args.gain)
 
     # print("size: ", len(pickle.dumps(opt.net)))
     opt.net.model = opt_onnx_model

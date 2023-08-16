@@ -251,7 +251,7 @@ class GreedyPartition(Solver):
                     self.net = net
                     break
 
-    def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True):
+    def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True, conservative_gain = 1.2):
         net = copy.deepcopy(self.net)
         reject_list = []
         while True:
@@ -261,7 +261,10 @@ class GreedyPartition(Solver):
             #         return
 
             skip_second_slowest_node = (self.net.batch_size > 1)
-            status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
+            if optimiser_phase == transforms.apply_more_fine:
+                status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node, conservative_gain = conservative_gain)
+            else:
+                status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
             if not status:
                 break
             self.net.update_partitions()
@@ -374,7 +377,7 @@ class GreedyPartition(Solver):
                     else:
                         break
 
-    def run_solver(self, log=True, aggressive_fine = False):
+    def run_solver(self, log=True, aggressive_fine = False, conservative_gain = 1.2):
         # update all partitions
         self.net.update_partitions()
         self.allocate_uram()
@@ -407,7 +410,7 @@ class GreedyPartition(Solver):
                 fine_phase = transforms.apply_more_fine
 
             for phase in [fine_phase, transforms.apply_less_weight_reloading]:
-                self.empirical_solver(partition_index, phase)
+                self.empirical_solver(partition_index, phase, conservative_gain = conservative_gain)
 
             if "weights_reloading" in self.transforms and self.net.partitions[partition_index].wr_layer:
                 all_wr_feasible = self.get_all_wr_feasible(self.net.partitions[partition_index]) # TODO

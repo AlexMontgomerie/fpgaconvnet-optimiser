@@ -6,6 +6,7 @@ from fpgaconvnet.models.layers import GlobalPoolingLayer, GlobalPoolingLayer3D
 from fpgaconvnet.models.layers import InnerProductLayer, InnerProductLayer3D
 from fpgaconvnet.models.layers import EltWiseLayer, EltWiseLayer3D
 from fpgaconvnet.models.layers import ReLULayer, ReLULayer3D
+from fpgaconvnet.models.layers import ThresholdedReLULayer
 from fpgaconvnet.models.layers import ActivationLayer3D
 
 def get_convolution_from_dict(param, dimensionality):
@@ -163,6 +164,16 @@ def get_relu_from_dict(param, dimensionality):
     else:
         raise NotImplementedError
 
+def get_thresholded_relu_from_dict(param, dimensionality):
+
+    return ThresholdedReLULayer(
+            param["rows"],
+            param["cols"],
+            param["channels"],
+            coarse=param["coarse"],
+            threshold=param["threshold"]
+        )
+   
 def get_activation_from_dict(param, dimensionality):
     if dimensionality == 2:
         raise NotImplementedError("Activation layer not implemented for 2D")
@@ -190,6 +201,8 @@ def get_hw_from_dict(layer_type, param, dimensionality):
             return get_eltwise_from_dict(param, dimensionality)
         case LAYER_TYPE.ReLU:
             return get_relu_from_dict(param, dimensionality)
+        case LAYER_TYPE.ThresholdedReLU:
+            return get_thresholded_relu_from_dict(param, dimensionality)
         case LAYER_TYPE.GlobalPooling:
             return get_global_pooling_from_dict(param, dimensionality)
         case LAYER_TYPE.Sigmoid | LAYER_TYPE.SiLU:
