@@ -88,12 +88,21 @@ class Solver:
         else:
             return self.platform.reconf_time
 
-    def check_resources(self):
+    def get_partition_resource(self, partition, bram_to_lut=True):
+        partition_resource_usage = partition.get_resource_usage()
+        if bram_to_lut:
+            bram_shortage = math.ceil(partition_resource_usage['BRAM'] - self.ram_usage*self.platform.get_bram())
+            lut_surplus = int((self.rsc_allocation*self.platform.get_lut() - partition_resource_usage['LUT'])/288)
+            if bram_shortage > 0 and lut_surplus > 0:
+                partition_resource_usage['BRAM'] -= min(bram_shortage, lut_surplus)
+        return partition_resource_usage
+
+    def check_resources(self,):
         # iterate over partitions
         for partition_index, partition in enumerate(self.net.partitions):
             # get the resource usage for the platform
-            partition_resource_usage = partition.get_resource_usage()
-            ram_utilization = self.ram_usage#self.rsc_allocation
+            partition_resource_usage = self.get_partition_resource(partition)
+
             assert partition_resource_usage['FF']   <= \
                     (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}" 
             assert partition_resource_usage['LUT']  <= \
@@ -101,9 +110,9 @@ class Solver:
             assert partition_resource_usage['DSP']  <= \
                     (self.rsc_allocation*self.platform.get_dsp()) , "ERROR: DSP usage exceeded, partition: {partition_index}" 
             assert partition_resource_usage['BRAM'] <= \
-                    (ram_utilization*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}" 
+                    (self.ram_usage*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}" 
             assert partition_resource_usage['URAM'] <= \
-                    (ram_utilization*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
+                    (self.ram_usage*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
             
         self.check_memory_bandwidth()
 

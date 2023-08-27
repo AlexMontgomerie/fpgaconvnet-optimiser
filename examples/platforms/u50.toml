@@ -1,0 +1,21 @@
+[device]
+name = "u50"
+part = ""
+board = ""
+
+[resources]
+DSP   = 5952
+BRAM  = 2688
+FF    = 1743360
+LUT   = 871680
+URAM  = 640
+
+[system]
+board_frequency = 250 # in MHz
+memory_bandwidth = 1608 # in Gbps
+reconfiguration_time = 0.08255 # in seconds
+port_width = 512
+
+[ethernet]
+bandwidth = 100.0 # in Gbps
+latency = 0.000005 # in seconds

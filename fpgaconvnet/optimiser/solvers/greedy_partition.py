@@ -139,7 +139,7 @@ class GreedyPartition(Solver):
 
         if not force_run:
             partition = self.net.partitions[partition_index]
-            partition_resource_usage = partition.get_resource_usage()
+            partition_resource_usage = self.get_partition_resource(partition)
             if partition_resource_usage["LUT"] <= self.rsc_allocation * self.platform.get_lut():
                 return False
 
@@ -159,7 +159,7 @@ class GreedyPartition(Solver):
             all_coarse_combination.remove((current_coarse_in, current_coarse_out))
 
             current_latency = partition.graph.nodes[node]['hw'].latency()
-            current_rsc = partition.get_resource_usage()
+            current_rsc = self.get_partition_resource(partition)
 
             for comb in all_coarse_combination:
                 net = copy.deepcopy(self.net)
@@ -168,7 +168,7 @@ class GreedyPartition(Solver):
                 partition.graph.nodes[node]['hw'].coarse_out = comb[1]
                 partition.update()
                 new_latency = partition.graph.nodes[node]['hw'].latency()
-                new_rsc = partition.get_resource_usage()
+                new_rsc = self.get_partition_resource(partition)
 
                 if constrain_resource and new_rsc["LUT"] >= current_rsc["LUT"] \
                     or constrain_latency and new_latency > current_latency:
@@ -192,13 +192,13 @@ class GreedyPartition(Solver):
             if run_pass:
                 net = copy.deepcopy(self.net)
                 partition = self.net.partitions[partition_index]
-                current_rsc = partition.get_resource_usage()
+                current_rsc = self.get_partition_resource(partition)
                 current_latency = partition.get_cycle()
                 partition.reduce_squeeze_fanout()
                 partition.update()
                 self.allocate_memory(partition_index)
                 new_latency = partition.get_cycle()
-                new_rsc = partition.get_resource_usage()
+                new_rsc = self.get_partition_resource(partition)
                 if constrain_resource and new_rsc["LUT"] >= current_rsc["LUT"] \
                     or constrain_latency and new_latency > current_latency:
                     self.net = net
@@ -212,7 +212,7 @@ class GreedyPartition(Solver):
 
         if not force_run:
             partition = self.net.partitions[partition_index]
-            partition_resource_usage = partition.get_resource_usage()
+            partition_resource_usage = self.get_partition_resource(partition)
             if partition_resource_usage["LUT"] <= self.rsc_allocation * self.platform.get_lut():
                 return False
 
@@ -355,29 +355,32 @@ class GreedyPartition(Solver):
             return False
 
         # balance between bram and uram
-        if self.platform.get_uram() == 0:
-            return False
-        partition_resource_usage = partition.get_resource_usage()
-        sorted_layers = sorted(layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_ram_usage , reverse=True)
-        for layer in sorted_layers:
-            node = partition.graph.nodes[layer]["hw"]
-            if node.weights_ram_usage == 0:
-                continue
+        partition_resource_usage = self.get_partition_resource(partition)
+        if self.platform.get_uram() > 0:
+            sorted_layers = sorted(layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_ram_usage , reverse=True)
+            for layer in sorted_layers:
+                node = partition.graph.nodes[layer]["hw"]
+                if node.weights_ram_usage == 0:
+                    continue
+                curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
+                curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+                node.use_uram = True
+                partition_resource_usage = self.get_partition_resource(partition)
+                new_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
+                new_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+                if new_bram_util < new_uram_util and curr_bram_util > curr_uram_util:
+                    node.use_uram = abs(new_bram_util-new_uram_util) < abs(curr_bram_util-curr_uram_util)
+                    break
+            partition_resource_usage = self.get_partition_resource(partition)
             curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
             curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
-            node.use_uram = True
-            partition_resource_usage = partition.get_resource_usage()
-            new_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
-            new_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
-            if new_bram_util < new_uram_util and curr_bram_util > curr_uram_util:
-                node.use_uram = abs(new_bram_util-new_uram_util) < abs(curr_bram_util-curr_uram_util)
-                break
+        else:
+            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
+            curr_uram_util = 0
 
         if not self.enable_weights_streaming:
             return False
-        partition_resource_usage = partition.get_resource_usage()
-        curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
-        curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+
         ram_utilization = self.ram_usage #self.rsc_allocation
         while curr_bram_util > ram_utilization or curr_uram_util > ram_utilization:
             partition_copy = copy.deepcopy(partition)
@@ -386,7 +389,7 @@ class GreedyPartition(Solver):
                 return node.weights_ram_usage > 0 #node.stream_unit() * node.stream_step(0.1)
             def _compare(layer):
                 node = copy.deepcopy(partition.graph.nodes[layer]["hw"])
-                node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.1))   
+                node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.))   
                 return node.stream_cycles()
             filtered_layers = list(filter(_validate, layers))
             if len(filtered_layers) == 0: #nothing left to move, double buffer?
@@ -403,9 +406,12 @@ class GreedyPartition(Solver):
             node = partition.graph.nodes[layer]["hw"] 
             assert node.weights_ram_usage + node.stream_weights == math.ceil(node.weight_array_depth/node.weight_array_unit_depth) * node.weight_array_num * math.ceil(node.weight_array_width/node.weight_array_num/node.weight_array_unit_width)
             node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.1))    
-            partition_resource_usage = partition.get_resource_usage()
+            partition_resource_usage = self.get_partition_resource(partition)
             curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
-            curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+            if self.platform.get_uram() > 0:
+                curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+            else:
+                curr_uram_util = 0
 
             try:
                 self.check_memory_bandwidth()
@@ -415,13 +421,29 @@ class GreedyPartition(Solver):
                     self.net.partitions[partition_index] = partition_copy
                     break
         return True
- 
+
+    def remove_conv_squeeze(self, partition_index):
+        types = [LAYER_TYPE.Convolution]
+        partition = self.net.partitions[partition_index]
+        layers = []
+        for layer in graphs.ordered_node_list(partition.graph):
+            if partition.graph.nodes[layer]['type'] in types:
+                layers.append(layer)
+        partition_resource_usage = self.get_partition_resource(partition)
+        curr_lut_util = partition_resource_usage['LUT'] / self.platform.get_lut()
+        curr_dsp_util = partition_resource_usage['DSP'] / self.platform.get_dsp()
+        if len(layers) > 0 and curr_lut_util > self.rsc_allocation and curr_dsp_util < self.rsc_allocation:
+            transforms.fine.apply_complete_fine(partition)
+            return True
+        else:
+            return False
+
     def run_solver(self, log=True):
         # update all partitions
         self.update_partitions()
         for partition_index in range(len(self.net.partitions)):
+            self.remove_conv_squeeze(partition_index)
             self.allocate_memory(partition_index)
-            
         # Setup
         cost = self.get_cost()
 
