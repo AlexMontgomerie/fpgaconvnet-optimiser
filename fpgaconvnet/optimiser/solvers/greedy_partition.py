@@ -234,23 +234,33 @@ class GreedyPartition(Solver):
         if current_coarse_in == current_coarse_out:
             return False
         elif current_coarse_in > current_coarse_out:
-            coarse_in_feasible = list(filter(lambda x: x < current_coarse_in, coarse_in_feasible))
-            coarse_out_feasible = list(filter(lambda x: x > current_coarse_out, coarse_out_feasible))
-            if len(coarse_in_feasible) == 0 or len(coarse_out_feasible) == 0:
+            all_coarse_combination = []
+            for coarse_in in coarse_in_feasible:
+                for coarse_out in coarse_out_feasible:
+                    if coarse_in * coarse_out == current_coarse_in * current_coarse_out \
+                        and coarse_in  < current_coarse_in \
+                        and coarse_out > current_coarse_out \
+                        and coarse_in >= coarse_out:
+                        all_coarse_combination.append((coarse_in, coarse_out))
+            if len(all_coarse_combination) == 0:
                 return False
-            new_coarse_in = list(sorted(coarse_in_feasible))[-1]
-            new_coarse_out = list(sorted(coarse_out_feasible))[0]
-            if new_coarse_in < new_coarse_out:
-                return False # reject cross-over
+            all_coarse_combination = list(sorted(all_coarse_combination, key=lambda x: x[0]))
+            new_coarse_in = all_coarse_combination[-1][0]
+            new_coarse_out = all_coarse_combination[-1][1]
         else:
-            coarse_in_feasible = list(filter(lambda x: x > current_coarse_in, coarse_in_feasible))
-            coarse_out_feasible = list(filter(lambda x: x < current_coarse_out, coarse_out_feasible))
-            if len(coarse_in_feasible) == 0 or len(coarse_out_feasible) == 0:
+            all_coarse_combination = []
+            for coarse_in in coarse_in_feasible:
+                for coarse_out in coarse_out_feasible:
+                    if coarse_in * coarse_out == current_coarse_in * current_coarse_out \
+                        and coarse_in  > current_coarse_in \
+                        and coarse_out < current_coarse_out \
+                        and coarse_in <= coarse_out:
+                        all_coarse_combination.append((coarse_in, coarse_out))
+            if len(all_coarse_combination) == 0:
                 return False
-            new_coarse_in = list(sorted(coarse_in_feasible))[0]
-            new_coarse_out = list(sorted(coarse_out_feasible))[-1]
-            if new_coarse_in > new_coarse_out:
-                return False # reject cross-over
+            all_coarse_combination = list(sorted(all_coarse_combination, key=lambda x: x[0]))
+            new_coarse_in = all_coarse_combination[0][0]
+            new_coarse_out = all_coarse_combination[0][1]
         partition.graph.nodes[node]['hw'].coarse_in = new_coarse_in
         partition.graph.nodes[node]['hw'].coarse_out = new_coarse_out
         partition.update()
