@@ -399,7 +399,7 @@ class GreedyPartition(Solver):
                 return node.weights_ram_usage > 0 #node.stream_unit() * node.stream_step(0.1)
             def _compare(layer):
                 node = copy.deepcopy(partition.graph.nodes[layer]["hw"])
-                node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.))   
+                node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.1))   
                 return node.stream_cycles()
             filtered_layers = list(filter(_validate, layers))
             if len(filtered_layers) == 0: #nothing left to move, double buffer?
