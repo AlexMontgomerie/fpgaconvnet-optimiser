@@ -15,6 +15,7 @@ import wandb
 import sys
 import copy
 import yaml
+import onnx
 
 from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.tools.layer_enum import from_cfg_type
@@ -27,6 +28,9 @@ import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
 import fpgaconvnet.optimiser.transforms.skipping_windows
+
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+
 
 def parse_args():
     """
@@ -61,6 +65,26 @@ def parse_args():
     parser.add_argument('--sweep-wandb', action="store_true", help='whether to enable wandb sweep')
 
     return parser.parse_args()
+
+def write_channel_indices_to_onnx(net, onnx_path):
+    onnx_model = onnx.load(onnx_path)
+
+
+    for partition_index in range(len(net.partitions)):
+        partition = net.partitions[partition_index]
+        for node in partition.graph.nodes():
+            # choose to apply to convolution node only
+            if partition.graph.nodes[node]['type'] == LAYER_TYPE.Convolution:
+                # choose max fine for convolution node
+                onnx_node = next(filter(lambda x: x.name == node, onnx_model.graph.node))
+
+                hw = partition.graph.nodes[node]['hw']
+                if len(hw.sparsity):
+                    channel_indices = hw.get_stream_sparsity()[2]
+                    new_attr = onnx.helper.make_attribute("channel indices", channel_indices)
+                    onnx_node.attribute.append(new_attr)
+
+    onnx.save(onnx_model, onnx_path)
 
 
 def main():
@@ -239,6 +263,15 @@ def main():
     # find the best batch_size
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
+    
+    #Write channel indices from model to optimised onnx path
+    optimised_onnx_path = f"{args.model_path.split('.onnx')[0]}_optimized.onnx"
+
+
+    write_channel_indices_to_onnx(opt.net, optimised_onnx_path)
+
+    shutil.copy(optimised_onnx_path, os.path.join(args.output_path,os.path.basename(optimised_onnx_path)) )
+
 
     # create report
     opt.net.create_report(os.path.join(args.output_path,"report.json"))
