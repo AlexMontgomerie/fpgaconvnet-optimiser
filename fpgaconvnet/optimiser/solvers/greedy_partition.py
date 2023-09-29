@@ -4,15 +4,18 @@ import json
 import copy
 import random
 import math
-from dataclasses import dataclass, field
-
-from fpgaconvnet.optimiser.solvers import Solver
-import fpgaconvnet.tools.graphs as graphs
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+import itertools
 
 import fpgaconvnet.optimiser.transforms as transforms
+import fpgaconvnet.tools.graphs as graphs
+
+from dataclasses import dataclass, field
+from fpgaconvnet.models.layers.utils import stream_buffer
+from fpgaconvnet.optimiser.solvers import Solver
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
-import itertools
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+
+
 
 LATENCY   =0
 THROUGHPUT=1
@@ -391,37 +394,46 @@ class GreedyPartition(Solver):
         if not self.enable_weights_streaming:
             return False
 
-        ram_utilization = self.ram_usage #self.rsc_allocation
+        ram_utilization = self.ram_usage 
         while curr_bram_util > ram_utilization or curr_uram_util > ram_utilization:
             partition_copy = copy.deepcopy(partition)
+
             def _validate(layer):
-                node = partition_copy.graph.nodes[layer]["hw"]
-                return node.weights_ram_usage > 0 #node.stream_unit() * node.stream_step(0.1)
-            def _compare(layer):
-                node = copy.deepcopy(partition.graph.nodes[layer]["hw"])
-                node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.1))   
-                return node.stream_cycles()
+                node = partition.graph.nodes[layer]["hw"] 
+                return node.weights_ram_usage > 0 
             filtered_layers = list(filter(_validate, layers))
             if len(filtered_layers) == 0: #nothing left to move, double buffer?
                 break
             if curr_bram_util <= ram_utilization:
                 filtered_layers = list(filter(lambda layer: partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
-            elif curr_uram_util <= ram_utilization:
+                bottleneck = "URAM"
+            else:
                 filtered_layers = list(filter(lambda layer: not partition.graph.nodes[layer]["hw"].use_uram, filtered_layers))
-        
+                bottleneck = "BRAM"
+
+            def _increment(node, step=0.1):
+                node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(step))    
+            def _compare(layer):
+                partition_copy = copy.deepcopy(partition)
+                node_copy = partition_copy.graph.nodes[layer]["hw"]
+                _increment(node_copy)
+                node = partition.graph.nodes[layer]["hw"] 
+                delta_on_chip_mem = node.resource()[bottleneck] - (node_copy.resource()[bottleneck] - node_copy.stream_buffer())
+                delta_off_chip_bw = sum(partition_copy.get_bandwidth_weight(self.platform.board_freq)) - sum(partition.get_bandwidth_weight(self.platform.board_freq))
+                assert delta_on_chip_mem >= 0
+                assert delta_off_chip_bw > 0
+                return delta_on_chip_mem / delta_off_chip_bw
+
             sorted_layers = sorted(filtered_layers, key=_compare, reverse=True)
             if len(sorted_layers) == 0:
                 return False # is there anything left to move?
             layer = sorted_layers[0]
             node = partition.graph.nodes[layer]["hw"] 
             assert node.weights_ram_usage + node.stream_weights == math.ceil(node.weight_array_depth/node.weight_array_unit_depth) * node.weight_array_num * math.ceil(node.weight_array_width/node.weight_array_num/node.weight_array_unit_width)
-            node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(0.1))    
+            _increment(node)
             partition_resource_usage = self.get_partition_resource(partition)
             curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
-            if self.platform.get_uram() > 0:
-                curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
-            else:
-                curr_uram_util = 0
+            curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram() if self.platform.get_uram() > 0 else 0
 
             try:
                 self.check_memory_bandwidth()
