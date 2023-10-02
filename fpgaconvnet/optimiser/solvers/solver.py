@@ -89,39 +89,36 @@ class Solver:
             return self.platform.reconf_time
 
     def get_partition_resource(self, partition, bram_to_lut=True):
+        lut_to_bram_ratio = 288 # BRAM: 18Kbits, LUT: 64bits
         partition_resource_usage = partition.get_resource_usage()
         if bram_to_lut:
             bram_shortage = math.ceil(partition_resource_usage['BRAM'] - self.ram_usage*self.platform.get_bram())
-            lut_surplus = int((self.rsc_allocation*self.platform.get_lut() - partition_resource_usage['LUT'])/288)
+            lut_surplus = int((self.rsc_allocation*self.platform.get_lut() - partition_resource_usage['LUT'])/lut_to_bram_ratio)
             if bram_shortage > 0 and lut_surplus > 0:
                 partition_resource_usage['BRAM'] -= min(bram_shortage, lut_surplus)
         return partition_resource_usage
 
-    def check_resources(self,):
+    def check_partition_resources(self, partition):
+        partition_resource_usage = self.get_partition_resource(partition)
+        assert partition_resource_usage['FF']   <= \
+                (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}" 
+        assert partition_resource_usage['LUT']  <= \
+                (self.rsc_allocation*self.platform.get_lut()), "ERROR: LUT usage exceeded, partition: {partition_index}" 
+        assert partition_resource_usage['DSP']  <= \
+                (self.rsc_allocation*self.platform.get_dsp()) , "ERROR: DSP usage exceeded, partition: {partition_index}" 
+        assert partition_resource_usage['BRAM'] <= \
+                (self.ram_usage*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}" 
+        assert partition_resource_usage['URAM'] <= \
+                (self.ram_usage*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
+
+        bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
+        assert bandwidth_total <= self.rsc_allocation*self.platform.get_mem_bw(), "ERROR: Memory bandwidth exceeded, partition: {partition_index}"
+
+    def check_resources(self):
         # iterate over partitions
         for partition_index, partition in enumerate(self.net.partitions):
             # get the resource usage for the platform
-            partition_resource_usage = self.get_partition_resource(partition)
-
-            assert partition_resource_usage['FF']   <= \
-                    (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}" 
-            assert partition_resource_usage['LUT']  <= \
-                    (self.rsc_allocation*self.platform.get_lut()), "ERROR: LUT usage exceeded, partition: {partition_index}" 
-            assert partition_resource_usage['DSP']  <= \
-                    (self.rsc_allocation*self.platform.get_dsp()) , "ERROR: DSP usage exceeded, partition: {partition_index}" 
-            assert partition_resource_usage['BRAM'] <= \
-                    (self.ram_usage*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}" 
-            assert partition_resource_usage['URAM'] <= \
-                    (self.ram_usage*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
-            
-        self.check_memory_bandwidth()
-
-    def check_memory_bandwidth(self):
-        # iterate over partitions
-        for partition_index, partition in enumerate(self.net.partitions):
-            # get the resource usage for the platform
-            bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
-            assert bandwidth_total <= self.rsc_allocation*self.platform.get_mem_bw(), "ERROR: Memory bandwidth exceeded, partition: {partition_index}"
+            self.check_partition_resources(partition)
 
     def check_constraints(self):
         """
