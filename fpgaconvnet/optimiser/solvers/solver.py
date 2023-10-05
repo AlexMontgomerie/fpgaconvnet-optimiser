@@ -12,6 +12,8 @@ from datetime import datetime
 LATENCY   =0
 THROUGHPUT=1
 
+import fpgaconvnet.tools.graphs as graphs
+
 from fpgaconvnet.models.network import Network
 from fpgaconvnet.platform.Platform import Platform
 
@@ -21,6 +23,7 @@ import fpgaconvnet.optimiser.transforms.coarse as coarse
 import fpgaconvnet.optimiser.transforms.fine as fine
 import fpgaconvnet.tools.graphs as graphs
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+
 
 @dataclass
 class Solver:

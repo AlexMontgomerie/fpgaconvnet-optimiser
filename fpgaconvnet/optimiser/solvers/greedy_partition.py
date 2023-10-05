@@ -27,7 +27,7 @@ START_LOOP=1
 class GreedyPartition(Solver):
     coarse_in_first: list = field(default_factory=list)
     merge_ongoing: bool = False
-    off_chip_streaming: bool = True
+    off_chip_streaming: bool = False
     targets: dict = field(default_factory=lambda: {
     'latency'    :  0.0, 'throughput' : float("inf")})
 
