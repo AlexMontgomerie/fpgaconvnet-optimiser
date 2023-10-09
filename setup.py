@@ -1,9 +1,10 @@
-from __future__ import absolute_import
-
 import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
+
+with open('requirements.txt') as f:
+    required_packages = f.read().splitlines()
 
 setuptools.setup(
     name="fpgaconvnet-optimiser", # Replace with your own username
@@ -21,8 +22,6 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7',
-    install_requires=[
-        "toml>=0.10.2"
-    ]
+    python_requires='>=3.10',
+    install_requires=required_packages,
 )
