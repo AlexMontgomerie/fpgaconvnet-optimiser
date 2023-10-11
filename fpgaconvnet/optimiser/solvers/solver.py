@@ -8,6 +8,7 @@ import wandb
 import uuid
 import pickle
 from datetime import datetime
+from fpgaconvnet.tools import graphs
 
 LATENCY   =0
 THROUGHPUT=1
@@ -183,7 +184,7 @@ class Solver:
         if transform == 'weights_reloading':
             ### apply random weights reloading
             weights_reloading.apply_random_weights_reloading(
-                self.net, partition_index)
+                self.net.partitions[partition_index])
             return
 
         ## Partition transform (partition transform)

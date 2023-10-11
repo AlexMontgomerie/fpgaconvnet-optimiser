@@ -122,7 +122,7 @@ class GreedyPartition(Solver):
                 transforms.apply_max_weights_reloading(self.net.partitions[horizontal_merges[1][0]])
                 transforms.merge_horizontal(self.net, *horizontal_merges[1])
                 current_merge = horizontal_merges[1]
-                
+
             print(current_merge)
             self.update_partitions()
             status = self.run_solver()
@@ -234,7 +234,10 @@ class GreedyPartition(Solver):
             #    return
 
             skip_second_slowest_node = (self.net.batch_size > 1)
-            status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
+            if optimiser_phase == transforms.apply_more_fine:
+                status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node, self.sparse_fine_threshold)
+            else:
+                status, node = optimiser_phase(self.net.partitions[partition_index], reject_list, skip_second_slowest_node)
             if not status:
                 break
             self.update_partitions()
@@ -447,52 +450,47 @@ class GreedyPartition(Solver):
             if not self.net.partitions[partition_index].need_optimise:
                 continue
 
-            for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
-                self.empirical_solver(partition_index, phase)
-
-            if "weights_reloading" in self.transforms and self.net.partitions[partition_index].wr_layer:
-                all_wr_feasible = self.get_all_wr_feasible(self.net.partitions[partition_index]) # TODO
-                sorted_wr_feasible = np.sort(all_wr_feasible)
-                sorted_wr_feasible = list(filter(lambda x: x>=self.net.partitions[partition_index].wr_factor, sorted_wr_feasible))
-            else:
-                sorted_wr_feasible = [1]
-
-            for wr_factor in sorted_wr_feasible:
-                net = copy.deepcopy(self.net)
-                # get the current cost
-                cost = self.get_cost([partition_index])
-
-                transforms.remove_weights_reloading_transform(self.net.partitions[partition_index])
-                self.net.partitions[partition_index].wr_factor = int(wr_factor)
-                transforms.apply_weights_reloading_transform(self.net.partitions[partition_index])
-                self.update_partitions()
-
-                if partition_index in self.coarse_in_first:
-                    coarse_phases = [transforms.apply_more_coarse_favour_coarse_in,
-                                     transforms.apply_more_coarse_fix_coarse_in,
-                                     transforms.apply_more_coarse_fix_coarse_out,
-                                     transforms.apply_more_coarse_favour_coarse_in]
+            for sparse_fine_threshold in [1.2, 1.01]:
+                self.sparse_fine_threshold = sparse_fine_threshold    
+                for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
+                    self.empirical_solver(partition_index, phase)
+                if "weights_reloading" in self.transforms and self.net.partitions[partition_index].wr_layer:
+                    all_wr_feasible = self.get_all_wr_feasible(self.net.partitions[partition_index]) # TODO
+                    sorted_wr_feasible = np.sort(all_wr_feasible)
+                    sorted_wr_feasible = list(filter(lambda x: x>=self.net.partitions[partition_index].wr_factor, sorted_wr_feasible))
                 else:
-                    coarse_phases = [transforms.apply_more_coarse_favour_coarse_out,
-                                     transforms.apply_more_coarse_fix_coarse_out,
-                                     transforms.apply_more_coarse_fix_coarse_in,
-                                     transforms.apply_more_coarse_favour_coarse_in]
-
-                while True:
-                    changed = False
-                    for phase in coarse_phases:
-                        changed = changed or self.empirical_solver(partition_index,phase)
-                    if changed:
-                        self.optimise_coarse(partition_index)
+                    sorted_wr_feasible = [1]
+                for wr_factor in sorted_wr_feasible:
+                    net = copy.deepcopy(self.net)
+                    # get the current cost
+                    cost = self.get_cost([partition_index])
+                    transforms.remove_weights_reloading_transform(self.net.partitions[partition_index])
+                    self.net.partitions[partition_index].wr_factor = int(wr_factor)
+                    transforms.apply_weights_reloading_transform(self.net.partitions[partition_index])
+                    self.update_partitions()
+                    if partition_index in self.coarse_in_first:
+                        coarse_phases = [transforms.apply_more_coarse_favour_coarse_in,
+                                        transforms.apply_more_coarse_fix_coarse_in,
+                                        transforms.apply_more_coarse_fix_coarse_out,
+                                        transforms.apply_more_coarse_favour_coarse_in]
                     else:
+                        coarse_phases = [transforms.apply_more_coarse_favour_coarse_out,
+                                        transforms.apply_more_coarse_fix_coarse_out,
+                                        transforms.apply_more_coarse_fix_coarse_in,
+                                        transforms.apply_more_coarse_favour_coarse_in]
+                    while True:
+                        changed = False
+                        for phase in coarse_phases:
+                            changed = changed or self.empirical_solver(partition_index,phase)
+                        if changed:
+                            self.optimise_coarse(partition_index)
+                        else:
+                            break
+                    self.allocate_memory(partition_index)
+                    if self.get_cost([partition_index]) >= cost:
+                        self.net = net
+                    if self.objective != 1:
                         break
-                self.allocate_memory(partition_index)
-
-                if self.get_cost([partition_index]) >= cost:
-                    self.net = net
-
-                if self.objective != 1:
-                    break
 
             print(f"{partition_index} single partition cost:{self.get_cost([partition_index])}, \
                 slowdown: {self.net.partitions[partition_index].slow_down_factor}")

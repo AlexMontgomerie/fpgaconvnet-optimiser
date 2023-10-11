@@ -12,8 +12,8 @@ import shutil
 import random
 import numpy as np
 import wandb
-import sys
 import copy
+import onnx
 
 from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.tools.layer_enum import from_cfg_type
@@ -25,13 +25,18 @@ from fpgaconvnet.optimiser.solvers import GreedyPartition
 import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
+import fpgaconvnet.optimiser.transforms.skipping_windows
 
 from fpgaconvnet.platform.Platform import Platform
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
-def main():
+def parse_args():
+    """
+    Command line argument parser
+    """
     parser = argparse.ArgumentParser(description="fpgaConvNet Optimiser Command Line Interface")
     parser.add_argument('-n','--name', metavar='PATH', required=True,
-        help='network name')
+    help='network name')
     parser.add_argument('-m','--model_path', metavar='PATH', required=True,
         help='Path to ONNX model')
     parser.add_argument('-p','--platform_path', metavar='PATH', required=True,
@@ -45,16 +50,17 @@ def main():
     parser.add_argument('--optimiser', choices=['simulated_annealing', 'improve', 'greedy_partition'],
         default='improve', help='Optimiser strategy')
     parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
-        help='Configuration file (.yml) for optimiser')
+        help='Configuration file (.toml) for optimiser')
     parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
         help='Previously optimised partitions saved in JSON')
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
-    parser.add_argument('--enable-wandb', action="store_true", help='seed for the optimiser run')
-    parser.add_argument('--ram_usage', default=None, type=float, help='ram usage in bytes')
-    # parse the arguments
-    args = parser.parse_args()
+    parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
+    
+    return parser.parse_args()
 
+def main():
+    args = parse_args()
     # setup seed
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -140,7 +146,6 @@ def main():
     opt.net.batch_size = args.batch_size
 
     # specify available transforms
-    opt.transforms = list(optimiser_config["transforms"].keys())
     opt.transforms = []
     for transform in optimiser_config["transforms"]:
         if optimiser_config["transforms"][transform]["apply_transform"]:
@@ -176,7 +181,7 @@ def main():
     # print("size: ", len(pickle.dumps(opt.net)))
     opt_onnx_model = copy.deepcopy(opt.net.model)
     opt.net.model = None
-        
+
     # run optimiser
     opt.run_solver()
 
@@ -193,6 +198,11 @@ def main():
     # find the best batch_size
     #if args.objective == "throughput":
     #    net.get_optimal_batch_size()
+    
+    #Write channel indices from model to optimised onnx path
+    optimised_onnx_path = f"{args.model_path.split('.onnx')[0]}_optimized.onnx"
+    opt.net.write_channel_indices_to_onnx(optimised_onnx_path)
+    shutil.copy(optimised_onnx_path, os.path.join(args.output_path,os.path.basename(optimised_onnx_path)) )
 
     # create report
     opt.create_report(os.path.join(args.output_path,"report.json"))
