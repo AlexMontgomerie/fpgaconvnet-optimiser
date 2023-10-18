@@ -9,6 +9,7 @@ import random
 import numpy as np
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+from fpgaconvnet.models.layers.ConvolutionSparseLayer import ConvolutionSparseLayer
 
 def apply_random_fine_node(partition, node):
 
@@ -51,7 +52,7 @@ def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False, t
                 partition.graph.nodes[layer]['hw'].fine = fine_feasible[fine_index]
                 partition.graph.nodes[layer]['hw'].update()
                 new_latency = partition.graph.nodes[layer]['hw'].latency()
-                gain_threshold = 1 if len(partition.graph.nodes[layer]['hw'].sparsity) == 0 else threshold
+                gain_threshold = threshold if isinstance(partition.graph.nodes[layer]['hw'], ConvolutionSparseLayer) else 1
                 if node_latencys[node_index] / new_latency > gain_threshold:
                     return True, layer
                 else:

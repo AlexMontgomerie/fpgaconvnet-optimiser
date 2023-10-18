@@ -25,7 +25,6 @@ from fpgaconvnet.optimiser.solvers import GreedyPartition
 import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
-import fpgaconvnet.optimiser.transforms.skipping_windows
 
 from fpgaconvnet.platform.Platform import Platform
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
@@ -51,11 +50,10 @@ def parse_args():
         default='improve', help='Optimiser strategy')
     parser.add_argument('--optimiser_config_path', metavar='PATH', required=True,
         help='Configuration file (.toml) for optimiser')
-    parser.add_argument('--teacher_partition_path', metavar='PATH', required=False,
-        help='Previously optimised partitions saved in JSON')
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
     parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
+    parser.add_argument('--ram_usage', default=None, type=float, help='ram utilization ratio')
     
     return parser.parse_args()
 
