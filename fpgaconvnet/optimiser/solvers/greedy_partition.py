@@ -277,21 +277,14 @@ class GreedyPartition(Solver):
 
         return all_wr_feasible
 
-    def resolve_offchip_bandwidth_constraint(self, partition_index):
+    def resolve_offchip_bandwidth_constraint(self, partition_index, bandwidth_max):
         partition = self.net.partitions[partition_index]
-
-        bw_in = partition.get_bandwidth_in(self.platform.board_freq)
-        bw_out = partition.get_bandwidth_out(self.platform.board_freq)
-        bw_data_total = sum(bw_in) + sum(bw_out)
-        bw_max = self.rsc_allocation*self.platform.get_mem_bw()
-        if bw_data_total > bw_max:
-            return False
-
         partition.slow_down_factor = 1.0
-        bw_weight = sum(partition.get_bandwidth_weight(self.platform.board_freq))
-        partition.slow_down_factor = bw_weight / (bw_max - bw_data_total) + 1e-2 # avoid precision error
-        bw_weight = sum(partition.get_bandwidth_weight(self.platform.board_freq))
-        assert bw_weight <= bw_max - bw_data_total
+        bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
+        partition.slow_down_factor = bandwidth_total / bandwidth_max + 1e-2 # avoid precision error
+        bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
+        assert bandwidth_total <= bandwidth_max
+
         return True
 
     def allocate_memory(self, partition_index):
@@ -401,8 +394,9 @@ class GreedyPartition(Solver):
             curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram() if self.platform.get_uram() > 0 else 0
 
             bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
-            if bandwidth_total > self.rsc_allocation*self.platform.get_mem_bw():
-                pass_status = self.resolve_offchip_bandwidth_constraint(partition_index)
+            bandwidth_max = self.rsc_allocation*self.platform.get_mem_bw()
+            if bandwidth_total > bandwidth_max:
+                pass_status = self.resolve_offchip_bandwidth_constraint(partition_index, bandwidth_max)
                 if not pass_status:
                     self.net.partitions[partition_index] = partition_copy
                     break
