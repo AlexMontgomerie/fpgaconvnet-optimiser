@@ -16,7 +16,7 @@ import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
 
 def check_parallel_block(net, partition_index):
     input_node = graphs.get_input_nodes(net.partitions[partition_index].graph)[0]
-    return net.partitions[partition_index].graph.nodes[input_node]['type'] == LAYER_TYPE.Split
+    return net.partitions[partition_index].graph.nodes[input_node]['type'] in [LAYER_TYPE.Split, LAYER_TYPE.Chop]
 
 def check_config_allowed_partitions(allowed_partitions, node0, node1):
     # get the node types
@@ -57,10 +57,10 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
         if net.partitions[partition_index].graph.in_degree(next_node) > 1:
             return _iterate_graph(edge_list,next_node,in_parallel_block)
         # skip node - split position not valid
-        if not check_config_allowed_partitions(allowed_partitions, 
+        if not check_config_allowed_partitions(allowed_partitions,
             net.partitions[partition_index].graph.nodes[input_node],
             net.partitions[partition_index].graph.nodes[next_node]):
-            return _iterate_graph(edge_list,next_node,in_parallel_block) 
+            return _iterate_graph(edge_list,next_node,in_parallel_block)
         # append to partition list
         if not in_parallel_block:
             edge_list.append((input_node,next_node))
@@ -73,7 +73,7 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
         for node in net.partitions[partition_index].graph.nodes:
             if net.partitions[partition_index].graph.in_degree(node) > 1:
                 edge_list += _iterate_graph([],node,False)
-                edge_list = list(sorted(set(edge_list))) 
+                edge_list = list(sorted(set(edge_list)))
     return edge_list
 
 def get_all_vertical_splits(net, partition_index): # TODO: improve to get all possible combinations

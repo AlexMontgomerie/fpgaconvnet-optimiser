@@ -30,16 +30,16 @@ def create_report(self, output_path):
             },
             "num_partitions" : len(self.net.partitions),
             "max_resource_usage" : {
-                "LUT" : max([ partition.get_resource_usage()["LUT"] for partition in self.net.partitions ]),
-                "FF" : max([ partition.get_resource_usage()["FF"] for partition in self.net.partitions ]),
-                "BRAM" : max([ partition.get_resource_usage()["BRAM"] for partition in self.net.partitions ]),
-                "DSP" : max([ partition.get_resource_usage()["DSP"] for partition in self.net.partitions ])
+                "LUT" : max([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]),
+                "FF" : max([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]),
+                "BRAM" : max([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]),
+                "DSP" : max([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ])
             },
             "sum_resource_usage" : {
-                "LUT" : int(np.sum([ partition.get_resource_usage()["LUT"] for partition in self.net.partitions ])),
-                "FF" : int(np.sum([ partition.get_resource_usage()["FF"] for partition in self.net.partitions ])),
-                "BRAM" : int(np.sum([ partition.get_resource_usage()["BRAM"] for partition in self.net.partitions ])),
-                "DSP" : int(np.sum([ partition.get_resource_usage()["DSP"] for partition in self.net.partitions ]))
+                "LUT" : int(np.sum([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ])),
+                "FF" : int(np.sum([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ])),
+                "BRAM" : int(np.sum([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ])),
+                "DSP" : int(np.sum([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ]))
             }
         }
     }
@@ -47,7 +47,7 @@ def create_report(self, output_path):
     if self.platform.get_uram() > 0:
         report["network"]["max_resource_usage"]["URAM"] = max([ partition.get_resource_usage()["URAM"] for partition in self.net.partitions ])
         report["network"]["sum_resource_usage"]["URAM"] = int(np.sum([ partition.get_resource_usage()["URAM"] for partition in self.net.partitions ]))
-    
+
     # add information for each partition
     report["partitions"] = {}
     for i in range(len(self.net.partitions)):
@@ -71,8 +71,8 @@ def create_report(self, output_path):
                 "DSP" : resource_usage["DSP"]
             },
             "bandwidth" : {
-                "in (Gbps)" : sum(self.net.partitions[i].get_bandwidth_in(self.platform.board_freq)), 
-                "out (Gbps)" : sum(self.net.partitions[i].get_bandwidth_out(self.platform.board_freq)), 
+                "in (Gbps)" : sum(self.net.partitions[i].get_bandwidth_in(self.platform.board_freq)),
+                "out (Gbps)" : sum(self.net.partitions[i].get_bandwidth_out(self.platform.board_freq)),
                 "weight (Gbps)": sum(self.net.partitions[i].get_bandwidth_weight(self.platform.board_freq))
             }
         }

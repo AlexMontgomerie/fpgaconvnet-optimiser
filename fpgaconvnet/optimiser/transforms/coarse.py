@@ -100,11 +100,11 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
 
     for node_index in reversed(np.argsort(node_latencys, kind='mergesort')):
         layer = graphs.ordered_node_list(partition.graph)[node_index]
-        
+
         if layer in reject_list:
             continue
 
-        current_coarse_in = partition.graph.nodes[layer]['hw'].coarse_in 
+        current_coarse_in = partition.graph.nodes[layer]['hw'].coarse_in
         # todo: fix multi ports
         if isinstance(current_coarse_in, Iterable):
             current_coarse_in = current_coarse_in[0]
@@ -120,7 +120,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
         current_coarse_product = current_coarse_in * current_coarse_out * current_coarse_group
 
         coarse_in_feasible = partition.graph.nodes[layer]['hw'].get_coarse_in_feasible()
-        coarse_out_feasible = partition.graph.nodes[layer]['hw'].get_coarse_out_feasible()                 
+        coarse_out_feasible = partition.graph.nodes[layer]['hw'].get_coarse_out_feasible()
         if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution and partition.graph.nodes[layer]["hw"].groups != 1:
             coarse_group_feasible = partition.graph.nodes[layer]['hw'].get_coarse_group_feasible()
         else:
@@ -148,7 +148,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
                         else:
                             if coarse_group*coarse_in*coarse_out > current_coarse_product:
                                 all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
-        
+
         else:
             for coarse_group in coarse_group_feasible:
                 for coarse_in in coarse_in_feasible:
@@ -158,7 +158,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
                     and coarse_in >= current_coarse_in:
                         all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
 
-        
+
         if len(all_coarse_combination) > 0:
             all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[3]))
             next_coarse_product = all_coarse_combination[0][3]
@@ -167,7 +167,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
                 all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[2],x[1],x[0]))
             else:
                 all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[1],x[2],x[0]))
-            
+
             for selected_coarse_combination in all_coarse_combination:
                 if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
                     partition.graph.nodes[layer]['hw'].coarse_group = int(selected_coarse_combination[0])

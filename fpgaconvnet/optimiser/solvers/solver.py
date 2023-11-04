@@ -82,7 +82,7 @@ class Solver:
         # Throughput objective
         elif self.objective == THROUGHPUT:
             return -self.net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
-        
+
     def get_inter_delay(self):
         """
         Calculates the interconnect delay between partitions.
@@ -100,18 +100,19 @@ class Solver:
             lut_surplus = int((self.rsc_allocation*self.platform.get_lut() - partition_resource_usage['LUT'])/lut_to_bram_ratio)
             if bram_shortage > 0 and lut_surplus > 0:
                 partition_resource_usage['BRAM'] -= min(bram_shortage, lut_surplus)
+                partition_resource_usage['LUT'] += lut_surplus * lut_to_bram_ratio
         return partition_resource_usage
 
     def check_partition_resources(self, partition):
         partition_resource_usage = self.get_partition_resource(partition)
         assert partition_resource_usage['FF']   <= \
-                (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}" 
+                (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}"
         assert partition_resource_usage['LUT']  <= \
-                (self.rsc_allocation*self.platform.get_lut()), "ERROR: LUT usage exceeded, partition: {partition_index}" 
+                (self.rsc_allocation*self.platform.get_lut()), "ERROR: LUT usage exceeded, partition: {partition_index}"
         assert partition_resource_usage['DSP']  <= \
-                (self.rsc_allocation*self.platform.get_dsp()) , "ERROR: DSP usage exceeded, partition: {partition_index}" 
+                (self.rsc_allocation*self.platform.get_dsp()) , "ERROR: DSP usage exceeded, partition: {partition_index}"
         assert partition_resource_usage['BRAM'] <= \
-                (self.ram_usage*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}" 
+                (self.ram_usage*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}"
         assert partition_resource_usage['URAM'] <= \
                 (self.ram_usage*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
 
@@ -192,8 +193,7 @@ class Solver:
             ### apply random partition
             # remove squeeze layers prior to partitioning
             self.net.partitions[partition_index].remove_squeeze()
-            partition.apply_random_partition(
-                self.net, partition_index)
+            partition.apply_random_partition(self.net, partition_index)
             return
 
     def solver_status(self):
@@ -304,7 +304,7 @@ class Solver:
                 streams_in_max = min(max_streams_in//len(inputs), partition.graph.nodes[input_node]["hw"].streams_in())
                 # choose the max of all the valid stream values, below the max
                 partition.streams_in.append(max([ s for s in streams_in_valid if s <= streams_in_max ]))
-                
+
             ## update streams out
             partition.streams_out = []
             outputs = graphs.get_output_nodes(partition.graph)
@@ -314,7 +314,7 @@ class Solver:
                 # get the max stream values out
                 streams_out_max = min(max_streams_out//len(outputs), partition.graph.nodes[output_node]["hw"].streams_out())
                 # choose the max of all the valid stream values, below the max
-                partition.streams_out.append(max([ s for s in streams_out_valid if s <= streams_out_max ]))    
+                partition.streams_out.append(max([ s for s in streams_out_valid if s <= streams_out_max ]))
 
             ## add auxiliary layers
             partition.add_squeeze()
