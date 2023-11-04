@@ -30,7 +30,7 @@ class Improve(Solver):
     #     # cost
     #     cost = self.get_cost()
     #     # Resources
-    #     resources = [ partition.get_resource_usage() for partition in self.partitions ]
+    #     resources = [ self.get_partition_resource(partition) for partition in self.partitions ]
     #     BRAM = max([ resource['BRAM'] for resource in resources ])
     #     DSP  = max([ resource['DSP']  for resource in resources ])
     #     LUT  = max([ resource['LUT']  for resource in resources ])

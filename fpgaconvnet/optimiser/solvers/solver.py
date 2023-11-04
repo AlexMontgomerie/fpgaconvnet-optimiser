@@ -3,6 +3,7 @@ import copy
 import random
 import math
 import numpy as np
+from tabulate import tabulate
 from dataclasses import dataclass, field
 import wandb
 import uuid
@@ -103,27 +104,27 @@ class Solver:
                 partition_resource_usage['LUT'] += lut_surplus * lut_to_bram_ratio
         return partition_resource_usage
 
-    def check_partition_resources(self, partition):
+    def check_partition_resources(self, partition, partition_index):
         partition_resource_usage = self.get_partition_resource(partition)
         assert partition_resource_usage['FF']   <= \
-                (self.rsc_allocation*self.platform.get_ff()), "ERROR: FF usage exceeded, partition: {partition_index}"
+                (self.rsc_allocation*self.platform.get_ff()), f"ERROR: FF usage exceeded, partition: {partition_index}"
         assert partition_resource_usage['LUT']  <= \
-                (self.rsc_allocation*self.platform.get_lut()), "ERROR: LUT usage exceeded, partition: {partition_index}"
+                (self.rsc_allocation*self.platform.get_lut()), f"ERROR: LUT usage exceeded, partition: {partition_index}"
         assert partition_resource_usage['DSP']  <= \
-                (self.rsc_allocation*self.platform.get_dsp()) , "ERROR: DSP usage exceeded, partition: {partition_index}"
+                (self.rsc_allocation*self.platform.get_dsp()) , f"ERROR: DSP usage exceeded, partition: {partition_index}"
         assert partition_resource_usage['BRAM'] <= \
-                (self.ram_usage*self.platform.get_bram()), "ERROR: BRAM usage exceeded, partition: {partition_index}"
+                (self.ram_usage*self.platform.get_bram()), f"ERROR: BRAM usage exceeded, partition: {partition_index}"
         assert partition_resource_usage['URAM'] <= \
-                (self.ram_usage*self.platform.get_uram()), "ERROR: URAM usage exceeded, partition: {partition_index}"
+                (self.ram_usage*self.platform.get_uram()), f"ERROR: URAM usage exceeded, partition: {partition_index}"
 
         bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
-        assert bandwidth_total <= self.rsc_allocation*self.platform.get_mem_bw(), "ERROR: Memory bandwidth exceeded, partition: {partition_index}"
+        assert bandwidth_total <= self.rsc_allocation*self.platform.get_mem_bw(), f"ERROR: Memory bandwidth exceeded, partition: {partition_index}"
 
     def check_resources(self):
         # iterate over partitions
         for partition_index, partition in enumerate(self.net.partitions):
             # get the resource usage for the platform
-            self.check_partition_resources(partition)
+            self.check_partition_resources(partition, partition_index)
 
     def check_constraints(self):
         """
@@ -203,22 +204,48 @@ class Solver:
         # objective
         objectives = [ 'latency', 'throughput','power']
         objective  = objectives[self.objective]
+
         # cost
         cost = self.get_cost()
+        cost = cost if self.objective == LATENCY else -cost
+
         # Resources
-        resources = [ partition.get_resource_usage() for partition in self.net.partitions ]
+        resources = [ self.get_partition_resource(partition) for partition in self.net.partitions ]
         BRAM = max([ resource['BRAM'] for resource in resources ])
         DSP  = max([ resource['DSP']  for resource in resources ])
         LUT  = max([ resource['LUT']  for resource in resources ])
         FF   = max([ resource['FF']   for resource in resources ])
         BW   = max([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
+
+        solver_data = [
+            ["COST:", "", "RESOURCES:", "", "", "", ""],
+            ["", "", "BRAM", "DSP", "LUT", "FF", "BW"],
+            [f"{cost:.6f} ({objective})",
+             "",
+             f"{BRAM}/{self.platform.get_bram()}",
+             f"{DSP}/{self.platform.get_dsp()}",
+             f"{LUT}/{self.platform.get_lut()}",
+             f"{FF}/{self.platform.get_ff()}",
+             f"{BW}/{self.platform.get_mem_bw()}"],
+            ["",
+             "",
+             f"{BRAM/self.platform.get_bram() * 100:.2f} %",
+             f"{DSP/self.platform.get_dsp() * 100:.2f} %",
+             f"{LUT/self.platform.get_lut() * 100:.2f} %",
+             f"{FF/self.platform.get_ff() * 100:.2f} %",
+             f"{BW/self.platform.get_mem_bw() * 100:.2f} %"],
+        ]
+
         if self.platform.get_uram() > 0:
             URAM = max([ resource['URAM'] for resource in resources ])
-            print("COST:\t {cost} ({objective}), RESOURCE:\t {URAM}\t{BRAM}\t{DSP}\t{LUT}\t{FF}\t<>\t{BW:.2f}\t(URAM|BRAM|DSP|LUT|FF<>Bandwidth)".format(
-                cost=cost,objective=objective,URAM=int(URAM),BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF),BW=BW), end='\n')
-        else:
-            print("COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t<>\t{BW:.2f}\t(BRAM|DSP|LUT|FF<>Bandwidth)".format(
-                cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF),BW=BW), end='\n')
+            solver_data[0].insert(3, "")
+            solver_data[1].insert(2, "URAM")
+            solver_data[2].insert(2, f"{URAM}/{self.platform.get_uram()}")
+            solver_data[3].insert(2, f"{URAM/self.platform.get_uram() * 100:.2f} %")
+
+        solver_table = tabulate(solver_data, headers="firstrow", tablefmt="github")
+        print(solver_table)
+        print()
 
     def save_design_checkpoint(self, output_path):
         # pickle the current optimiser state
@@ -315,6 +342,9 @@ class Solver:
                 streams_out_max = min(max_streams_out//len(outputs), partition.graph.nodes[output_node]["hw"].streams_out())
                 # choose the max of all the valid stream values, below the max
                 partition.streams_out.append(max([ s for s in streams_out_valid if s <= streams_out_max ]))
+
+            ## update io ports
+            partition.update_io_ports()
 
             ## add auxiliary layers
             partition.add_squeeze()

@@ -45,14 +45,14 @@ def create_report(self, output_path):
     }
 
     if self.platform.get_uram() > 0:
-        report["network"]["max_resource_usage"]["URAM"] = max([ partition.get_resource_usage()["URAM"] for partition in self.net.partitions ])
-        report["network"]["sum_resource_usage"]["URAM"] = int(np.sum([ partition.get_resource_usage()["URAM"] for partition in self.net.partitions ]))
+        report["network"]["max_resource_usage"]["URAM"] = max([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ])
+        report["network"]["sum_resource_usage"]["URAM"] = int(np.sum([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ]))
 
     # add information for each partition
     report["partitions"] = {}
     for i in range(len(self.net.partitions)):
         # get some information on the partition
-        resource_usage = self.net.partitions[i].get_resource_usage()
+        resource_usage = self.get_partition_resource(self.net.partitions[i])
         latency = self.net.partitions[i].get_latency(self.platform.board_freq)
         # add partition information
         report["partitions"][i] = {

@@ -105,7 +105,7 @@ def main():
     # net.DEBUG = True
 
     # parse the network
-    fpgaconvnet_parser = Parser(custom_onnx=True)
+    fpgaconvnet_parser = Parser(custom_onnx=False)
     net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)
 
     # load platform
@@ -152,7 +152,7 @@ def main():
 
     # initialize graph
     ## completely partition graph
-    if optimiser_config["transforms"]["partition"]["apply_transform"] and bool(optimiser_config["transforms"]["partition"]["start_complete"]):
+    if (optimiser_config["transforms"]["partition"]["apply_transform"] and bool(optimiser_config["transforms"]["partition"]["start_complete"])) or (args.optimiser == "greedy_partition" and bool(optimiser_config["transforms"]["partition"]["start_complete"])):
         # format the partition transform allowed partitions
         allowed_partitions = []
         for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
@@ -176,12 +176,10 @@ def main():
     opt_onnx_model = copy.deepcopy(opt.net.model)
     opt.net.model = None
 
-
     # run optimiser
     valid_solution = opt.run_solver()
     if not valid_solution:
-        print("Optimiser could not find a valid solution. The generated reports and configuration files are not valid.")
-
+        print(f"WARNING - Optimiser could not find a valid solution. The generated reports and configuration files are not valid.")
     opt.net.model = opt_onnx_model
 
     # update all partitions

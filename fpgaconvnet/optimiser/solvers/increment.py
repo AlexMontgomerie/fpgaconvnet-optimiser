@@ -39,7 +39,7 @@ class Increment(Solver):
         curr_obj = partition.get_cycle()
 
         # get the current dsp usage
-        curr_dsp = partition.get_resource_usage()["DSP"]
+        curr_dsp = self.get_partition_resource(partition)["DSP"]
 
         def calc_delta_obj_per_dsp(diff_obj, diff_dsp):
             # print(diff_obj, diff_dsp)
@@ -71,7 +71,7 @@ class Increment(Solver):
 
             # get the difference in performance and resources
             obj_diff = curr_obj - partition.get_cycle()
-            dsp_diff = (partition.get_resource_usage()["DSP"] - curr_dsp)
+            dsp_diff = (self.get_partition_resource(partition)["DSP"] - curr_dsp)
 
             # print(layer, dim, parallelism_next[layer][dim], obj_diff, dsp_diff)
 

@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import itertools
+from tabulate import tabulate
 
 import fpgaconvnet.optimiser.transforms as transforms
 import fpgaconvnet.tools.graphs as graphs
@@ -129,9 +130,9 @@ class GreedyPartition(Solver):
                         reject_list[i] = (merge[0]-1,merge[1]-1)
                 print("accept")
 
-    def validate_partition_resource(self, partition):
+    def validate_partition_resource(self, partition, partition_index):
         try:
-            self.check_partition_resources(partition)
+            self.check_partition_resources(partition, partition_index)
             valid = True
         except AssertionError as error:
             valid = False
@@ -170,7 +171,7 @@ class GreedyPartition(Solver):
                 cycles_copy = partition_copy.get_cycle()
                 partition_copy_resource_usage = self.get_partition_resource(partition_copy)
                 lut_usage_copy = partition_copy_resource_usage['LUT'] + lut_to_bram_ratio*partition_copy_resource_usage['BRAM']
-                if cycles_copy > cycles or lut_usage_copy >= lut_usage or not self.validate_partition_resource(partition_copy):
+                if cycles_copy > cycles or lut_usage_copy >= lut_usage or not self.validate_partition_resource(partition_copy, partition_index):
                     continue
                 filtered_candidates.append((comb[0], comb[1], lut_usage_copy))
             if len(filtered_candidates) == 0:
@@ -201,7 +202,7 @@ class GreedyPartition(Solver):
                 cycles_copy = partition_copy.get_cycle()
                 partition_copy_resource_usage = self.get_partition_resource(partition_copy)
                 lut_usage_copy = partition_copy_resource_usage['LUT'] + lut_to_bram_ratio*partition_copy_resource_usage['BRAM']
-                if cycles_copy > cycles or lut_usage_copy >= lut_usage or not self.validate_partition_resource(partition_copy):
+                if cycles_copy > cycles or lut_usage_copy >= lut_usage or not self.validate_partition_resource(partition_copy, partition_index):
                     continue
                 filtered_candidates.append((comb[0], comb[1], lut_usage_copy))
             if len(filtered_candidates) == 0:
@@ -426,7 +427,7 @@ class GreedyPartition(Solver):
             #self.check_constraints() # slow to run for networks with many nodes
             start = True
         except AssertionError as error:
-            print("ERROR: Exceeds resource usage")
+            print(f"ERROR: Exceeds resource usage:\n{error}")
             return False
 
         assert "partition" not in self.transforms
@@ -478,8 +479,13 @@ class GreedyPartition(Solver):
                     if self.objective != 1:
                         break
 
-            print(f"{partition_index} single partition cost:{self.get_cost([partition_index])}, \
-                slowdown: {self.net.partitions[partition_index].slow_down_factor}")
+            data = [[f"{partition_index}/{len(self.net.partitions)} single partition cost:",
+                     f"{self.get_cost([partition_index]) if self.objective == LATENCY else -self.get_cost([partition_index]):.4f}",
+                     "",
+                     "slowdown:",
+                     self.net.partitions[partition_index].slow_down_factor]]
+            data_table = tabulate(data, tablefmt="double_outline")
+            print(data_table)
             self.solver_status()
 
         return True
