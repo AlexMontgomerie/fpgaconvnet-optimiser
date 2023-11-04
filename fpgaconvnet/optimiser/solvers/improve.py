@@ -2,6 +2,7 @@ import copy
 import random
 import math
 import sys
+from numpy.random import choice
 from dataclasses import dataclass
 import numpy as np
 
@@ -63,7 +64,7 @@ class Improve(Solver):
             self.get_transforms()
 
             for i in range(START_LOOP):
-                transform = random.choice(self.transforms)
+                transform = choice(self.transforms, p=self.transforms_probs)
                 partition_index = list(bad_partitions.keys())[-1]
                 self.apply_transform(transform, partition_index)
                 self.update_partitions()
@@ -108,7 +109,7 @@ class Improve(Solver):
 
                 # Apply a transform
                 ## Choose a random transform
-                transform = random.choice(self.transforms)
+                transform = choice(self.transforms, p=self.transforms_probs)
 
                 ## Choose slowest partition
                 partition_latencys = [ partition.get_latency(self.platform.board_freq) for partition in self.net.partitions ]

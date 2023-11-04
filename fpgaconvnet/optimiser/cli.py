@@ -113,11 +113,11 @@ def main():
     platform.update(args.platform_path)
 
     if args.optimiser == "improve":
-        opt = Improve(net, platform, **optimiser_config["annealing"])
+        opt = Improve(net, platform, **optimiser_config["annealing"], wandb_enabled=args.enable_wandb)
     elif args.optimiser == "simulated_annealing":
-        opt = SimulatedAnnealing(net, platform, **optimiser_config["annealing"])
+        opt = SimulatedAnnealing(net, platform, **optimiser_config["annealing"], wandb_enabled=args.enable_wandb)
     elif args.optimiser == "greedy_partition":
-        opt = GreedyPartition(net, platform)
+        opt = GreedyPartition(net, platform, wandb_enabled=args.enable_wandb)
         #opt.multi_fpga = True
         #opt.constrain_port_width = False
     else:
@@ -142,9 +142,11 @@ def main():
 
     # specify available transforms
     opt.transforms = []
+    opt.transforms_probs = []
     for transform in optimiser_config["transforms"]:
         if optimiser_config["transforms"][transform]["apply_transform"]:
             opt.transforms.append(transform)
+            opt.transforms_probs.append(optimiser_config["transforms"][transform]["probability"])
 
     if "weights_reloading" not in opt.transforms:
         for partition in opt.net.partitions:

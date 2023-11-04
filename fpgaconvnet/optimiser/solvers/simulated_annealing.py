@@ -1,10 +1,10 @@
-import os
-import json
 import copy
 import random
+from numpy.random import choice
 import math
 from dataclasses import dataclass
 import wandb
+from tabulate import tabulate
 
 from fpgaconvnet.optimiser.solvers import Solver
 
@@ -43,7 +43,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # Attempt to find a good starting point
         if not start:
             for i in range(START_LOOP):
-                transform = random.choice(self.transforms)
+                transform = choice(self.transforms, p=self.transforms_probs)
                 self.apply_transform(transform)
                 self.update_partitions()
 
@@ -70,9 +70,10 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # get the current cost
             cost = self.get_cost()
 
-            # wandb logging and checkpoint
-            self.wandb_log(temperature=self.T)
-            # self.wandb_checkpoint()
+            if self.wandb_enabled:
+                # wandb logging and checkpoint
+                self.wandb_log(temperature=self.T)
+                # self.wandb_checkpoint()
 
             # Save previous iteration
             net = copy.deepcopy(self.net)
@@ -89,7 +90,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
                 # Apply a transform
                 ## Choose a random transform
-                transform = random.choice(list(self.transforms.keys()))
+                transform = choice(self.transforms, p=self.transforms_probs)
 
                 ## Choose a random partition
                 partition_index = random.randint(0,len(self.net.partitions)-1)
@@ -117,31 +118,21 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 # revert to previous state
                 self.net = net
 
+            data = [[f"temperature:",
+                     f"{self.T:.6f}",
+                     f"Min temperature:",
+                     f"{self.T_min:.6f}",
+                     "",
+                     "number of partitions:",
+                     len(self.net.partitions)]]
+            data_table = tabulate(data, tablefmt="double_outline")
+            print(data_table)
             # print solver status
             self.solver_status()
 
             # reduce temperature
             self.T *= self.cool
 
-            # get config and report
-            config = self.config()
-            report = self.report()
-
-            # save report and config
-            if not os.path.exists("tmp"):
-                os.makedirs("tmp")
-            with open("tmp/config.json", "w") as f:
-                json.dump(config, f, indent=2)
-            with open("tmp/report.json", "w") as f:
-                json.dump(report, f, indent=2)
-
-            # store the design point
-            artifact = wandb.Artifact('outputs', type='json')
-            artifact.add_file("tmp/config.json")
-            artifact.add_file("tmp/report.json")
-            wandb.log_artifact(artifact)
-
-        return True
         # # store dataframe of
         # # https://docs.wandb.ai/guides/data-vis/log-tables
         # table = wandb.Table(columns=[])
@@ -152,3 +143,5 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # store image
         # wandb.log({"image": wandb.Image(path_to_image)})
         # wandb.log("plot": plt)
+
+        return True

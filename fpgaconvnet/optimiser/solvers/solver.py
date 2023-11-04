@@ -36,9 +36,12 @@ class Solver:
         'latency'    : float("inf"), 'throughput' : 0.0})
     transforms: list = field(default_factory=lambda:[
         'coarse','fine','partition', 'weights_reloading'])
+    transforms_probs: list = field(default_factory=lambda:[
+        0.25, 0.25, 0.25, 0.25])
     rsc_allocation: float = 1.0
     multi_fpga: bool = False
     constrain_port_width: bool = True
+    wandb_enabled: bool = False
 
     """
     Base class for all optimisation strategies. This inherits the `Network` class.
