@@ -6,14 +6,12 @@ import pickle
 import logging
 import os
 import toml
-import json
 import argparse
 import shutil
 import random
 import numpy as np
 import wandb
 import copy
-import onnx
 
 from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.tools.layer_enum import from_cfg_type
@@ -27,7 +25,6 @@ import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
 
 from fpgaconvnet.platform.Platform import Platform
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 def parse_args():
     """
@@ -54,7 +51,7 @@ def parse_args():
         help='seed for the optimiser run')
     parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
     parser.add_argument('--ram_usage', default=None, type=float, help='ram utilization ratio')
-    
+
     return parser.parse_args()
 
 def main():
@@ -114,7 +111,7 @@ def main():
     # load platform
     platform = Platform()
     platform.update(args.platform_path)
-    
+
     if args.optimiser == "improve":
         opt = Improve(net, platform, **optimiser_config["annealing"])
     elif args.optimiser == "simulated_annealing":
@@ -155,11 +152,11 @@ def main():
 
     # initialize graph
     ## completely partition graph
-    if bool(optimiser_config["transforms"]["partition"]["start_complete"]):
+    if optimiser_config["transforms"]["partition"]["apply_transform"] and bool(optimiser_config["transforms"]["partition"]["start_complete"]):
         # format the partition transform allowed partitions
         allowed_partitions = []
         for allowed_partition in optimiser_config["transforms"]["partition"]["allowed_partitions"]:
-            allowed_partitions.append((from_cfg_type(allowed_partition[0]), from_cfg_type(allowed_partition[1])))        
+            allowed_partitions.append((from_cfg_type(allowed_partition[0]), from_cfg_type(allowed_partition[1])))
         if len(allowed_partitions) == 0:
             allowed_partitions = None
         vertical = optimiser_config["transforms"]["partition"]["vertical"]
@@ -176,14 +173,15 @@ def main():
             fpgaconvnet.optimiser.transforms.weights_reloading.apply_max_weights_reloading(
                     opt.net.partitions[partition_index])
 
-    # print("size: ", len(pickle.dumps(opt.net)))
     opt_onnx_model = copy.deepcopy(opt.net.model)
     opt.net.model = None
 
-    # run optimiser
-    opt.run_solver()
 
-    # print("size: ", len(pickle.dumps(opt.net)))
+    # run optimiser
+    valid_solution = opt.run_solver()
+    if not valid_solution:
+        print("Optimiser could not find a valid solution. The generated reports and configuration files are not valid.")
+
     opt.net.model = opt_onnx_model
 
     # update all partitions
@@ -193,10 +191,10 @@ def main():
         opt.merge_memory_bound_partitions()
         opt.update_partitions()
 
-    # find the best batch_size
-    #if args.objective == "throughput":
+    # # find the best batch_size
+    # if args.objective == "throughput":
     #    net.get_optimal_batch_size()
-    
+
     #Write channel indices from model to optimised onnx path
     optimised_onnx_path = f"{args.model_path.split('.onnx')[0]}_optimized.onnx"
     opt.net.write_channel_indices_to_onnx(optimised_onnx_path)

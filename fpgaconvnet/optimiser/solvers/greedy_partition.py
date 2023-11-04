@@ -1,9 +1,5 @@
-import sys
 import numpy as np
-import json
 import copy
-import random
-import math
 import itertools
 
 import fpgaconvnet.optimiser.transforms as transforms
@@ -13,14 +9,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from fpgaconvnet.models.layers.utils import stream_buffer
 from fpgaconvnet.optimiser.solvers import Solver
-from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
-
 
 
 LATENCY   =0
 THROUGHPUT=1
-
 START_LOOP=1
 
 @dataclass
@@ -68,13 +61,12 @@ class GreedyPartition(Solver):
 
             for i in range(len(self.net.partitions)):
                 self.net.partitions[i].need_optimise = False
+                self.net.partitions[i].remove_squeeze()
 
             input_memory_bound = []
             output_memory_bound = []
 
             for partition_index, partition in enumerate(self.net.partitions):
-                for i in range(len(self.net.partitions)):
-                    self.net.partitions[i].remove_squeeze()
                 horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
                 self.update_partitions()
 
@@ -90,7 +82,7 @@ class GreedyPartition(Solver):
                         if self.multi_fpga \
                             or partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
                             or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
-                                
+
                             output_memory_bound.append(partition_index)
 
             memory_bound = input_memory_bound + output_memory_bound
@@ -165,7 +157,7 @@ class GreedyPartition(Solver):
             current_coarse_in = node.coarse_in
             current_coarse_out = node.coarse_out
             coarse_in_feasible = node.get_coarse_in_feasible()
-            coarse_out_feasible = node.get_coarse_out_feasible()   
+            coarse_out_feasible = node.get_coarse_out_feasible()
             candidates = list(itertools.product(coarse_in_feasible, coarse_out_feasible))
             candidates = list(filter(lambda x: x[0] * x[1] == current_coarse_in*current_coarse_out, candidates))
             filtered_candidates = []
@@ -334,14 +326,14 @@ class GreedyPartition(Solver):
                 for i in range(partition.graph.nodes[layer]["hw"].ports_in):
                     candidates.append((layer, "inputs", i))
 
-        ram_utilization = self.ram_usage 
+        ram_utilization = self.ram_usage
         while curr_bram_util > ram_utilization or curr_uram_util > ram_utilization:
             bottleneck = "URAM" if curr_bram_util <= ram_utilization else "BRAM"
             partition_copy = copy.deepcopy(partition)
 
             def _validate(entry):
                 layer, data_type, index = entry
-                node = partition.graph.nodes[layer]["hw"] 
+                node = partition.graph.nodes[layer]["hw"]
                 if data_type == "weights":
                     if bottleneck == "URAM":
                         return node.weights_ram_usage > 0 and node.use_uram
@@ -353,13 +345,13 @@ class GreedyPartition(Solver):
                     else:
                         return node.inputs_ram_usage[index] > 0
             filtered_candidates = list(filter(_validate, candidates))
-            if len(filtered_candidates) == 0: # is there anything left to move? 
-                return False 
+            if len(filtered_candidates) == 0: # is there anything left to move?
+                return False
 
             def _step(partition, layer, data_type, index, weight_step_size=0.1):
                 node = partition.graph.nodes[layer]["hw"]
                 if data_type == "weights":
-                    node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(weight_step_size))    
+                    node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(weight_step_size))
                 else:
                     partition.remove_squeeze()
                     node.stream_inputs[index] = True
@@ -376,7 +368,7 @@ class GreedyPartition(Solver):
                 partition_copy = copy.deepcopy(partition)
                 node_copy = partition_copy.graph.nodes[layer]["hw"]
                 _step(partition_copy, layer, data_type, index)
-                node = partition.graph.nodes[layer]["hw"] 
+                node = partition.graph.nodes[layer]["hw"]
                 delta_on_chip_mem = node.resource()[bottleneck] - node_copy.resource()[bottleneck]
                 if data_type == "weights":
                     delta_on_chip_mem += node_copy.stream_buffer()
@@ -385,9 +377,9 @@ class GreedyPartition(Solver):
                 assert delta_off_chip_bw > 0
                 return delta_on_chip_mem / delta_off_chip_bw
 
-            sorted_candidates = sorted(filtered_candidates, key=_compare, reverse=True)              
+            sorted_candidates = sorted(filtered_candidates, key=_compare, reverse=True)
             layer, data_type, index = sorted_candidates[0]
-            node = partition.graph.nodes[layer]["hw"] 
+            node = partition.graph.nodes[layer]["hw"]
             _step(partition, layer, data_type, index)
             partition_resource_usage = self.get_partition_resource(partition)
             curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
@@ -418,7 +410,7 @@ class GreedyPartition(Solver):
         else:
             return False
 
-    def run_solver(self, log=True):
+    def run_solver(self, log=True) -> bool:
         # update all partitions
         self.update_partitions()
         for partition_index in range(len(self.net.partitions)):
@@ -440,12 +432,12 @@ class GreedyPartition(Solver):
         assert "partition" not in self.transforms
 
         for partition_index in range(len(self.net.partitions)):
-            # don't use enumerate, copy.deepcopy creates the new partition object 
+            # don't use enumerate, copy.deepcopy creates the new partition object
             if not self.net.partitions[partition_index].need_optimise:
                 continue
 
             for sparse_fine_threshold in [1.2, 1.01]:
-                self.sparse_fine_threshold = sparse_fine_threshold    
+                self.sparse_fine_threshold = sparse_fine_threshold
                 for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
                     self.empirical_solver(partition_index, phase)
                 if "weights_reloading" in self.transforms and self.net.partitions[partition_index].wr_layer:

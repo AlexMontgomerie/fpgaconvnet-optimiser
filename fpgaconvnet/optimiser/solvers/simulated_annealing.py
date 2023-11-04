@@ -1,6 +1,4 @@
-import sys
 import os
-import numpy as np
 import json
 import copy
 import random
@@ -12,7 +10,6 @@ from fpgaconvnet.optimiser.solvers import Solver
 
 LATENCY   =0
 THROUGHPUT=1
-
 START_LOOP=1000
 
 @dataclass
@@ -26,7 +23,7 @@ class SimulatedAnnealing(Solver):
 Randomly chooses a transform and hardware component to change. The change is accepted based on a probability-based decision function
     """
 
-    def run_solver(self, log=True):
+    def run_solver(self, log=True) -> bool:
 
         # update all partitions
         self.update_partitions()
@@ -46,7 +43,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
         # Attempt to find a good starting point
         if not start:
             for i in range(START_LOOP):
-                transform = random.choice(list(self.transforms.keys()))
+                transform = random.choice(self.transforms)
                 self.apply_transform(transform)
                 self.update_partitions()
 
@@ -62,7 +59,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             self.check_constraints()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
-            return
+            return False
 
         # Cooling Loop
         while self.T_min < self.T:
@@ -144,6 +141,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             artifact.add_file("tmp/report.json")
             wandb.log_artifact(artifact)
 
+        return True
         # # store dataframe of
         # # https://docs.wandb.ai/guides/data-vis/log-tables
         # table = wandb.Table(columns=[])

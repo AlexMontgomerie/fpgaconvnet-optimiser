@@ -1,9 +1,7 @@
-import json
 import copy
 import random
 import math
 import sys
-from operator import itemgetter
 from dataclasses import dataclass
 import numpy as np
 
@@ -11,7 +9,6 @@ from fpgaconvnet.optimiser.solvers import Solver
 
 LATENCY   =0
 THROUGHPUT=1
-
 START_LOOP=1000
 
 @dataclass
@@ -42,7 +39,7 @@ class Improve(Solver):
     #     print("TEMP:\t {temp}, COST:\t {cost} ({objective}), RESOURCE:\t {BRAM}\t{DSP}\t{LUT}\t{FF}\t(BRAM|DSP|LUT|FF)".format(
     #         temp=self.T,cost=cost,objective=objective,BRAM=int(BRAM),DSP=int(DSP),LUT=int(LUT),FF=int(FF)),end='\n')#,end='\r')
 
-    def run_solver(self, log=True):
+    def run_solver(self, log=True) -> bool:
 
         # update all partitions
         self.update_partitions()
@@ -85,7 +82,7 @@ class Improve(Solver):
             self.check_constraints()
         except AssertionError as error:
             print("ERROR: Exceeds resource usage")
-            return
+            return False
 
         # Cooling Loop
         while self.T_min < self.T:
@@ -147,3 +144,5 @@ class Improve(Solver):
 
             # reduce temperature
             self.T *= self.cool
+
+        return True
