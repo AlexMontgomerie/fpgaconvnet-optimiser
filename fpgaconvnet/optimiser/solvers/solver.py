@@ -347,7 +347,7 @@ class Solver:
                 partition.streams_out.append(max([ s for s in streams_out_valid if s <= streams_out_max ]))
 
             ## update io ports
-            partition.update_io_ports()
+            # partition.update_io_ports()
 
             ## add auxiliary layers
             partition.add_squeeze()

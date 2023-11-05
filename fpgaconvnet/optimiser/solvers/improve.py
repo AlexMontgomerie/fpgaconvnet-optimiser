@@ -55,7 +55,7 @@ class Improve(Solver):
             self.check_constraints()
             start = True
         except AssertionError as error:
-            print("ERROR: Exceeds resource usage (trying to find valid starting point)")
+            print(f"ERROR: Exceeds resource usage (trying to find valid starting point):\n{error}")
             bad_partitions = self.get_resources_bad_partitions()
 
         # Attempt to find a good starting point
@@ -82,7 +82,7 @@ class Improve(Solver):
             self.check_resources()
             self.check_constraints()
         except AssertionError as error:
-            print("ERROR: Exceeds resource usage")
+            print(f"ERROR: Exceeds resource usage:\n{error}")
             return False
 
         # Cooling Loop

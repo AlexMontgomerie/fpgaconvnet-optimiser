@@ -58,7 +58,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             self.check_resources()
             self.check_constraints()
         except AssertionError as error:
-            print("ERROR: Exceeds resource usage")
+            print(f"ERROR: Exceeds resource usage:\n{error}")
             return False
 
         # Cooling Loop

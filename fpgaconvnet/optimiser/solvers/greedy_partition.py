@@ -479,7 +479,7 @@ class GreedyPartition(Solver):
                     if self.objective != 1:
                         break
 
-            data = [[f"{partition_index}/{len(self.net.partitions)} single partition cost:",
+            data = [[f"{partition_index+1}/{len(self.net.partitions)} single partition cost:",
                      f"{self.get_cost([partition_index]) if self.objective == LATENCY else -self.get_cost([partition_index]):.4f}",
                      "",
                      "slowdown:",
