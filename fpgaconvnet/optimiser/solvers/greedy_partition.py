@@ -62,12 +62,14 @@ class GreedyPartition(Solver):
 
             for i in range(len(self.net.partitions)):
                 self.net.partitions[i].need_optimise = False
-                self.net.partitions[i].remove_squeeze()
 
             input_memory_bound = []
             output_memory_bound = []
 
             for partition_index, partition in enumerate(self.net.partitions):
+                # remove all auxiliary layers. This might not needed at the 1st iteration of the loop but its mandatory for the rest of the iterations to avoid errors in get_all_horizontal_merges call
+                for i in range(len(self.net.partitions)):
+                    self.net.partitions[i].remove_squeeze()
                 horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
                 self.update_partitions()
 
