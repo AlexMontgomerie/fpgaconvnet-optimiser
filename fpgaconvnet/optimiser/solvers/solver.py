@@ -356,6 +356,7 @@ class Solver:
     def update_partitions(self):
         self.update_io_port_width()
         self.net.update_partitions()
+        assert self.net.check_network_validity(), f"ERROR: Network is invalid.\n{error}"
 
 
     from fpgaconvnet.optimiser.solvers.report import create_report
