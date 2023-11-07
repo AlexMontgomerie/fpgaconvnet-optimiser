@@ -163,6 +163,10 @@ def main():
             allowed_partitions = None
         vertical = optimiser_config["transforms"]["partition"]["vertical"]
         fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions, vertical)
+        allowed_single_layer_merge = []
+        for single_layer_merge in optimiser_config["transforms"]["partition"]["allowed_single_layer_merge"]:
+            allowed_single_layer_merge.append(from_cfg_type(single_layer_merge))
+        fpgaconvnet.optimiser.transforms.partition.merge_single_layer_partition_to_prev(opt.net, allowed_single_layer_merge)
 
     ## apply max fine factor to the graph
     if bool(optimiser_config["transforms"]["fine"]["start_complete"]):
@@ -207,10 +211,14 @@ def main():
     opt.net.save_all_partitions(os.path.join(args.output_path, "config.json"))
 
     # create scheduler
+    # FIXME: This does not work correctly (at least for models with nested branches)
     opt.net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
 
+    # visualise partitions (nx graphs)
+    opt.net.visualise_partitions_nx(os.path.join(args.output_path, "partitions_nx_graphs"))
+
     # visualise network
-    #opt.net.visualise(os.path.join(args.output_path, "topology.png"))
+    # opt.net.visualise(os.path.join(args.output_path, "topology.png"))
 
 if __name__ == "__main__":
     main()

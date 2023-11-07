@@ -280,6 +280,22 @@ def merge_complete(net):
     net.merge_vertical_complete()
     net.merge_horizontal_complete()
 
+def merge_single_layer_partition_to_prev(net, allowed_layers):
+    def _find_single_layer_partition():
+        for i in range(len(net.partitions)):
+            if len(net.partitions[i].graph.nodes) == 1:
+                input_node = graphs.get_input_nodes(net.partitions[i].graph)[0]
+                if net.partitions[i].graph.nodes[input_node]['type'] in allowed_layers:
+                    return i
+        return None
+    partition_index = _find_single_layer_partition()
+    # keep iterating until all single layer partitions are merged
+    while partition_index != None:
+        # merge partition to previous
+        merge_horizontal(net, partition_index-1, partition_index)
+        # find next partition to merge
+        partition_index = _find_single_layer_partition()
+
 def apply_random_partition(net, partition_index):
    # choose randomly between merge or split
     ## split partition
