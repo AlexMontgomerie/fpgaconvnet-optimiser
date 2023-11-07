@@ -51,6 +51,7 @@ def parse_args():
         help='seed for the optimiser run')
     parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
     parser.add_argument('--ram_usage', default=None, type=float, help='ram utilization ratio')
+    parser.add_argument('--custom_onnx', action="store_true", help='whether to enable custom onnx parsing on model Parser')
 
     return parser.parse_args()
 
@@ -105,7 +106,7 @@ def main():
     # net.DEBUG = True
 
     # parse the network
-    fpgaconvnet_parser = Parser(custom_onnx=False)
+    fpgaconvnet_parser = Parser(custom_onnx=args.custom_onnx)
     net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)
 
     # load platform

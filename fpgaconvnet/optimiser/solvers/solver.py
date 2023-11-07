@@ -357,7 +357,7 @@ class Solver:
         self.update_io_port_width()
         self.net.update_partitions()
         try:
-            self.net.check_network_validity()
+            self.net.check_network_graph_completeness()
         except AssertionError as e:
             raise AssertionError(f"ERROR: Network is invalid.\n{e}")
 
