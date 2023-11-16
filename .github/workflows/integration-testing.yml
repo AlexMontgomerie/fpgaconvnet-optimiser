@@ -15,20 +15,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - uses: actions/checkout@v4
       with:
-        python-version: '3.7.x'
+          submodules: "true"    
+    - name: Set up Python
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.10' 
     - name: Install dependencies
       run: |
         sudo apt-get install protobuf-compiler libprotoc-dev
-        python setup.py install
-    - name: Run Tests
+        python -m pip install --upgrade pip
+        python -m pip install .
+        python -m pip install fpgaconvnet-model
+    - name: Run Optimisation Tests
       run: |
-          python -m coverage run --source=fpgaconvnet_optimiser -m unittest discover tests/
-    # - name: Upload Coverage to Codecov
-    #   uses: codecov/codecov-action@v1
-    #   with:
-    #     token: ${{ secrets.CODECOV_TOKEN  }}
+        bash tests/run_models.sh
 
