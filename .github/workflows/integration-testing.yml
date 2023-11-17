@@ -18,10 +18,12 @@ jobs:
     - uses: actions/checkout@v4
       with:
           submodules: "true"    
+
     - name: Set up Python 3.10
       uses: actions/setup-python@v4
       with:
         python-version: '3.10' 
+
     - name: Install dependencies
       run: |
         sudo apt-get install protobuf-compiler libprotoc-dev
@@ -34,6 +36,7 @@ jobs:
 
         python -m pip install .
         python -m pip install ./fpgaconvnet-model
+        
     - name: Run Optimisation Tests
       run: |
         bash tests/run_models.sh
