@@ -25,8 +25,10 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get install protobuf-compiler libprotoc-dev
-        python -m pip install --upgrade pip
         pip install wheel
+        pip install nvidia-pyindex
+        pip install onnx-graphsurgeon
+        python -m pip install --upgrade pip
         python -m pip install .
         python -m pip install ./fpgaconvnet-model
     - name: Run Optimisation Tests
