@@ -25,10 +25,10 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get install protobuf-compiler libprotoc-dev
-        python -m pip install --upgrade pip
-        python -m pip install .
-        python -m pip install nvidia-pyindex
-        python -m pip install ./fpgaconvnet-model
+        pip3 install --user --upgrade pip
+        pip3 install .
+        pip3 install nvidia-pyindex
+        pip3 install ./fpgaconvnet-model
     - name: Run Optimisation Tests
       run: |
         bash tests/run_models.sh
