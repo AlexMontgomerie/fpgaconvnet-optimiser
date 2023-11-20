@@ -1,9 +1,0 @@
-{
-    "rows": 20,
-    "cols": 20,
-    "channels": 512,
-    "filters": 32,
-    "groups": 1,
-    "batch_size": 1,
-    "description": "multi channel, multi filter"
-}
