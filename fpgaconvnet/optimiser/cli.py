@@ -164,10 +164,14 @@ def main():
             allowed_partitions = None
         vertical = optimiser_config["transforms"]["partition"]["vertical"]
         fpgaconvnet.optimiser.transforms.partition.split_complete(opt.net, allowed_partitions, vertical)
-        allowed_single_layer_merge = []
-        for single_layer_merge in optimiser_config["transforms"]["partition"]["allowed_single_layer_merge"]:
-            allowed_single_layer_merge.append(from_cfg_type(single_layer_merge))
-        fpgaconvnet.optimiser.transforms.partition.merge_single_layer_partition_to_prev(opt.net, allowed_single_layer_merge)
+        allowed_single_layer_merge_pre = []
+        for single_layer_merge in optimiser_config["transforms"]["partition"]["allowed_single_layer_merge_pre"]:
+            allowed_single_layer_merge_pre.append(from_cfg_type(single_layer_merge))
+        fpgaconvnet.optimiser.transforms.partition.merge_single_layer_partition_to_prev(opt.net, allowed_single_layer_merge_pre)
+        allowed_single_layer_merge_post = []
+        for single_layer_merge in optimiser_config["transforms"]["partition"]["allowed_single_layer_merge_post"]:
+            allowed_single_layer_merge_post.append(from_cfg_type(single_layer_merge))
+        fpgaconvnet.optimiser.transforms.partition.merge_single_layer_partition_to_next(opt.net, allowed_single_layer_merge_post)
 
     ## apply max fine factor to the graph
     if bool(optimiser_config["transforms"]["fine"]["start_complete"]):

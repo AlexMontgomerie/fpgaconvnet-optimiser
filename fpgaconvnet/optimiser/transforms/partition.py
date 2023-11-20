@@ -9,8 +9,6 @@ import math
 
 import fpgaconvnet.tools.graphs as graphs
 import fpgaconvnet.tools.matrix as matrix
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
-
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
 
@@ -297,6 +295,22 @@ def merge_single_layer_partition_to_prev(net, allowed_layers):
     while partition_index != None:
         # merge partition to previous
         merge_horizontal(net, partition_index-1, partition_index)
+        # find next partition to merge
+        partition_index = _find_single_layer_partition()
+
+def merge_single_layer_partition_to_next(net, allowed_layers):
+    def _find_single_layer_partition():
+        for i in range(len(net.partitions)):
+            if len(net.partitions[i].graph.nodes) == 1:
+                input_node = graphs.get_input_nodes(net.partitions[i].graph)[0]
+                if net.partitions[i].graph.nodes[input_node]['type'] in allowed_layers or net.partitions[i].graph.nodes[input_node]['hw'].op_type in allowed_layers:
+                    return i
+        return None
+    partition_index = _find_single_layer_partition()
+    # keep iterating until all single layer partitions are merged
+    while partition_index != None:
+        # merge partition to previous
+        merge_horizontal(net, partition_index, partition_index+1)
         # find next partition to merge
         partition_index = _find_single_layer_partition()
 

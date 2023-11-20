@@ -6,16 +6,16 @@ resource_allocation = 0.90
 
 [transforms.fine]
 apply_transform = true
-probability = 0.25
+probability = 0.35
 start_complete = false
 
 [transforms.coarse]
 apply_transform = true
-probability = 0.25
+probability = 0.35
 
 [transforms.weights_reloading]
 apply_transform = true
-probability = 0.25
+probability = 0.30
 start_max = true
 
 [transforms.partition]
@@ -29,7 +29,8 @@ allowed_partitions = [
     ["Concat", "*"],
 ]
 vertical = true
-allowed_single_layer_merge = ["Split", "Relu", "LeakyRelu", "ThresholdedRelu"]
+allowed_single_layer_merge_pre = ["Split", "Relu", "LeakyRelu", "ThresholdedRelu"]
+allowed_single_layer_merge_post = ["Concat", "Add", "Mul"]
 
 [annealing]
 T = 10.0
