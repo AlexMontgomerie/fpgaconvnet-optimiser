@@ -8,6 +8,7 @@ import copy
 import math
 
 import fpgaconvnet.tools.graphs as graphs
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 import fpgaconvnet.tools.matrix as matrix
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
