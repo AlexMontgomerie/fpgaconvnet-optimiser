@@ -291,6 +291,10 @@ class GreedyPartition(Solver):
             if partition.graph.nodes[layer]['type'] in types:
                 partition.graph.nodes[layer]["hw"].use_uram = False
                 partition.graph.nodes[layer]["hw"].stream_weights = 0
+                partition.graph.nodes[layer]["hw"].stream_inputs = \
+                    [False] * len(partition.graph.nodes[layer]["hw"].stream_inputs)
+                partition.graph.nodes[layer]["hw"].stream_outputs = \
+                    [False] * len(partition.graph.nodes[layer]["hw"].stream_outputs)
                 conv_layers.append(layer)
         if len(conv_layers) == 0:
             return False
