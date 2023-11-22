@@ -3,6 +3,7 @@ import datetime
 import numpy as np
 
 from dataclasses import asdict
+from fpgaconvnet.tools.graphs import ordered_node_list
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 def create_report(self, output_path):
@@ -82,7 +83,7 @@ def create_report(self, output_path):
         # add information for each layer of the partition
         report["partitions"][i]["layers"] = {}
         max_latency = max([self.net.partitions[i].graph.nodes[node]['hw'].latency() for node in self.net.partitions[i].graph.nodes()])
-        for node in self.net.partitions[i].graph.nodes():
+        for node in ordered_node_list(self.net.partitions[i].graph):
             hw = self.net.partitions[i].graph.nodes[node]['hw']
             resource_usage = hw.resource()
             report["partitions"][i]["layers"][node] = {

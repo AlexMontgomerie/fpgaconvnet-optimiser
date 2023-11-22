@@ -6,6 +6,7 @@ from numpy.random import choice
 from dataclasses import dataclass
 import numpy as np
 
+from fpgaconvnet.tools.graphs import ordered_node_list
 from fpgaconvnet.optimiser.solvers import Solver
 
 LATENCY   =0
@@ -117,8 +118,8 @@ class Improve(Solver):
 
                 ## Choose slowest node in partition
                 node_latencys = np.array([ self.net.partitions[partition_index].graph.nodes[layer]['hw'].latency() \
-                        for layer in self.net.partitions[partition_index].graph.nodes() ])
-                node = np.random.choice(list(self.net.partitions[partition_index].graph.nodes()), 1, p=(node_latencys/sum(node_latencys)))[0]
+                        for layer in ordered_node_list(self.net.partitions[partition_index].graph) ])
+                node = np.random.choice(ordered_node_list(self.net.partitions[partition_index].graph), 1, p=(node_latencys/sum(node_latencys)))[0]
 
                 ## Apply the transform
                 self.apply_transform(transform, partition_index, node)
