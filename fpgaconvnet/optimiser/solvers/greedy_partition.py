@@ -288,14 +288,16 @@ class GreedyPartition(Solver):
         conv_layers = []
         # reset all flags
         for layer in graphs.ordered_node_list(partition.graph):
+            partition.graph.nodes[layer]["hw"].stream_inputs = \
+                [False] * len(partition.graph.nodes[layer]["hw"].stream_inputs)
+            partition.graph.nodes[layer]["hw"].stream_outputs = \
+                [False] * len(partition.graph.nodes[layer]["hw"].stream_outputs)
             if partition.graph.nodes[layer]['type'] in types:
                 partition.graph.nodes[layer]["hw"].use_uram = False
                 partition.graph.nodes[layer]["hw"].stream_weights = 0
-                partition.graph.nodes[layer]["hw"].stream_inputs = \
-                    [False] * len(partition.graph.nodes[layer]["hw"].stream_inputs)
-                partition.graph.nodes[layer]["hw"].stream_outputs = \
-                    [False] * len(partition.graph.nodes[layer]["hw"].stream_outputs)
                 conv_layers.append(layer)
+        # update squeeze layers after the reset
+        self.net.update_partitions()
         if len(conv_layers) == 0:
             return False
 
