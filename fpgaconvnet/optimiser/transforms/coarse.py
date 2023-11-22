@@ -74,23 +74,25 @@ def fix_coarse(partition):
         # todo: fix multi ports
         if isinstance(coarse_in, Iterable):
             coarse_in = coarse_in[0]
-        coarse_in_max = partition.graph.nodes[node]['hw'].get_coarse_in_feasible()[-1]
-        if coarse_in > coarse_in_max:
-            partition.graph.nodes[node]['hw'].coarse_in = coarse_in_max
+        coarse_in_feasible = partition.graph.nodes[node]['hw'].get_coarse_in_feasible()
+        if coarse_in not in coarse_in_feasible:
+            partition.graph.nodes[node]['hw'].coarse_in = max(filter(lambda x: x <= coarse_in, coarse_in_feasible))
+        
         # check if coarse out is greater than max feasible coarse out
         coarse_out = partition.graph.nodes[node]['hw'].coarse_out
         # todo: fix multi ports
         if isinstance(coarse_out, Iterable):
             coarse_out = coarse_out[0]
-        coarse_out_max = partition.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
-        if coarse_out > coarse_out_max:
-            partition.graph.nodes[node]['hw'].coarse_out = coarse_out_max
+        coarse_out_feasible = partition.graph.nodes[node]['hw'].get_coarse_out_feasible()
+        if coarse_out not in coarse_out_feasible:
+            partition.graph.nodes[node]['hw'].coarse_out = max(filter(lambda x: x <= coarse_out, coarse_out_feasible))
+
         # check if coarse group is greater than max feasible coarse group
         if partition.graph.nodes[node]['type'] == LAYER_TYPE.Convolution:
             coarse_group = partition.graph.nodes[node]['hw'].coarse_group
-            coarse_group_max = partition.graph.nodes[node]['hw'].get_coarse_group_feasible()[-1]
-            if coarse_group > coarse_group_max:
-                partition.graph.nodes[node]['hw'].coarse_group = coarse_group_max
+            coarse_group_feasible = partition.graph.nodes[node]['hw'].get_coarse_group_feasible()
+            if coarse_group not in coarse_group_feasible:
+                partition.graph.nodes[node]['hw'].coarse_group = max(filter(lambda x: x <= coarse_group, coarse_group_feasible))
 
 def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_in_first, fix_coarse):
     partition.remove_squeeze()
