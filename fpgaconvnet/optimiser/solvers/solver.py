@@ -201,12 +201,12 @@ class Solver:
             partition.apply_random_partition(self.net, partition_index)
             return
 
-    def solver_status(self):
+    def solver_status(self, wandb_tbl=None):
         """
         prints out the current status of the solver.
         """
         # objective
-        objectives = [ 'latency', 'throughput','power']
+        objectives = [ 'latency', 'throughput', 'power']
         objective  = objectives[self.objective]
 
         # cost
@@ -247,6 +247,16 @@ class Solver:
             solver_data[2].insert(2, f"{URAM}/{self.platform.get_uram()}")
             solver_data[3].insert(2, f"{URAM/self.platform.get_uram() * 100:.2f} %")
 
+        if wandb_tbl != None:
+            for _, row in list(wandb_tbl.iterrows())[-1:]:
+                row[3] = cost
+                row[4] = URAM/self.platform.get_uram() * 100 if self.platform.get_uram() > 0 else 0
+                row[5] = BRAM/self.platform.get_bram() * 100
+                row[6] = DSP/self.platform.get_dsp() * 100
+                row[7] = LUT/self.platform.get_lut() * 100
+                row[8] = FF/self.platform.get_ff() * 100
+                row[9] = BW
+
         solver_table = tabulate(solver_data, headers="firstrow", tablefmt="github")
         print(solver_table)
         print()
@@ -274,11 +284,22 @@ class Solver:
         wandb.log_artifact(artifact)
 
     def wandb_log(self, **kwargs):
+        total_operations = sum([partition.get_total_operations() for partition in self.net.partitions]) * self.net.batch_size
+        inter_delay = self.get_inter_delay()
+        latency = self.net.get_latency(self.platform.board_freq, self.multi_fpga, inter_delay)
+        throughput = self.net.get_throughput(self.platform.board_freq, self.multi_fpga, inter_delay)
+
         # get common log values
         wandb_log = {
-            "latency": self.net.get_latency(self.platform.board_freq, self.multi_fpga, self.get_inter_delay()),
-            "throughput": self.net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay()),
-            "num_partitions": len(self.net.partitions),
+            "latency": latency,
+            "throughput": throughput,
+            "performance_gops_per_sec": total_operations*1e-9/latency,
+            "num_partitions" : len(self.net.partitions),
+            "lut_perc_avg": np.mean([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]) / self.platform.get_lut() * 100,
+            "ff_perc_avg": np.mean([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]) / self.platform.get_ff() * 100,
+            "bram_perc_avg": np.mean([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]) / self.platform.get_bram() * 100,
+            "dsp_perc_avg": np.mean([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ]) / self.platform.get_dsp() * 100,
+            "total_gops": total_operations*1e-9
         }
         # add extra log values
         wandb_log.update(kwargs)

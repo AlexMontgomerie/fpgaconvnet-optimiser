@@ -8,10 +8,12 @@ from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 
 def create_report(self, output_path):
     # create report dictionary
-    total_operations = sum([partition.get_total_operations() for partition in self.net.partitions])
+    total_operations = sum([partition.get_total_operations() for partition in self.net.partitions]) * self.net.batch_size
     inter_delay = self.get_inter_delay()
     latency = self.net.get_latency(self.platform.board_freq, self.multi_fpga, inter_delay)
     throughput = self.net.get_throughput(self.platform.board_freq, self.multi_fpga, inter_delay)
+    if self.wandb_enabled:
+        self.wandb_log()
     report = {}
     report = {
         "name" : self.net.name,

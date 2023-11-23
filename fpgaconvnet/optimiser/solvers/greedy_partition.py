@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import wandb
 import itertools
 from tabulate import tabulate
 
@@ -24,6 +25,11 @@ class GreedyPartition(Solver):
     off_chip_streaming: bool = True
     targets: dict = field(default_factory=lambda: {
     'latency'    :  0.0, 'throughput' : float("inf")})
+
+    def __post_init__(self):
+        if self.wandb_enabled:
+            self.pre_merge_log_tbl = wandb.Table(columns=["partition", f"part_{'latency' if self.objective == LATENCY else 'throughput'}", "slowdown", f"net_{'latency' if self.objective == LATENCY else 'throughput'}", "URAM (%)", "BRAM (%)", "DSP (%)", "LUT (%)", "FF (%)", "BW"])
+            self.final_log_tbl = wandb.Table(columns=["partition", f"part_{'latency' if self.objective == LATENCY else 'throughput'}", "slowdown", f"net_{'latency' if self.objective == LATENCY else 'throughput'}", "URAM (%)", "BRAM (%)", "DSP (%)", "LUT (%)", "FF (%)", "BW"])
 
     def check_targets_met(self):
         # stop the optimiser if targets are already met
@@ -120,7 +126,7 @@ class GreedyPartition(Solver):
 
             print(current_merge)
             self.update_partitions()
-            status = self.run_solver()
+            status = self.run_solver(log_final=True)
 
             if not status or self.get_cost() >= cost:
                 self.net= net
@@ -131,6 +137,9 @@ class GreedyPartition(Solver):
                     if merge[0] >= current_merge[1]:
                         reject_list[i] = (merge[0]-1,merge[1]-1)
                 print("accept")
+
+        if self.wandb_enabled:
+            wandb.log({"final_solver": self.final_log_tbl})
 
     def validate_partition_resource(self, partition, partition_index):
         try:
@@ -419,7 +428,7 @@ class GreedyPartition(Solver):
         else:
             return False
 
-    def run_solver(self, log=True) -> bool:
+    def run_solver(self, log=True, log_final=False) -> bool:
         # update all partitions
         self.update_partitions()
         for partition_index in range(len(self.net.partitions)):
@@ -487,13 +496,26 @@ class GreedyPartition(Solver):
                     if self.objective != 1:
                         break
 
-            data = [[f"{partition_index+1}/{len(self.net.partitions)} single partition cost:",
-                     f"{self.get_cost([partition_index]) if self.objective == LATENCY else -self.get_cost([partition_index]):.4f}",
+            part_cost = self.get_cost([partition_index]) if self.objective == LATENCY else -self.get_cost([partition_index])
+            data = [[f"{partition_index+1}/{len(self.net.partitions)} single partition cost ({'latency' if self.objective == LATENCY else 'throughput'}):",
+                     f"{part_cost:.4f}",
                      "",
                      "slowdown:",
                      self.net.partitions[partition_index].slow_down_factor]]
             data_table = tabulate(data, tablefmt="double_outline")
             print(data_table)
-            self.solver_status()
+            if self.wandb_enabled:
+                self.wandb_log()
+                if log_final:
+                    self.final_log_tbl.add_data(partition_index+1, part_cost, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1)
+                    self.solver_status(self.final_log_tbl)
+                else:
+                    self.pre_merge_log_tbl.add_data(partition_index+1, part_cost, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1)
+                    self.solver_status(self.pre_merge_log_tbl)
+            else:
+                self.solver_status()
 
+        if self.wandb_enabled:
+            if not log_final:
+                wandb.log({"pre_merge_solver": self.pre_merge_log_tbl})
         return True
