@@ -302,6 +302,9 @@ class Solver:
             "dsp_perc_avg": np.mean([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ]) / self.platform.get_dsp() * 100,
             "total_gops": total_operations*1e-9
         }
+        if self.platform.get_uram() > 0:
+            wandb_log["uram_perc_avg"] = np.mean([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ]) / self.platform.get_uram() * 100
+
         # add extra log values
         wandb_log.update(kwargs)
         # update wandb log
