@@ -42,6 +42,7 @@ class Solver:
     ram_usage: float = 1.0
     multi_fpga: bool = False
     constrain_port_width: bool = True
+    total_opt_time: float = 0.0
     wandb_enabled: bool = False
 
     """
@@ -215,22 +216,22 @@ class Solver:
 
         # Resources
         resources = [ self.get_partition_resource(partition) for partition in self.net.partitions ]
-        BRAM = max([ resource['BRAM'] for resource in resources ])
-        DSP  = max([ resource['DSP']  for resource in resources ])
-        LUT  = max([ resource['LUT']  for resource in resources ])
-        FF   = max([ resource['FF']   for resource in resources ])
-        BW   = max([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
+        BRAM = np.mean([ resource['BRAM'] for resource in resources ])
+        DSP  = np.mean([ resource['DSP']  for resource in resources ])
+        LUT  = np.mean([ resource['LUT']  for resource in resources ])
+        FF   = np.mean([ resource['FF']   for resource in resources ])
+        BW   = np.mean([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
 
         solver_data = [
             ["COST:", "", "RESOURCES:", "", "", "", ""],
             ["", "", "BRAM", "DSP", "LUT", "FF", "BW"],
             [f"{cost:.6f} ({objective})",
              "",
-             f"{BRAM}/{self.platform.get_bram()}",
-             f"{DSP}/{self.platform.get_dsp()}",
-             f"{LUT}/{self.platform.get_lut()}",
-             f"{FF}/{self.platform.get_ff()}",
-             f"{BW}/{self.platform.get_mem_bw()}"],
+             f"{BRAM:.2f}/{self.platform.get_bram()}",
+             f"{DSP:.2f}/{self.platform.get_dsp()}",
+             f"{LUT:.2f}/{self.platform.get_lut()}",
+             f"{FF:.2f}/{self.platform.get_ff()}",
+             f"{BW:.2f}/{self.platform.get_mem_bw()}"],
             ["",
              "",
              f"{BRAM/self.platform.get_bram() * 100:.2f} %",
@@ -241,21 +242,21 @@ class Solver:
         ]
 
         if self.platform.get_uram() > 0:
-            URAM = max([ resource['URAM'] for resource in resources ])
+            URAM = np.mean([ resource['URAM'] for resource in resources ])
             solver_data[0].insert(3, "")
             solver_data[1].insert(2, "URAM")
-            solver_data[2].insert(2, f"{URAM}/{self.platform.get_uram()}")
+            solver_data[2].insert(2, f"{URAM:.2f}/{self.platform.get_uram()}")
             solver_data[3].insert(2, f"{URAM/self.platform.get_uram() * 100:.2f} %")
 
         if wandb_tbl != None:
             for _, row in list(wandb_tbl.iterrows())[-1:]:
-                row[3] = cost
-                row[4] = URAM/self.platform.get_uram() * 100 if self.platform.get_uram() > 0 else 0
-                row[5] = BRAM/self.platform.get_bram() * 100
-                row[6] = DSP/self.platform.get_dsp() * 100
-                row[7] = LUT/self.platform.get_lut() * 100
-                row[8] = FF/self.platform.get_ff() * 100
-                row[9] = BW
+                row[4] = cost
+                row[5] = URAM/self.platform.get_uram() * 100 if self.platform.get_uram() > 0 else 0
+                row[6] = BRAM/self.platform.get_bram() * 100
+                row[7] = DSP/self.platform.get_dsp() * 100
+                row[8] = LUT/self.platform.get_lut() * 100
+                row[9] = FF/self.platform.get_ff() * 100
+                row[10] = BW
 
         solver_table = tabulate(solver_data, headers="firstrow", tablefmt="github")
         print(solver_table)

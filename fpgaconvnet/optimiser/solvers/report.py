@@ -13,7 +13,7 @@ def create_report(self, output_path):
     latency = self.net.get_latency(self.platform.board_freq, self.multi_fpga, inter_delay)
     throughput = self.net.get_throughput(self.platform.board_freq, self.multi_fpga, inter_delay)
     if self.wandb_enabled:
-        self.wandb_log()
+        self.wandb_log(**{"optimisation_time_sec": self.total_opt_time})
     report = {}
     report = {
         "name" : self.net.name,
