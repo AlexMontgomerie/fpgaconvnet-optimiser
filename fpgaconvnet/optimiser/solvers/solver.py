@@ -294,13 +294,14 @@ class Solver:
         wandb_log = {
             "latency": latency,
             "throughput": throughput,
+            "total_gops": total_operations*1e-9,
             "performance_gops_per_sec": total_operations*1e-9/latency,
             "num_partitions" : len(self.net.partitions),
             "lut_perc_avg": np.mean([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]) / self.platform.get_lut() * 100,
             "ff_perc_avg": np.mean([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]) / self.platform.get_ff() * 100,
             "bram_perc_avg": np.mean([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]) / self.platform.get_bram() * 100,
             "dsp_perc_avg": np.mean([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ]) / self.platform.get_dsp() * 100,
-            "total_gops": total_operations*1e-9
+            "bw": np.mean([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
         }
         if self.platform.get_uram() > 0:
             wandb_log["uram_perc_avg"] = np.mean([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ]) / self.platform.get_uram() * 100
