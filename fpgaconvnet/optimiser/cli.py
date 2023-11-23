@@ -229,7 +229,7 @@ def main():
         if args.enable_wandb:
             opt.net.save_all_partitions(os.path.join(args.output_path, "pre_merge_config.json"))
             pre_merge_config_artifact = wandb.Artifact(f"{args.name}_pre_merge_config", type="json")
-            pre_merge_config_artifact.add_file(os.path.join(args.output_path,"config.json"))
+            pre_merge_config_artifact.add_file(os.path.join(args.output_path,"pre_merge_config.json"))
             wandb.log_artifact(pre_merge_config_artifact)
 
             opt.net.visualise_partitions_nx(os.path.join(args.output_path,
