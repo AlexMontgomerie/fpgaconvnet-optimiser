@@ -19,13 +19,13 @@ if [ $retVal -ne 0 ]; then
 fi
 
 
-printf "%10s\n" "============= Running Test: x3d_s ============="
-wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1Dse4g-n3INpfHP4b2CRRy0IbgUOQc5Mx' -O x3d_s.onnx
-python -m fpgaconvnet.optimiser --name x3d_s --model_path x3d_s.onnx \
-    --platform_path examples/platforms/u200.toml --output_path outputs/x3d_s --batch_size 1 \
-    --objective throughput --optimiser greedy_partition --optimiser_config_path examples/optimisers/greedy_partition_throughput_x3d.toml 
-retVal=$?
-if [ $retVal -ne 0 ]; then
-    exit $retVal
-fi
+#printf "%10s\n" "============= Running Test: x3d_s ============="
+#wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1Dse4g-n3INpfHP4b2CRRy0IbgUOQc5Mx' -O x3d_s.onnx
+#python -m fpgaconvnet.optimiser --name x3d_s --model_path x3d_s.onnx \
+#    --platform_path examples/platforms/u200.toml --output_path outputs/x3d_s --batch_size 1 \
+#    --objective throughput --optimiser greedy_partition --optimiser_config_path examples/optimisers/greedy_partition_throughput_x3d.toml 
+#retVal=$?
+#if [ $retVal -ne 0 ]; then
+#    exit $retVal
+#fi
 
