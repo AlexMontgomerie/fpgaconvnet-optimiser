@@ -103,22 +103,17 @@ class GreedyPartition(Solver):
             partition_index = memory_bound[partition_latencys.index(max(partition_latencys))]
 
             horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
-
             if horizontal_merges[0] and partition_index in output_memory_bound:
-                self.reset_partition(horizontal_merges[0][0])
-                self.reset_partition(horizontal_merges[0][1])
-                transforms.apply_max_weights_reloading(self.net.partitions[horizontal_merges[0][0]])
-                transforms.merge_horizontal(self.net, *horizontal_merges[0])
                 current_merge = horizontal_merges[0]
-
             elif horizontal_merges[1] and partition_index in input_memory_bound:
-                self.reset_partition(horizontal_merges[1][0])
-                self.reset_partition(horizontal_merges[1][1])
-                transforms.apply_max_weights_reloading(self.net.partitions[horizontal_merges[1][0]])
-                transforms.merge_horizontal(self.net, *horizontal_merges[1])
                 current_merge = horizontal_merges[1]
 
-            print(current_merge)
+            print("merging partitions", current_merge)
+            self.reset_partition(current_merge[0])
+            self.reset_partition(current_merge[1])
+            transforms.apply_max_weights_reloading(self.net.partitions[current_merge[0]])
+            transforms.merge_horizontal(self.net, *current_merge)
+
             self.update_partitions()
             status = self.run_solver()
 
@@ -131,6 +126,7 @@ class GreedyPartition(Solver):
                     if merge[0] >= current_merge[1]:
                         reject_list[i] = (merge[0]-1,merge[1]-1)
                 print("accept")
+            print("")
 
     def validate_partition_resource(self, partition, partition_index):
         try:

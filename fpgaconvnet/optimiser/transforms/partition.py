@@ -177,12 +177,12 @@ def merge_horizontal(net, partition_index_a, partition_index_b):
     # remove weights reloading transform
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_a])
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_b])
+    
     # merge graphs
     graph = graphs.merge_graphs_horizontal(
-            net.partitions[partition_index_a].graph,net.partitions[partition_index_b].graph)
-
-    # check for branch inconsistencies and fix
-    graph = graphs.fix_branch_inconsistencies(graph, net.network_branch_edges)
+            net.partitions[partition_index_a].graph,
+            net.partitions[partition_index_b].graph,
+            net.network_branch_edges)
 
     net.partitions[partition_index_a].graph = graph
     # apply max weights reloading
