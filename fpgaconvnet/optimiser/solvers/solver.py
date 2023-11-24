@@ -42,6 +42,7 @@ class Solver:
     ram_usage: float = 1.0
     multi_fpga: bool = False
     constrain_port_width: bool = True
+    total_opt_time: float = 0.0
     wandb_enabled: bool = False
 
     """
@@ -201,12 +202,12 @@ class Solver:
             partition.apply_random_partition(self.net, partition_index)
             return
 
-    def solver_status(self):
+    def solver_status(self, wandb_tbl=None):
         """
         prints out the current status of the solver.
         """
         # objective
-        objectives = [ 'latency', 'throughput','power']
+        objectives = [ 'latency', 'throughput', 'power']
         objective  = objectives[self.objective]
 
         # cost
@@ -215,22 +216,22 @@ class Solver:
 
         # Resources
         resources = [ self.get_partition_resource(partition) for partition in self.net.partitions ]
-        BRAM = max([ resource['BRAM'] for resource in resources ])
-        DSP  = max([ resource['DSP']  for resource in resources ])
-        LUT  = max([ resource['LUT']  for resource in resources ])
-        FF   = max([ resource['FF']   for resource in resources ])
-        BW   = max([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
+        BRAM = np.mean([ resource['BRAM'] for resource in resources ])
+        DSP  = np.mean([ resource['DSP']  for resource in resources ])
+        LUT  = np.mean([ resource['LUT']  for resource in resources ])
+        FF   = np.mean([ resource['FF']   for resource in resources ])
+        BW   = np.mean([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
 
         solver_data = [
             ["COST:", "", "RESOURCES:", "", "", "", ""],
             ["", "", "BRAM", "DSP", "LUT", "FF", "BW"],
             [f"{cost:.6f} ({objective})",
              "",
-             f"{BRAM}/{self.platform.get_bram()}",
-             f"{DSP}/{self.platform.get_dsp()}",
-             f"{LUT}/{self.platform.get_lut()}",
-             f"{FF}/{self.platform.get_ff()}",
-             f"{BW}/{self.platform.get_mem_bw()}"],
+             f"{BRAM:.2f}/{self.platform.get_bram()}",
+             f"{DSP:.2f}/{self.platform.get_dsp()}",
+             f"{LUT:.2f}/{self.platform.get_lut()}",
+             f"{FF:.2f}/{self.platform.get_ff()}",
+             f"{BW:.2f}/{self.platform.get_mem_bw()}"],
             ["",
              "",
              f"{BRAM/self.platform.get_bram() * 100:.2f} %",
@@ -241,11 +242,21 @@ class Solver:
         ]
 
         if self.platform.get_uram() > 0:
-            URAM = max([ resource['URAM'] for resource in resources ])
+            URAM = np.mean([ resource['URAM'] for resource in resources ])
             solver_data[0].insert(3, "")
             solver_data[1].insert(2, "URAM")
-            solver_data[2].insert(2, f"{URAM}/{self.platform.get_uram()}")
+            solver_data[2].insert(2, f"{URAM:.2f}/{self.platform.get_uram()}")
             solver_data[3].insert(2, f"{URAM/self.platform.get_uram() * 100:.2f} %")
+
+        if wandb_tbl != None:
+            for _, row in list(wandb_tbl.iterrows())[-1:]:
+                row[4] = cost
+                row[5] = URAM/self.platform.get_uram() * 100 if self.platform.get_uram() > 0 else 0
+                row[6] = BRAM/self.platform.get_bram() * 100
+                row[7] = DSP/self.platform.get_dsp() * 100
+                row[8] = LUT/self.platform.get_lut() * 100
+                row[9] = FF/self.platform.get_ff() * 100
+                row[10] = BW
 
         solver_table = tabulate(solver_data, headers="firstrow", tablefmt="github")
         print(solver_table)
@@ -274,12 +285,27 @@ class Solver:
         wandb.log_artifact(artifact)
 
     def wandb_log(self, **kwargs):
+        total_operations = sum([partition.get_total_operations() for partition in self.net.partitions]) * self.net.batch_size
+        inter_delay = self.get_inter_delay()
+        latency = self.net.get_latency(self.platform.board_freq, self.multi_fpga, inter_delay)
+        throughput = self.net.get_throughput(self.platform.board_freq, self.multi_fpga, inter_delay)
+
         # get common log values
         wandb_log = {
-            "latency": self.net.get_latency(self.platform.board_freq, self.multi_fpga, self.get_inter_delay()),
-            "throughput": self.net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay()),
-            "num_partitions": len(self.net.partitions),
+            "latency": latency,
+            "throughput": throughput,
+            "total_gops": total_operations*1e-9,
+            "performance_gops_per_sec": total_operations*1e-9/latency,
+            "num_partitions" : len(self.net.partitions),
+            "lut_perc_avg": np.mean([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]) / self.platform.get_lut() * 100,
+            "ff_perc_avg": np.mean([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]) / self.platform.get_ff() * 100,
+            "bram_perc_avg": np.mean([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]) / self.platform.get_bram() * 100,
+            "dsp_perc_avg": np.mean([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ]) / self.platform.get_dsp() * 100,
+            "bw": np.mean([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
         }
+        if self.platform.get_uram() > 0:
+            wandb_log["uram_perc_avg"] = np.mean([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ]) / self.platform.get_uram() * 100
+
         # add extra log values
         wandb_log.update(kwargs)
         # update wandb log

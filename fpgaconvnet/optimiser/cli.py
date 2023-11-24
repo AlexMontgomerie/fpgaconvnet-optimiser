@@ -55,6 +55,35 @@ def parse_args():
 
     return parser.parse_args()
 
+def get_wandb_config(optimiser_config, platform_config, args):
+    """
+    Get the configuration for Weights & Biases (wandb) based on the optimiser_config, platform_config, and command line arguments.
+
+    Args:
+        optimiser_config (dict): The optimiser configuration.
+        platform_config (dict): The platform configuration.
+        args (argparse.Namespace): The command line arguments.
+
+    Returns:
+        dict: The wandb configuration.
+    """
+    wandb_config = copy.deepcopy(optimiser_config)
+    wandb_config |= platform_config
+    wandb_config["batch_size"] = args.batch_size
+    wandb_config["optimiser"] = args.optimiser
+
+    # remove useless config
+    wandb_config["general"].pop("logging")
+    wandb_config["general"].pop("checkpoints")
+    if "ethernet" in wandb_config:
+        wandb_config.pop("ethernet")
+    if args.optimiser != "simulated_annealing":
+        wandb_config.pop("annealing")
+    if args.name == "unet":
+        wandb_config["model_version"] = os.path.basename(args.model_path).split(".onnx")[0].split("unet_")[-1]
+
+    return wandb_config
+
 def main():
     args = parse_args()
     # setup seed
@@ -93,14 +122,14 @@ def main():
     if args.enable_wandb:
         # project name
         wandb_name = f"fpgaconvnet-{args.name}-{args.objective}"
+
         # wandb config
-        wandb_config = optimiser_config
-        wandb_config |= platform_config
-        # TODO: remove useless config
+        wandb_config = get_wandb_config(optimiser_config, platform_config, args)
+
         # initialize wandb
         wandb.init(config=wandb_config,
                 project=wandb_name,
-                entity="alexmontgomerie") # or "fpgaconvnet", and can add "name"
+                entity="fpgaconvnet") # or "fpgaconvnet", and can add "name"
 
     # # turn on debugging
     # net.DEBUG = True
@@ -197,6 +226,16 @@ def main():
     opt.update_partitions()
 
     if args.optimiser == "greedy_partition":
+        if args.enable_wandb:
+            opt.net.save_all_partitions(os.path.join(args.output_path, "pre_merge_config.json"))
+            pre_merge_config_artifact = wandb.Artifact(f"{args.name}_pre_merge_config", type="json")
+            pre_merge_config_artifact.add_file(os.path.join(args.output_path,"pre_merge_config.json"))
+            wandb.log_artifact(pre_merge_config_artifact)
+
+            opt.net.visualise_partitions_nx(os.path.join(args.output_path,
+            "partitions_nx_graphs"))
+            graph_paths = [os.path.join(args.output_path, "partitions_nx_graphs", graph) for graph in sorted(os.listdir(os.path.join(args.output_path, "partitions_nx_graphs")))]
+            wandb.log({"pre_merge_partitions_nx_graphs": [wandb.Image(path) for path in graph_paths]})
         opt.merge_memory_bound_partitions()
         opt.update_partitions()
 
@@ -208,6 +247,10 @@ def main():
     optimised_onnx_path = f"{args.model_path.split('.onnx')[0]}_optimized.onnx"
     opt.net.write_channel_indices_to_onnx(optimised_onnx_path)
     shutil.copy(optimised_onnx_path, os.path.join(args.output_path,os.path.basename(optimised_onnx_path)) )
+
+    # save the model checkpoint
+    if optimiser_config["general"]["checkpoints"]:
+        opt.save_design_checkpoint(os.path.join(args.output_path,"checkpoint",f"{args.name}.pkl"))
 
     # create report
     opt.create_report(os.path.join(args.output_path,"report.json"))
@@ -224,6 +267,26 @@ def main():
 
     # visualise network
     # opt.net.visualise(os.path.join(args.output_path, "topology.png"))
+
+    if args.enable_wandb:
+        # log the report
+        report_artifact = wandb.Artifact(f"{args.name}_report", type="json")
+        report_artifact.add_file(os.path.join(args.output_path,"report.json"))
+        wandb.log_artifact(report_artifact)
+
+        # log the config
+        config_artifact = wandb.Artifact(f"{args.name}_config", type="json")
+        config_artifact.add_file(os.path.join(args.output_path,"config.json"))
+        wandb.log_artifact(config_artifact)
+
+        # log the scheduler
+        scheduler_artifact = wandb.Artifact(f"{args.name}_scheduler", type="csv")
+        scheduler_artifact.add_file(os.path.join(args.output_path,"scheduler.csv"))
+        wandb.log_artifact(scheduler_artifact)
+
+        # log the partitions nx graphs
+        graph_paths = [os.path.join(args.output_path, "partitions_nx_graphs", graph) for graph in sorted(os.listdir(os.path.join(args.output_path, "partitions_nx_graphs")))]
+        wandb.log({"final_partitions_nx_graphs": [wandb.Image(path) for path in graph_paths]})
 
 if __name__ == "__main__":
     main()
