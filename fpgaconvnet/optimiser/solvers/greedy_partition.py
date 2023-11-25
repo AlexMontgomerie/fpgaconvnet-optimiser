@@ -1,19 +1,18 @@
-import numpy as np
 import copy
-import time
-import wandb
 import itertools
+import time
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+
+import fpgaconvnet.tools.graphs as graphs
+import numpy as np
+import wandb
+from fpgaconvnet.models.layers.utils import stream_buffer
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 from tabulate import tabulate
 
 import fpgaconvnet.optimiser.transforms as transforms
-import fpgaconvnet.tools.graphs as graphs
-
-from collections.abc import Iterable
-from dataclasses import dataclass, field
-from fpgaconvnet.models.layers.utils import stream_buffer
 from fpgaconvnet.optimiser.solvers import Solver
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE
-
 
 LATENCY   =0
 THROUGHPUT=1
@@ -118,7 +117,7 @@ class GreedyPartition(Solver):
             data = [["Attemting Partition Merging:", f"(Part {current_merge[0] + 1}, Part {current_merge[1] + 1})", "", "Total Partitions:", len(self.net.partitions) + 1]]
             data_table = tabulate(data, headers="firstrow", tablefmt="youtrack")
             print(data_table)
-            
+
             self.reset_partition(current_merge[0])
             self.reset_partition(current_merge[1])
             transforms.apply_max_weights_reloading(self.net.partitions[current_merge[0]])

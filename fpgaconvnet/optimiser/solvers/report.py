@@ -1,10 +1,11 @@
-import json
 import datetime
-import numpy as np
-
+import json
 from dataclasses import asdict
+
+import numpy as np
 from fpgaconvnet.tools.graphs import ordered_node_list
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+
 
 def create_report(self, output_path):
     # create report dictionary
@@ -20,7 +21,8 @@ def create_report(self, output_path):
         "date_created" : str(datetime.datetime.now()),
         #"total_iterations" : 0, # TODO
         "platform" : asdict(self.platform),
-        "total_operations" : float(total_operations),
+        "total_operations (OPs)" : float(total_operations),
+        "total_operations (MACs)" : float(total_operations)/2,
         "network" : {
             #"memory_usage" : self.net.get_memory_usage_estimate(),
             "multi_fpga" : self.multi_fpga,
@@ -28,6 +30,7 @@ def create_report(self, output_path):
                 "latency (s)" : latency,
                 "throughput (FPS)" : throughput,
                 "performance (OP/s)" : total_operations/latency,
+                "performance (MAC/s)" : (total_operations/2)/latency,
                 "cycles" : self.net.get_cycle(self.multi_fpga),
                 "delays between partitions (s)" : inter_delay
             },

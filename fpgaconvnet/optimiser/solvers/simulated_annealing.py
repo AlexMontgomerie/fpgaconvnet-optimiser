@@ -1,9 +1,10 @@
 import copy
-import random
-from numpy.random import choice
 import math
+import random
 from dataclasses import dataclass
+
 import wandb
+from numpy.random import choice
 from tabulate import tabulate
 
 from fpgaconvnet.optimiser.solvers import Solver

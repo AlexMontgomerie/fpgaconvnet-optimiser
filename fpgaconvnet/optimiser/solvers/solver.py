@@ -1,31 +1,28 @@
-import json
 import copy
-import random
+import json
 import math
-import numpy as np
-from tabulate import tabulate
-from dataclasses import dataclass, field
-import wandb
-import uuid
 import pickle
+import random
+import uuid
+from dataclasses import dataclass, field
 from datetime import datetime
+
+import fpgaconvnet.tools.graphs as graphs
+import numpy as np
+import wandb
+from fpgaconvnet.models.network import Network
+from fpgaconvnet.platform.Platform import Platform
 from fpgaconvnet.tools import graphs
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+from tabulate import tabulate
+
+import fpgaconvnet.optimiser.transforms.coarse as coarse
+import fpgaconvnet.optimiser.transforms.fine as fine
+import fpgaconvnet.optimiser.transforms.partition as partition
+import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
 
 LATENCY   =0
 THROUGHPUT=1
-
-import fpgaconvnet.tools.graphs as graphs
-
-from fpgaconvnet.models.network import Network
-from fpgaconvnet.platform.Platform import Platform
-
-import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
-import fpgaconvnet.optimiser.transforms.partition as partition
-import fpgaconvnet.optimiser.transforms.coarse as coarse
-import fpgaconvnet.optimiser.transforms.fine as fine
-import fpgaconvnet.tools.graphs as graphs
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE
-
 
 @dataclass
 class Solver:
@@ -295,7 +292,9 @@ class Solver:
             "latency": latency,
             "throughput": throughput,
             "total_gops": total_operations*1e-9,
+            "total_macs": (total_operations/2)*1e-9,
             "performance_gops_per_sec": total_operations*1e-9/latency,
+            "performance_macs_per_sec": (total_operations/2)*1e-9/latency,
             "num_partitions" : len(self.net.partitions),
             "lut_perc_avg": np.mean([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]) / self.platform.get_lut() * 100,
             "ff_perc_avg": np.mean([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]) / self.platform.get_ff() * 100,
