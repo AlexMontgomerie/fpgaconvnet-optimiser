@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 import wandb
 import uuid
 import pickle
+import itertools
+
 from datetime import datetime
 from fpgaconvnet.tools import graphs
 
@@ -348,17 +350,23 @@ class Solver:
             ## remove auxiliary layers
             partition.remove_squeeze()
 
-            max_streams_in = partition.ports_in*int(port_width/partition.data_width)
-            max_streams_out = partition.ports_out*int(port_width/partition.data_width)
+            max_streams_in = port_width // partition.data_width
+            max_streams_out = port_width // partition.data_width
 
             ## update streams in
             partition.streams_in = []
             inputs = graphs.get_input_nodes(partition.graph)
             for i, input_node in enumerate(inputs):
                 ## get valid streams in
-                streams_in_valid = partition.graph.nodes[input_node]["hw"].get_coarse_in_feasible()
+                if partition.graph.nodes[input_node]["type"] == LAYER_TYPE.Convolution:
+                    coarse_in_feasible = partition.graph.nodes[input_node]["hw"].get_coarse_in_feasible()
+                    coarse_group_feasible = partition.graph.nodes[input_node]["hw"].get_coarse_group_feasible()
+                    streams_in_valid = itertools.product(coarse_in_feasible, coarse_group_feasible)
+                    streams_in_valid = sorted([ s[0] * s[1] for s in streams_in_valid ])
+                else:
+                    streams_in_valid = partition.graph.nodes[input_node]["hw"].get_coarse_in_feasible()
                 # get the max stream values in
-                streams_in_max = min(max_streams_in//len(inputs), partition.graph.nodes[input_node]["hw"].streams_in())
+                streams_in_max = min(max_streams_in, partition.graph.nodes[input_node]["hw"].streams_in())
                 # choose the max of all the valid stream values, below the max
                 partition.streams_in.append(max([ s for s in streams_in_valid if s <= streams_in_max ]))
 
@@ -367,14 +375,17 @@ class Solver:
             outputs = graphs.get_output_nodes(partition.graph)
             for i, output_node in enumerate(outputs):
                 ## get valid streams out
-                streams_out_valid = partition.graph.nodes[output_node]["hw"].get_coarse_out_feasible()
+                if partition.graph.nodes[output_node]["type"] == LAYER_TYPE.Convolution:
+                    coarse_out_feasible = partition.graph.nodes[output_node]["hw"].get_coarse_out_feasible()
+                    coarse_group_feasible = partition.graph.nodes[output_node]["hw"].get_coarse_group_feasible()
+                    streams_out_valid = itertools.product(coarse_out_feasible, coarse_group_feasible)
+                    streams_out_valid = sorted([ s[0] * s[1] for s in streams_out_valid ])
+                else:
+                    streams_out_valid = partition.graph.nodes[output_node]["hw"].get_coarse_out_feasible()
                 # get the max stream values out
-                streams_out_max = min(max_streams_out//len(outputs), partition.graph.nodes[output_node]["hw"].streams_out())
+                streams_out_max = min(max_streams_out, partition.graph.nodes[output_node]["hw"].streams_out())
                 # choose the max of all the valid stream values, below the max
                 partition.streams_out.append(max([ s for s in streams_out_valid if s <= streams_out_max ]))
-
-            ## update io ports
-            # partition.update_io_ports()
 
             ## add auxiliary layers
             partition.add_squeeze()
