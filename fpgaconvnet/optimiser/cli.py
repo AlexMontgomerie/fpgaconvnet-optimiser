@@ -2,29 +2,27 @@
 A command line interface for running the optimiser for given networks
 """
 
-import pickle
+import argparse
+import copy
 import logging
 import os
-import toml
-import argparse
-import shutil
+import pickle
 import random
-import numpy as np
-import wandb
-import copy
+import shutil
 
+import numpy as np
+import toml
+import wandb
 from fpgaconvnet.parser.Parser import Parser
+from fpgaconvnet.platform.Platform import Platform
 from fpgaconvnet.tools.layer_enum import from_cfg_type
 
-from fpgaconvnet.optimiser.solvers import Improve
-from fpgaconvnet.optimiser.solvers import SimulatedAnnealing
-from fpgaconvnet.optimiser.solvers import GreedyPartition
-
-import fpgaconvnet.optimiser.transforms.partition
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
+import fpgaconvnet.optimiser.transforms.partition
+from fpgaconvnet.optimiser.solvers import (GreedyPartition, Improve,
+                                           SimulatedAnnealing)
 
-from fpgaconvnet.platform.Platform import Platform
 
 def parse_args():
     """
