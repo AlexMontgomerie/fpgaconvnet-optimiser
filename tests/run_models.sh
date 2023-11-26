@@ -8,6 +8,18 @@ if [ $retVal -ne 0 ]; then
     exit $retVal
 fi
 
+
+printf "%10s\n" "============= Running Test: lggmri_unet ============="
+wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1FKXx6MzhQMowMp6lcgvl5My9Rcfhz2S9' -O unet_bsp_bilinear_approx.onnx
+python -m fpgaconvnet.optimiser --name lggmri_unet --model_path unet_bsp_bilinear_approx.onnx \
+    --platform_path examples/platforms/u200.toml --output_path outputs/lggmri_unet --batch_size 1 \
+    --objective throughput --optimiser greedy_partition --optimiser_config_path examples/optimisers/greedy_partition_throughput_unet.toml 
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    exit $retVal
+fi
+
+
 printf "%10s\n" "============= Running Test: yolov5n_320 ============="
 wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1ZJdHf0DyN8pcG-SMRgh9rTBZa2_1oBXw' -O yolov5n_imgsz320_fp16-fpgaconvnet.onnx
 python -m fpgaconvnet.optimiser --name yolov5n_320 --model_path yolov5n_imgsz320_fp16-fpgaconvnet.onnx \
