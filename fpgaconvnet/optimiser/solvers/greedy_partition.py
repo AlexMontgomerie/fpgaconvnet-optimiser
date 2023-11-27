@@ -114,7 +114,7 @@ class GreedyPartition(Solver):
             elif horizontal_merges[1] and partition_index in input_memory_bound:
                 current_merge = horizontal_merges[1]
 
-            data = [["Attemting Partition Merging:", f"(Part {current_merge[0] + 1}, Part {current_merge[1] + 1})", "", "Total Partitions:", len(self.net.partitions) + 1]]
+            data = [["Attemting Partition Merging:", f"(Part {current_merge[0] + 1}, Part {current_merge[1] + 1})", "", "Total Partitions:", len(self.net.partitions)]]
             data_table = tabulate(data, headers="firstrow", tablefmt="youtrack")
             print(data_table)
 
@@ -372,7 +372,7 @@ class GreedyPartition(Solver):
                 else:
                     partition.remove_squeeze()
                     node.stream_inputs[index] = True
-                    if layer not in graphs.get_input_nodes(partition.graph):
+                    if layer not in graphs.get_input_nodes(partition.graph, allow_multiport=True):
                         prev_layer = graphs.get_prev_nodes(partition.graph,layer)[index]
                         prev_node = partition.graph.nodes[prev_layer]["hw"]
                         for j, l in enumerate(graphs.get_next_nodes(partition.graph,prev_layer)):
@@ -499,7 +499,7 @@ class GreedyPartition(Solver):
             part_opt_time = time.perf_counter() - part_start_time
             self.total_opt_time += part_opt_time
             part_cost = self.get_cost([partition_index]) if self.objective == LATENCY else -self.get_cost([partition_index])
-            data = [[f"{partition_index+1}/{len(self.net.partitions)} single partition cost ({'latency' if self.objective == LATENCY else 'throughput'}):",
+            data = [[f"{partition_index}/{len(self.net.partitions)} single partition cost ({'latency' if self.objective == LATENCY else 'throughput'}):",
                      f"{part_cost:.4f}",
                      "",
                      "slowdown:",

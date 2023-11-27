@@ -353,8 +353,8 @@ class Solver:
 
             ## update streams in
             partition.streams_in = []
-            inputs = graphs.get_input_nodes(partition.graph)
-            for i, input_node in enumerate(inputs):
+            inputs = graphs.get_input_nodes(partition.graph, allow_multiport=True)
+            for input_node in inputs:
                 ## get valid streams in
                 if partition.graph.nodes[input_node]["type"] == LAYER_TYPE.Convolution:
                     coarse_in_feasible = partition.graph.nodes[input_node]["hw"].get_coarse_in_feasible()
@@ -370,8 +370,8 @@ class Solver:
 
             ## update streams out
             partition.streams_out = []
-            outputs = graphs.get_output_nodes(partition.graph)
-            for i, output_node in enumerate(outputs):
+            outputs = graphs.get_output_nodes(partition.graph, allow_multiport=True)
+            for output_node in outputs:
                 ## get valid streams out
                 if partition.graph.nodes[output_node]["type"] == LAYER_TYPE.Convolution:
                     coarse_out_feasible = partition.graph.nodes[output_node]["hw"].get_coarse_out_feasible()
@@ -391,7 +391,7 @@ class Solver:
 
     def update_partitions(self):
         self.update_io_port_width()
-        self.net.update_partitions()
+        self.net.update_partitions(update_streams=False)
         try:
             self.net.check_network_graph_completeness()
         except AssertionError as e:

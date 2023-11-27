@@ -177,7 +177,7 @@ def merge_horizontal(net, partition_index_a, partition_index_b):
     # remove weights reloading transform
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_a])
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_b])
-    
+
     # merge graphs
     graph = graphs.merge_graphs_horizontal(
             net.partitions[partition_index_a].graph,
