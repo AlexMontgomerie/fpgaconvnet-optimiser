@@ -17,7 +17,7 @@ START_LOOP=1000
 class SimulatedAnnealing(Solver):
     T: float = 10.0
     k: float = 0.001
-    T_min: float = 0.0001
+    T_min: float = 0.007
     cool: float = 0.97
     iterations: int = 10
     """
@@ -115,9 +115,17 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 continue
 
             # Simulated annealing descision
-            if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
-                # revert to previous state
-                self.net = net
+            curr_cost = self.get_cost()
+            if curr_cost < cost:
+                # accept new state
+                pass
+            else:
+                if math.exp((cost - curr_cost)/(self.k*self.T)) > random.uniform(0,1):
+                    # accept new state
+                    pass
+                else:
+                    # revert to previous state
+                    self.net = net
 
             data = [[f"temperature:",
                      f"{self.T:.6f}",

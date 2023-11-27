@@ -39,6 +39,6 @@ allowed_single_layer_merge_post = ["Concat", "Add", "Mul"]
 [annealing]
 T = 10.0
 T_min = 0.0001
-k = 10.0
-cool = 0.98
-# transform_iterations = 15
+k = 0.007
+cool = 0.975
+iterations = 15
