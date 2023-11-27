@@ -185,6 +185,12 @@ class Solver:
                 self.net.partitions[partition_index], node)
             return
 
+        ## BRAM - URAM balancing transform
+        if transform == 'bram_uram_balancing':
+            self.apply_random_bram_uram_balancing(
+                self.net.partitions[partition_index])
+            return
+
         ## Weights-Reloading transform (partition transform)
         if transform == 'weights_reloading':
             ### apply random weights reloading
@@ -399,3 +405,4 @@ class Solver:
 
 
     from fpgaconvnet.optimiser.solvers.report import create_report
+    from fpgaconvnet.optimiser.transforms.bram_uram_balancing import apply_random_bram_uram_balancing

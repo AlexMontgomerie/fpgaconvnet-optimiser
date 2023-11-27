@@ -6,27 +6,31 @@ resource_allocation = 0.90
 
 [transforms.fine]
 apply_transform = true
-probability = 0.25
+probability = 0.20
 start_complete = false
 
 [transforms.coarse]
 apply_transform = true
-probability = 0.25
+probability = 0.20
 
 [transforms.weights_reloading]
 apply_transform = true
-probability = 0.25
+probability = 0.20
 start_max = true
+
+[transforms.bram_uram_balancing]
+apply_transform = true
+probability = 0.20
 
 [transforms.partition]
 apply_transform = true
-probability = 0.25
+probability = 0.20
 start_complete = true
 allowed_type = ["split", "merge"]
 allowed_partitions = [
-    ["*", "*"],
-    # ["*", "Split"],
-    # ["Concat", "*"],
+    # ["*", "*"],
+    ["*", "Split"],
+    ["Concat", "*"],
 ]
 vertical = true
 allowed_single_layer_merge_pre = ["Split", "Relu", "LeakyRelu", "ThresholdedRelu"]

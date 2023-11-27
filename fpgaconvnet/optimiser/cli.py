@@ -173,8 +173,13 @@ def main():
     opt.transforms_probs = []
     for transform in optimiser_config["transforms"]:
         if optimiser_config["transforms"][transform]["apply_transform"]:
-            opt.transforms.append(transform)
-            opt.transforms_probs.append(optimiser_config["transforms"][transform]["probability"])
+            if transform == "bram_uram_balancing":
+                if platform.get_uram() > 0:
+                    opt.transforms.append(transform)
+                    opt.transforms_probs.append(optimiser_config["transforms"][transform]["probability"])
+            else:
+                opt.transforms.append(transform)
+                opt.transforms_probs.append(optimiser_config["transforms"][transform]["probability"])
 
     if "weights_reloading" not in opt.transforms:
         for partition in opt.net.partitions:
@@ -258,7 +263,7 @@ def main():
 
     # create scheduler
     # FIXME: This does not work correctly (at least for models with nested branches)
-    opt.net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
+    # opt.net.get_schedule_csv(os.path.join(args.output_path,"scheduler.csv"))
 
     # visualise partitions (nx graphs)
     opt.net.visualise_partitions_nx(os.path.join(args.output_path, "partitions_nx_graphs"))
