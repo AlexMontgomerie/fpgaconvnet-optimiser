@@ -115,17 +115,9 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 continue
 
             # Simulated annealing descision
-            curr_cost = self.get_cost()
-            if curr_cost < cost:
-                # accept new state
-                pass
-            else:
-                if math.exp((cost - curr_cost)/(self.k*self.T)) > random.uniform(0,1):
-                    # accept new state
-                    pass
-                else:
-                    # revert to previous state
-                    self.net = net
+            if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
+                # revert to previous state
+                self.net = net
 
             data = [[f"temperature:",
                      f"{self.T:.6f}",
