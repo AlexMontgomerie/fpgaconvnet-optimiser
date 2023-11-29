@@ -4,15 +4,16 @@ A command line interface for running the optimiser for given networks
 
 import argparse
 import copy
+import cProfile
 import logging
 import os
 import pickle
+import pstats
 import random
 import shutil
 
 import numpy as np
 import toml
-import wandb
 from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.platform.Platform import Platform
 from fpgaconvnet.tools.layer_enum import from_cfg_type
@@ -20,6 +21,7 @@ from fpgaconvnet.tools.layer_enum import from_cfg_type
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
 import fpgaconvnet.optimiser.transforms.partition
+import wandb
 from fpgaconvnet.optimiser.solvers import (GreedyPartition, Improve,
                                            SimulatedAnnealing)
 
@@ -50,6 +52,7 @@ def parse_args():
     parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
     parser.add_argument('--ram_usage', default=None, type=float, help='ram utilization ratio')
     parser.add_argument('--custom_onnx', action="store_true", help='whether to enable custom onnx parsing on model Parser')
+    parser.add_argument('--profile', action="store_true", help='whether to profile the whole programm or not')
 
     return parser.parse_args()
 
@@ -65,7 +68,7 @@ def get_wandb_config(optimiser_config, platform_config, args):
     Returns:
         dict: The wandb configuration.
     """
-    wandb_config = copy.deepcopy(optimiser_config)
+    wandb_config = pickle.loads(pickle.dumps(optimiser_config))
     wandb_config |= platform_config
     wandb_config["batch_size"] = args.batch_size
     wandb_config["optimiser"] = args.optimiser
@@ -84,6 +87,11 @@ def get_wandb_config(optimiser_config, platform_config, args):
 
 def main():
     args = parse_args()
+
+    if args.profile:
+        pr = cProfile.Profile()
+        pr.enable()
+
     # setup seed
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -216,7 +224,7 @@ def main():
             fpgaconvnet.optimiser.transforms.weights_reloading.apply_max_weights_reloading(
                     opt.net.partitions[partition_index])
 
-    opt_onnx_model = copy.deepcopy(opt.net.model)
+    opt_onnx_model = pickle.loads(pickle.dumps(opt.net.model))
     opt.net.model = None
 
     # run optimiser
@@ -283,13 +291,18 @@ def main():
         wandb.log_artifact(config_artifact)
 
         # log the scheduler
-        scheduler_artifact = wandb.Artifact(f"{args.name}_scheduler", type="csv")
-        scheduler_artifact.add_file(os.path.join(args.output_path,"scheduler.csv"))
-        wandb.log_artifact(scheduler_artifact)
+        # scheduler_artifact = wandb.Artifact(f"{args.name}_scheduler", type="csv")
+        # scheduler_artifact.add_file(os.path.join(args.output_path,"scheduler.csv"))
+        # wandb.log_artifact(scheduler_artifact)
 
         # log the partitions nx graphs
         graph_paths = [os.path.join(args.output_path, "partitions_nx_graphs", graph) for graph in sorted(os.listdir(os.path.join(args.output_path, "partitions_nx_graphs")))]
         wandb.log({"final_partitions_nx_graphs": [wandb.Image(path) for path in graph_paths]})
+
+    if args.profile:
+        pr.disable()
+        stats = pstats.Stats(pr).sort_stats('cumtime')
+        stats.print_stats()
 
 if __name__ == "__main__":
     main()

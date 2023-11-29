@@ -2,8 +2,7 @@ import copy
 import math
 import random
 from dataclasses import dataclass
-
-import wandb
+import pickle
 from numpy.random import choice
 from tabulate import tabulate
 
@@ -71,13 +70,8 @@ Randomly chooses a transform and hardware component to change. The change is acc
             # get the current cost
             cost = self.get_cost()
 
-            if self.wandb_enabled:
-                # wandb logging and checkpoint
-                self.wandb_log(temperature=self.T)
-                # self.wandb_checkpoint()
-
             # Save previous iteration
-            net = copy.deepcopy(self.net)
+            net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
 
             # several iterations per cool down
             for _ in range(self.iterations):
@@ -111,13 +105,13 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 self.check_constraints()
             except AssertionError:
                 # revert to previous state
-                self.net = net
+                self.net.partitions = net_partitions
                 continue
 
             # Simulated annealing descision
             if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
                 # revert to previous state
-                self.net = net
+                self.net.partitions = net_partitions
 
             data = [[f"temperature:",
                      f"{self.T:.6f}",
@@ -128,8 +122,14 @@ Randomly chooses a transform and hardware component to change. The change is acc
                      len(self.net.partitions)]]
             data_table = tabulate(data, tablefmt="double_outline")
             print(data_table)
+
             # print solver status
             self.solver_status()
+
+            if self.wandb_enabled:
+                # wandb logging and checkpoint
+                self.wandb_log(**{"temperature": self.T})
+                # self.wandb_checkpoint()
 
             # reduce temperature
             self.T *= self.cool

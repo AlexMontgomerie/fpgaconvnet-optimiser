@@ -6,7 +6,7 @@ from itertools import combinations, chain
 import random
 import copy
 import math
-
+import pickle
 import fpgaconvnet.tools.graphs as graphs
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 import fpgaconvnet.tools.matrix as matrix
@@ -151,7 +151,7 @@ def split_horizontal(net, partition_index, edge):
     # remove weights reloading transform
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index])
     # create a new partition
-    net.partitions.insert(partition_index,copy.deepcopy(net.partitions[partition_index]))
+    net.partitions.insert(partition_index,pickle.loads(pickle.dumps(net.partitions[partition_index])))
     # split graph
     partition_graphs = graphs.split_graph_horizontal(net.partitions[partition_index].graph,edge)
     net.partitions[partition_index].graph   = partition_graphs[0]
@@ -164,7 +164,7 @@ def split_vertical(net, partition_index, nodes):
     # remove weights reloading transform
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index])
      # create a new partition
-    net.partitions.insert(partition_index,copy.deepcopy(net.partitions[partition_index]))
+    net.partitions.insert(partition_index,pickle.loads(pickle.dumps(net.partitions[partition_index])))
     # split the graph
     partition_graphs = graphs.split_graph_vertical(net.partitions[partition_index].graph,nodes)
     net.partitions[partition_index].graph   = partition_graphs[0]

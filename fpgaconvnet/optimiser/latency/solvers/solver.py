@@ -6,6 +6,7 @@ import secrets
 import wandb
 from dataclasses import dataclass, field
 from collections import Counter, namedtuple
+import pickle
 
 import numpy as np
 
@@ -32,7 +33,7 @@ class LatencySolver(Solver):
         # dictionary of layers, keyed by their name
         self.building_blocks = {}
         for node in self.net.graph.nodes:
-            self.building_blocks[node] = copy.deepcopy(self.net.graph.nodes[node])
+            self.building_blocks[node] = pickle.loads(pickle.dumps(self.net.graph.nodes[node]))
             self.building_blocks[node]["exec_nodes"] = [ node ]
 
         # combine simple layer types

@@ -1,17 +1,18 @@
 import copy
 import itertools
+import pickle
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 import fpgaconvnet.tools.graphs as graphs
 import numpy as np
-import wandb
 from fpgaconvnet.models.layers.utils import stream_buffer
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 from tabulate import tabulate
 
 import fpgaconvnet.optimiser.transforms as transforms
+import wandb
 from fpgaconvnet.optimiser.solvers import Solver
 
 LATENCY   =0
@@ -61,7 +62,7 @@ class GreedyPartition(Solver):
             #    return
 
             # cache the network
-            net = copy.deepcopy(self.net)
+            net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
 
             self.update_partitions()
             cost = self.get_cost()
@@ -96,7 +97,7 @@ class GreedyPartition(Solver):
 
             memory_bound = input_memory_bound + output_memory_bound
             if len(memory_bound) == 0:
-                self.net = net
+                self.net.partitions = net_partitions
                 break
 
             # remove all auxiliary layers
@@ -126,7 +127,7 @@ class GreedyPartition(Solver):
             status = self.run_solver(log_final=True)
 
             if not status or self.get_cost() >= cost:
-                self.net = net
+                self.net.partitions = net_partitions
                 reject_list.append(current_merge)
                 data = [["Outcome:","Merge Rejected"]]
             else:
@@ -173,7 +174,7 @@ class GreedyPartition(Solver):
             candidates = list(filter(lambda x: x[0] * x[1] == current_coarse_in*current_coarse_out, candidates))
             filtered_candidates = []
             for comb in candidates:
-                partition_copy = copy.deepcopy(partition)
+                partition_copy = pickle.loads(pickle.dumps(partition))
                 node_copy = partition_copy.graph.nodes[layer]['hw']
                 node_copy.coarse_in = comb[0]
                 node_copy.coarse_out = comb[1]
@@ -204,7 +205,7 @@ class GreedyPartition(Solver):
             candidates = list((x, x) for x in coarse_in_feasible)
             filtered_candidates = []
             for comb in candidates:
-                partition_copy = copy.deepcopy(partition)
+                partition_copy = pickle.loads(pickle.dumps(partition))
                 node_copy = partition_copy.graph.nodes[layer]['hw']
                 node_copy.coarse_in = comb[0]
                 node_copy.coarse_out = comb[1]
@@ -225,7 +226,7 @@ class GreedyPartition(Solver):
             lut_usage = partition_resource_usage['LUT'] + lut_to_bram_ratio*partition_resource_usage['BRAM']
 
     def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True):
-        net = copy.deepcopy(self.net)
+        net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
         reject_list = []
         changed = False
         while True:
@@ -248,31 +249,31 @@ class GreedyPartition(Solver):
             self.allocate_memory(partition_index)
             if self.off_chip_streaming:
                 # due to off-chip bandwidth limitation, the fastest node may be slowed down
-                current_latency = net.partitions[partition_index].get_interval() * net.partitions[partition_index].slow_down_factor
+                current_latency = net_partitions[partition_index].get_interval() * net_partitions[partition_index].slow_down_factor
                 new_latency = self.net.partitions[partition_index].get_interval() * self.net.partitions[partition_index].slow_down_factor
                 if new_latency > current_latency:
-                    self.net = copy.deepcopy(net)
+                    self.net.partitions = pickle.loads(pickle.dumps(net_partitions))
                     break
 
             try:
                 self.check_resources()
                 #self.check_constraints() # slow to run for networks with many nodes
 
-                net = copy.deepcopy(self.net)
+                net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
                 changed = True
             except AssertionError as error:
                 if fast_mode: # break to save optimisation time
                     break
                 else:
                     reject_list.append(node)
-                    self.net = copy.deepcopy(net)
+                    self.net.partitions = pickle.loads(pickle.dumps(net_partitions))
 
-        self.net = net
+        self.net.partitions = net_partitions
         self.update_partitions()
         return changed
 
     def get_all_wr_feasible(self, partition):
-        partition = copy.deepcopy(partition)
+        partition = pickle.loads(pickle.dumps(partition))
 
         transforms.remove_weights_reloading_transform(partition)
         partition.graph.nodes[partition.wr_layer]['hw'].coarse_out = 1
@@ -346,7 +347,7 @@ class GreedyPartition(Solver):
         ram_utilization = self.ram_usage
         while curr_bram_util > ram_utilization or curr_uram_util > ram_utilization:
             bottleneck = "URAM" if curr_bram_util <= ram_utilization else "BRAM"
-            partition_copy = copy.deepcopy(partition)
+            partition_copy = pickle.loads(pickle.dumps(partition))
 
             def _validate(entry):
                 layer, data_type, index = entry
@@ -382,7 +383,7 @@ class GreedyPartition(Solver):
                     partition.add_squeeze()
             def _compare(entry):
                 layer, data_type, index = entry
-                partition_copy = copy.deepcopy(partition)
+                partition_copy = pickle.loads(pickle.dumps(partition))
                 node_copy = partition_copy.graph.nodes[layer]["hw"]
                 _step(partition_copy, layer, data_type, index)
                 node = partition.graph.nodes[layer]["hw"]
@@ -465,7 +466,7 @@ class GreedyPartition(Solver):
                 else:
                     sorted_wr_feasible = [1]
                 for wr_factor in sorted_wr_feasible:
-                    net = copy.deepcopy(self.net)
+                    net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
                     # get the current cost
                     cost = self.get_cost([partition_index])
                     transforms.remove_weights_reloading_transform(self.net.partitions[partition_index])
@@ -492,7 +493,7 @@ class GreedyPartition(Solver):
                             break
                     self.allocate_memory(partition_index)
                     if self.get_cost([partition_index]) >= cost:
-                        self.net = net
+                        self.net.partitions = net_partitions
                     if self.objective != 1:
                         break
 

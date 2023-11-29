@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import wandb
 import pandas as pd
 import time
+import pickle
 
 from fpgaconvnet.optimiser.latency.solvers.solver import LatencySolver
 
@@ -53,7 +54,7 @@ class LatencySimulatedAnnealing(LatencySolver):
             cost = self.get_cost()
 
             # Save previous building blocks
-            building_blocks = copy.deepcopy(self.building_blocks)
+            building_blocks = pickle.loads(pickle.dumps(self.building_blocks))
 
             # several transform iterations per cool down
             for _ in range(self.transform_iterations):
@@ -110,7 +111,7 @@ class LatencySimulatedAnnealing(LatencySolver):
             resources = self.get_resources()
 
             # Save previous building blocks
-            building_blocks = copy.deepcopy(self.building_blocks)
+            building_blocks = pickle.loads(pickle.dumps(self.building_blocks))
 
             # several transform iterations per cool down
             # transform_iterations = random.randint(1, self.transform_iterations)

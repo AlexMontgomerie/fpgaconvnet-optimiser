@@ -5,7 +5,7 @@ import sys
 from numpy.random import choice
 from dataclasses import dataclass
 import numpy as np
-
+import pickle
 from fpgaconvnet.tools.graphs import ordered_node_list
 from fpgaconvnet.optimiser.solvers import Solver
 
@@ -96,7 +96,7 @@ class Improve(Solver):
             cost = self.get_cost()
 
             # Save previous iteration
-            net = copy.deepcopy(self.net)
+            net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
 
             # several iterations per cool down
             for _ in range(self.iterations):
@@ -133,13 +133,13 @@ class Improve(Solver):
                 self.check_constraints()
             except AssertionError:
                 # revert to previous state
-                self.net = net
+                self.net.partitions = net_partitions
                 continue
 
             # Simulated annealing descision
             if math.exp(min(0,(cost - self.get_cost())/(self.k*self.T))) < random.uniform(0,1):
                 # revert to previous state
-                self.net = net
+                self.net.partitions = net_partitions
 
             # print out solver status
             self.solver_status()
