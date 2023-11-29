@@ -19,6 +19,7 @@ from tabulate import tabulate
 
 import fpgaconvnet.optimiser.transforms.coarse as coarse
 import fpgaconvnet.optimiser.transforms.fine as fine
+import fpgaconvnet.optimiser.transforms.off_chip_streaming as off_chip_streaming
 import fpgaconvnet.optimiser.transforms.partition as partition
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
 
@@ -189,6 +190,11 @@ class Solver:
         if transform == 'bram_uram_balancing':
             self.apply_random_bram_uram_balancing(
                 self.net.partitions[partition_index])
+            return
+
+        if transform == "off_chip_streaming":
+            off_chip_streaming.apply_random_off_chip_streaming(
+                self.net.partitions[partition_index], node)
             return
 
         ## Weights-Reloading transform (partition transform)

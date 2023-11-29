@@ -11,6 +11,7 @@ import fpgaconvnet.tools.graphs as graphs
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 import fpgaconvnet.tools.matrix as matrix
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
+import fpgaconvnet.optimiser.transforms.off_chip_streaming as off_chip_streaming
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
 
 def check_parallel_block(net, partition_index):
@@ -178,6 +179,9 @@ def merge_horizontal(net, partition_index_a, partition_index_b):
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_a])
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_b])
 
+    # fix streaming
+    off_chip_streaming.fix_streaming(net, partition_index_a, partition_index_b)
+
     # merge graphs
     graph = graphs.merge_graphs_horizontal(
             net.partitions[partition_index_a].graph,
@@ -187,6 +191,7 @@ def merge_horizontal(net, partition_index_a, partition_index_b):
     net.partitions[partition_index_a].graph = graph
     # apply max weights reloading
     weights_reloading.apply_max_weights_reloading(net.partitions[partition_index_a])
+
     # remove last partition
     del net.partitions[partition_index_b]
 
