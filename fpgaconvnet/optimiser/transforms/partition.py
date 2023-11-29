@@ -304,7 +304,7 @@ def merge_single_layer_partition_to_next(net, allowed_layers):
         for i in range(len(net.partitions)):
             if len(net.partitions[i].graph.nodes) == 1:
                 input_node = graphs.get_input_nodes(net.partitions[i].graph)[0]
-                if net.partitions[i].graph.nodes[input_node]['type'] in allowed_layers or net.partitions[i].graph.nodes[input_node]['hw'].op_type in allowed_layers:
+                if net.partitions[i].graph.nodes[input_node]['type'] in allowed_layers or (hasattr(net.partitions[i].graph.nodes[input_node]['hw'], 'op_type') and net.partitions[i].graph.nodes[input_node]['hw'].op_type in allowed_layers):
                     return i
         return None
     partition_index = _find_single_layer_partition()
