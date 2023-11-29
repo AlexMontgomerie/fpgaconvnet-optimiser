@@ -2,6 +2,7 @@ import copy
 import math
 import pickle
 import random
+import time
 from dataclasses import dataclass
 
 from numpy.random import choice
@@ -43,6 +44,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
         # Attempt to find a good starting point
         if not start:
+            warmup_loop_start_time = time.perf_counter()
             for i in range(START_LOOP):
                 transform = choice(self.transforms, p=self.transforms_probs)
                 self.apply_transform(transform)
@@ -54,7 +56,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
                     break
                 except AssertionError as error:
                     pass
-
+            self.total_opt_time += (time.perf_counter() - warmup_loop_start_time)
         try:
             self.check_resources()
             self.check_constraints()
@@ -62,6 +64,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             print(f"ERROR: Exceeds resource usage:\n{error}")
             return False
 
+        cooling_loop_start_time = time.perf_counter()
         # Cooling Loop
         while self.T_min < self.T:
 
@@ -130,11 +133,15 @@ Randomly chooses a transform and hardware component to change. The change is acc
 
             if self.wandb_enabled:
                 # wandb logging and checkpoint
-                self.wandb_log(**{"temperature": self.T})
+                self.wandb_log(**{"temperature": self.T,
+                                  "exp": math.exp(min(0,(cost - new_cost)/(self.k*self.T))),
+                                  "delta": cost - new_cost})
                 # self.wandb_checkpoint()
 
             # reduce temperature
             self.T *= self.cool
+
+        self.total_opt_time += (time.perf_counter() - cooling_loop_start_time)
 
         # # store dataframe of
         # # https://docs.wandb.ai/guides/data-vis/log-tables
