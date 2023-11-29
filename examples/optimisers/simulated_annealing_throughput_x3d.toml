@@ -32,9 +32,10 @@ probability = 0.166
 start_complete = true
 allowed_type = ["split", "merge"]
 allowed_partitions = [
-    # ["*", "*"],
-    ["*", "Split"],
-    ["Concat", "*"],
+    ["*", "*"],
+    # ["Add", "*"],
+    # ["*", "Relu"],
+    # ["Mul", "*"],
 ]
 vertical = true
 allowed_single_layer_merge_pre = ["Split", "Relu", "LeakyRelu", "ThresholdedRelu"]
@@ -43,6 +44,6 @@ allowed_single_layer_merge_post = ["Concat", "Add", "Mul"]
 [annealing]
 T = 10.0
 T_min = 0.00001
-k = 0.07
+k = 7e-5
 cool = 0.975
-iterations = 10
+iterations = 15
