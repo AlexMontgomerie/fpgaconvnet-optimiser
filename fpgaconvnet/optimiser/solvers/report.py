@@ -35,11 +35,17 @@ def create_report(self, output_path):
                 "delays between partitions (s)" : inter_delay
             },
             "num_partitions" : len(self.net.partitions),
-            "max_resource_usage" : {
-                "LUT" : max([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]),
-                "FF" : max([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]),
-                "BRAM" : max([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]),
-                "DSP" : max([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ])
+            "avg_resource_usage" : {
+                "LUT" : np.mean([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]),
+                "FF" : np.mean([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]),
+                "BRAM" : np.mean([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]),
+                "DSP" : np.mean([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ])
+            },
+            "avg_resource_usage_percentage" : {
+                "LUT" : np.mean([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]) / self.platform.get_lut() * 100,
+                "FF" : np.mean([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]) / self.platform.get_ff() * 100,
+                "BRAM" : np.mean([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]) / self.platform.get_bram() * 100,
+                "DSP" : np.mean([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ]) / self.platform.get_dsp() * 100
             },
             "sum_resource_usage" : {
                 "LUT" : int(np.sum([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ])),
@@ -51,7 +57,8 @@ def create_report(self, output_path):
     }
 
     if self.platform.get_uram() > 0:
-        report["network"]["max_resource_usage"]["URAM"] = max([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ])
+        report["network"]["avg_resource_usage"]["URAM"] = np.mean([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ])
+        report["network"]["avg_resource_usage_percentage"]["URAM"] = np.mean([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ]) / self.platform.get_uram() * 100
         report["network"]["sum_resource_usage"]["URAM"] = int(np.sum([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ]))
 
     # add information for each partition
@@ -76,6 +83,12 @@ def create_report(self, output_path):
                 "BRAM" : resource_usage["BRAM"],
                 "DSP" : resource_usage["DSP"]
             },
+            "resource_usage_percentage" : {
+                "LUT" : (resource_usage["LUT"] / self.platform.get_lut()) * 100,
+                "FF" : (resource_usage["FF"] / self.platform.get_ff()) * 100,
+                "BRAM" : (resource_usage["BRAM"] / self.platform.get_bram()) * 100,
+                "DSP" : (resource_usage["DSP"] / self.platform.get_dsp() * 100)
+            },
             "bandwidth" : {
                 "in (Gbps)" : sum(self.net.partitions[i].get_bandwidth_in(self.platform.board_freq)),
                 "out (Gbps)" : sum(self.net.partitions[i].get_bandwidth_out(self.platform.board_freq)),
@@ -84,6 +97,7 @@ def create_report(self, output_path):
         }
         if self.platform.get_uram() > 0:
             report["partitions"][i]["resource_usage"]["URAM"] = resource_usage["URAM"]
+            report["partitions"][i]["resource_usage_percentage"]["URAM"] = (resource_usage["URAM"] / self.platform.get_uram()) * 100
 
         # add information for each layer of the partition
         report["partitions"][i]["layers"] = {}
@@ -100,10 +114,17 @@ def create_report(self, output_path):
                     "FF" : resource_usage["FF"],
                     "BRAM" : resource_usage["BRAM"],
                     "DSP" : resource_usage["DSP"]
-                }
+                },
+                "resource_usage_percentage" : {
+                    "LUT" : (resource_usage["LUT"] / self.platform.get_lut()) * 100,
+                    "FF" : (resource_usage["FF"] / self.platform.get_ff()) * 100,
+                    "BRAM" : (resource_usage["BRAM"] / self.platform.get_bram()) * 100,
+                    "DSP" : (resource_usage["DSP"] / self.platform.get_dsp() * 100)
+                },
             }
             if "URAM" in resource_usage.keys():
                 report["partitions"][i]["layers"][node]["resource_usage"]["URAM"] = resource_usage["URAM"]
+                report["partitions"][i]["layers"][node]["resource_usage_percentage"]["URAM"] = (resource_usage["URAM"] / self.platform.get_uram()) * 100
             if self.net.partitions[i].graph.nodes[node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
                 bits_per_cycle = hw.stream_bw()
                 bw_weight = bits_per_cycle * self.platform.board_freq / 1000

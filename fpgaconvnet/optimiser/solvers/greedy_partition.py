@@ -500,7 +500,7 @@ class GreedyPartition(Solver):
             part_opt_time = time.perf_counter() - part_start_time
             self.total_opt_time += part_opt_time
             part_cost = self.get_cost([partition_index]) if self.objective == LATENCY else -self.get_cost([partition_index])
-            data = [[f"{partition_index}/{len(self.net.partitions)} single partition cost ({'latency' if self.objective == LATENCY else 'throughput'}):",
+            data = [[f"single partition (Part {partition_index + 1}) cost ({'latency' if self.objective == LATENCY else 'throughput'}):",
                      f"{part_cost:.4f}",
                      "",
                      "slowdown:",
