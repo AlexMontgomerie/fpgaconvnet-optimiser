@@ -122,7 +122,7 @@ def create_report(self, output_path):
                     "DSP" : (resource_usage["DSP"] / self.platform.get_dsp() * 100)
                 },
             }
-            if "URAM" in self.platform.resources:
+            if "URAM" in resource_usage.keys() and "URAM" in self.platform.resources:
                 report["partitions"][i]["layers"][node]["resource_usage"]["URAM"] = resource_usage["URAM"]
                 report["partitions"][i]["layers"][node]["resource_usage_percentage"]["URAM"] = (resource_usage["URAM"] / self.platform.get_uram()) * 100
             if self.net.partitions[i].graph.nodes[node]["type"] in [LAYER_TYPE.Convolution, LAYER_TYPE.InnerProduct]:
