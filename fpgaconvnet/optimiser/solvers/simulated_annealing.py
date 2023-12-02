@@ -64,7 +64,7 @@ Randomly chooses a transform and hardware component to change. The change is acc
             print(f"ERROR: Exceeds resource usage:\n{error}")
             return False
 
-        best_partitions_solution = pickle.loads(pickle.dumps(self.net.partitions))
+        best_solution = pickle.loads(pickle.dumps(self.net))
         cooling_loop_start_time = time.perf_counter()
         # Cooling Loop
         while self.T_min < self.T:
@@ -140,14 +140,14 @@ Randomly chooses a transform and hardware component to change. The change is acc
                 # self.wandb_checkpoint()
 
             # update best solution
-            if self.get_cost() < self.get_cost(best_partitions_solution):
-                best_partitions_solution = pickle.loads(pickle.dumps(self.net.partitions))
+            if self.get_cost() < self.get_cost(net=best_solution):
+                best_solution = pickle.loads(pickle.dumps(self.net))
 
             # reduce temperature
             self.T *= self.cool
 
         # update partitions
-        self.net.partitions = best_partitions_solution
+        self.net = best_solution
 
         self.total_opt_time += (time.perf_counter() - cooling_loop_start_time)
 

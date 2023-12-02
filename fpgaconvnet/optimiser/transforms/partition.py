@@ -294,15 +294,21 @@ def merge_single_layer_partition_to_prev(net, allowed_layers):
             if len(net.partitions[i].graph.nodes) == 1:
                 input_node = graphs.get_input_nodes(net.partitions[i].graph)[0]
                 if net.partitions[i].graph.nodes[input_node]['type'] in allowed_layers:
-                    return i
-        return None
-    partition_index = _find_single_layer_partition()
+                    return i, input_node
+        return None, None
+    partition_index, partition_node = _find_single_layer_partition()
     # keep iterating until all single layer partitions are merged
     while partition_index != None:
+        # get the previous connected nodes of the partition node
+        prev_nodes = graphs.get_prev_nodes(net.graph, partition_node)
+        # find the partition(s) that feed into this node
+        prev_partitions = [i for i in range(len(
+            net.partitions)) for prev_node in prev_nodes if prev_node in graphs.get_output_nodes(net.partitions[i].graph)]
+        assert len(prev_partitions) == 1, "WARNING: multiple partitions feeding into single layer partition. Currently not handled"
         # merge partition to previous
-        merge_horizontal(net, partition_index-1, partition_index)
+        merge_horizontal(net, prev_partitions[0], partition_index)
         # find next partition to merge
-        partition_index = _find_single_layer_partition()
+        partition_index, partition_node = _find_single_layer_partition()
 
 def merge_single_layer_partition_to_next(net, allowed_layers):
     def _find_single_layer_partition():
@@ -310,15 +316,21 @@ def merge_single_layer_partition_to_next(net, allowed_layers):
             if len(net.partitions[i].graph.nodes) == 1:
                 input_node = graphs.get_input_nodes(net.partitions[i].graph)[0]
                 if net.partitions[i].graph.nodes[input_node]['type'] in allowed_layers or (hasattr(net.partitions[i].graph.nodes[input_node]['hw'], 'op_type') and net.partitions[i].graph.nodes[input_node]['hw'].op_type in allowed_layers):
-                    return i
-        return None
-    partition_index = _find_single_layer_partition()
+                    return i, input_node
+        return None, None
+    partition_index, partition_node = _find_single_layer_partition()
     # keep iterating until all single layer partitions are merged
     while partition_index != None:
+        # get the next connected nodes of the partition node
+        next_nodes = graphs.get_next_nodes(net.graph, partition_node)
+        # find the partition(s) that this node feeds
+        next_partitions = [i for i in range(len(
+            net.partitions)) for next_node in next_nodes if next_node in graphs.get_input_nodes(net.partitions[i].graph)]
+        assert len(next_partitions) == 1, "WARNING: single layer partition feeding multiple partitions. Currently not handled"
         # merge partition to previous
-        merge_horizontal(net, partition_index, partition_index+1)
+        merge_horizontal(net, partition_index, next_partitions[0])
         # find next partition to merge
-        partition_index = _find_single_layer_partition()
+        partition_index, partition_node = _find_single_layer_partition()
 
 def apply_random_partition(net, partition_index):
    # choose randomly between merge or split

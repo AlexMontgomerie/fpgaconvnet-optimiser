@@ -68,7 +68,7 @@ class Solver:
             if bool(attr["apply_transform"]):
                 self.transforms.append(transform_type)
 
-    def get_cost(self, partition_list=None):
+    def get_cost(self, partition_list=None, net=None):
         """
         calculates the cost function of the optimisation strategy at it's current state.
         This cost is based on the objective of the solver. There are three objectives
@@ -82,14 +82,16 @@ class Solver:
         --------
         float
         """
+        active_net = self.net if net == None else net
+
         if partition_list == None:
-            partition_list = list(range(len(self.net.partitions)))
+            partition_list = list(range(len(active_net.partitions)))
         # Latency objective
         if   self.objective == LATENCY:
-            return self.net.get_latency(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
+            return active_net.get_latency(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
         # Throughput objective
         elif self.objective == THROUGHPUT:
-            return -self.net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
+            return -active_net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
 
     def get_inter_delay(self):
         """

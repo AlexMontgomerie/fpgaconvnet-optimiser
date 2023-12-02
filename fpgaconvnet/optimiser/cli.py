@@ -17,6 +17,7 @@ import toml
 from fpgaconvnet.parser.Parser import Parser
 from fpgaconvnet.platform.Platform import Platform
 from fpgaconvnet.tools.layer_enum import from_cfg_type
+from tabulate import tabulate
 
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
@@ -260,6 +261,11 @@ def main():
     # # find the best batch_size
     # if args.objective == "throughput":
     #    net.get_optimal_batch_size()
+
+    data = [["Final Solution"]]
+    data_table = tabulate(data, tablefmt="double_outline")
+    print(data_table)
+    opt.solver_status()
 
     #Write channel indices from model to optimised onnx path
     optimised_onnx_path = f"{args.model_path.split('.onnx')[0]}_optimized.onnx"

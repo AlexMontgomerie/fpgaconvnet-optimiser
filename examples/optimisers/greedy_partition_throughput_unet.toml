@@ -31,7 +31,7 @@ allowed_partitions = [
     ["Concat", "*"],
 ]
 vertical = true
-allowed_single_layer_merge_pre = ["Split", "Relu", "LeakyRelu", "ThresholdedRelu"]
+allowed_single_layer_merge_pre = ["Split", "Relu", "LeakyRelu", "ThresholdedRelu", "Sigmoid", "HardSwish"]
 allowed_single_layer_merge_post = ["Concat", "Add", "Mul"]
 
 [annealing]
