@@ -39,6 +39,9 @@ class Solver:
         0.25, 0.25, 0.25, 0.25])
     rsc_allocation: float = 1.0
     ram_usage: float = 1.0
+    bram_to_lut: bool = True
+    off_chip_streaming: bool = True
+    balance_bram_uram: bool = True
     multi_fpga: bool = False
     constrain_port_width: bool = True
     total_opt_time: float = 0.0
@@ -97,10 +100,10 @@ class Solver:
         else:
             return self.platform.reconf_time
 
-    def get_partition_resource(self, partition, bram_to_lut=True):
+    def get_partition_resource(self, partition):
         lut_to_bram_ratio = 288 # BRAM: 18Kbits, LUT: 64bits
         partition_resource_usage = partition.get_resource_usage()
-        if bram_to_lut:
+        if self.bram_to_lut:
             bram_shortage = math.ceil(partition_resource_usage['BRAM'] - self.ram_usage*self.platform.get_bram())
             lut_surplus = int((self.rsc_allocation*self.platform.get_lut() - partition_resource_usage['LUT'])/lut_to_bram_ratio)
             if bram_shortage > 0 and lut_surplus > 0:

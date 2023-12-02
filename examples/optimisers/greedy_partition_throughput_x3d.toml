@@ -1,8 +1,10 @@
 [general]
 logging = false
 checkpoints = false
-starting_point_distillation = false
 resource_allocation = 0.90
+bram_to_lut = true
+off_chip_streaming = true
+balance_bram_uram = true
 
 [transforms.fine]
 apply_transform = true

@@ -49,8 +49,8 @@ def parse_args():
         help='Configuration file (.toml) for optimiser')
     parser.add_argument('--seed', metavar='n', type=int, default=random.randint(0,2**32-1),
         help='seed for the optimiser run')
-    parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
     parser.add_argument('--ram_usage', default=None, type=float, help='ram utilization ratio')
+    parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
     parser.add_argument('--custom_onnx', action="store_true", help='whether to enable custom onnx parsing on model Parser')
     parser.add_argument('--profile', action="store_true", help='whether to profile the whole programm or not')
 
@@ -159,6 +159,14 @@ def main():
     else:
         raise RuntimeError(f"optimiser {args.optimiser} not implmented")
 
+    # specify solver generic flags
+    opt.bram_to_lut = optimiser_config["general"].get(
+        "bram_to_lut", opt.bram_to_lut)
+    opt.off_chip_streaming = optimiser_config["general"].get(
+        "off_chip_streaming", opt.off_chip_streaming)
+    opt.balance_bram_uram = optimiser_config["general"].get(
+        "balance_bram_uram", opt.balance_bram_uram)
+
     # specify resource allocation
     opt.rsc_allocation = float(optimiser_config["general"]["resource_allocation"])
     if args.ram_usage is not None:
@@ -221,8 +229,7 @@ def main():
     ## apply complete max weights reloading
     if bool(optimiser_config["transforms"]["weights_reloading"]["start_max"]):
         for partition_index in range(len(opt.net.partitions)):
-            fpgaconvnet.optimiser.transforms.weights_reloading.apply_max_weights_reloading(
-                    opt.net.partitions[partition_index])
+            fpgaconvnet.optimiser.transforms.weights_reloading.apply_max_weights_reloading(opt.net.partitions[partition_index])
 
     opt_onnx_model = pickle.loads(pickle.dumps(opt.net.model))
     opt.net.model = None

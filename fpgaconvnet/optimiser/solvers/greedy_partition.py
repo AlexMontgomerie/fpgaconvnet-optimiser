@@ -23,7 +23,6 @@ START_LOOP=1
 class GreedyPartition(Solver):
     coarse_in_first: list = field(default_factory=list)
     merge_ongoing: bool = False
-    off_chip_streaming: bool = True
     targets: dict = field(default_factory=lambda: {
     'latency'    :  0.0, 'throughput' : float("inf")})
 
@@ -312,7 +311,7 @@ class GreedyPartition(Solver):
 
         # balance between bram and uram
         partition_resource_usage = self.get_partition_resource(partition)
-        if self.platform.get_uram() > 0:
+        if self.platform.get_uram() > 0 and self.balance_bram_uram:
             sorted_conv_layers = sorted(conv_layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_ram_usage , reverse=True)
             for layer in sorted_conv_layers:
                 node = partition.graph.nodes[layer]["hw"]
@@ -455,7 +454,12 @@ class GreedyPartition(Solver):
             if not self.net.partitions[partition_index].need_optimise:
                 continue
 
-            for sparse_fine_threshold in [1.2, 1.01]:
+            if self.net.partitions[partition_index].is_sparse():
+                sparse_fine_threshold_list = [1.2, 1.01]
+            else:
+                sparse_fine_threshold_list = [1]
+
+            for sparse_fine_threshold in sparse_fine_threshold_list:
                 self.sparse_fine_threshold = sparse_fine_threshold
                 for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
                     self.empirical_solver(partition_index, phase)
