@@ -52,6 +52,7 @@ def parse_args():
         help='seed for the optimiser run')
     parser.add_argument('--ram_usage', default=None, type=float, help='ram utilization ratio')
     parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
+    parser.add_argument('--sweep-wandb', action="store_true", help='whether to perform a wandb sweep')
     parser.add_argument('--custom_onnx', action="store_true", help='whether to enable custom onnx parsing on model Parser')
     parser.add_argument('--profile', action="store_true", help='whether to profile the whole programm or not')
 
@@ -125,19 +126,6 @@ def main():
     with open(args.platform_path, "r") as f:
         platform_config = toml.load(f)
 
-    # enable wandb
-    if args.enable_wandb:
-        # project name
-        wandb_name = f"fpgaconvnet-{args.name}-{args.objective}"
-
-        # wandb config
-        wandb_config = get_wandb_config(optimiser_config, platform_config, args)
-
-        # initialize wandb
-        wandb.init(config=wandb_config,
-                project=wandb_name,
-                entity="fpgaconvnet") # or "fpgaconvnet", and can add "name"
-
     # # turn on debugging
     # net.DEBUG = True
 
@@ -201,6 +189,30 @@ def main():
     if "weights_reloading" not in opt.transforms:
         for partition in opt.net.partitions:
             partition.enable_wr = False
+
+    # setup wandb
+    if args.enable_wandb:
+        if args.sweep_wandb:
+            wandb.init()
+            wandb_sweep_config = wandb.config
+            opt.net.batch_size = wandb_sweep_config["batch_size"]
+            opt.bram_to_lut = wandb_sweep_config["bram_to_lut"]
+            opt.off_chip_streaming = wandb_sweep_config["off_chip_streaming"]
+            opt.balance_bram_uram = wandb_sweep_config["balance_bram_uram"]
+            wandb_sweep_config.update(get_wandb_config(
+                optimiser_config, platform_config, args))
+            wandb_sweep_config["batch_size"] = opt.net.batch_size
+        else:
+            # project name
+            wandb_name = f"fpgaconvnet-{args.name}-{args.objective}"
+
+            # wandb config
+            wandb_config = get_wandb_config(optimiser_config, platform_config, args)
+
+            # initialize wandb
+            wandb.init(config=wandb_config,
+                    project=wandb_name,
+                    entity="fpgaconvnet") # or "fpgaconvnet", and can add "name"
 
     # initialize graph
     ## completely partition graph
