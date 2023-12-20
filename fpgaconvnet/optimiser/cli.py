@@ -190,6 +190,21 @@ def main():
         for partition in opt.net.partitions:
             partition.enable_wr = False
 
+    # set threshold to zero to disable encoding
+    encoding_threshold = 1.0 # todo: add to config
+    for partition in opt.net.partitions:
+        for layer in partition.graph.nodes:
+            node_hw = partition.graph.nodes[layer]["hw"]
+            for i in range(len(node_hw.input_compression_ratio)):
+                if node_hw.input_compression_ratio[i] > encoding_threshold:
+                    node_hw.input_compression_ratio[i] = 1.0
+            for i in range(len(node_hw.output_compression_ratio)):
+                if node_hw.output_compression_ratio[i] > encoding_threshold:
+                    node_hw.output_compression_ratio[i] = 1.0
+            if hasattr(node_hw, "weight_compression_ratio"):
+                if node_hw.weight_compression_ratio[0] > encoding_threshold:
+                    node_hw.weight_compression_ratio[0] = 1.0
+
     # setup wandb
     if args.enable_wandb:
         if args.sweep_wandb:
