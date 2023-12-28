@@ -10,7 +10,6 @@ from datetime import datetime
 
 import fpgaconvnet.tools.graphs as graphs
 import numpy as np
-import wandb
 from fpgaconvnet.models.network import Network
 from fpgaconvnet.platform.Platform import Platform
 from fpgaconvnet.tools import graphs
@@ -22,6 +21,7 @@ import fpgaconvnet.optimiser.transforms.fine as fine
 import fpgaconvnet.optimiser.transforms.off_chip_streaming as off_chip_streaming
 import fpgaconvnet.optimiser.transforms.partition as partition
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
+import wandb
 
 LATENCY   =0
 THROUGHPUT=1
@@ -217,7 +217,7 @@ class Solver:
             partition.apply_random_partition(self.net, partition_index)
             return
 
-    def solver_status(self, wandb_tbl=None):
+    def solver_status(self, cost=None, wandb_tbl=None):
         """
         prints out the current status of the solver.
         """
@@ -226,7 +226,8 @@ class Solver:
         objective  = objectives[self.objective]
 
         # cost
-        cost = self.get_cost()
+        if cost == None:
+            cost = self.get_cost()
         cost = cost if self.objective == LATENCY else -cost
 
         # Resources
@@ -416,4 +417,5 @@ class Solver:
 
 
     from fpgaconvnet.optimiser.solvers.report import create_report
-    from fpgaconvnet.optimiser.transforms.bram_uram_balancing import apply_random_bram_uram_balancing
+    from fpgaconvnet.optimiser.transforms.bram_uram_balancing import \
+        apply_random_bram_uram_balancing
