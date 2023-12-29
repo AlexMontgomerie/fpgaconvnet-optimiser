@@ -6,9 +6,9 @@ goal = "maximize"
 name = "throughput"
 
 [parameters.batch_size]
-values = [1, 64, 128, 256]
+values = [1, 128, 256]
 [parameters.bram_to_lut]
-values = [true, false]
+values = [true]
 [parameters.off_chip_streaming]
 values = [true, false]
 [parameters.balance_bram_uram]
