@@ -217,6 +217,16 @@ def main():
             wandb_sweep_config.update(get_wandb_config(
                 optimiser_config, platform_config, args))
             wandb_sweep_config["batch_size"] = opt.net.batch_size
+            if not wandb_sweep_config["compress_off_chip"]:
+                for partition in opt.net.partitions:
+                    for layer in partition.graph.nodes:
+                        node_hw = partition.graph.nodes[layer]["hw"]
+                        for i in range(len(node_hw.input_compression_ratio)):
+                            node_hw.input_compression_ratio[i] = 1.0
+                        for i in range(len(node_hw.output_compression_ratio)):
+                            node_hw.output_compression_ratio[i] = 1.0
+                        if hasattr(node_hw, "weight_compression_ratio"):
+                            node_hw.weight_compression_ratio[0] = 1.0
         else:
             # project name
             wandb_name = f"fpgaconvnet-{args.name}-{args.objective}"
