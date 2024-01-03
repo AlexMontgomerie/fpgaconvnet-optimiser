@@ -473,7 +473,6 @@ class GreedyPartition(Solver):
                     net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
                     # get the current cost
                     cost = self.get_cost([partition_index])
-                    final_cost = cost
                     transforms.remove_weights_reloading_transform(self.net.partitions[partition_index])
                     self.net.partitions[partition_index].wr_factor = int(wr_factor)
                     transforms.apply_weights_reloading_transform(self.net.partitions[partition_index])
@@ -500,13 +499,12 @@ class GreedyPartition(Solver):
                     new_cost = self.get_cost([partition_index])
                     if new_cost >= cost:
                         self.net.partitions = net_partitions
-                        final_cost = new_cost
                     if self.objective != 1:
                         break
 
             part_opt_time = time.perf_counter() - part_start_time
             self.total_opt_time += part_opt_time
-            part_cost = final_cost if self.objective == LATENCY else -final_cost
+            part_cost = self.get_cost([partition_index]) if self.objective == LATENCY else -self.get_cost([partition_index])
             data = [[f"single partition (Part {partition_index + 1}) cost ({'latency' if self.objective == LATENCY else 'throughput'}):",
                      f"{part_cost:.4f}",
                      "",
@@ -522,12 +520,12 @@ class GreedyPartition(Solver):
                 self.wandb_log()
                 if log_final:
                     self.final_log_tbl.add_data(partition_index+1, part_cost, part_opt_time, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1)
-                    self.solver_status(cost=final_cost, wandb_tbl=self.final_log_tbl)
+                    self.solver_status(wandb_tbl=self.final_log_tbl)
                 else:
                     self.pre_merge_log_tbl.add_data(partition_index+1, part_cost, part_opt_time, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1)
-                    self.solver_status(cost=final_cost, wandb_tbl=self.pre_merge_log_tbl)
+                    self.solver_status(wandb_tbl=self.pre_merge_log_tbl)
             else:
-                self.solver_status(cost=final_cost)
+                self.solver_status()
 
         if self.wandb_enabled:
             if not log_final:
