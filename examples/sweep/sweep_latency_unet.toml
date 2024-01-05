@@ -11,6 +11,8 @@ values = [1, 64, 128, 256]
 values = [true, false]
 [parameters.off_chip_streaming]
 values = [true, false]
+[parameters.compress_off_chip]
+values = [true, false]
 [parameters.balance_bram_uram]
 values = [true, false]
 
