@@ -176,7 +176,8 @@ def main():
     opt.net.batch_size = args.batch_size
 
     # specify encoding
-    opt.net.partitions[0].encode_type = args.encode
+    for partition in opt.net.partitions:
+        partition.encode_type = args.encode
 
     # specify available transforms
     opt.transforms = []
