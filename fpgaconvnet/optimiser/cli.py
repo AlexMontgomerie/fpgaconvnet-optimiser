@@ -55,6 +55,8 @@ def parse_args():
     parser.add_argument('--sweep-wandb', action="store_true", help='whether to perform a wandb sweep')
     parser.add_argument('--custom_onnx', action="store_true", help='whether to enable custom onnx parsing on model Parser')
     parser.add_argument('--profile', action="store_true", help='whether to profile the whole programm or not')
+    parser.add_argument('--encode', choices=['none','huffman', 'rle'], default='none', required=False,
+        help='stream encoding type')
 
     return parser.parse_args()
 
@@ -172,6 +174,9 @@ def main():
 
     # specify batch size
     opt.net.batch_size = args.batch_size
+
+    # specify encoding
+    opt.net.partitions[0].encode_type = args.encode
 
     # specify available transforms
     opt.transforms = []
