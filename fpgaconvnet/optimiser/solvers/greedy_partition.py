@@ -81,18 +81,17 @@ class GreedyPartition(Solver):
 
                 if horizontal_merges[1]:
                     if horizontal_merges[1] not in reject_list:
-                        if self.multi_fpga \
-                            or partition.is_input_memory_bound() and self.net.partitions[horizontal_merges[1][0]].wr_factor == 1 \
-                            or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
-                            input_memory_bound.append(partition_index)
+                        #if self.multi_fpga \
+                        #or partition.is_input_memory_bound() and self.net.partitions[horizontal_merges[1][0]].wr_factor == 1 \
+                        #or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
+                        input_memory_bound.append(partition_index)
 
                 if horizontal_merges[0]:
                     if horizontal_merges[0] not in reject_list:
-                        if self.multi_fpga \
-                            or partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
-                            or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
-
-                            output_memory_bound.append(partition_index)
+                        #if self.multi_fpga \
+                        #    or partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
+                        #    or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
+                        output_memory_bound.append(partition_index)
 
             memory_bound = input_memory_bound + output_memory_bound
             if len(memory_bound) == 0:
@@ -149,11 +148,22 @@ class GreedyPartition(Solver):
         return valid
 
     def optimise_coarse(self, partition_index):
+        def _get_rsc_bottleneck(partition_resource_usage, platform):
+            dsp_util = partition_resource_usage['DSP'] / platform.get_dsp()
+            lut_util = partition_resource_usage['LUT'] / platform.get_lut()
+            ff_util = partition_resource_usage['FF'] / platform.get_ff()
+            if dsp_util > lut_util and dsp_util > ff_util:
+                return 'DSP'
+            elif lut_util > ff_util:
+                return 'LUT'
+            else:
+                return 'FF'
+
         partition = self.net.partitions[partition_index]
-        lut_to_bram_ratio = 288 # BRAM: 18Kbits, LUT: 64bits
         cycles = partition.get_cycle()
-        partition_resource_usage = self.get_partition_resource(partition)
-        lut_usage = partition_resource_usage['LUT'] + lut_to_bram_ratio*partition_resource_usage['BRAM']
+        partition_resource_usage = self.get_partition_resource(partition, bram_to_lut=False)
+        bottleneck = _get_rsc_bottleneck(partition_resource_usage, self.platform)
+
         conv_layers = []
         other_layers = []
         for layer in graphs.ordered_node_list(partition.graph):
@@ -179,19 +189,24 @@ class GreedyPartition(Solver):
                 node_copy.coarse_out = comb[1]
                 partition_copy.update()
                 cycles_copy = partition_copy.get_cycle()
-                partition_copy_resource_usage = self.get_partition_resource(partition_copy)
-                lut_usage_copy = partition_copy_resource_usage['LUT'] + lut_to_bram_ratio*partition_copy_resource_usage['BRAM']
-                if cycles_copy > cycles or lut_usage_copy >= lut_usage or not self.validate_partition_resource(partition_copy, partition_index):
+                partition_copy_resource_usage = self.get_partition_resource(partition_copy, bram_to_lut=False)
+                if cycles_copy > cycles \
+                    or partition_copy_resource_usage[bottleneck] >= partition_resource_usage[bottleneck] \
+                    or not self.validate_partition_resource(partition_copy, partition_index):
                     continue
-                filtered_candidates.append((comb[0], comb[1], lut_usage_copy))
+                filtered_candidates.append((comb[0], comb[1], partition_copy_resource_usage[bottleneck]))
             if len(filtered_candidates) == 0:
                 continue
             sorted_candidates = sorted(filtered_candidates, key=lambda x: x[2])
             node.coarse_in = sorted_candidates[0][0]
             node.coarse_out = sorted_candidates[0][1]
             partition.update()
-            partition_resource_usage = self.get_partition_resource(partition)
-            lut_usage = partition_resource_usage['LUT'] + lut_to_bram_ratio*partition_resource_usage['BRAM']
+            partition_resource_usage = self.get_partition_resource(partition, bram_to_lut=False)
+            bottleneck = _get_rsc_bottleneck(partition_resource_usage, self.platform)
+
+        self.allocate_memory(partition_index)
+        if bottleneck == 'DSP':
+            return
 
         # for other layers, enumerate all combinations
         for layer in other_layers:
@@ -210,19 +225,22 @@ class GreedyPartition(Solver):
                 node_copy.coarse_out = comb[1]
                 partition_copy.update()
                 cycles_copy = partition_copy.get_cycle()
-                partition_copy_resource_usage = self.get_partition_resource(partition_copy)
-                lut_usage_copy = partition_copy_resource_usage['LUT'] + lut_to_bram_ratio*partition_copy_resource_usage['BRAM']
-                if cycles_copy > cycles or lut_usage_copy >= lut_usage or not self.validate_partition_resource(partition_copy, partition_index):
+                partition_copy_resource_usage = self.get_partition_resource(partition_copy, bram_to_lut=False)
+                if cycles_copy > cycles \
+                    or partition_copy_resource_usage[bottleneck] >= partition_resource_usage[bottleneck] \
+                    or not self.validate_partition_resource(partition_copy, partition_index):
                     continue
-                filtered_candidates.append((comb[0], comb[1], lut_usage_copy))
+                filtered_candidates.append((comb[0], comb[1], partition_copy_resource_usage[bottleneck]))
             if len(filtered_candidates) == 0:
                 continue
             sorted_candidates = sorted(filtered_candidates, key=lambda x: x[2])
             node.coarse_in = sorted_candidates[0][0]
             node.coarse_out = sorted_candidates[0][1]
             partition.update()
-            partition_resource_usage = self.get_partition_resource(partition)
-            lut_usage = partition_resource_usage['LUT'] + lut_to_bram_ratio*partition_resource_usage['BRAM']
+            partition_resource_usage = self.get_partition_resource(partition, bram_to_lut=False)
+            bottleneck = _get_rsc_bottleneck(partition_resource_usage, self.platform)
+
+        self.allocate_memory(partition_index)
 
     def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True):
         net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
@@ -248,9 +266,9 @@ class GreedyPartition(Solver):
             self.allocate_memory(partition_index)
             if self.off_chip_streaming:
                 # due to off-chip bandwidth limitation, the fastest node may be slowed down
-                current_latency = net_partitions[partition_index].get_interval() * net_partitions[partition_index].slow_down_factor
-                new_latency = self.net.partitions[partition_index].get_interval() * self.net.partitions[partition_index].slow_down_factor
-                if new_latency > current_latency:
+                current_interval = net_partitions[partition_index].get_interval() * net_partitions[partition_index].slow_down_factor
+                new_interval = self.net.partitions[partition_index].get_interval() * self.net.partitions[partition_index].slow_down_factor
+                if new_interval > current_interval:
                     self.net.partitions = pickle.loads(pickle.dumps(net_partitions))
                     break
 
@@ -323,7 +341,7 @@ class GreedyPartition(Solver):
                 partition_resource_usage = self.get_partition_resource(partition)
                 new_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
                 new_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
-                if new_bram_util < new_uram_util and curr_bram_util > curr_uram_util:
+                if new_bram_util <= new_uram_util and curr_bram_util >= curr_uram_util:
                     node.use_uram = abs(new_bram_util-new_uram_util) < abs(curr_bram_util-curr_uram_util)
                     break
             partition_resource_usage = self.get_partition_resource(partition)

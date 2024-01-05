@@ -102,10 +102,12 @@ class Solver:
         else:
             return self.platform.reconf_time
 
-    def get_partition_resource(self, partition):
+    def get_partition_resource(self, partition, bram_to_lut=None):
+        if bram_to_lut == None:
+            bram_to_lut = self.bram_to_lut
         lut_to_bram_ratio = 288 # BRAM: 18Kbits, LUT: 64bits
         partition_resource_usage = partition.get_resource_usage()
-        if self.bram_to_lut:
+        if bram_to_lut:
             bram_shortage = math.ceil(partition_resource_usage['BRAM'] - self.ram_usage*self.platform.get_bram())
             lut_surplus = int((self.rsc_allocation*self.platform.get_lut() - partition_resource_usage['LUT'])/lut_to_bram_ratio)
             if bram_shortage > 0 and lut_surplus > 0:
