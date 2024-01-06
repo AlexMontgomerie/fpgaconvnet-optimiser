@@ -122,6 +122,7 @@ class GreedyPartition(Solver):
             transforms.apply_max_weights_reloading(self.net.partitions[current_merge[0]])
             transforms.merge_horizontal(self.net, *current_merge)
             self.update_partitions()
+            self.allocate_memory(current_merge[0])
             status = self.run_solver(log_final=True)
 
             if not status or self.get_cost() >= cost:
