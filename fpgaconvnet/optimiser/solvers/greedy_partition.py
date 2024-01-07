@@ -28,8 +28,8 @@ class GreedyPartition(Solver):
 
     def __post_init__(self):
         if self.wandb_enabled:
-            self.pre_merge_log_tbl = wandb.Table(columns=["part", f"part_{'latency' if self.objective == LATENCY else 'throughput'}", "part_optim_time", "slowdown", f"net_{'latency' if self.objective == LATENCY else 'throughput'}", "URAM %", "BRAM %", "DSP %", "LUT %", "FF %", "BW"])
-            self.final_log_tbl = wandb.Table(columns=["part", f"part_{'latency' if self.objective == LATENCY else 'throughput'}", "part_optim_time", "slowdown", f"net_{'latency' if self.objective == LATENCY else 'throughput'}", "URAM %", "BRAM %", "DSP %", "LUT %", "FF %", "BW"])
+            self.pre_merge_log_tbl = wandb.Table(columns=["part", f"part_{'latency' if self.objective == LATENCY else 'throughput'}", "part_optim_time", "slowdown", f"net_{'latency' if self.objective == LATENCY else 'throughput'}", "URAM %", "BRAM %", "DSP %", "LUT %", "FF %", "BW %", "BW"])
+            self.final_log_tbl = wandb.Table(columns=["part", f"part_{'latency' if self.objective == LATENCY else 'throughput'}", "part_optim_time", "slowdown", f"net_{'latency' if self.objective == LATENCY else 'throughput'}", "URAM %", "BRAM %", "DSP %", "LUT %", "FF %", "BW %", "BW"])
 
     def check_targets_met(self):
         # stop the optimiser if targets are already met
@@ -128,7 +128,7 @@ class GreedyPartition(Solver):
             if not status or self.get_cost() >= cost:
                 self.net.partitions = net_partitions
                 reject_list.append(current_merge)
-                data = [["Outcome:","Merge Rejected"]]
+                data = [["Outcome:", "Merge Rejected"]]
             else:
                 for i, merge in enumerate(reject_list):
                     if merge[0] >= current_merge[1]:
@@ -538,10 +538,10 @@ class GreedyPartition(Solver):
             if self.wandb_enabled:
                 self.wandb_log()
                 if log_final:
-                    self.final_log_tbl.add_data(partition_index+1, part_cost, part_opt_time, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1)
+                    self.final_log_tbl.add_data(partition_index+1, part_cost, part_opt_time, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1, -1)
                     self.solver_status(wandb_tbl=self.final_log_tbl)
                 else:
-                    self.pre_merge_log_tbl.add_data(partition_index+1, part_cost, part_opt_time, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1)
+                    self.pre_merge_log_tbl.add_data(partition_index+1, part_cost, part_opt_time, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1, -1)
                     self.solver_status(wandb_tbl=self.pre_merge_log_tbl)
             else:
                 self.solver_status()
