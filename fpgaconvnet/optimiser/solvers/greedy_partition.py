@@ -1,35 +1,35 @@
-import sys
-import numpy as np
-import json
 import copy
-import random
-import math
 import itertools
-
-import fpgaconvnet.optimiser.transforms as transforms
-import fpgaconvnet.tools.graphs as graphs
-
+import pickle
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+
+import fpgaconvnet.tools.graphs as graphs
+import numpy as np
 from fpgaconvnet.models.layers.utils import stream_buffer
-from fpgaconvnet.optimiser.solvers import Solver
-from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
+from tabulate import tabulate
 
-
+import fpgaconvnet.optimiser.transforms as transforms
+import wandb
+from fpgaconvnet.optimiser.solvers import Solver
 
 LATENCY   =0
 THROUGHPUT=1
-
 START_LOOP=1
 
 @dataclass
 class GreedyPartition(Solver):
     coarse_in_first: list = field(default_factory=list)
     merge_ongoing: bool = False
-    off_chip_streaming: bool = True
     targets: dict = field(default_factory=lambda: {
     'latency'    :  0.0, 'throughput' : float("inf")})
+
+    def __post_init__(self):
+        if self.wandb_enabled:
+            self.pre_merge_log_tbl = wandb.Table(columns=["part", f"part_{'latency' if self.objective == LATENCY else 'throughput'}", "part_optim_time", "slowdown", f"net_{'latency' if self.objective == LATENCY else 'throughput'}", "URAM %", "BRAM %", "DSP %", "LUT %", "FF %", "BW %", "BW"])
+            self.final_log_tbl = wandb.Table(columns=["part", f"part_{'latency' if self.objective == LATENCY else 'throughput'}", "part_optim_time", "slowdown", f"net_{'latency' if self.objective == LATENCY else 'throughput'}", "URAM %", "BRAM %", "DSP %", "LUT %", "FF %", "BW %", "BW"])
 
     def check_targets_met(self):
         # stop the optimiser if targets are already met
@@ -61,7 +61,7 @@ class GreedyPartition(Solver):
             #    return
 
             # cache the network
-            net= copy.deepcopy(self.net)
+            net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
 
             self.update_partitions()
             cost = self.get_cost()
@@ -73,6 +73,7 @@ class GreedyPartition(Solver):
             output_memory_bound = []
 
             for partition_index, partition in enumerate(self.net.partitions):
+                # remove all auxiliary layers. This might not needed at the 1st iteration of the loop but its mandatory for the rest of the iterations to avoid errors in get_all_horizontal_merges call
                 for i in range(len(self.net.partitions)):
                     self.net.partitions[i].remove_squeeze()
                 horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
@@ -80,22 +81,21 @@ class GreedyPartition(Solver):
 
                 if horizontal_merges[1]:
                     if horizontal_merges[1] not in reject_list:
-                        if self.multi_fpga \
-                            or partition.is_input_memory_bound() and self.net.partitions[horizontal_merges[1][0]].wr_factor == 1 \
-                            or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
-                            input_memory_bound.append(partition_index)
+                        #if self.multi_fpga \
+                        #or partition.is_input_memory_bound() and self.net.partitions[horizontal_merges[1][0]].wr_factor == 1 \
+                        #or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
+                        input_memory_bound.append(partition_index)
 
                 if horizontal_merges[0]:
                     if horizontal_merges[0] not in reject_list:
-                        if self.multi_fpga \
-                            or partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
-                            or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
-                                
-                            output_memory_bound.append(partition_index)
+                        #if self.multi_fpga \
+                        #    or partition.is_output_memory_bound() and self.net.partitions[horizontal_merges[0][0]].wr_factor == 1 \
+                        #    or partition.get_latency(self.platform.board_freq) < self.platform.reconf_time:
+                        output_memory_bound.append(partition_index)
 
             memory_bound = input_memory_bound + output_memory_bound
             if len(memory_bound) == 0:
-                self.net = net
+                self.net.partitions = net_partitions
                 break
 
             # remove all auxiliary layers
@@ -108,49 +108,63 @@ class GreedyPartition(Solver):
             partition_index = memory_bound[partition_latencys.index(max(partition_latencys))]
 
             horizontal_merges = transforms.get_all_horizontal_merges(self.net, partition_index)
-
             if horizontal_merges[0] and partition_index in output_memory_bound:
-                self.reset_partition(horizontal_merges[0][0])
-                self.reset_partition(horizontal_merges[0][1])
-                transforms.apply_max_weights_reloading(self.net.partitions[horizontal_merges[0][0]])
-                transforms.merge_horizontal(self.net, *horizontal_merges[0])
                 current_merge = horizontal_merges[0]
-
             elif horizontal_merges[1] and partition_index in input_memory_bound:
-                self.reset_partition(horizontal_merges[1][0])
-                self.reset_partition(horizontal_merges[1][1])
-                transforms.apply_max_weights_reloading(self.net.partitions[horizontal_merges[1][0]])
-                transforms.merge_horizontal(self.net, *horizontal_merges[1])
                 current_merge = horizontal_merges[1]
 
-            print(current_merge)
+            data = [["Attemting Partition Merging:", f"(Part {current_merge[0] + 1}, Part {current_merge[1] + 1})", "", "Total Partitions:", len(self.net.partitions)]]
+            data_table = tabulate(data, headers="firstrow", tablefmt="youtrack")
+            print(data_table)
+
+            self.reset_partition(current_merge[0])
+            self.reset_partition(current_merge[1])
+            transforms.apply_max_weights_reloading(self.net.partitions[current_merge[0]])
+            transforms.merge_horizontal(self.net, *current_merge)
             self.update_partitions()
-            status = self.run_solver()
+            self.allocate_memory(current_merge[0])
+            status = self.run_solver(log_final=True)
 
             if not status or self.get_cost() >= cost:
-                self.net= net
+                self.net.partitions = net_partitions
                 reject_list.append(current_merge)
-                print("reject")
+                data = [["Outcome:", "Merge Rejected"]]
             else:
                 for i, merge in enumerate(reject_list):
                     if merge[0] >= current_merge[1]:
                         reject_list[i] = (merge[0]-1,merge[1]-1)
-                print("accept")
+                data = [["Outcome:", "Merge Accepted"]]
+            data_table = tabulate(data, headers="firstrow", tablefmt="youtrack")
+            print(data_table)
 
-    def validate_partition_resource(self, partition):
+        if self.wandb_enabled:
+            wandb.log({"final_solver": self.final_log_tbl})
+
+    def validate_partition_resource(self, partition, partition_index):
         try:
-            self.check_partition_resources(partition)
+            self.check_partition_resources(partition, partition_index)
             valid = True
         except AssertionError as error:
             valid = False
         return valid
 
     def optimise_coarse(self, partition_index):
+        def _get_rsc_bottleneck(partition_resource_usage, platform):
+            dsp_util = partition_resource_usage['DSP'] / platform.get_dsp()
+            lut_util = partition_resource_usage['LUT'] / platform.get_lut()
+            ff_util = partition_resource_usage['FF'] / platform.get_ff()
+            if dsp_util > lut_util and dsp_util > ff_util:
+                return 'DSP'
+            elif lut_util > ff_util:
+                return 'LUT'
+            else:
+                return 'FF'
+
         partition = self.net.partitions[partition_index]
-        lut_to_bram_ratio = 288 # BRAM: 18Kbits, LUT: 64bits
         cycles = partition.get_cycle()
-        partition_resource_usage = self.get_partition_resource(partition)
-        lut_usage = partition_resource_usage['LUT'] + lut_to_bram_ratio*partition_resource_usage['BRAM']
+        partition_resource_usage = self.get_partition_resource(partition, bram_to_lut=False)
+        bottleneck = _get_rsc_bottleneck(partition_resource_usage, self.platform)
+
         conv_layers = []
         other_layers = []
         for layer in graphs.ordered_node_list(partition.graph):
@@ -165,30 +179,35 @@ class GreedyPartition(Solver):
             current_coarse_in = node.coarse_in
             current_coarse_out = node.coarse_out
             coarse_in_feasible = node.get_coarse_in_feasible()
-            coarse_out_feasible = node.get_coarse_out_feasible()   
+            coarse_out_feasible = node.get_coarse_out_feasible()
             candidates = list(itertools.product(coarse_in_feasible, coarse_out_feasible))
             candidates = list(filter(lambda x: x[0] * x[1] == current_coarse_in*current_coarse_out, candidates))
             filtered_candidates = []
             for comb in candidates:
-                partition_copy = copy.deepcopy(partition)
+                partition_copy = pickle.loads(pickle.dumps(partition))
                 node_copy = partition_copy.graph.nodes[layer]['hw']
                 node_copy.coarse_in = comb[0]
                 node_copy.coarse_out = comb[1]
                 partition_copy.update()
                 cycles_copy = partition_copy.get_cycle()
-                partition_copy_resource_usage = self.get_partition_resource(partition_copy)
-                lut_usage_copy = partition_copy_resource_usage['LUT'] + lut_to_bram_ratio*partition_copy_resource_usage['BRAM']
-                if cycles_copy > cycles or lut_usage_copy >= lut_usage or not self.validate_partition_resource(partition_copy):
+                partition_copy_resource_usage = self.get_partition_resource(partition_copy, bram_to_lut=False)
+                if cycles_copy > cycles \
+                    or partition_copy_resource_usage[bottleneck] >= partition_resource_usage[bottleneck] \
+                    or not self.validate_partition_resource(partition_copy, partition_index):
                     continue
-                filtered_candidates.append((comb[0], comb[1], lut_usage_copy))
+                filtered_candidates.append((comb[0], comb[1], partition_copy_resource_usage[bottleneck]))
             if len(filtered_candidates) == 0:
                 continue
             sorted_candidates = sorted(filtered_candidates, key=lambda x: x[2])
             node.coarse_in = sorted_candidates[0][0]
             node.coarse_out = sorted_candidates[0][1]
             partition.update()
-            partition_resource_usage = self.get_partition_resource(partition)
-            lut_usage = partition_resource_usage['LUT'] + lut_to_bram_ratio*partition_resource_usage['BRAM']
+            partition_resource_usage = self.get_partition_resource(partition, bram_to_lut=False)
+            bottleneck = _get_rsc_bottleneck(partition_resource_usage, self.platform)
+
+        self.allocate_memory(partition_index)
+        if bottleneck == 'DSP':
+            return
 
         # for other layers, enumerate all combinations
         for layer in other_layers:
@@ -201,28 +220,31 @@ class GreedyPartition(Solver):
             candidates = list((x, x) for x in coarse_in_feasible)
             filtered_candidates = []
             for comb in candidates:
-                partition_copy = copy.deepcopy(partition)
+                partition_copy = pickle.loads(pickle.dumps(partition))
                 node_copy = partition_copy.graph.nodes[layer]['hw']
                 node_copy.coarse_in = comb[0]
                 node_copy.coarse_out = comb[1]
                 partition_copy.update()
                 cycles_copy = partition_copy.get_cycle()
-                partition_copy_resource_usage = self.get_partition_resource(partition_copy)
-                lut_usage_copy = partition_copy_resource_usage['LUT'] + lut_to_bram_ratio*partition_copy_resource_usage['BRAM']
-                if cycles_copy > cycles or lut_usage_copy >= lut_usage or not self.validate_partition_resource(partition_copy):
+                partition_copy_resource_usage = self.get_partition_resource(partition_copy, bram_to_lut=False)
+                if cycles_copy > cycles \
+                    or partition_copy_resource_usage[bottleneck] >= partition_resource_usage[bottleneck] \
+                    or not self.validate_partition_resource(partition_copy, partition_index):
                     continue
-                filtered_candidates.append((comb[0], comb[1], lut_usage_copy))
+                filtered_candidates.append((comb[0], comb[1], partition_copy_resource_usage[bottleneck]))
             if len(filtered_candidates) == 0:
                 continue
             sorted_candidates = sorted(filtered_candidates, key=lambda x: x[2])
             node.coarse_in = sorted_candidates[0][0]
             node.coarse_out = sorted_candidates[0][1]
             partition.update()
-            partition_resource_usage = self.get_partition_resource(partition)
-            lut_usage = partition_resource_usage['LUT'] + lut_to_bram_ratio*partition_resource_usage['BRAM']
+            partition_resource_usage = self.get_partition_resource(partition, bram_to_lut=False)
+            bottleneck = _get_rsc_bottleneck(partition_resource_usage, self.platform)
+
+        self.allocate_memory(partition_index)
 
     def empirical_solver(self, partition_index, optimiser_phase, fast_mode = True):
-        net = copy.deepcopy(self.net)
+        net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
         reject_list = []
         changed = False
         while True:
@@ -245,31 +267,31 @@ class GreedyPartition(Solver):
             self.allocate_memory(partition_index)
             if self.off_chip_streaming:
                 # due to off-chip bandwidth limitation, the fastest node may be slowed down
-                current_latency = net.partitions[partition_index].get_interval() * net.partitions[partition_index].slow_down_factor
-                new_latency = self.net.partitions[partition_index].get_interval() * self.net.partitions[partition_index].slow_down_factor
-                if new_latency > current_latency:
-                    self.net = copy.deepcopy(net)
+                current_interval = net_partitions[partition_index].get_interval() * net_partitions[partition_index].slow_down_factor
+                new_interval = self.net.partitions[partition_index].get_interval() * self.net.partitions[partition_index].slow_down_factor
+                if new_interval > current_interval:
+                    self.net.partitions = pickle.loads(pickle.dumps(net_partitions))
                     break
 
             try:
                 self.check_resources()
                 #self.check_constraints() # slow to run for networks with many nodes
 
-                net = copy.deepcopy(self.net)
+                net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
                 changed = True
             except AssertionError as error:
                 if fast_mode: # break to save optimisation time
                     break
                 else:
                     reject_list.append(node)
-                    self.net = copy.deepcopy(net)
+                    self.net.partitions = pickle.loads(pickle.dumps(net_partitions))
 
-        self.net = net
+        self.net.partitions = net_partitions
         self.update_partitions()
         return changed
 
     def get_all_wr_feasible(self, partition):
-        partition = copy.deepcopy(partition)
+        partition = pickle.loads(pickle.dumps(partition))
 
         transforms.remove_weights_reloading_transform(partition)
         partition.graph.nodes[partition.wr_layer]['hw'].coarse_out = 1
@@ -293,16 +315,22 @@ class GreedyPartition(Solver):
         conv_layers = []
         # reset all flags
         for layer in graphs.ordered_node_list(partition.graph):
+            partition.graph.nodes[layer]["hw"].stream_inputs = \
+                [False] * len(partition.graph.nodes[layer]["hw"].stream_inputs)
+            partition.graph.nodes[layer]["hw"].stream_outputs = \
+                [False] * len(partition.graph.nodes[layer]["hw"].stream_outputs)
             if partition.graph.nodes[layer]['type'] in types:
                 partition.graph.nodes[layer]["hw"].use_uram = False
                 partition.graph.nodes[layer]["hw"].stream_weights = 0
                 conv_layers.append(layer)
+        # update squeeze layers after the reset
+        self.net.update_partitions()
         if len(conv_layers) == 0:
             return False
 
         # balance between bram and uram
         partition_resource_usage = self.get_partition_resource(partition)
-        if self.platform.get_uram() > 0:
+        if self.platform.get_uram() > 0 and self.balance_bram_uram:
             sorted_conv_layers = sorted(conv_layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_ram_usage , reverse=True)
             for layer in sorted_conv_layers:
                 node = partition.graph.nodes[layer]["hw"]
@@ -314,7 +342,7 @@ class GreedyPartition(Solver):
                 partition_resource_usage = self.get_partition_resource(partition)
                 new_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
                 new_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
-                if new_bram_util < new_uram_util and curr_bram_util > curr_uram_util:
+                if new_bram_util <= new_uram_util and curr_bram_util >= curr_uram_util:
                     node.use_uram = abs(new_bram_util-new_uram_util) < abs(curr_bram_util-curr_uram_util)
                     break
             partition_resource_usage = self.get_partition_resource(partition)
@@ -334,14 +362,14 @@ class GreedyPartition(Solver):
                 for i in range(partition.graph.nodes[layer]["hw"].ports_in):
                     candidates.append((layer, "inputs", i))
 
-        ram_utilization = self.ram_usage 
+        ram_utilization = self.ram_usage
         while curr_bram_util > ram_utilization or curr_uram_util > ram_utilization:
             bottleneck = "URAM" if curr_bram_util <= ram_utilization else "BRAM"
-            partition_copy = copy.deepcopy(partition)
+            partition_copy = pickle.loads(pickle.dumps(partition))
 
             def _validate(entry):
                 layer, data_type, index = entry
-                node = partition.graph.nodes[layer]["hw"] 
+                node = partition.graph.nodes[layer]["hw"]
                 if data_type == "weights":
                     if bottleneck == "URAM":
                         return node.weights_ram_usage > 0 and node.use_uram
@@ -353,17 +381,17 @@ class GreedyPartition(Solver):
                     else:
                         return node.inputs_ram_usage[index] > 0
             filtered_candidates = list(filter(_validate, candidates))
-            if len(filtered_candidates) == 0: # is there anything left to move? 
-                return False 
+            if len(filtered_candidates) == 0: # is there anything left to move?
+                return False
 
             def _step(partition, layer, data_type, index, weight_step_size=0.1):
                 node = partition.graph.nodes[layer]["hw"]
                 if data_type == "weights":
-                    node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(weight_step_size))    
+                    node.stream_weights += min(node.weights_ram_usage, node.stream_unit() * node.stream_step(weight_step_size))
                 else:
                     partition.remove_squeeze()
                     node.stream_inputs[index] = True
-                    if layer not in graphs.get_input_nodes(partition.graph):
+                    if layer not in graphs.get_input_nodes(partition.graph, allow_multiport=True):
                         prev_layer = graphs.get_prev_nodes(partition.graph,layer)[index]
                         prev_node = partition.graph.nodes[prev_layer]["hw"]
                         for j, l in enumerate(graphs.get_next_nodes(partition.graph,prev_layer)):
@@ -373,10 +401,10 @@ class GreedyPartition(Solver):
                     partition.add_squeeze()
             def _compare(entry):
                 layer, data_type, index = entry
-                partition_copy = copy.deepcopy(partition)
+                partition_copy = pickle.loads(pickle.dumps(partition))
                 node_copy = partition_copy.graph.nodes[layer]["hw"]
                 _step(partition_copy, layer, data_type, index)
-                node = partition.graph.nodes[layer]["hw"] 
+                node = partition.graph.nodes[layer]["hw"]
                 delta_on_chip_mem = node.resource()[bottleneck] - node_copy.resource()[bottleneck]
                 if data_type == "weights":
                     delta_on_chip_mem += node_copy.stream_buffer()
@@ -385,9 +413,9 @@ class GreedyPartition(Solver):
                 assert delta_off_chip_bw > 0
                 return delta_on_chip_mem / delta_off_chip_bw
 
-            sorted_candidates = sorted(filtered_candidates, key=_compare, reverse=True)              
+            sorted_candidates = sorted(filtered_candidates, key=_compare, reverse=True)
             layer, data_type, index = sorted_candidates[0]
-            node = partition.graph.nodes[layer]["hw"] 
+            node = partition.graph.nodes[layer]["hw"]
             _step(partition, layer, data_type, index)
             partition_resource_usage = self.get_partition_resource(partition)
             curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
@@ -418,7 +446,7 @@ class GreedyPartition(Solver):
         else:
             return False
 
-    def run_solver(self, log=True):
+    def run_solver(self, log=True, log_final=False) -> bool:
         # update all partitions
         self.update_partitions()
         for partition_index in range(len(self.net.partitions)):
@@ -434,18 +462,24 @@ class GreedyPartition(Solver):
             #self.check_constraints() # slow to run for networks with many nodes
             start = True
         except AssertionError as error:
-            print("ERROR: Exceeds resource usage")
+            print(f"ERROR: Exceeds resource usage:\n{error}")
             return False
 
         assert "partition" not in self.transforms
 
         for partition_index in range(len(self.net.partitions)):
-            # don't use enumerate, copy.deepcopy creates the new partition object 
+            part_start_time = time.perf_counter()
+            # don't use enumerate, copy.deepcopy creates the new partition object
             if not self.net.partitions[partition_index].need_optimise:
                 continue
 
-            for sparse_fine_threshold in [1.2, 1.01]:
-                self.sparse_fine_threshold = sparse_fine_threshold    
+            if self.net.partitions[partition_index].is_sparse():
+                sparse_fine_threshold_list = [1.2, 1.01]
+            else:
+                sparse_fine_threshold_list = [1]
+
+            for sparse_fine_threshold in sparse_fine_threshold_list:
+                self.sparse_fine_threshold = sparse_fine_threshold
                 for phase in [transforms.apply_more_fine, transforms.apply_less_weight_reloading]:
                     self.empirical_solver(partition_index, phase)
                 if "weights_reloading" in self.transforms and self.net.partitions[partition_index].wr_layer:
@@ -455,7 +489,7 @@ class GreedyPartition(Solver):
                 else:
                     sorted_wr_feasible = [1]
                 for wr_factor in sorted_wr_feasible:
-                    net = copy.deepcopy(self.net)
+                    net_partitions = pickle.loads(pickle.dumps(self.net.partitions))
                     # get the current cost
                     cost = self.get_cost([partition_index])
                     transforms.remove_weights_reloading_transform(self.net.partitions[partition_index])
@@ -481,13 +515,38 @@ class GreedyPartition(Solver):
                         else:
                             break
                     self.allocate_memory(partition_index)
-                    if self.get_cost([partition_index]) >= cost:
-                        self.net = net
+                    new_cost = self.get_cost([partition_index])
+                    if new_cost >= cost:
+                        self.net.partitions = net_partitions
                     if self.objective != 1:
                         break
 
-            print(f"{partition_index} single partition cost:{self.get_cost([partition_index])}, \
-                slowdown: {self.net.partitions[partition_index].slow_down_factor}")
-            self.solver_status()
+            part_opt_time = time.perf_counter() - part_start_time
+            self.total_opt_time += part_opt_time
+            part_cost = self.get_cost([partition_index]) if self.objective == LATENCY else -self.get_cost([partition_index])
+            data = [[f"single partition (Part {partition_index + 1}) cost ({'latency' if self.objective == LATENCY else 'throughput'}):",
+                     f"{part_cost:.4f}",
+                     "",
+                     "slowdown:",
+                     self.net.partitions[partition_index].slow_down_factor,
+                     "partition optimisation time:",
+                     f"{part_opt_time:.2f} sec",
+                     "total optimisation time:",
+                     f"{self.total_opt_time:.2f} sec",]]
+            data_table = tabulate(data, tablefmt="double_outline")
+            print(data_table)
+            if self.wandb_enabled:
+                self.wandb_log()
+                if log_final:
+                    self.final_log_tbl.add_data(partition_index+1, part_cost, part_opt_time, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1, -1)
+                    self.solver_status(wandb_tbl=self.final_log_tbl)
+                else:
+                    self.pre_merge_log_tbl.add_data(partition_index+1, part_cost, part_opt_time, self.net.partitions[partition_index].slow_down_factor, -1, -1, -1, -1, -1, -1, -1, -1)
+                    self.solver_status(wandb_tbl=self.pre_merge_log_tbl)
+            else:
+                self.solver_status()
 
+        if self.wandb_enabled:
+            if not log_final:
+                wandb.log({"pre_merge_solver": self.pre_merge_log_tbl})
         return True

@@ -1,8 +1,10 @@
 [general]
 logging = false
 checkpoints = false
-starting_point_distillation = false
 resource_allocation = 1.00
+bram_to_lut = true
+off_chip_streaming = true
+balance_bram_uram = true
 
 [transforms.fine]
 apply_transform = true
@@ -24,7 +26,7 @@ probability = 0.25
 start_complete = true
 allowed_type = ["merge"]
 allowed_partitions = [
-    ["*", "Split"],
+    ["Add", "*"],
     ["*", "Gemm"]
 ]
 vertical = false

@@ -6,17 +6,17 @@ from itertools import combinations, chain
 import random
 import copy
 import math
-
+import pickle
 import fpgaconvnet.tools.graphs as graphs
+from fpgaconvnet.tools.layer_enum import LAYER_TYPE
 import fpgaconvnet.tools.matrix as matrix
-from fpgaconvnet.tools.layer_enum import LAYER_TYPE, from_onnx_op_type
-
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
+import fpgaconvnet.optimiser.transforms.off_chip_streaming as off_chip_streaming
 import fpgaconvnet.optimiser.transforms.weights_reloading as weights_reloading
 
 def check_parallel_block(net, partition_index):
     input_node = graphs.get_input_nodes(net.partitions[partition_index].graph)[0]
-    return net.partitions[partition_index].graph.nodes[input_node]['type'] == LAYER_TYPE.Split
+    return net.partitions[partition_index].graph.nodes[input_node]['type'] in [LAYER_TYPE.Split, LAYER_TYPE.Chop]
 
 def check_config_allowed_partitions(allowed_partitions, node0, node1):
     # get the node types
@@ -57,10 +57,10 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
         if net.partitions[partition_index].graph.in_degree(next_node) > 1:
             return _iterate_graph(edge_list,next_node,in_parallel_block)
         # skip node - split position not valid
-        if not check_config_allowed_partitions(allowed_partitions, 
+        if not check_config_allowed_partitions(allowed_partitions,
             net.partitions[partition_index].graph.nodes[input_node],
             net.partitions[partition_index].graph.nodes[next_node]):
-            return _iterate_graph(edge_list,next_node,in_parallel_block) 
+            return _iterate_graph(edge_list,next_node,in_parallel_block)
         # append to partition list
         if not in_parallel_block:
             edge_list.append((input_node,next_node))
@@ -73,7 +73,7 @@ def get_all_horizontal_splits(net, partition_index, allowed_partitions=None):
         for node in net.partitions[partition_index].graph.nodes:
             if net.partitions[partition_index].graph.in_degree(node) > 1:
                 edge_list += _iterate_graph([],node,False)
-                edge_list = list(sorted(set(edge_list))) 
+                edge_list = list(sorted(set(edge_list)))
     return edge_list
 
 def get_all_vertical_splits(net, partition_index): # TODO: improve to get all possible combinations
@@ -152,7 +152,7 @@ def split_horizontal(net, partition_index, edge):
     # remove weights reloading transform
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index])
     # create a new partition
-    net.partitions.insert(partition_index,copy.deepcopy(net.partitions[partition_index]))
+    net.partitions.insert(partition_index,pickle.loads(pickle.dumps(net.partitions[partition_index])))
     # split graph
     partition_graphs = graphs.split_graph_horizontal(net.partitions[partition_index].graph,edge)
     net.partitions[partition_index].graph   = partition_graphs[0]
@@ -165,7 +165,7 @@ def split_vertical(net, partition_index, nodes):
     # remove weights reloading transform
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index])
      # create a new partition
-    net.partitions.insert(partition_index,copy.deepcopy(net.partitions[partition_index]))
+    net.partitions.insert(partition_index,pickle.loads(pickle.dumps(net.partitions[partition_index])))
     # split the graph
     partition_graphs = graphs.split_graph_vertical(net.partitions[partition_index].graph,nodes)
     net.partitions[partition_index].graph   = partition_graphs[0]
@@ -178,12 +178,20 @@ def merge_horizontal(net, partition_index_a, partition_index_b):
     # remove weights reloading transform
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_a])
     weights_reloading.remove_weights_reloading_transform(net.partitions[partition_index_b])
+
+    # fix streaming
+    off_chip_streaming.fix_streaming(net, partition_index_a, partition_index_b)
+
     # merge graphs
     graph = graphs.merge_graphs_horizontal(
-            net.partitions[partition_index_a].graph,net.partitions[partition_index_b].graph)
+            net.partitions[partition_index_a].graph,
+            net.partitions[partition_index_b].graph,
+            net.network_branch_edges)
+
     net.partitions[partition_index_a].graph = graph
     # apply max weights reloading
     weights_reloading.apply_max_weights_reloading(net.partitions[partition_index_a])
+
     # remove last partition
     del net.partitions[partition_index_b]
 
@@ -279,6 +287,50 @@ def merge_complete(net):
     net.merge_horizontal_complete()
     net.merge_vertical_complete()
     net.merge_horizontal_complete()
+
+def merge_single_layer_partition_to_prev(net, allowed_layers):
+    def _find_single_layer_partition():
+        for i in range(len(net.partitions)):
+            if len(net.partitions[i].graph.nodes) == 1:
+                input_node = graphs.get_input_nodes(net.partitions[i].graph)[0]
+                if net.partitions[i].graph.nodes[input_node]['type'] in allowed_layers:
+                    return i, input_node
+        return None, None
+    partition_index, partition_node = _find_single_layer_partition()
+    # keep iterating until all single layer partitions are merged
+    while partition_index != None:
+        # get the previous connected nodes of the partition node
+        prev_nodes = graphs.get_prev_nodes(net.graph, partition_node)
+        # find the partition(s) that feed into this node
+        prev_partitions = [i for i in range(len(
+            net.partitions)) for prev_node in prev_nodes if prev_node in graphs.get_output_nodes(net.partitions[i].graph)]
+        assert len(prev_partitions) == 1, "WARNING: multiple partitions feeding into single layer partition. Currently not handled"
+        # merge partition to previous
+        merge_horizontal(net, prev_partitions[0], partition_index)
+        # find next partition to merge
+        partition_index, partition_node = _find_single_layer_partition()
+
+def merge_single_layer_partition_to_next(net, allowed_layers):
+    def _find_single_layer_partition():
+        for i in range(len(net.partitions)):
+            if len(net.partitions[i].graph.nodes) == 1:
+                input_node = graphs.get_input_nodes(net.partitions[i].graph)[0]
+                if net.partitions[i].graph.nodes[input_node]['type'] in allowed_layers or (hasattr(net.partitions[i].graph.nodes[input_node]['hw'], 'op_type') and net.partitions[i].graph.nodes[input_node]['hw'].op_type in allowed_layers):
+                    return i, input_node
+        return None, None
+    partition_index, partition_node = _find_single_layer_partition()
+    # keep iterating until all single layer partitions are merged
+    while partition_index != None:
+        # get the next connected nodes of the partition node
+        next_nodes = graphs.get_next_nodes(net.graph, partition_node)
+        # find the partition(s) that this node feeds
+        next_partitions = [i for i in range(len(
+            net.partitions)) for next_node in next_nodes if next_node in graphs.get_input_nodes(net.partitions[i].graph)]
+        assert len(next_partitions) == 1, "WARNING: single layer partition feeding multiple partitions. Currently not handled"
+        # merge partition to previous
+        merge_horizontal(net, partition_index, next_partitions[0])
+        # find next partition to merge
+        partition_index, partition_node = _find_single_layer_partition()
 
 def apply_random_partition(net, partition_index):
    # choose randomly between merge or split
