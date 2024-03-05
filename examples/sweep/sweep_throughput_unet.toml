@@ -1,0 +1,18 @@
+method = "grid"
+model_name = "unet"
+
+[metric]
+goal = "maximize"
+name = "throughput"
+
+[parameters.batch_size]
+values = [1, 128, 256]
+[parameters.bram_to_lut]
+values = [true]
+[parameters.off_chip_streaming]
+values = [true, false]
+[parameters.compress_off_chip]
+values = [true, false]
+[parameters.balance_bram_uram]
+values = [true, false]
+

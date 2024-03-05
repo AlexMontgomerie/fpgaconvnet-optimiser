@@ -52,6 +52,12 @@ python -m fpgaconvnet.optimiser.latency --name c3d \
 ```
 The same files are generated as before in this case.
 
+
+### Running WandB Sweeps
+To run a sweep on wandb, you can use the following command:
+```
+python -m fpgaconvnet.optimiser.sweep_wandb -n unet -m examples/models/unet.onnx -p examples/platforms/u200.toml -o outputs/unet/throughput/u200 -b 1 --objective throughput --optimiser greedy_partition --optimiser_config_path examples/optimisers/single_partition_throughput.toml --enable-wandb --sweep-wandb
+```
 ---
 
 Feel free to post an issue if you have any questions or problems!

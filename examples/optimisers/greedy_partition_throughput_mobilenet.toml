@@ -1,0 +1,42 @@
+[general]
+logging = false
+checkpoints = false
+resource_allocation = 1.00
+bram_to_lut = true
+off_chip_streaming = true
+balance_bram_uram = true
+
+[transforms.fine]
+apply_transform = true
+probability = 0.25
+start_complete = false
+
+[transforms.coarse]
+apply_transform = true
+probability = 0.25
+
+[transforms.weights_reloading]
+apply_transform = false
+probability = 0.25
+start_max = false
+
+[transforms.partition]
+apply_transform = false
+probability = 0.25
+start_complete = true
+allowed_type = ["merge"]
+allowed_partitions = [
+    ["Conv", "Split"],
+    ["Add", "*"],
+    ["*", "Gemm"]
+]
+vertical = false
+allowed_single_layer_merge_pre = []
+allowed_single_layer_merge_post = []
+
+[annealing]
+T = 10.0
+T_min = 0.0001
+k = 10.0
+cool = 0.98
+transform_iterations = 15

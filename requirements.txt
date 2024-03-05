@@ -14,3 +14,4 @@ matplotlib
 pandas
 toml
 protobuf==3.20.3
+tabulate

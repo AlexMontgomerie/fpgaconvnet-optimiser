@@ -1,8 +1,10 @@
 [general]
 logging = false
 checkpoints = false
-starting_point_distillation = false
-resource_allocation = 1.00
+resource_allocation = 0.90
+bram_to_lut = true
+off_chip_streaming = true
+balance_bram_uram = true
 
 [transforms.fine]
 apply_transform = true
@@ -14,9 +16,9 @@ apply_transform = true
 probability = 0.25
 
 [transforms.weights_reloading]
-apply_transform = false
+apply_transform = true
 probability = 0.25
-start_max = false
+start_max = true
 
 [transforms.partition]
 apply_transform = false
@@ -24,10 +26,15 @@ probability = 0.25
 start_complete = true
 allowed_type = ["merge"]
 allowed_partitions = [
-    ["Add", "*"],
-    ["*", "Gemm"]
+    ["*", "Conv"],
+    ["*", "Gemm"],
+    ["*", "Split"],
+    ["*", "EltWise"],
+    ["EltWise", "*"]
 ]
 vertical = false
+allowed_single_layer_merge_pre = []
+allowed_single_layer_merge_post = []
 
 [annealing]
 T = 10.0
