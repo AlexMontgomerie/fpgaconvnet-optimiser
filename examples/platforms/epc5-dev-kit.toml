@@ -1,0 +1,18 @@
+[device]
+name = "ecp5-eval-board"
+#family = ""
+part = "lfe5um-85f-bg756"
+board = ""
+
+[resources]
+# they have 7 512kb blocks also
+DSP   = 156
+BRAM  = 208
+FF    = 170000 # ????
+LUT   =  85000
+
+[system]
+board_frequency = 200 # in MHz
+memory_bandwidth = 16.8 # in Gbps
+reconfiguration_time = 0.08255 # in seconds
+port_width = 128
