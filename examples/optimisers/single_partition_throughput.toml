@@ -8,27 +8,27 @@ balance_bram_uram = true
 
 [transforms.fine]
 apply_transform = true
-probability = 0.25
+probability = 0.5
 start_complete = false
 
 [transforms.coarse]
 apply_transform = true
-probability = 0.25
+probability = 0.5
 
 [transforms.weights_reloading]
 apply_transform = false
-probability = 0.25
+probability = 0.0
 start_max = false
 
 [transforms.partition]
 apply_transform = false
-probability = 0.25
+probability = 0.0
 start_complete = false
-allowed_type = ["merge"]
-allowed_partitions = [
-    ["*", "Conv"],
-    ["*", "Gemm"]
-]
+allowed_type = []
+allowed_partitions = []
+vertical = false
+allowed_single_layer_merge_pre = []
+allowed_single_layer_merge_post = []
 
 [annealing]
 T = 10.0

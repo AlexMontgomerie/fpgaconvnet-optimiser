@@ -32,6 +32,8 @@ allowed_partitions = [
     ["Concat", "*"]
 ]
 vertical = true
+allowed_single_layer_merge_pre = []
+allowed_single_layer_merge_post = []
 
 [annealing]
 T = 10.0

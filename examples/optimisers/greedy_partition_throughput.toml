@@ -33,6 +33,8 @@ allowed_partitions = [
     ["EltWise", "*"]
 ]
 vertical = false
+allowed_single_layer_merge_pre = []
+allowed_single_layer_merge_post = []
 
 [annealing]
 T = 10.0
