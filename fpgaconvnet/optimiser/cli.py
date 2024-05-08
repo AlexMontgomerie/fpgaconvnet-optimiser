@@ -11,21 +11,21 @@ import pickle
 import pstats
 import random
 import shutil
-
-import numpy as np
+import wandb
 import toml
-from fpgaconvnet.parser.Parser import Parser
-from fpgaconvnet.platform.Platform import Platform
-from fpgaconvnet.tools.layer_enum import from_cfg_type
+import numpy as np
 from tabulate import tabulate
+
+from fpgaconvnet.parser.parser import Parser
+from fpgaconvnet.platform import build_platform_from_toml
+from fpgaconvnet.tools.layer_enum import from_cfg_type
 
 import fpgaconvnet.optimiser.transforms.coarse
 import fpgaconvnet.optimiser.transforms.fine
 import fpgaconvnet.optimiser.transforms.partition
-import wandb
+from fpgaconvnet.architecture import Architecture, BACKEND, DIMENSIONALITY
 from fpgaconvnet.optimiser.solvers import (GreedyPartition, Improve,
                                            SimulatedAnnealing)
-
 
 def parse_args():
     """
@@ -54,9 +54,10 @@ def parse_args():
     parser.add_argument('--enable-wandb', action="store_true", help='whether to enable wandb logging')
     parser.add_argument('--sweep-wandb', action="store_true", help='whether to perform a wandb sweep')
     parser.add_argument('--custom_onnx', action="store_true", help='whether to enable custom onnx parsing on model Parser')
-    parser.add_argument('--profile', action="store_true", help='whether to profile the whole programm or not')
+    parser.add_argument('--profile', action="store_true", help='whether to profile the whole programme or not')
     parser.add_argument('--encode', choices=['none','huffman', 'rle'], default='none', required=False,
         help='stream encoding type')
+    parser.add_argument("--rebuild-resource-model", action="store_true", help="rebuild the resource model")
 
     return parser.parse_args()
 
@@ -132,12 +133,15 @@ def main():
     # net.DEBUG = True
 
     # parse the network
-    fpgaconvnet_parser = Parser(custom_onnx=args.custom_onnx)
+    fpgaconvnet_parser = Parser(custom_onnx=args.custom_onnx, backend=BACKEND.CHISEL)
     net = fpgaconvnet_parser.onnx_to_fpgaconvnet(args.model_path)
 
     # load platform
-    platform = Platform()
-    platform.update(args.platform_path)
+    platform = build_platform_from_toml(args.platform_path)
+
+    # rebuild the resource model
+    if args.rebuild_resource_model:
+        platform.build_all_resource_models()
 
     if args.optimiser == "improve":
         opt = Improve(net, platform, **optimiser_config["annealing"], wandb_enabled=args.enable_wandb)

@@ -9,7 +9,8 @@ import random
 import numpy as np
 from fpgaconvnet.optimiser.transforms.helper import get_all_layers
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
-from fpgaconvnet.models.layers.ConvolutionSparseLayer import ConvolutionSparseLayer
+from fpgaconvnet.models.layers.metrics import get_layer_latency
+# from fpgaconvnet.models.layers.ConvolutionSparseLayer import ConvolutionSparseLayer
 
 def apply_random_fine_node(partition, node):
 
@@ -40,8 +41,7 @@ def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False, t
     feasible_layers = [ layer for layer in feasible_layers if layer not in reject_list ]
 
     if len(feasible_layers) > 0:
-        node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
-            for layer in feasible_layers])
+        node_latencys = np.array([ partition.graph.nodes[layer]['hw'].cycles() for layer in feasible_layers])
 
         for node_index in reversed(np.argsort(node_latencys, kind='mergesort')):
             layer = feasible_layers[node_index]
@@ -52,7 +52,7 @@ def apply_more_fine(partition, reject_list=[], skip_second_slowest_node=False, t
                 partition.graph.nodes[layer]['hw'].fine = fine_feasible[fine_index]
                 partition.graph.nodes[layer]['hw'].update()
                 new_latency = partition.graph.nodes[layer]['hw'].latency()
-                gain_threshold = threshold if isinstance(partition.graph.nodes[layer]['hw'], ConvolutionSparseLayer) else 1
+                gain_threshold = threshold if isinstance(partition.graph.nodes[layer]['hw'], ConvolutionSparseLayer) else 1 # FIXME
                 if node_latencys[node_index] / new_latency > gain_threshold:
                     return True, layer
                 else:

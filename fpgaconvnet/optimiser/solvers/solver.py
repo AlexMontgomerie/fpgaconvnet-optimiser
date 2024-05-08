@@ -7,14 +7,16 @@ import random
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
+from tabulate import tabulate
+import numpy as np
 
 import fpgaconvnet.tools.graphs as graphs
-import numpy as np
 from fpgaconvnet.models.network import Network
-from fpgaconvnet.platform.Platform import Platform
+from fpgaconvnet.platform import PlatformBase
 from fpgaconvnet.tools import graphs
 from fpgaconvnet.tools.layer_enum import LAYER_TYPE
-from tabulate import tabulate
+from fpgaconvnet.models.partition.metrics import get_parition_resources_all, get_partition_total_bandwidth
+from fpgaconvnet.models.network.metrics import get_network_latency, get_network_throughput
 
 import fpgaconvnet.optimiser.transforms.coarse as coarse
 import fpgaconvnet.optimiser.transforms.fine as fine
@@ -29,7 +31,7 @@ THROUGHPUT=1
 @dataclass
 class Solver:
     net: Network
-    platform: Platform
+    platform: PlatformBase
     objective: int = THROUGHPUT
     constraints: dict = field(default_factory=lambda: {
         'latency'    : float("inf"), 'throughput' : 0.0})
@@ -88,10 +90,12 @@ class Solver:
             partition_list = list(range(len(active_net.partitions)))
         # Latency objective
         if   self.objective == LATENCY:
-            return active_net.get_latency(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
+            # return active_net.get_latency(self.platform.freq, self.multi_fpga, self.get_inter_delay(), partition_list)
+            return get_network_latency(active_net, self.platform)
         # Throughput objective
         elif self.objective == THROUGHPUT:
-            return -active_net.get_throughput(self.platform.board_freq, self.multi_fpga, self.get_inter_delay(), partition_list)
+            # return -active_net.get_throughput(self.platform.freq, self.multi_fpga, self.get_inter_delay(), partition_list)
+            return get_network_throughput(active_net, self.platform)
 
     def get_inter_delay(self):
         """
@@ -106,30 +110,34 @@ class Solver:
         if bram_to_lut == None:
             bram_to_lut = self.bram_to_lut
         lut_to_bram_ratio = 288 # BRAM: 18Kbits, LUT: 64bits
-        partition_resource_usage = partition.get_resource_usage()
+        partition_resource_usage = get_parition_resources_all(partition, self.platform)
+
         if bram_to_lut:
-            bram_shortage = math.ceil(partition_resource_usage['BRAM'] - self.ram_usage*self.platform.get_bram())
-            lut_surplus = int((self.rsc_allocation*self.platform.get_lut() - partition_resource_usage['LUT'])/lut_to_bram_ratio)
+            bram_shortage = math.ceil(partition_resource_usage['BRAM'] - self.ram_usage*self.platform.get_resource("BRAM")) # FIXME: platform dependant
+            lut_surplus = int((self.rsc_allocation*self.platform.get_resource("LUT") - partition_resource_usage['LUT'])/lut_to_bram_ratio)
             if bram_shortage > 0 and lut_surplus > 0:
                 partition_resource_usage['BRAM'] -= min(bram_shortage, lut_surplus)
                 partition_resource_usage['LUT'] += lut_surplus * lut_to_bram_ratio
         return partition_resource_usage
 
     def check_partition_resources(self, partition, partition_index):
-        partition_resource_usage = self.get_partition_resource(partition)
-        assert partition_resource_usage['FF']   <= \
-                (self.rsc_allocation*self.platform.get_ff()), f"ERROR: FF usage exceeded, partition: {partition_index}"
-        assert partition_resource_usage['LUT']  <= \
-                (self.rsc_allocation*self.platform.get_lut()), f"ERROR: LUT usage exceeded, partition: {partition_index}"
-        assert partition_resource_usage['DSP']  <= \
-                (self.rsc_allocation*self.platform.get_dsp()) , f"ERROR: DSP usage exceeded, partition: {partition_index}"
-        assert partition_resource_usage['BRAM'] <= \
-                (self.ram_usage*self.platform.get_bram()), f"ERROR: BRAM usage exceeded, partition: {partition_index}"
-        assert partition_resource_usage['URAM'] <= \
-                (self.ram_usage*self.platform.get_uram()), f"ERROR: URAM usage exceeded, partition: {partition_index}"
 
-        bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
-        assert bandwidth_total <= self.rsc_allocation*self.platform.get_mem_bw(), f"ERROR: Memory bandwidth exceeded, partition: {partition_index}"
+        # get the partition resources
+        partition_resource_usage = self.get_partition_resource(partition)
+
+        # iterate over the resource types of the platform
+        for rsc_type in self.platform.resource_types:
+
+            # get the max resource usage for the platform
+            max_rsc_usage = self.rsc_allocation*self.platform.get_resource(rsc_type)
+
+            # check if the resource usage is within the max
+            # assert partition_resource_usage[rsc_type] <= max_rsc_usage, \
+            #         f"ERROR: {rsc_type} usage exceeded, partition: {partition_index} (max={max_rsc_usage}, pred={int(partition_resource_usage[rsc_type])})"
+
+        # bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
+        # bandwidth_total = get_partition_total_bandwidth(partition, self.platform)
+        # assert bandwidth_total <= self.rsc_allocation*self.platform.get_mem_bw(), f"ERROR: Memory bandwidth exceeded, partition: {partition_index}"
 
     def check_resources(self):
         # iterate over partitions
@@ -238,53 +246,57 @@ class Solver:
         DSP  = np.mean([ resource['DSP']  for resource in resources ])
         LUT  = np.mean([ resource['LUT']  for resource in resources ])
         FF   = np.mean([ resource['FF']   for resource in resources ])
-        BW   = np.mean([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
-        BW_IN   = np.mean([ sum(partition.get_bandwidth_in(self.platform.board_freq)) for partition in self.net.partitions ])
-        BW_OUT   = np.mean([ sum(partition.get_bandwidth_out(self.platform.board_freq)) for partition in self.net.partitions ])
-        BW_WEIGHT   = np.mean([ sum(partition.get_bandwidth_weight(self.platform.board_freq)) for partition in self.net.partitions ])
+        # BW   = np.mean([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ])
+        # BW_IN   = np.mean([ sum(partition.get_bandwidth_in(self.platform.board_freq)) for partition in self.net.partitions ])
+        # BW_OUT   = np.mean([ sum(partition.get_bandwidth_out(self.platform.board_freq)) for partition in self.net.partitions ])
+        # BW_WEIGHT   = np.mean([ sum(partition.get_bandwidth_weight(self.platform.board_freq)) for partition in self.net.partitions ])
 
         solver_data = [
-            ["COST:", "", "RESOURCES:", "", "", "", "", "", "", ""],
-            ["", "", "BRAM", "DSP", "LUT", "FF", "BW", "BW_IN", "BW_OUT", "BW_WEIGHT"],
+            ["COST:", "", "RESOURCES:", "", "", "",
+             # "", "", "", ""
+            ],
+            ["", "", "BRAM", "DSP", "LUT", "FF",
+             # "BW", "BW_IN", "BW_OUT", "BW_WEIGHT"
+            ],
             [f"{cost:.6f} ({objective})",
              "",
-             f"{BRAM:.2f}/{self.platform.get_bram()}",
-             f"{DSP:.2f}/{self.platform.get_dsp()}",
-             f"{LUT:.2f}/{self.platform.get_lut()}",
-             f"{FF:.2f}/{self.platform.get_ff()}",
-             f"{BW:.2f}/{self.platform.get_mem_bw()}",
-             f"{BW_IN:.2f}/{self.platform.get_mem_bw()}",
-             f"{BW_OUT:.2f}/{self.platform.get_mem_bw()}",
-             f"{BW_WEIGHT:.2f}/{self.platform.get_mem_bw()}",
+             f"{BRAM:.2f}/{self.platform.get_resource('BRAM')}",
+             f"{DSP:.2f}/{self.platform.get_resource('DSP')}",
+             f"{LUT:.2f}/{self.platform.get_resource('LUT')}",
+             f"{FF:.2f}/{self.platform.get_resource('FF')}",
+             # f"{BW:.2f}/{self.platform.get_mem_bw()}",
+             # f"{BW_IN:.2f}/{self.platform.get_mem_bw()}",
+             # f"{BW_OUT:.2f}/{self.platform.get_mem_bw()}",
+             # f"{BW_WEIGHT:.2f}/{self.platform.get_mem_bw()}",
             ],
             ["",
              "",
-             f"{BRAM/self.platform.get_bram() * 100:.2f} %",
-             f"{DSP/self.platform.get_dsp() * 100:.2f} %",
-             f"{LUT/self.platform.get_lut() * 100:.2f} %",
-             f"{FF/self.platform.get_ff() * 100:.2f} %",
-             f"{BW/self.platform.get_mem_bw() * 100:.2f} %",
-             f"{BW_IN/self.platform.get_mem_bw() * 100:.2f} %",
-             f"{BW_OUT/self.platform.get_mem_bw() * 100:.2f} %",
-             f"{BW_WEIGHT/self.platform.get_mem_bw() * 100:.2f} %"
+             f"{BRAM/self.platform.get_resource('BRAM') * 100:.2f} %",
+             f"{DSP/self.platform.get_resource('DSP') * 100:.2f} %",
+             f"{LUT/self.platform.get_resource('LUT') * 100:.2f} %",
+             f"{FF/self.platform.get_resource('FF') * 100:.2f} %",
+             # f"{BW/self.platform.get_mem_bw() * 100:.2f} %",
+             # f"{BW_IN/self.platform.get_mem_bw() * 100:.2f} %",
+             # f"{BW_OUT/self.platform.get_mem_bw() * 100:.2f} %",
+             # f"{BW_WEIGHT/self.platform.get_mem_bw() * 100:.2f} %"
             ]
         ]
 
-        if self.platform.get_uram() > 0:
+        if self.platform.get_resource("URAM") > 0:
             URAM = np.mean([ resource['URAM'] for resource in resources ])
             solver_data[0].insert(3, "")
             solver_data[1].insert(2, "URAM")
-            solver_data[2].insert(2, f"{URAM:.2f}/{self.platform.get_uram()}")
-            solver_data[3].insert(2, f"{URAM/self.platform.get_uram() * 100:.2f} %")
+            solver_data[2].insert(2, f"{URAM:.2f}/{self.platform.get_resource('URAM')}")
+            solver_data[3].insert(2, f"{URAM/self.platform.get_resource('URAM') * 100:.2f} %")
 
         if wandb_tbl != None:
             for _, row in list(wandb_tbl.iterrows())[-1:]:
                 row[4] = cost
-                row[5] = URAM/self.platform.get_uram() * 100 if self.platform.get_uram() > 0 else 0
-                row[6] = BRAM/self.platform.get_bram() * 100
-                row[7] = DSP/self.platform.get_dsp() * 100
-                row[8] = LUT/self.platform.get_lut() * 100
-                row[9] = FF/self.platform.get_ff() * 100
+                row[5] = URAM/self.platform.get_resource("URAM") * 100 if self.platform.get_resource("URAM") > 0 else 0
+                row[6] = BRAM/self.platform.get_resource("BRAM") * 100
+                row[7] = DSP/self.platform.get_resource("DSP") * 100
+                row[8] = LUT/self.platform.get_resource("LUT") * 100
+                row[9] = FF/self.platform.get_resource("FF") * 100
                 row[10] = BW/self.platform.get_mem_bw() * 100
                 row[11] = BW
 
@@ -329,10 +341,10 @@ class Solver:
             "performance_gops_per_sec": total_operations*1e-9/latency,
             "performance_macs_per_sec": (total_operations/2)*1e-9/latency,
             "num_partitions" : len(self.net.partitions),
-            "lut_perc_avg": np.mean([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]) / self.platform.get_lut() * 100,
-            "ff_perc_avg": np.mean([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]) / self.platform.get_ff() * 100,
-            "bram_perc_avg": np.mean([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]) / self.platform.get_bram() * 100,
-            "dsp_perc_avg": np.mean([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ]) / self.platform.get_dsp() * 100,
+            "lut_perc_avg": np.mean([ self.get_partition_resource(partition)["LUT"] for partition in self.net.partitions ]) / self.platform.get_resource("LUT") * 100,
+            "ff_perc_avg": np.mean([ self.get_partition_resource(partition)["FF"] for partition in self.net.partitions ]) / self.platform.get_resource("FF") * 100,
+            "bram_perc_avg": np.mean([ self.get_partition_resource(partition)["BRAM"] for partition in self.net.partitions ]) / self.platform.get_resource("BRAM") * 100,
+            "dsp_perc_avg": np.mean([ self.get_partition_resource(partition)["DSP"] for partition in self.net.partitions ]) / self.platform.get_resource("DSP") * 100,
             "bw_perc_avg": np.mean([ partition.get_total_bandwidth(self.platform.board_freq) for partition in self.net.partitions ]) / self.platform.get_mem_bw() * 100,
             "bw_in_perc_avg": np.mean([ sum(partition.get_bandwidth_in(self.platform.board_freq)) for partition in self.net.partitions ]) / self.platform.get_mem_bw() * 100,
             "bw_out_perc_avg": np.mean([ sum(partition.get_bandwidth_out(self.platform.board_freq)) for partition in self.net.partitions ]) / self.platform.get_mem_bw() * 100,
@@ -342,8 +354,8 @@ class Solver:
             "bw_out": np.mean([ sum(partition.get_bandwidth_out(self.platform.board_freq)) for partition in self.net.partitions ]),
             "bw_weight": np.mean([ sum(partition.get_bandwidth_weight(self.platform.board_freq)) for partition in self.net.partitions ])
         }
-        if self.platform.get_uram() > 0:
-            wandb_log["uram_perc_avg"] = np.mean([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ]) / self.platform.get_uram() * 100
+        if self.platform.get_resource("URAM") > 0:
+            wandb_log["uram_perc_avg"] = np.mean([ self.get_partition_resource(partition)["URAM"] for partition in self.net.partitions ]) / self.platform.get_resource("URAM") * 100
 
         # add extra log values
         wandb_log.update(kwargs)

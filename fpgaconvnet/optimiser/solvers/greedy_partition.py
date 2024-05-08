@@ -150,9 +150,9 @@ class GreedyPartition(Solver):
 
     def optimise_coarse(self, partition_index):
         def _get_rsc_bottleneck(partition_resource_usage, platform):
-            dsp_util = partition_resource_usage['DSP'] / platform.get_dsp()
-            lut_util = partition_resource_usage['LUT'] / platform.get_lut()
-            ff_util = partition_resource_usage['FF'] / platform.get_ff()
+            dsp_util = partition_resource_usage['DSP'] / platform.get_resource("DSP")
+            lut_util = partition_resource_usage['LUT'] / platform.get_resource("LUT")
+            ff_util = partition_resource_usage['FF'] / platform.get_resource("FF")
             if dsp_util > lut_util and dsp_util > ff_util:
                 return 'DSP'
             elif lut_util > ff_util:
@@ -330,26 +330,26 @@ class GreedyPartition(Solver):
 
         # balance between bram and uram
         partition_resource_usage = self.get_partition_resource(partition)
-        if self.platform.get_uram() > 0 and self.balance_bram_uram:
-            sorted_conv_layers = sorted(conv_layers, key=lambda layer: partition.graph.nodes[layer]["hw"].weights_ram_usage , reverse=True)
+        if self.platform.get_resource("URAM") > 0 and self.balance_bram_uram:
+            sorted_conv_layers = sorted(conv_layers, key=lambda layer: partition.graph.nodes[layer]["hw"].get_parameters_size()["weights"], reverse=True)
             for layer in sorted_conv_layers:
                 node = partition.graph.nodes[layer]["hw"]
-                if node.weights_ram_usage == 0:
+                if node.get_parameters_size()["weights"] == 0:
                     continue
-                curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
-                curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+                curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_resource("BRAM")
+                curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_resource("URAM")
                 node.use_uram = True
                 partition_resource_usage = self.get_partition_resource(partition)
-                new_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
-                new_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+                new_bram_util = partition_resource_usage['BRAM'] / self.platform.get_resource("BRAM")
+                new_uram_util = partition_resource_usage['URAM'] / self.platform.get_resource("URAM")
                 if new_bram_util <= new_uram_util and curr_bram_util >= curr_uram_util:
                     node.use_uram = abs(new_bram_util-new_uram_util) < abs(curr_bram_util-curr_uram_util)
                     break
             partition_resource_usage = self.get_partition_resource(partition)
-            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
-            curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram()
+            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_resource("BRAM")
+            curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_resource("URAM")
         else:
-            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
+            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_resource("BRAM")
             curr_uram_util = 0
 
         if not self.off_chip_streaming:
@@ -418,8 +418,8 @@ class GreedyPartition(Solver):
             node = partition.graph.nodes[layer]["hw"]
             _step(partition, layer, data_type, index)
             partition_resource_usage = self.get_partition_resource(partition)
-            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_bram()
-            curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_uram() if self.platform.get_uram() > 0 else 0
+            curr_bram_util = partition_resource_usage['BRAM'] / self.platform.get_resource("BRAM")
+            curr_uram_util = partition_resource_usage['URAM'] / self.platform.get_resource("URAM") if self.platform.get_resource("URAM") > 0 else 0
 
             bandwidth_total = partition.get_total_bandwidth(self.platform.board_freq)
             bandwidth_max = self.rsc_allocation*self.platform.get_mem_bw()
@@ -438,8 +438,8 @@ class GreedyPartition(Solver):
             if partition.graph.nodes[layer]['type'] in types:
                 layers.append(layer)
         partition_resource_usage = self.get_partition_resource(partition)
-        curr_lut_util = partition_resource_usage['LUT'] / self.platform.get_lut()
-        curr_dsp_util = partition_resource_usage['DSP'] / self.platform.get_dsp()
+        curr_lut_util = partition_resource_usage['LUT'] / self.platform.get_resource("LUT")
+        curr_dsp_util = partition_resource_usage['DSP'] / self.platform.get_resource("DSP")
         if len(layers) > 0 and curr_lut_util > self.rsc_allocation and curr_dsp_util < self.rsc_allocation:
             transforms.fine.apply_complete_fine(partition)
             return True

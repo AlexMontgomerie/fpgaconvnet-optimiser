@@ -77,7 +77,7 @@ def fix_coarse(partition):
         coarse_in_feasible = partition.graph.nodes[node]['hw'].get_coarse_in_feasible()
         if coarse_in not in coarse_in_feasible:
             partition.graph.nodes[node]['hw'].coarse_in = max(filter(lambda x: x <= coarse_in, coarse_in_feasible))
-        
+
         # check if coarse out is greater than max feasible coarse out
         coarse_out = partition.graph.nodes[node]['hw'].coarse_out
         # todo: fix multi ports
@@ -97,10 +97,10 @@ def fix_coarse(partition):
 def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_in_first, fix_coarse):
     partition.remove_squeeze()
 
-    node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
+    node_cycles = np.array([ partition.graph.nodes[layer]['hw'].cycles() \
     for layer in graphs.ordered_node_list(partition.graph) ])
 
-    for node_index in reversed(np.argsort(node_latencys, kind='mergesort')):
+    for node_index in reversed(np.argsort(node_cycles, kind='mergesort')):
         layer = graphs.ordered_node_list(partition.graph)[node_index]
 
         if layer in reject_list:
@@ -176,7 +176,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
                 partition.graph.nodes[layer]['hw'].coarse_in = int(selected_coarse_combination[1])
                 partition.graph.nodes[layer]['hw'].coarse_out = int(selected_coarse_combination[2])
                 partition.graph.nodes[layer]['hw'].update()
-                if partition.graph.nodes[layer]['hw'].latency() < node_latencys[node_index]:
+                if partition.graph.nodes[layer]['hw'].cycles() < node_cycles[node_index]:
                     return True, layer
                 else:
                     partition.graph.nodes[layer]['hw'].coarse_in = current_coarse_in
