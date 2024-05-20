@@ -54,5 +54,6 @@ jobs:
         
     - name: Run Optimisation Tests
       run: |
+        export FPGACONVNET_MODEL=./fpgaconvnet-model
         bash tests/run_models.sh
 
