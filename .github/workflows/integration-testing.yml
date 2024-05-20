@@ -47,6 +47,10 @@ jobs:
 
         python -m pip install .
         python -m pip install ./fpgaconvnet-model
+
+    - name: Build default resource models
+      run: |
+        python ./fpgaconvnet-model/scripts/regenerate_platform_resource_models.py
         
     - name: Run Optimisation Tests
       run: |
