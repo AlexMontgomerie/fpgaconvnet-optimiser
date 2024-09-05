@@ -382,14 +382,14 @@ class Solver:
         if not self.constrain_port_width:
             return
 
-        # port_width = self.platform.eth_port_width if self.multi_fpga else self.platform.port_width
+        port_width = self.platform.eth_port_width if self.multi_fpga else self.platform.port_width
         # force port_width = 64 for now
-        if self.multi_fpga:
-            port_width = self.platform.eth_port_width
-        else: 
-            if (self.net.backend == "hls"):
-                port_width = 64
-            else: port_width = self.platform.port_width 
+        # if self.multi_fpga:
+        #     port_width = self.platform.eth_port_width
+        # else: 
+        #     if (self.net.backend == "hls"):
+        #         port_width = 64
+        #     else: port_width = self.platform.port_width 
 
 
         for partition in self.net.partitions:
