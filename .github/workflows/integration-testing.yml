@@ -2,9 +2,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dev ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,20 +15,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: Checkout optimiser repo
+      uses: actions/checkout@v4
+
+    - name: Fetch model repo
+      run: |
+        BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+        URL=https://github.com/AlexMontgomerie/fpgaconvnet-model.git    
+        if [ -z $(git ls-remote --heads $URL $BRANCH) ]; then
+          echo "Warning! branch $BRANCH does not exist. use dev instead"
+          BRANCH="dev"
+        else
+          echo "checkout branch $BRANCH sucessfully"
+        fi
+        git clone --branch $BRANCH $URL fpgaconvnet-model
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.7.x'
+        python-version: '3.10' 
+
     - name: Install dependencies
       run: |
-        sudo apt-get install protobuf-compiler libprotoc-dev
-        python setup.py install
-    - name: Run Tests
+        sudo apt-get install protobuf-compiler libprotoc-dev graphviz
+        python -m pip install --upgrade pip
+
+        # for some unknown reason, these packages need special care
+        python -m pip install wheel
+        python -m pip install nvidia-pyindex 
+        python -m pip install onnx-graphsurgeon
+
+        python -m pip install .
+        python -m pip install ./fpgaconvnet-model
+        
+    - name: Run Optimisation Tests
       run: |
-          python -m coverage run --source=fpgaconvnet_optimiser -m unittest discover tests/
-    # - name: Upload Coverage to Codecov
-    #   uses: codecov/codecov-action@v1
-    #   with:
-    #     token: ${{ secrets.CODECOV_TOKEN  }}
+        bash tests/run_models.sh
 

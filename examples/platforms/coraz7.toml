@@ -1,0 +1,17 @@
+[device]
+name = "cora-z7-07s"
+#family = ""
+part = "xc7z007sclg400-1"
+board = "digilentinc.com:cora-z7-07s:part0:1.0"
+
+[resources]
+DSP   = 66
+BRAM  = 100
+FF    = 28800
+LUT   = 14400
+
+[system]
+board_frequency = 200 # in MHz
+memory_bandwidth = 16.8 # in Gbps
+reconfiguration_time = 0.08255 # in seconds
+port_width = 128

@@ -12,7 +12,7 @@ LUT   = 230400
 
 [system]
 board_frequency = 200 # in MHz
-memory_bandwidth = 100.0 # in Gbps
+memory_bandwidth = 136.512 # in Gbps
 reconfiguration_time = 0.08255 # in seconds
 axi_ports = 2
 axi_data_width = 128

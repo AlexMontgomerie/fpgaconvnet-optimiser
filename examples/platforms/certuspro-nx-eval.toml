@@ -1,0 +1,17 @@
+[device]
+name = "certuspro-nx-eval-board"
+#family = ""
+part = "lfcpnx-100-9lfg672c"
+board = ""
+
+[resources]
+DSP   = 1800
+BRAM  = 1980
+FF    = 944000 # ????
+LUT   = 477000
+
+[system]
+board_frequency = 200 # in MHz
+memory_bandwidth = 16.8 # in Gbps
+reconfiguration_time = 0.08255 # in seconds
+port_width = 128

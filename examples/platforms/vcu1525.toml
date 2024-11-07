@@ -1,0 +1,18 @@
+[device]
+name = "vcu1525"
+#family = ""
+part = "xcvu9p-fsgd2104-2L-e"
+board = "" #TODO: add board file
+
+[resources]
+DSP   = 6840
+BRAM  = 4320
+FF    = 2364480
+LUT   = 1182240
+URAM  = 960
+
+[system]
+board_frequency = 200 # in MHz
+memory_bandwidth = 320 # in Gbps (based on this post https://support.xilinx.com/s/question/0D52E00006hphbASAQ/vcu1525-maximum-dram-bandwidth?language=en_US)
+reconfiguration_time = 0.08255 # in seconds
+port_width = 512

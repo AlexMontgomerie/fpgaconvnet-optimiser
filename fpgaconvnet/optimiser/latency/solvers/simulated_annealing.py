@@ -8,12 +8,12 @@ from dataclasses import dataclass
 import wandb
 import pandas as pd
 import time
+import pickle
 
 from fpgaconvnet.optimiser.latency.solvers.solver import LatencySolver
 
 LATENCY     =   0
 THROUGHPUT  =   1
-
 START_LOOP  =   10
 
 @dataclass
@@ -54,7 +54,7 @@ class LatencySimulatedAnnealing(LatencySolver):
             cost = self.get_cost()
 
             # Save previous building blocks
-            building_blocks = copy.deepcopy(self.building_blocks)
+            building_blocks = pickle.loads(pickle.dumps(self.building_blocks))
 
             # several transform iterations per cool down
             for _ in range(self.transform_iterations):
@@ -89,7 +89,7 @@ class LatencySimulatedAnnealing(LatencySolver):
                 # revert to previous state
                 self.building_blocks = building_blocks
 
-    def run_solver(self, log=True):
+    def run_solver(self, log=True) -> bool:
 
         if self.warm_start:
             # warm start the solver
@@ -100,7 +100,8 @@ class LatencySimulatedAnnealing(LatencySolver):
             assert self.check_resources()
             self.check_building_blocks()
         except AssertionError as error:
-            raise AssertionError("Initial design exceeded resource usage")
+            print("Initial design exceeded resource usage")
+            return False
 
         # Cooling Loop
         while self.T_min < self.T:
@@ -110,7 +111,7 @@ class LatencySimulatedAnnealing(LatencySolver):
             resources = self.get_resources()
 
             # Save previous building blocks
-            building_blocks = copy.deepcopy(self.building_blocks)
+            building_blocks = pickle.loads(pickle.dumps(self.building_blocks))
 
             # several transform iterations per cool down
             # transform_iterations = random.randint(1, self.transform_iterations)
@@ -219,6 +220,8 @@ class LatencySimulatedAnnealing(LatencySolver):
         print(f"Final cost: {self.get_cost():.4f}")
         print(f"Final resources: {self.get_resources_util()}")
         print(f"Final building blocks: {list(self.building_blocks.keys())}")
+
+        return True
 
         # # store dataframe of
         # # https://docs.wandb.ai/guides/data-vis/log-tables

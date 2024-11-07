@@ -74,23 +74,25 @@ def fix_coarse(partition):
         # todo: fix multi ports
         if isinstance(coarse_in, Iterable):
             coarse_in = coarse_in[0]
-        coarse_in_max = partition.graph.nodes[node]['hw'].get_coarse_in_feasible()[-1]
-        if coarse_in > coarse_in_max:
-            partition.graph.nodes[node]['hw'].coarse_in = coarse_in_max
+        coarse_in_feasible = partition.graph.nodes[node]['hw'].get_coarse_in_feasible()
+        if coarse_in not in coarse_in_feasible:
+            partition.graph.nodes[node]['hw'].coarse_in = max(filter(lambda x: x <= coarse_in, coarse_in_feasible))
+        
         # check if coarse out is greater than max feasible coarse out
         coarse_out = partition.graph.nodes[node]['hw'].coarse_out
         # todo: fix multi ports
         if isinstance(coarse_out, Iterable):
             coarse_out = coarse_out[0]
-        coarse_out_max = partition.graph.nodes[node]['hw'].get_coarse_out_feasible()[-1]
-        if coarse_out > coarse_out_max:
-            partition.graph.nodes[node]['hw'].coarse_out = coarse_out_max
+        coarse_out_feasible = partition.graph.nodes[node]['hw'].get_coarse_out_feasible()
+        if coarse_out not in coarse_out_feasible:
+            partition.graph.nodes[node]['hw'].coarse_out = max(filter(lambda x: x <= coarse_out, coarse_out_feasible))
+
         # check if coarse group is greater than max feasible coarse group
         if partition.graph.nodes[node]['type'] == LAYER_TYPE.Convolution:
             coarse_group = partition.graph.nodes[node]['hw'].coarse_group
-            coarse_group_max = partition.graph.nodes[node]['hw'].get_coarse_group_feasible()[-1]
-            if coarse_group > coarse_group_max:
-                partition.graph.nodes[node]['hw'].coarse_group = coarse_group_max
+            coarse_group_feasible = partition.graph.nodes[node]['hw'].get_coarse_group_feasible()
+            if coarse_group not in coarse_group_feasible:
+                partition.graph.nodes[node]['hw'].coarse_group = max(filter(lambda x: x <= coarse_group, coarse_group_feasible))
 
 def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_in_first, fix_coarse):
     partition.remove_squeeze()
@@ -98,13 +100,13 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
     node_latencys = np.array([ partition.graph.nodes[layer]['hw'].latency() \
     for layer in graphs.ordered_node_list(partition.graph) ])
 
-    for node_index in reversed(np.argsort(node_latencys)):
+    for node_index in reversed(np.argsort(node_latencys, kind='mergesort')):
         layer = graphs.ordered_node_list(partition.graph)[node_index]
-        
+
         if layer in reject_list:
             continue
 
-        current_coarse_in = partition.graph.nodes[layer]['hw'].coarse_in 
+        current_coarse_in = partition.graph.nodes[layer]['hw'].coarse_in
         # todo: fix multi ports
         if isinstance(current_coarse_in, Iterable):
             current_coarse_in = current_coarse_in[0]
@@ -120,7 +122,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
         current_coarse_product = current_coarse_in * current_coarse_out * current_coarse_group
 
         coarse_in_feasible = partition.graph.nodes[layer]['hw'].get_coarse_in_feasible()
-        coarse_out_feasible = partition.graph.nodes[layer]['hw'].get_coarse_out_feasible()                 
+        coarse_out_feasible = partition.graph.nodes[layer]['hw'].get_coarse_out_feasible()
         if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution and partition.graph.nodes[layer]["hw"].groups != 1:
             coarse_group_feasible = partition.graph.nodes[layer]['hw'].get_coarse_group_feasible()
         else:
@@ -148,7 +150,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
                         else:
                             if coarse_group*coarse_in*coarse_out > current_coarse_product:
                                 all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
-        
+
         else:
             for coarse_group in coarse_group_feasible:
                 for coarse_in in coarse_in_feasible:
@@ -158,7 +160,7 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
                     and coarse_in >= current_coarse_in:
                         all_coarse_combination.append((coarse_group,coarse_in,coarse_out,coarse_group*coarse_in*coarse_out))
 
-        
+
         if len(all_coarse_combination) > 0:
             all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[3]))
             next_coarse_product = all_coarse_combination[0][3]
@@ -167,21 +169,21 @@ def apply_more_coarse(partition, reject_list, skip_second_slowest_node, coarse_i
                 all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[2],x[1],x[0]))
             else:
                 all_coarse_combination = sorted(all_coarse_combination, key=lambda x: (x[1],x[2],x[0]))
-            selected_coarse_combination = all_coarse_combination[0]
-            
-            if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
-                partition.graph.nodes[layer]['hw'].coarse_group = int(selected_coarse_combination[0])
-            partition.graph.nodes[layer]['hw'].coarse_in = int(selected_coarse_combination[1])
-            partition.graph.nodes[layer]['hw'].coarse_out = int(selected_coarse_combination[2])
-            partition.graph.nodes[layer]['hw'].update()
-            if partition.graph.nodes[layer]['hw'].latency() < node_latencys[node_index]:
-                return True, layer
-            else:
-                partition.graph.nodes[layer]['hw'].coarse_in = current_coarse_in
-                partition.graph.nodes[layer]['hw'].coarse_out = current_coarse_out
+
+            for selected_coarse_combination in all_coarse_combination:
                 if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
-                    partition.graph.nodes[layer]['hw'].coarse_group = current_coarse_group
+                    partition.graph.nodes[layer]['hw'].coarse_group = int(selected_coarse_combination[0])
+                partition.graph.nodes[layer]['hw'].coarse_in = int(selected_coarse_combination[1])
+                partition.graph.nodes[layer]['hw'].coarse_out = int(selected_coarse_combination[2])
                 partition.graph.nodes[layer]['hw'].update()
+                if partition.graph.nodes[layer]['hw'].latency() < node_latencys[node_index]:
+                    return True, layer
+                else:
+                    partition.graph.nodes[layer]['hw'].coarse_in = current_coarse_in
+                    partition.graph.nodes[layer]['hw'].coarse_out = current_coarse_out
+                    if partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution:
+                        partition.graph.nodes[layer]['hw'].coarse_group = current_coarse_group
+                    partition.graph.nodes[layer]['hw'].update()
         if skip_second_slowest_node:
             break
 

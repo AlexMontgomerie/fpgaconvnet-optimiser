@@ -6,6 +6,7 @@ import secrets
 import wandb
 from dataclasses import dataclass, field
 from collections import Counter, namedtuple
+import pickle
 
 import numpy as np
 
@@ -13,10 +14,10 @@ from fpgaconvnet.tools.layer_enum import  LAYER_TYPE
 from fpgaconvnet.models.network import Network
 
 from fpgaconvnet.optimiser.latency.solvers.utils import get_hw_from_dict, get_runtime_latency, apply_mem_bw_limitations
-import fpgaconvnet.optimiser.solvers.solver
+import fpgaconvnet.optimiser.solvers.solver.Solver as Solver
 
 @dataclass
-class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
+class LatencySolver(Solver):
     runtime_parameters: bool = True
     transforms: list = field(default_factory=lambda: {
         'shape': 1/5, 'coarse': 1/5, 'fine': 1/5, 'combine': 1/5, 'seperate': 1/5})
@@ -32,7 +33,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # dictionary of layers, keyed by their name
         self.building_blocks = {}
         for node in self.net.graph.nodes:
-            self.building_blocks[node] = copy.deepcopy(self.net.graph.nodes[node])
+            self.building_blocks[node] = pickle.loads(pickle.dumps(self.net.graph.nodes[node]))
             self.building_blocks[node]["exec_nodes"] = [ node ]
 
         # combine simple layer types
@@ -47,9 +48,12 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # apply the weight_storage to the building_blocks
         self.apply_weight_storage()
 
+        # memory bandwidth expressed in words per cycle, mem_bw (Gbps), board_freq (MHz)
+        mem_bw_wpc = (self.platform.mem_bw) / (self.platform.board_freq * 1000 * self.net.data_width)
+
         # apply memory bandwidth limitations
         apply_mem_bw_limitations(self.net.graph, self.building_blocks,
-                self.net.platform.mem_bw_wpc, channel_tiling=self.channel_tiling)
+                self.platform.mem_bw_wpc, channel_tiling=self.channel_tiling)
 
         # number of nodes to combine/seperate for each call
         self.combine_nodes = 2
@@ -65,8 +69,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         self.shape_method = "random"
 
         # get the minimum channels in and out
-        self.min_channels_in = self.net.partitions[0].port_width//16
-        self.min_channels_out = self.net.partitions[0].port_width//16
+        self.min_channels_in = self.platform.port_width//self.net.data_width
+        self.min_channels_out = self.platform.port_width//self.net.data_width
 
     # import shape generation transform functions
     from fpgaconvnet.optimiser.latency.transforms.shapes import get_random_shape
@@ -159,7 +163,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         LUT  = resources['LUT']
         FF   = resources['FF']
         MEM_BW = resources['MEM_BW']
-        MEM_BW_UTIL = MEM_BW/self.net.platform.get_mem_bw()*100
+        MEM_BW_UTIL = MEM_BW/self.platform.get_mem_bw()*100
         print("TEMP:\t {temperature:.5f}, COST:\t {cost:.3f} ({objective}), RESOURCE:\t {DSP}\t{BRAM}\t{FF}\t{LUT}\t| {MEM_BW:.2f} ({MEM_BW_UTIL:.2f})\t(DSP|BRAM|FF|LUT) | MEM_BW (%)".format(
             temperature=temp, cost=cost,objective=objective,DSP=int(DSP),BRAM=int(BRAM),FF=int(FF),LUT=int(LUT),MEM_BW=MEM_BW,MEM_BW_UTIL=MEM_BW_UTIL))
 
@@ -173,8 +177,8 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             "FF"  : sum([ math.ceil(rsc["FF"]) for rsc in node_rscs ]),
             "DSP" : sum([ math.ceil(rsc["DSP"]) for rsc in node_rscs ]),
             "BRAM": sum([ math.ceil(rsc["BRAM"]) for rsc in node_rscs ]),
-            "MEM_BW": np.mean([ node["hw"].memory_bandwidth()['in']*self.net.platform.board_freq*16*1e-3 + \
-                    node["hw"].memory_bandwidth()['out']*self.net.platform.board_freq*16*1e-3 \
+            "MEM_BW": np.mean([ node["hw"].memory_bandwidth()['in']*self.platform.board_freq*16*1e-3 + \
+                    node["hw"].memory_bandwidth()['out']*self.platform.board_freq*16*1e-3 \
                     for _, node in self.building_blocks.items() ])
         }
 
@@ -182,11 +186,11 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         # get resources
         resources = self.get_resources()
         return {
-            "LUT": (resources["LUT"]/self.net.platform.get_lut())*100.0,
-            "FF": (resources["FF"]/self.net.platform.get_ff())*100.0,
-            "DSP": (resources["DSP"]/self.net.platform.get_dsp())*100.0,
-            "BRAM": (resources["BRAM"]/self.net.platform.get_bram())*100.0,
-            "MEM_BW": (resources["MEM_BW"]/self.net.platform.get_mem_bw())*100.0
+            "LUT": (resources["LUT"]/self.platform.get_lut())*100.0,
+            "FF": (resources["FF"]/self.platform.get_ff())*100.0,
+            "DSP": (resources["DSP"]/self.platform.get_dsp())*100.0,
+            "BRAM": (resources["BRAM"]/self.platform.get_bram())*100.0,
+            "MEM_BW": (resources["MEM_BW"]/self.platform.get_mem_bw())*100.0
         }
 
     def check_building_blocks(self):
@@ -304,7 +308,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
             total_latency += self.evaluate_latency_exec_node(schedule, exec_node)
 
         # latency in ms
-        total_latency = total_latency / (self.net.platform.board_freq*1e3)
+        total_latency = total_latency / (self.platform.board_freq*1e3)
 
         # return the overall latency
         return total_latency
@@ -317,18 +321,18 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         resources = self.get_resources()
         # check against board constraints
         if resources['FF']   > self.net.rsc_allocation * \
-            self.net.platform.get_ff():
+            self.platform.get_ff():
             return False
         if resources['LUT']  > self.net.rsc_allocation * \
-            self.net.platform.get_lut():
+            self.platform.get_lut():
             return False
         if resources['DSP']  > self.net.rsc_allocation * \
-            self.net.platform.get_dsp():
+            self.platform.get_dsp():
             return False
         if resources['BRAM'] > self.net.rsc_allocation * \
-            self.net.platform.get_bram():
+            self.platform.get_bram():
             return False
-        if resources['MEM_BW'] > self.net.platform.get_mem_bw():
+        if resources['MEM_BW'] > self.platform.get_mem_bw():
             return False
         return True
 
@@ -410,7 +414,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         for exec_node in self.net.graph.nodes():
             # get the latency of the node (in ms)
             latency = self.evaluate_latency_exec_node(schedule, exec_node)
-            latency = latency / (self.net.platform.board_freq*1e3)
+            latency = latency / (self.platform.board_freq*1e3)
             # create the report for the node
             report["per_layer"][exec_node] = {
                 "type" : str(self.net.graph.nodes[exec_node]["type"]),
@@ -440,14 +444,14 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         for hw_node in self.building_blocks:
             report["general"]["resources"][hw_node] = \
                     self.building_blocks[hw_node]["hw"].resource()
-            mem_bw_in = self.building_blocks[hw_node]["hw"].memory_bandwidth()['in']*self.net.platform.board_freq*16*1e-3
-            mem_bw_out = self.building_blocks[hw_node]["hw"].memory_bandwidth()['out']*self.net.platform.board_freq*16*1e-3
+            mem_bw_in = self.building_blocks[hw_node]["hw"].memory_bandwidth()['in']*self.platform.board_freq*16*1e-3
+            mem_bw_out = self.building_blocks[hw_node]["hw"].memory_bandwidth()['out']*self.platform.board_freq*16*1e-3
             mem_bw_report = {'MEM_BW_IN': mem_bw_in,
                              'MEM_BW_OUT': mem_bw_out,
                              'MEM_BW': mem_bw_in + mem_bw_out,
-                             'MEM_BW_IN_UTIL': mem_bw_in / self.net.platform.get_mem_bw()*100,
-                             'MEM_BW_OUT_UTIL': mem_bw_out / self.net.platform.get_mem_bw()*100,
-                             'MEM_BW_UTIL': (mem_bw_in + mem_bw_out) / self.net.platform.get_mem_bw()*100}
+                             'MEM_BW_IN_UTIL': mem_bw_in / self.platform.get_mem_bw()*100,
+                             'MEM_BW_OUT_UTIL': mem_bw_out / self.platform.get_mem_bw()*100,
+                             'MEM_BW_UTIL': (mem_bw_in + mem_bw_out) / self.platform.get_mem_bw()*100}
             report["general"]["resources"][hw_node] |= mem_bw_report
 
         # return the report
@@ -475,7 +479,7 @@ class LatencySolver(fpgaconvnet.optimiser.solvers.solver.Solver):
         for exec_node in self.net.graph.nodes():
             # get the latency of the node (in ms)
             latency = self.evaluate_latency_exec_node(schedule, exec_node)
-            latency = latency / (self.net.platform.board_freq*1e3)
+            latency = latency / (self.platform.board_freq*1e3)
             # update the table
             table["exec_node"].append(exec_node)
             table["hw_node"].append(self.get_building_block(exec_node))
